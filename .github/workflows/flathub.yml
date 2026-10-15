@@ -22,12 +22,14 @@ jobs:
           python3 - <<'PY'
           import re
           s = open('flatpak/io.github.pmirall.NEOPOSE.yml').read()
-          s = re.sub(r"      - type: git\n        url: [^\n]+\n        tag: [^\n]+\n", "      - type: dir\n        path: ..\n", s)
-          open('flatpak/ci.yml', 'w').write(s)
+          s = re.sub(r"      - type: git\n        url: [^\n]+\n        tag: [^\n]+\n(        commit: [^\n]+\n)?",
+                     "      - type: dir\n        path: .\n        skip: [.git, fpbuild, fprepo, .flatpak-builder, node_modules]\n", s)
+          s = s.replace("      - generated-sources.json", "      - flatpak/generated-sources.json")
+          open('ci-manifest.yml', 'w').write(s)
           PY
-          flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo --sandbox build flatpak/ci.yml
+          flatpak-builder --user --install-deps-from=flathub --force-clean --repo=fprepo --sandbox fpbuild ci-manifest.yml
       - name: Flathub linter
         run: |
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/io.github.pmirall.NEOPOSE.yml || true
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/io.github.pmirall.NEOPOSE.metainfo.xml
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo fprepo
