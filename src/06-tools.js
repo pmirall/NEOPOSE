@@ -413,7 +413,11 @@ function mirrorJoint(m, name) {
 }
 
 /* ---------- props held in a hand ---------- */
-const GRIP = {espada: {y: .84}, baston: {y: 1.0}, balon: {ball: .12}};
+// where each object is gripped: y = height of the handle (long tools, blade out of the thumb side), ball = radius;
+// anything else hangs from its top (lantern, suitcase, bucket)
+const GRIP = {espada: {y: .84}, baston: {y: 1.0}, balon: {ball: .12}, r_balon: {ball: .11}, r_katana: {y: .15}, r_bate: {y: .12}, r_hacha: {y: .1}};
+// what the practice randomizer puts in a hand
+const HOLDABLE = ['espada', 'baston', 'balon', 'r_katana', 'r_bate', 'r_hacha', 'r_farol', 'r_maleta', 'r_cubo', 'r_balon'];
 function holdProp(g, m, side) {
   releaseProp(g);
   const J = m.J, jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
@@ -430,9 +434,102 @@ function holdProp(g, m, side) {
     g.position.copy(palm).sub(new V3(0, gy, 0).multiply(g.scale).applyQuaternion(g.quaternion));
   }
   g.userData.held = {m, side};
-  m.hands[side] = gest(type === 'balon' ? 'garra' : 'agarre'); m.applyHands();
+  m.hands[side] = gest(sp && sp.ball ? 'garra' : 'agarre'); m.applyHands();
 }
 function releaseProp(g) { if (!g.userData.held) return; scene.attach(g); g.userData.held = null; if (g.position.y < 0) g.position.y = 0; }
+
+/* ---------- does a held object touch anything? ----------
+   Bodies are capsules along the bones, each as thick as the skinned mesh around that bone (measured on the posed
+   mesh, so it follows body type and pose; generous, plus a margin for clothes and sculpted heads). The object is
+   sampled on its surface every few cm; a sample inside a capsule, another object, a piece of scenery or under the
+   floor is a collision. The hand that holds it is allowed, and so is the forearm right at the grip. */
+const SEG_OF = {hips: 'hips', waist: 'waist', chest: 'chest', neck: 'neck', head: 'head', jaw: 'head', shoulderL: 'shoulderL', elbowL: 'elbowL', wristL: 'handL',
+  shoulderR: 'shoulderR', elbowR: 'elbowR', wristR: 'handR', hipL: 'hipL', kneeL: 'kneeL', ankleL: 'footL', hipR: 'hipR', kneeR: 'kneeR', ankleR: 'footR'};
+const SEG_ENDS = {hips: ['hips', 'waist'], waist: ['waist', 'chest'], chest: ['chest', 'neck'], neck: ['neck', 'head'], head: ['head', null], shoulderL: ['shoulderL', 'elbowL'],
+  elbowL: ['elbowL', 'wristL'], handL: ['wristL', null], shoulderR: ['shoulderR', 'elbowR'], elbowR: ['elbowR', 'wristR'], handR: ['wristR', null],
+  hipL: ['hipL', 'kneeL'], kneeL: ['kneeL', 'ankleL'], footL: ['ankleL', null], hipR: ['hipR', 'kneeR'], kneeR: ['kneeR', 'ankleR'], footR: ['ankleR', null]};
+const segDist = (p, a, b) => { const ab = _sv.subVectors(b, a), t = clamp(_sw.subVectors(p, a).dot(ab) / (ab.lengthSq() || 1), 0, 1); return p.distanceTo(_sw.copy(a).addScaledVector(ab, t)); };
+const _sv = new V3(), _sw = new V3();
+function bodyCapsules(m) {
+  m.group.updateMatrixWorld(true); m.skeleton.update();
+  const mesh = m.body3, names = FIG.meta.bones, nV = FIG.meta.nV, wp = n => m.joints[n].getWorldPosition(new V3());
+  const caps = {}; for (const k in SEG_ENDS) caps[k] = {a: wp(SEG_ENDS[k][0]), b: SEG_ENDS[k][1] ? wp(SEG_ENDS[k][1]) : null, pts: []};
+  const v = new V3();  // boneTransform (three r147) skins the position it is given
+  for (let i = 0; i < nV; i += 3) {
+    const n = names[m.dom[i]], k = SEG_OF[n] || (/^f[LR]/.test(n) ? 'hand' + n[1] : null); if (!k) continue;
+    v.fromBufferAttribute(mesh.geometry.attributes.position, i); mesh.boneTransform(i, v); caps[k].pts.push(v.clone().applyMatrix4(mesh.matrixWorld));
+  }
+  const pad = .015 * m.size + (m.outfit && m.outfit.length ? .025 * m.size : 0), out = [];
+  for (const [k, c] of Object.entries(caps)) {
+    if (!c.pts.length) continue;
+    // open ends (head top, hand, foot): the farthest skinned point of that part
+    if (!c.b) { let far = c.a, fd = 0; for (const p of c.pts) { const d = p.distanceTo(c.a); if (d > fd) { fd = d; far = p; } } c.b = c.a.clone().lerp(far, .85); }
+    const ds = c.pts.map(p => segDist(p, c.a, c.b)).sort((x, y) => x - y);
+    let r = ds[Math.floor(ds.length * .92)] + pad;
+    if (k === 'head' && m.body.species !== 'humano') r *= 1.35;
+    out.push({k, a: c.a, b: c.b, r});
+  }
+  // tails and dragon tails: a capsule per tail bone
+  if (m.hasTail) { const sp = SPECIES[m.body.species], r = (sp.tail ? sp.tail.r : .05) * m.size + pad, t = ['tail1', 'tail2', 'tail3'].map(wp);
+    out.push({k: 'tail', a: t[0], b: t[1], r}, {k: 'tail', a: t[1], b: t[2], r}, {k: 'tail', a: t[2], b: t[2].clone().add(t[2].clone().sub(t[1])), r}); }
+  // animal ears stand up from the head
+  if (m.hasEars) { const up = new V3(0, 1, 0).applyQuaternion(m.joints.head.getWorldQuaternion(new Q())), len = .55 * m.headH;
+    for (const s of ['L', 'R']) { const a = wp('ear' + s); out.push({k: 'ear', a, b: a.clone().addScaledVector(up, len), r: .06 * m.size + pad}); } }
+  return out;
+}
+// surface samples of an object in its own space, every ~2.5 cm (cached per type)
+const PROP_SAMPLES = {};
+function propSamples(g) {
+  const key = g.userData.prop; if (PROP_SAMPLES[key]) return PROP_SAMPLES[key];
+  g.updateMatrixWorld(true);
+  const inv = g.matrixWorld.clone().invert(), h = .025, seen = new Set(), out = [], a = new V3(), b = new V3(), c = new V3(), p = new V3();
+  g.traverse(o => {
+    if (!o.isMesh || o.userData.isHull) return;
+    const m4 = inv.clone().multiply(o.matrixWorld), pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      const ia = idx ? idx.getX(t) : t, ib = idx ? idx.getX(t + 1) : t + 1, ic = idx ? idx.getX(t + 2) : t + 2;
+      a.fromBufferAttribute(pos, ia).applyMatrix4(m4); b.fromBufferAttribute(pos, ib).applyMatrix4(m4); c.fromBufferAttribute(pos, ic).applyMatrix4(m4);
+      const s = Math.min(24, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / h));
+      for (let i = 0; i <= s; i++) for (let j = 0; j <= s - i; j++) {
+        p.set(0, 0, 0).addScaledVector(a, (s - i - j) / s).addScaledVector(b, i / s).addScaledVector(c, j / s);
+        const kk = `${Math.round(p.x / h * 2)},${Math.round(p.y / h * 2)},${Math.round(p.z / h * 2)}`;
+        if (!seen.has(kk)) { seen.add(kk); out.push(p.clone()); }
+      }
+    }
+  });
+  return (PROP_SAMPLES[key] = out);
+}
+// scenery that could be hit: not what a character stands in or sits on, nor what is hidden because a character clips it
+const standsIn = () => { const js = chars.flatMap(m => ['hips', 'head', 'ankleL', 'ankleR'].map(n => m.joints[n].getWorldPosition(new V3()))); return b => js.some(p => b.containsPoint(p)); };
+function sceneryBoxes() { const inside = standsIn(); return OCC.filter(c => !c.force && !inside(c.b)).map(c => c.b); }
+// practice poses land anywhere in a random set: a piece of scenery a body goes through is hidden for that pose (like the camera cutaway)
+function hideClashingScenery(caps) {
+  const inside = standsIn(), p = new V3(), e = new THREE.Box3();
+  for (const c of OCC) {
+    if (inside(c.b)) continue;
+    const hit = caps.some(([, list]) => list.some(s => { e.copy(c.b).expandByScalar(s.r); const n = Math.max(1, Math.ceil(s.a.distanceTo(s.b) / .03));
+      for (let i = 0; i <= n; i++) if (e.containsPoint(p.lerpVectors(s.a, s.b, i / n))) return true; return false; }));
+    if (hit) { c.force = true; c.o.visible = false; }
+  }
+}
+function showForcedScenery() { for (const c of OCC) if (c.force) { c.force = false; c.o.visible = !c.hidden; } }
+function propCollides(g, caps, boxes) {
+  g.updateMatrixWorld(true);
+  const h = g.userData.held, holder = h && h.m, grip = holder && holder.joints['wrist' + h.side].getWorldPosition(new V3()), gripR = holder ? .16 * holder.size : 0;
+  const others = props.filter(o => o !== g).map(o => { o.updateMatrixWorld(true); return {inv: o.matrixWorld.clone().invert(), box: o.userData.box.clone().expandByScalar(.01)}; });
+  const q = new V3(), l = new V3();
+  for (const s of propSamples(g)) {
+    q.copy(s).applyMatrix4(g.matrixWorld);
+    if (q.y < -.005) return 'suelo';
+    for (const [m, list] of caps) for (const c of list) {
+      if (m === holder && (c.k === 'hand' + h.side || (c.k === 'elbow' + h.side && q.distanceTo(grip) < gripR))) continue;
+      if (segDist(q, c.a, c.b) < c.r) return m === holder ? 'cuerpo' : 'otro';
+    }
+    for (const o of others) if (o.box.containsPoint(l.copy(q).applyMatrix4(o.inv))) return 'objeto';
+    for (const b of boxes) if (b.containsPoint(q)) return 'escenario';
+  }
+  return null;
+}
 
 /* ---------- sun handle: drag the key light around the cast ---------- */
 const sunHandle = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({color: 0xf2b23a, depthTest: false, transparent: true, opacity: .95}));

@@ -966,11 +966,14 @@ $('#prCancel').onclick = () => $('#practiceModal').hidden = true;
 $('#practiceModal').onclick = e => { if (e.target.id === 'practiceModal') $('#practiceModal').hidden = true; };
 $('#prStart').onclick = () => { $('#practiceModal').hidden = true; startPractice(); };
 // the options are remembered between sessions; body variety only applies with random bodies on
-const PR_OPTS = ['prVar', 'prGen', 'prCam', 'prLight', 'prSound', 'prBody', 'prAnthro', 'prChibi', 'prEnv'];
+const PR_OPTS = ['prVar', 'prGen', 'prCam', 'prLight', 'prSound', 'prBody', 'prAnthro', 'prChibi', 'prEnv', 'prProps'];
+const savePractice = () => store.set('cdp.practice', {...Object.fromEntries(PR_OPTS.map(k => [k, $('#' + k).checked])), prClothes: practice.clothes});
 function syncPracticeOpts() { const on = $('#prBody').checked; $('#prBodyOpts').classList.toggle('off', !on); $$('#prBodyOpts input').forEach(i => i.disabled = !on); }
 { const saved = store.get('cdp.practice', {});
   for (const id of PR_OPTS) { const el = $('#' + id); if (typeof saved[id] === 'boolean') el.checked = saved[id];
-    el.addEventListener('change', () => { store.set('cdp.practice', Object.fromEntries(PR_OPTS.map(k => [k, $('#' + k).checked]))); syncPracticeOpts(); }); }
+    el.addEventListener('change', () => { savePractice(); syncPracticeOpts(); }); }
+  practice.clothes = ['keep', 'set', 'random'].includes(saved.prClothes) ? saved.prClothes : 'keep'; setPressed($('#prClothes'), practice.clothes);
+  bindChipGroup('#prClothes', v => { practice.clothes = v; savePractice(); });
   syncPracticeOpts(); }
 // a random body per pose: any preset (chibi a quarter of the time, only if asked) nudged a little, anthro half of the time if asked
 function randomizeBody(m, o) {
@@ -988,7 +991,45 @@ function randomizeBody(m, o) {
 }
 function randomEnv() {
   const ids = Object.keys(SCENES).filter(k => k !== 'vacio' && k !== state.env), id = ids[Math.floor(Math.random() * ids.length)];
-  setEnv(id); $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id)));
+  $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id)));
+  return setEnv(id);
+}
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+const shuffled = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// clothes: one of the outfits, or garments drawn from the whole library; what an anthro cannot wear is left out quietly
+async function dressRandom(m, mode) {
+  await loadCatalog();
+  const specs = mode === 'set' ? pickOne(Object.values(OUTFITS))[1] : await randomOutfit();
+  setOutfit(m, specs.filter(s => !garmentBlock(m, ROPA.byId[s.id])));
+}
+// something in one hand of every character, tried object by object and hand by hand until it touches nothing
+practice.props = [];
+function dropPracticeProp(g) {
+  const h = g.userData.prevHand; releaseProp(g); scene.remove(g); const i = props.indexOf(g); if (i >= 0) props.splice(i, 1);
+  if (h) { h.m.hands[h.side] = h.hand; h.m.applyHands(); }
+}
+function clearPracticeProps() { for (const g of practice.props) dropPracticeProp(g); practice.props = []; }
+async function equipPractice(tok, caps) {
+  const boxes = sceneryBoxes();
+  let all = true;
+  for (const m of shuffled(chars)) {
+    const sides = shuffled(['L', 'R'].filter(s => !props.some(p => p.userData.held && p.userData.held.m === m && p.userData.held.side === s)));
+    let ok = null;
+    for (const id of shuffled(HOLDABLE).slice(0, 6)) {
+      const g = makeProp(id, new V3()); g.visible = false; await g.userData.ready;
+      if (tok !== practice.tok) { dropPracticeProp(g); return true; }
+      for (const side of sides) {
+        const prev = {c: [...m.hands[side].c], s: m.hands[side].s};
+        holdProp(g, m, side);
+        if (!propCollides(g, caps, boxes)) { g.userData.prevHand = {m, side, hand: prev}; ok = g; break; }
+        releaseProp(g); m.hands[side] = prev; m.applyHands();
+      }
+      if (ok) { ok.visible = true; practice.props.push(ok); break; }
+      dropPracticeProp(g);
+    }
+    if (!ok) all = false;
+  }
+  return all;
 }
 const fmtT = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function startPractice() {
@@ -998,27 +1039,47 @@ function startPractice() {
   select(null); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   nextPose(); practice.last = performance.now(); practice.timer = setInterval(tick, 200);
 }
-function nextPose() {
-  practice.i++;
-  if (practice.count && practice.i > practice.count) return finishPractice();
-  const n = chars.length, list = n === 1 ? POSES : GROUP_POSES[n];
+function practicePose() {
+  const n = chars.length, list = n === 1 ? POSES : GROUP_POSES[n], v = $('#prVar').checked ? 9 : 0;
   let p; do { p = list[Math.floor(Math.random() * list.length)]; } while (p.id === practice.prevId && list.length > 1);
   practice.prevId = p.id;
-  const v = $('#prVar').checked ? 9 : 0;
-  setHideFig(false);
-  if ($('#prBody').checked) { for (const m of chars) if (!m.avatar) randomizeBody(m, {anthro: $('#prAnthro').checked, chibi: $('#prChibi').checked}); renderCast(); }
-  if ($('#prEnv').checked) randomEnv();
   if (n === 1 && $('#prGen').checked && Math.random() < .5) { mq.joints.hips.position.set(0, mq.rootY, 0); applyRandom(mq, 'cualquiera', false); mq.joints.hips.quaternion.premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), (Math.random() * 2 - 1) * Math.PI)); mq.ground(); }
   else if (n === 1) { mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, p, {variation: v, yaw: (Math.random() * 2 - 1) * Math.PI}); }
   else applyGroupTo(chars, p, {variation: v * .6});
-  if ($('#prCam').checked) { const f = [24, 35, 50, 50, 85][Math.floor(Math.random() * 5)]; $('#focal').value = f; setFocal(f, false); frameAll(); setView(Math.random() * 360 - 180, Math.random() * 45 - 12); }
-  frameAll();
-  if ($('#prLight').checked) { const ks = Object.keys(LIGHTS); setLightPreset(ks[Math.floor(Math.random() * ks.length)]); }
+}
+async function nextPose() {
+  if (practice.busy) return;
+  practice.i++;
+  if (practice.count && practice.i > practice.count) return finishPractice();
+  const tok = practice.tok = (practice.tok || 0) + 1, live = () => practice.active && tok === practice.tok;
+  practice.busy = true; practice.left = practice.dur;
+  try {
+    setHideFig(false); clearPracticeProps(); showForcedScenery();
+    if ($('#prBody').checked) { for (const m of chars) if (!m.avatar) randomizeBody(m, {anthro: $('#prAnthro').checked, chibi: $('#prChibi').checked}); renderCast(); }
+    if (practice.clothes !== 'keep') await Promise.all(chars.filter(m => !m.avatar).map(m => dressRandom(m, practice.clothes).catch(e => console.error(e))));
+    // the set has to be there before checking what a held object could hit
+    if ($('#prEnv').checked) await randomEnv().catch(e => console.error(e));
+    if (!live()) return;
+    // with objects in hand, a pose where something would clip gets another try (and another pose)
+    const tries = $('#prProps').checked ? 4 : 1;
+    for (let k = 0; k < tries; k++) {
+      practicePose(); showForcedScenery();
+      const caps = chars.map(m => [m, bodyCapsules(m)]);
+      hideClashingScenery(caps);
+      if (tries === 1 || await equipPractice(tok, caps)) break;
+      if (!live()) return;
+      if (k < tries - 1) clearPracticeProps();
+    }
+    if (!live()) return;
+    if ($('#prCam').checked) { const f = [24, 35, 50, 50, 85][Math.floor(Math.random() * 5)]; $('#focal').value = f; setFocal(f, false); frameAll(); setView(Math.random() * 360 - 180, Math.random() * 45 - 12); }
+    frameAll();
+    if ($('#prLight').checked) { const ks = Object.keys(LIGHTS); setLightPreset(ks[Math.floor(Math.random() * ks.length)]); }
+  } finally { practice.busy = false; }
   practice.left = practice.dur; renderHud();
 }
 function tick() {
   const now = performance.now(), dt = (now - practice.last) / 1000; practice.last = now;
-  if (practice.paused || practice.done) return;
+  if (practice.paused || practice.done || practice.busy) return;
   practice.left -= dt;
   if (practice.left <= 0) { beep(); nextPose(); } else renderHud();
 }
@@ -1046,7 +1107,7 @@ function renderHud() {
 }
 function finishPractice() { practice.done = true; practice.i = practice.count + 1; beep(); renderHud(); }
 function stopPractice() {
-  clearInterval(practice.timer); practice.active = false; practice.done = false;
+  clearInterval(practice.timer); practice.active = false; practice.done = false; practice.tok = (practice.tok || 0) + 1; clearPracticeProps(); showForcedScenery();
   document.body.classList.remove('practicing'); $('#hud').hidden = true; $('#hud').innerHTML = '';
   $('#practiceBtn').lastChild.textContent = tr('Práctica');
   setHideFig(false);

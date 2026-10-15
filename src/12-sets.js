@@ -236,6 +236,7 @@ function updateOcclusion() {
   const cam = camera.position; let n = 0;
   for (const m of chars) for (const j of OCC_JOINTS) { if (!m.joints[j]) continue; (_occPts[n] || (_occPts[n] = new V3())); m.joints[j].getWorldPosition(_occPts[n++]); }
   for (const c of OCC) {
+    if (c.force) continue;
     let block = c.b.containsPoint(cam);
     for (let i = 0; i < n && !block; i++) {
       const p = _occPts[i]; if (c.b.containsPoint(p)) continue;
