@@ -13,7 +13,7 @@ command: neopose
 separate-locales: false
 finish-args:
   - --share=ipc
-  - --socket=x11
+  - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
   # exported PNGs go to Pictures/Downloads (the save dialog uses portals for anything else)
