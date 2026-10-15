@@ -1,0 +1,8 @@
+[Flatpak Repo]
+Title=NEOPOSE
+Url=https://pmirall.github.io/NEOPOSE/repo/
+Homepage=https://github.com/pmirall/NEOPOSE
+Comment=Figura 3D para dibujar
+Description=Repositorio oficial de NEOPOSE: maniquí 3D de referencia para dibujo
+Icon=https://pmirall.github.io/NEOPOSE/icon.png
+GPGKey=mDMEatDFAhYJKwYBBAHaRw8BAQdAkxzbisWI6Uxivbji3jriKPM/COEnpJ4ekXBLqIy5SiS0L05FT1BPU0UgRmxhdHBhayByZXBvIDxwYXVtaXJhbGxtb3ZpbEBnbWFpbC5jb20+iJMEExYKADsWIQSD2av7SC2wCLEgtSXqLjfJS4Li8wUCatDFAgIbAwULCQgHAgIiAgYVCgkICwIEFgIDAQIeBwIXgAAKCRDqLjfJS4Li8zlOAQDMXAcRgLY7SvTzPnKVeR5wbiX7vzO4nPxUKHfG+LUJVAEAnCtkxg62KPdhLp7O2HLc+XgbCgp+OwwyF9IV4SLwEAY=

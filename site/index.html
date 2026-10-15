@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEOPOSE · Instalar en Linux</title>
+<link rel="icon" href="icon.png">
+<style>
+  :root{--paper:#e4ddcb;--page:#f2ede1;--ink:#2a2620;--soft:#6d6555;--line:#b9ad94;--blue:#2b5a9e;--red:#b0432c}
+  @media (prefers-color-scheme:dark){:root{--paper:#171614;--page:#211f1b;--ink:#ece5d3;--soft:#a69d89;--line:#4d473d;--blue:#8db3ec;--red:#e3866c}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:820px;margin:0 auto;padding:32px 16px 56px}
+  header{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+  header img{width:72px;height:72px}
+  h1{margin:0;font-size:34px;letter-spacing:.5px}
+  .sub{margin:2px 0 0;color:var(--soft)}
+  .card{background:var(--page);border:1.5px solid var(--ink);border-radius:10px;padding:18px 20px;margin:18px 0}
+  h2{margin:0 0 8px;font-size:20px}
+  .btn{display:inline-block;background:var(--ink);color:var(--page);text-decoration:none;font-weight:700;padding:10px 16px;border-radius:8px;margin:6px 8px 6px 0}
+  .btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+  pre{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:14px}
+  code{font-family:ui-monospace,"Courier New",monospace}
+  .shot{width:100%;height:auto;border-radius:8px;border:1px solid var(--line);display:block}
+  .note{color:var(--soft);font-size:14px}
+  a{color:var(--blue)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="">
+    <div><h1>NEOPOSE</h1><p class="sub">Figura 3D para dibujar · software libre (GPL-3.0)</p></div>
+  </header>
+  <img class="shot" src="shot.png" alt="NEOPOSE con un personaje vestido en un salón">
+
+  <div class="card">
+    <h2>Instalar con un clic</h2>
+    <p>Abre el archivo con tu tienda de aplicaciones (Bazaar, GNOME Software, KDE Discover). Añade este repositorio y, si hace falta, Flathub para el runtime.</p>
+    <a class="btn" href="io.github.pmirall.NEOPOSE.flatpakref">Instalar NEOPOSE</a>
+    <a class="btn alt" href="neopose.flatpakrepo">Solo añadir el repositorio</a>
+    <p class="note">Con el repositorio añadido, NEOPOSE aparece en tu tienda y se actualiza con el resto de aplicaciones.</p>
+  </div>
+
+  <div class="card">
+    <h2>Desde la terminal</h2>
+    <pre><code>flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists neopose https://pmirall.github.io/NEOPOSE/neopose.flatpakrepo
+flatpak install --user neopose io.github.pmirall.NEOPOSE</code></pre>
+    <p class="note">Para actualizar: <code>flatpak update</code>. Para desinstalar: <code>flatpak uninstall io.github.pmirall.NEOPOSE</code>.</p>
+  </div>
+
+  <div class="card">
+    <h2>Otras descargas</h2>
+    <p>Windows (instalador y portable), Android (APK), AppImage y el Flatpak en un solo archivo: <a href="https://github.com/pmirall/NEOPOSE/releases">versiones en GitHub</a>. Código fuente: <a href="https://github.com/pmirall/NEOPOSE">github.com/pmirall/NEOPOSE</a>.</p>
+    <p class="note">El repositorio está firmado con la clave GPG 83D9 ABFB 482D B008 B120 B525 EA2E 37C9 4B82 E2F3.</p>
+  </div>
+</main>
+</body>
+</html>

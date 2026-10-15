@@ -1,0 +1,67 @@
+# Publishes NEOPOSE as a signed Flatpak repository on GitHub Pages (https://pmirall.github.io/NEOPOSE/).
+# Built from source with the same manifest as Flathub. Runs on every release tag, or by hand.
+name: Flatpak repo (GitHub Pages)
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Source of the published version (the release tag)
+        run: |
+          TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          [ -n "$TAG" ] || TAG=$(git describe --tags --abbrev=0)
+          echo "Publishing $TAG"; git worktree add app-src "$TAG"
+      - name: Flatpak toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder appstream
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Signing key
+        env:
+          KEY: ${{ secrets.FLATPAK_GPG_KEY }}
+        run: |
+          echo "$KEY" | gpg --batch --import
+          echo "FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')" >> "$GITHUB_ENV"
+      - name: Build from this checkout
+        run: |
+          python3 - <<'PY'
+          import re
+          s = open('app-src/flatpak/io.github.pmirall.NEOPOSE.yml').read()
+          s = re.sub(r"      - type: git\n        url: [^\n]+\n        tag: [^\n]+\n(        commit: [^\n]+\n)?",
+                     "      - type: dir\n        path: .\n        skip: [.git, fpbuild, site, .flatpak-builder, node_modules]\n", s)
+          s = s.replace("      - generated-sources.json", "      - flatpak/generated-sources.json")
+          open('app-src/pages-manifest.yml', 'w').write(s)
+          PY
+          flatpak-builder --user --install-deps-from=flathub --force-clean --sandbox \
+            --default-branch=stable --gpg-sign="$FPR" --repo=site/repo fpbuild app-src/pages-manifest.yml
+          flatpak build-update-repo --gpg-sign="$FPR" --title=NEOPOSE --default-branch=stable \
+            --prune --prune-depth=2 site/repo
+          du -sh site/repo
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
