@@ -2,7 +2,7 @@
 let toastT = 0, toastKeep = null;
 function toast(msg) {
   const h = $('#hint'); if (!h) return; if (toastKeep === null) toastKeep = h.innerHTML;
-  h.textContent = msg; h.classList.add('toast'); clearTimeout(toastT);
+  h.textContent = tr(msg); h.classList.add('toast'); clearTimeout(toastT);
   toastT = setTimeout(() => { h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); }, 5000);
 }
 /* anthro compatibility: what cannot be worn by this character, and why */
@@ -10,10 +10,10 @@ function garmentBlock(m, it) {
   if (!it || !m || !HEAD_RECIPES[m.body.species]) return null;
   const sp = SPECIES[m.body.species].label.toLowerCase(), t = it.title.toLowerCase(), an = m.anthro, snout = an && an.spec ? an.spec.snout : 0;
   const ears = (HEAD_RECIPES[m.body.species].ears || []).length > 0;
-  if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return `Las gafas no se apoyan en un hocico de ${sp}.`;
-  if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return `La máscara está hecha para una cara humana, no para un hocico de ${sp}.`;
-  if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return `Las patas de ${sp} no entran en calzado humano.`;
-  if (it.cat === 'Sombreros, cascos y máscaras' && ears && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return `Las orejas de ${sp} no caben dentro: haría falta una versión con agujeros para las orejas.`;
+  if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return tr('Las gafas no se apoyan en un hocico de {sp}.', {sp});
+  if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return tr('La máscara está hecha para una cara humana, no para un hocico de {sp}.', {sp});
+  if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return tr('Las patas de {sp} no entran en calzado humano.', {sp});
+  if (it.cat === 'Sombreros, cascos y máscaras' && ears && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return tr('Las orejas de {sp} no caben dentro: haría falta una versión con agujeros para las orejas.', {sp});
   return null;
 }
 /* ---------- Ropa tab: outfits, worn garments, and the whole library in folders ---------- */
@@ -65,14 +65,14 @@ function garmentTitle(id) { return ROPA.byId[id] ? ROPA.byId[id].title : id; }
 function renderGarmentList() {
   const box = $('#garmentList'); if (!box) return;
   box.innerHTML = '';
-  if (!mq.outfit.length) { box.innerHTML = '<p class="empty">Sin ropa. Elige un conjunto o añade prendas de la biblioteca.</p>'; return; }
+  if (!mq.outfit.length) { box.innerHTML = `<p class="empty">${tr('Sin ropa. Elige un conjunto o añade prendas de la biblioteca.')}</p>`; return; }
   mq.garments.forEach((g, gi) => {
     const s = g.spec, card = document.createElement('details'); card.className = 'garment';
     card.open = !!g.open; card.ontoggle = () => g.open = card.open;
     const sum = document.createElement('summary'), it = ROPA.byId[s.id];
-    sum.innerHTML = `<span class="gth"></span><span class="gn"></span><button type="button" class="gx" aria-label="Quitar">×</button>`;
+    sum.innerHTML = `<span class="gth"></span><span class="gn"></span><button type="button" class="gx" aria-label="${tr('Quitar')}">×</button>`;
     if (it && it.thumb) { const im = new Image(); im.src = it.thumb; im.alt = ''; sum.querySelector('.gth').appendChild(im); }
-    sum.querySelector('.gn').textContent = garmentTitle(s.id) + (g.failed ? ' (no se pudo cargar)' : '');
+    sum.querySelector('.gn').textContent = garmentTitle(s.id) + (g.failed ? tr(' (no se pudo cargar)') : '');
     sum.querySelector('.gx').onclick = e => { e.preventDefault(); removeGarment(gi); };
     card.appendChild(sum);
     const body = document.createElement('div'); body.className = 'gbody'; card.appendChild(body);
@@ -82,7 +82,7 @@ function renderGarmentList() {
     if (s.mode !== 'tex') {
       const cols = document.createElement('div'); cols.className = 'gcols';
       for (const [k, lab] of s.mode === 'pat' ? [['colA', 'Color'], ['colB', 'Color 2']] : [['colA', 'Color']]) {
-        const l = document.createElement('label'); l.className = 'gcol'; l.textContent = lab;
+        const l = document.createElement('label'); l.className = 'gcol'; l.textContent = tr(lab);
         const inp = document.createElement('input'); inp.type = 'color'; inp.value = s[k]; inp.id = `gc_${gi}_${k}`;
         inp.oninput = () => { s[k] = inp.value; changed(); }; inp.onchange = pushHistory; l.appendChild(inp); cols.appendChild(l);
       }
@@ -98,22 +98,22 @@ function renderGarmentList() {
       slider(body, {id: `gs_${gi}_pat`, label: 'Escala del estampado', min: .015, max: .3, step: .005, value: s.patS, fmt: v => Math.round(v * 100) + ' cm', input: v => { s.patS = v; changed(); }, change: pushHistory});
     }
     const lr = document.createElement('div'); lr.className = 'row';
-    lr.innerHTML = `<span class="gcat" style="margin:0">Capa</span><button type="button" class="btn small">Más adentro</button><button type="button" class="btn small">Más afuera</button>`;
+    lr.innerHTML = `<span class="gcat" style="margin:0">${tr('Capa')}</span><button type="button" class="btn small">${tr('Más adentro')}</button><button type="button" class="btn small">${tr('Más afuera')}</button>`;
     const [bIn, bOut] = lr.querySelectorAll('button');
     bIn.onclick = () => { s.layer = (s.layer || 0) - 1; updateBodyHide(mq); pushHistory(); };
     bOut.onclick = () => { s.layer = (s.layer || 0) + 1; updateBodyHide(mq); pushHistory(); };
     body.appendChild(lr);
     const hl = document.createElement('label'); hl.className = 'check';
-    hl.innerHTML = `<input type="checkbox" ${s.hide !== false ? 'checked' : ''}> Ocultar lo que tapa (piel y prendas de debajo)`;
+    hl.innerHTML = `<input type="checkbox" ${s.hide !== false ? 'checked' : ''}> ${tr('Ocultar lo que tapa (piel y prendas de debajo)')}`;
     hl.querySelector('input').onchange = e => { s.hide = e.target.checked; updateBodyHide(mq); pushHistory(); };
     body.appendChild(hl);
-    if (it) { const cr = document.createElement('p'); cr.className = 'note'; cr.textContent = `Autoría: ${it.author} · CC0`; body.appendChild(cr); }
+    if (it) { const cr = document.createElement('p'); cr.className = 'note'; cr.textContent = tr('Autoría: {a} · CC0', {a: it.author}); body.appendChild(cr); }
     box.appendChild(card);
   });
 }
 function wearOutfit(m, specs) {
   const blocked = (specs || []).filter(sp => garmentBlock(m, ROPA.byId[sp.id]));
-  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp)); toast(`Sin ${blocked.map(b => garmentTitle(b.id)).join(', ')}: ${garmentBlock(m, ROPA.byId[blocked[0].id])}`); }
+  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp)); toast(tr('Sin {x}: {why}', {x: blocked.map(b => garmentTitle(b.id)).join(', '), why: garmentBlock(m, ROPA.byId[blocked[0].id])})); }
   const p = setOutfit(m, specs); p.then(() => { if (m === mq) renderGarmentList(); }); return p; }
 function removeGarment(gi) { wearOutfit(mq, mq.outfit.filter((_, i) => i !== gi)); renderGarmentList(); renderLibrary(); pushHistory(); }
 function toggleGarment(id) {
@@ -126,24 +126,24 @@ function toggleGarment(id) {
 }
 function renderLibrary() {
   const box = $('#garmentAdd'); if (!box) return;
-  if (!ROPA.catalog) { box.innerHTML = '<p class="empty">Cargando la biblioteca…</p>'; loadCatalog().then(renderLibrary, () => box.innerHTML = '<p class="empty">No se pudo cargar la biblioteca de ropa.</p>'); return; }
+  if (!ROPA.catalog) { box.innerHTML = `<p class="empty">${tr('Cargando la biblioteca…')}</p>`; loadCatalog().then(renderLibrary, () => box.innerHTML = `<p class="empty">${tr('No se pudo cargar la biblioteca de ropa.')}</p>`); return; }
   const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.cat));
   box.innerHTML = '';
   const q = ropaSearch.trim().toLowerCase(), worn = new Set(mq.outfit.map(s => s.id));
-  const cats = [...new Set(ROPA.catalog.map(c => c.cat))].sort((a, b) => a === 'Varios' ? 1 : b === 'Varios' ? -1 : a.localeCompare(b, 'es'));
+  const cats = [...new Set(ROPA.catalog.map(c => c.cat))].sort((a, b) => a === 'Varios' ? 1 : b === 'Varios' ? -1 : tr(a).localeCompare(tr(b), LANG));
   for (const cat of cats) {
     const items = ROPA.catalog.filter(c => c.cat === cat && (!q || c.title.toLowerCase().includes(q)));
     if (!items.length) continue;
     const det = document.createElement('details'); det.className = 'folder'; det.dataset.cat = cat; det.open = open.has(cat) || !!q;
     const nWorn = items.filter(c => worn.has(c.id)).length;
-    det.innerHTML = `<summary><span class="fi" aria-hidden="true"></span><span class="fn"></span><span class="fc">${nWorn ? nWorn + ' puesta' + (nWorn > 1 ? 's' : '') + ' · ' : ''}${items.length}</span></summary><div class="lib"></div>`;
-    det.querySelector('.fn').textContent = cat;
+    det.innerHTML = `<summary><span class="fi" aria-hidden="true"></span><span class="fn"></span><span class="fc">${nWorn ? tr(nWorn > 1 ? '{n} puestas' : '{n} puesta', {n: nWorn}) + ' · ' : ''}${items.length}</span></summary><div class="lib"></div>`;
+    det.querySelector('.fn').textContent = tr(cat);
     const grid = det.querySelector('.lib');
     const fill = () => {
       if (grid.childElementCount) return;
       for (const c of items) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem' + (worn.has(c.id) ? ' on' : ''); b.title = c.title; b.setAttribute('aria-pressed', worn.has(c.id));
-        b.innerHTML = c.thumb ? `<img loading="lazy" alt="" src="${c.thumb}">` : '<span class="noimg">sin imagen</span>';
+        b.innerHTML = c.thumb ? `<img loading="lazy" alt="" src="${c.thumb}">` : `<span class="noimg">${tr('sin imagen')}</span>`;
         const t = document.createElement('span'); t.className = 'lt'; t.textContent = c.title; b.appendChild(t);
         const why = !worn.has(c.id) && garmentBlock(mq, c);
         if (why) { b.classList.add('blocked'); b.title = why; b.setAttribute('aria-disabled', 'true'); }
@@ -154,7 +154,7 @@ function renderLibrary() {
     if (det.open) fill(); det.ontoggle = () => { if (det.open) fill(); };
     box.appendChild(det);
   }
-  if (!box.childElementCount) box.innerHTML = '<p class="empty">Nada coincide con la búsqueda.</p>';
+  if (!box.childElementCount) box.innerHTML = `<p class="empty">${tr('Nada coincide con la búsqueda.')}</p>`;
 }
 function buildClothesUI() {
   chips($('#outfitChips'), Object.entries(OUTFITS).map(([k, v]) => [k, v[0]]), null, k => {

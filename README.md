@@ -12,7 +12,8 @@ Figura 3D para dibujar. Un maniquí de referencia con anatomía humana y anthro,
 - **Escenarios**: 24 decorados (salón, taberna, castillo, teatro, calle, bosque, playa…) con modelos de Poly Haven y luces propias con sombra.
 - **Dibujo**: acabados de construcción, volumen, lápiz, valores y silueta; guías de tercios, fuga, regla de cabezas y línea de acción; capa de boceto con pinceles `.abr`.
 - **Tutorial interactivo** de 2 minutos al abrirla por primera vez (y desde el botón de ayuda).
-- **Práctica de gesto** con temporizador y **exportación** a PNG (con fondo, transparente o solo trazo).
+- **Práctica de gesto** con temporizador, con cuerpos aleatorios (con o sin anthro y chibis) y escenarios aleatorios si se quiere, y **exportación** a PNG (con fondo, transparente o solo trazo).
+- **Idiomas**: inglés por defecto y español (Ayuda → Language · Idioma). Los textos están en `src/i18n-en.json`, con el texto en español como clave.
 
 ## Descargas
 

@@ -201,6 +201,7 @@ const ASSET_PROPS = {
   r_busto: ['Busto', 'marble_bust_01'], r_tele: ['Televisor', 'Television_01'], r_caballete: ['Pizarra', 'standing_chalkboard_01'], r_bidon: ['Bidón', 'Barrel_01'],
   r_hacha: ['Hacha', 'wooden_axe'], r_cubo: ['Cubo de madera', 'wooden_bucket_01'], r_neumatico: ['Neumático', 'old_tyre']
 };
+for (const v of Object.values(ASSET_PROPS)) v[0] = tr(v[0]);
 
 /* ---------- the scenery never hides the cast ----------
    Each frame, rays go from the camera to several joints of every character; any piece of scenery crossed by

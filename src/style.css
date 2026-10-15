@@ -142,7 +142,7 @@ body.practicing header .tb.edit{visibility:hidden}
 .sheet{background:var(--page);border:1.5px solid var(--ink);border-radius:4px;box-shadow:var(--lift);width:min(560px,100%);max-height:calc(100% - 20px);overflow:auto;padding:18px 20px 20px}
 .sheet h2{font-family:var(--f-hand);font-size:26px;margin:0 0 4px;line-height:1.1}
 .sheet .opts{display:grid;gap:12px;margin:14px 0}
-.sheet .opts > div > p{margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.sheet .opts > div > p:not(.note){margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
 .sheet .foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
 .preview{border:1.5px dashed var(--line);border-radius:4px;padding:8px;display:grid;place-items:center;
   background-color:var(--page);background-image:linear-gradient(45deg,var(--rule) 25%,transparent 25%,transparent 75%,var(--rule) 75%),linear-gradient(45deg,var(--rule) 25%,transparent 25%,transparent 75%,var(--rule) 75%);background-size:16px 16px;background-position:0 0,8px 8px}
@@ -326,6 +326,10 @@ body.practicing .modebar{display:none}
 .welcome img{display:block;margin:0 auto 6px}
 .welcome .wlist{text-align:left;margin:12px auto;padding-left:20px;display:grid;gap:6px;font-size:14px;max-width:360px}
 .welcome .foot{justify-content:center}
+.langrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--ink-soft)}
+.welcome .langrow{justify-content:center}
+.subchecks{margin:0 0 4px 23px}
+.subchecks.off{opacity:.45}
 #tour{position:fixed;inset:0;z-index:30;pointer-events:none}
 #tourHole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(25,20,12,.45);border:2px solid var(--blue);transition:all .25s ease;pointer-events:none}
 #tourCard{position:fixed;pointer-events:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);box-shadow:var(--lift);padding:12px 14px 12px;transition:left .25s,top .25s}

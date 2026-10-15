@@ -249,14 +249,14 @@ function renderHeadModels() {
   });
   box.parentElement.hidden = list.length < 2;
   const cr = $('#headCredit'); cr.innerHTML = '';
-  if (c) { cr.append('Cabeza: «' + c.label.replace(/ \(.*\)$/, '') + '» de ' + c.author + ' (CC-BY), '); const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Sketchfab'; cr.append(a, '.'); }
-  else cr.textContent = HEAD_CREDITS;
+  if (c) { cr.append(tr('Cabeza: «{x}» de {a} (CC-BY), ', {x: c.label.replace(/ \(.*\)$/, ''), a: c.author})); const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Sketchfab'; cr.append(a, '.'); }
+  else cr.textContent = tr(HEAD_CREDITS);
 }
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
   const on = !!HEAD_RECIPES[mq.body.species]; box.hidden = !on;
   setPressed($('#feetChips'), mq.body.feet || 'animal');
-  const L = ANIMAL_LEGS[mq.body.species]; $('#feetNote').textContent = L ? (L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
+  const L = ANIMAL_LEGS[mq.body.species]; $('#feetNote').textContent = L ? tr(L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
   renderHeadModels();
 }
 

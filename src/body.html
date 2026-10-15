@@ -14,7 +14,7 @@
       <button class="btn primary" id="exportBtn" title="Exportar PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg><span>Exportar</span></button>
     </div>
     <div class="tb">
-      <button class="btn icon" id="panelBtn" title="Ocultar el panel (\\)" aria-label="Ocultar o mostrar el panel" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+      <button class="btn icon" id="panelBtn" title="Ocultar el panel (\)" aria-label="Ocultar o mostrar el panel" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
       <button class="btn icon" id="helpBtn" title="Ayuda y atajos (?)" aria-label="Ayuda y atajos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
     </div>
   </header>
@@ -338,6 +338,15 @@
         <label class="check"><input type="checkbox" id="prLight"> Luz aleatoria</label>
         <label class="check"><input type="checkbox" id="prSound" checked> Aviso sonoro al cambiar</label>
       </div>
+      <div><p>Personajes y escenario</p>
+        <label class="check"><input type="checkbox" id="prBody"> Cuerpo aleatorio en cada pose</label>
+        <div class="subchecks" id="prBodyOpts">
+          <label class="check"><input type="checkbox" id="prAnthro" checked> Incluir no humanos (anthro)</label>
+          <label class="check"><input type="checkbox" id="prChibi"> Incluir chibis</label>
+        </div>
+        <label class="check"><input type="checkbox" id="prEnv"> Escenario aleatorio en cada pose</label>
+        <p class="note">Los avatares importados conservan su cuerpo.</p>
+      </div>
     </div>
     <div class="foot">
       <button class="btn" id="prCancel">Cancelar</button>
@@ -380,6 +389,7 @@
         <dt><kbd>?</kbd></dt><dd>Esta ayuda</dd>
         <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd></dl></section>
     </div>
+    <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>
     <div class="foot"><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose">Entendido</button></div>
   </div>
 </div>
@@ -399,6 +409,7 @@
       <button class="btn primary" id="wStart">Tutorial interactivo · 2 min</button>
     </div>
     <p class="note">Puedes volver a verlo cuando quieras desde el botón <b>?</b> de arriba a la derecha.</p>
+    <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>
   </div>
 </div>
 <div id="tour" hidden>

@@ -16,6 +16,7 @@ const JOINT_LABEL = {hips:'Pelvis · todo el cuerpo',waist:'Cintura',chest:'Pech
   shoulderL:'Hombro izquierdo',elbowL:'Codo izquierdo',wristL:'Muñeca izquierda',shoulderR:'Hombro derecho',elbowR:'Codo derecho',wristR:'Muñeca derecha',
   hipL:'Cadera izquierda',kneeL:'Rodilla izquierda',ankleL:'Tobillo izquierdo',hipR:'Cadera derecha',kneeR:'Rodilla derecha',ankleR:'Tobillo derecho',
   tail1:'Cola · base',tail2:'Cola · centro',tail3:'Cola · punta'};
+tValues(JOINT_LABEL);
 const HINGE = {elbowL:[-150,0], elbowR:[-150,0], kneeL:[0,150], kneeR:[0,150]};
 const SPINE = ['waist','chest','neck','head'];
 // FK drag: moving a joint turns its parent bone towards the cursor
@@ -41,15 +42,17 @@ const BODY_PRESETS = {
   chibi:      {label:'Chibi', gender:.5, age:.1, weight:.6, ideal:0, head:1.8, legs:.62, arms:.72, torso:.82},
   heroico:    {label:'Heroico (cómic)', gender:1, muscle:1, weight:.4, height:.68, ideal:1, head:.86, legs:1.06}
 };
+tLabels(BODY_PRESETS);
 const bodyOf = id => { const p = {...BODY_BASE, ...BODY_PRESETS[id]}; delete p.label; return p; };
 const BODY_SLIDERS = [
-  ['age','Edad',0,1,v => `≈ ${Math.round(11 + v * 14)} años`],
+  ['age','Edad',0,1,v => tr('≈ {n} años', {n: Math.round(11 + v * 14)})],
   ['gender','Mujer · Hombre',0,1],['muscle','Musculatura',0,1],['weight','Grasa corporal',0,1],['height','Altura',0,1],
   ['ideal','Proporciones idealizadas',0,1]
 ];
 const STYLE_SLIDERS = [
   ['head','Tamaño de cabeza',.75,2],['legs','Largo de piernas',.55,1.3],['arms','Largo de brazos',.6,1.25],['torso','Largo de torso',.7,1.2]
 ];
+for (const r of [...BODY_SLIDERS, ...STYLE_SLIDERS]) r[1] = tr(r[1]);
 // Furry anatomy: ear/horn, muzzle and tail shapes in head heights (ears, muzzle) or metres (tail)
 /* species: the head comes from sculpted MakeHuman community targets (see 10-anthro.js); tails and horns are built here */
 const SPECIES = {
@@ -61,6 +64,7 @@ const SPECIES = {
   cabra:  {label:'Cabra',   tail:{len:.09,r:.04,shape:'pompón'}},
   dragon: {label:'Dragón',  tail:{len:1.1,r:.12,shape:'reptil'}}
 };
+tLabels(SPECIES);
 
 /* ---------- hands ---------- */
 const GESTURES = {
@@ -74,7 +78,8 @@ const GESTURES = {
   pinza:   {label:'Pinza',    c:[.6,.55,.3,.25,.2], s:.3},
   garra:   {label:'Garra',    c:[.35,.55,.55,.55,.55], s:.8}
 };
-const FINGER_NAMES = ['Pulgar','Índice','Corazón','Anular','Meñique'];
+tLabels(GESTURES);
+const FINGER_NAMES = ['Pulgar','Índice','Corazón','Anular','Meñique'].map(s => tr(s));
 function gest(id) { const g = GESTURES[id] || GESTURES.relajada; return {c: [...g.c], s: g.s}; }
 
 /* ---------- light, look, scene ---------- */
@@ -88,10 +93,13 @@ const LIGHTS = {
   nublado:  {label:'Nublado',    az:20,  el:60, key:.35, fill:.8,  rim:.15, soft:9},
   noir:     {label:'Cine negro', az:-70, el:20, key:1.3, fill:.06, rim:.5,  soft:1.5}
 };
+tLabels(LIGHTS);
 const STYLES = {construccion:'Construcción', contorno:'Solo línea', volumen:'Volumen', lapiz:'Lápiz', valores:'Valores', silueta:'Silueta'};
 const LINE_MODES = {anillos:'Anillos', malla:'Anillos y meridianos', ninguna:'Sin líneas'};
+tValues(STYLES); tValues(LINE_MODES);
 const ENVS = {estudio:'Estudio', habitacion:'Habitación', calle:'Calle', bosque:'Bosque', ring:'Ring', cafeteria:'Cafetería',
   ruinas:'Ruinas', escalinata:'Escalinata', azotea:'Azotea', dojo:'Dojo', playa:'Playa', vacio:'Vacío'};
+tValues(ENVS);
 // time of day: sky, fog, hemisphere and key tint; practical = how bright set lamps glow
 const AMBIENTS = {
   dia:      {label:'Día',            top:0x9fb8d6, hor:0xe8e4d8, fog:0xe4e0d4, hemiS:0xfff6e8, hemiG:0x7d7262, fill:1, key:1, keyCol:0xfff1dc, practical:.15},
@@ -100,11 +108,15 @@ const AMBIENTS = {
   interior: {label:'Interior cálido',top:0x4a3b30, hor:0x8a6c55, fog:0x6e5646, hemiS:0xffe2c0, hemiG:0x4a3a2e, fill:.75, key:.6, keyCol:0xffd2a0, practical:1.1},
   neutro:   {label:'Estudio neutro', top:0xd9d4c8, hor:0xebe5d6, fog:0xebe4d4, hemiS:0xffffff, hemiG:0x8a8273, fill:1, key:1, keyCol:0xffffff, practical:.3}
 };
+tLabels(AMBIENTS);
 const PROPS = {
   cubo:'Cubo', caja:'Caja', cilindro:'Cilindro', esfera:'Esfera', silla:'Silla', mesa:'Mesa', banco:'Banco', taburete:'Taburete',
   escalon:'Escalón', pared:'Pared', barril:'Barril', espada:'Espada', baston:'Bastón', balon:'Balón', farola:'Farola', arbol:'Árbol', roca:'Roca', puerta:'Puerta'
 };
+tValues(PROPS);
 const LIGHT_COLORS = {calida:['Cálida',0xffc98a], neutra:['Neutra',0xfff6ea], fria:['Fría',0xaecdff], roja:['Roja',0xff5a4a], azul:['Azul',0x4a7dff], verde:['Verde',0x58e07a], magenta:['Magenta',0xff4fd8]};
 const VIEWS = [['Frontal',0,4],['Tres cuartos',38,10],['Perfil',90,3],['Espalda',180,6],['Picado',30,48],['Contrapicado',25,-14],['Cenital',0,86]];
+for (const c of Object.values(LIGHT_COLORS)) c[0] = tr(c[0]);
+for (const v of VIEWS) v[0] = tr(v[0]);
 const LENSES = [14,24,35,50,85,135,200];
 const pctFmt = v => Math.round(v * 100) + '%';

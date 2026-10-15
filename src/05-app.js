@@ -52,7 +52,7 @@ function ensureCount(n) {
   while (chars.length > n) removeChar(chars.length - 1);
 }
 const charLabel = m => {
-  const base = m.bodyPreset ? BODY_PRESETS[m.bodyPreset].label : 'Personalizado';
+  const base = m.bodyPreset ? BODY_PRESETS[m.bodyPreset].label : tr('Personalizado');
   return m.body.species !== 'humano' ? `${base} · ${SPECIES[m.body.species].label}` : base;
 };
 function renderCast() {
@@ -60,17 +60,17 @@ function renderCast() {
   chars.forEach((m, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
     b.setAttribute('aria-pressed', String(i === active)); b.textContent = `${i + 1} · ${charLabel(m)}`;
-    b.title = 'Hacer activo'; b.onclick = () => setActive(i); bar.appendChild(b);
+    b.title = tr('Hacer activo'); b.onclick = () => setActive(i); bar.appendChild(b);
   });
   if (chars.length < MAX_CHARS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip add'; b.textContent = '+ Personaje';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip add'; b.textContent = tr('+ Personaje');
     b.onclick = () => { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); buildPoseGrid(); } }; bar.appendChild(b);
   }
   const list = $('#castList'); list.innerHTML = '';
   const c2 = bar.cloneNode(true); c2.className = 'chips';
   [...c2.children].forEach((b, i) => b.onclick = bar.children[i].onclick);
   list.appendChild(c2);
-  $('#bodyWho').textContent = `personaje ${active + 1}`;
+  $('#bodyWho').textContent = tr('personaje {n}', {n: active + 1});
   $('#delChar').disabled = chars.length <= 1;
 }
 
@@ -259,7 +259,7 @@ function drawPerspective(ctx, w, h) {
     if (Math.abs(dx) > 1e-3) {
       const k = dy / dx, y0 = a.y - k * a.x, y1 = y0 + k * w;
       ctx.strokeStyle = themeInk.ink; ctx.globalAlpha = .7; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(w, y1); ctx.stroke();
-      if (y0 > 14 && y0 < h - 6) { ctx.fillStyle = themeInk.ink; ctx.fillText('horizonte', 10, y0 - 6); }
+      if (y0 > 14 && y0 < h - 6) { ctx.fillStyle = themeInk.ink; ctx.fillText(tr('horizonte'), 10, y0 - 6); }
       ctx.globalAlpha = 1;
     }
   }
@@ -332,7 +332,7 @@ function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++his
 function updateUndo() { $('#undo').disabled = hist.i <= 0; $('#redo').disabled = hist.i >= hist.stack.length - 1; }
 let rebuildPending = false;
 function rebuildActive(now) {
-  const run = () => { rebuildPending = false; mq.build(mq.body); mq.ground(); _boxT = 0; $('#headsOut').textContent = mq.heads.toFixed(1).replace('.', ','); renderCast(); };
+  const run = () => { rebuildPending = false; mq.build(mq.body); mq.ground(); _boxT = 0; $('#headsOut').textContent = dec(mq.heads); renderCast(); };
   if (now) return run();
   if (!rebuildPending) { rebuildPending = true; requestAnimationFrame(run); }
 }
@@ -356,7 +356,7 @@ let jointSliderEls = [];
 function buildJointSliders() {
   const box = $('#jointSliders'); box.innerHTML = ''; jointSliderEls = [];
   const name = state.selected; if (!name) return;
-  const axes = HINGE[name] ? [['x', 'Flexión', HINGE[name][0], HINGE[name][1]]] : [['x', 'Flexión (X)', -180, 180], ['y', 'Giro (Y)', -180, 180], ['z', 'Inclinación (Z)', -180, 180]];
+  const axes = HINGE[name] ? [['x', tr('Flexión'), HINGE[name][0], HINGE[name][1]]] : [['x', tr('Flexión (X)'), -180, 180], ['y', tr('Giro (Y)'), -180, 180], ['z', tr('Inclinación (Z)'), -180, 180]];
   for (const [ax, label, mn, mx] of axes) {
     const el = slider(box, {id: 'j_' + ax, label, min: mn, max: mx, step: 1, value: 0, fmt: v => Math.round(v) + '°',
       input: v => { mq.joints[state.selected].rotation[ax] = v * DEG; if (state.sym) mirrorJoint(mq, state.selected); }, change: pushHistory});
@@ -371,7 +371,7 @@ function selectObj(obj) {
   state.sel = {kind: isLight ? 'light' : 'prop', obj};
   tc.setMode(isLight ? 'translate' : state.propMode); tc.setSpace(obj.userData.held ? 'local' : 'world'); tc.showX = tc.showY = tc.showZ = true;
   tc.attach(obj);
-  $('#objName').textContent = isLight ? (obj.userData.light === 'foco' ? 'Foco' : 'Bombilla') : (PROPS[obj.userData.prop] || (ASSET_PROPS[obj.userData.prop] || [])[0] || 'Objeto');
+  $('#objName').textContent = isLight ? tr(obj.userData.light === 'foco' ? 'Foco' : 'Bombilla') : (PROPS[obj.userData.prop] || (ASSET_PROPS[obj.userData.prop] || [])[0] || tr('Objeto'));
   const modes = $('#objMode'), extra = $('#objExtra'); extra.innerHTML = '';
   if (isLight) {
     modes.innerHTML = '';
@@ -380,17 +380,17 @@ function selectObj(obj) {
       obj.userData.color = k; const c = LIGHT_COLORS[k][1]; obj.userData.ref.light.color.set(c); obj.userData.ref.bulb.material.color.set(c);
     });
     const l = obj.userData.ref.light;
-    slider(extra, {id: 'lt_i', label: 'Fuerza', min: 0, max: 6, step: .05, value: l.intensity, fmt: v => v.toFixed(1).replace('.', ','), input: v => l.intensity = v});
+    slider(extra, {id: 'lt_i', label: 'Fuerza', min: 0, max: 6, step: .05, value: l.intensity, fmt: v => dec(v), input: v => l.intensity = v});
     slider(extra, {id: 'lt_d', label: 'Alcance', min: 2, max: 25, step: .5, value: l.distance, fmt: v => v.toFixed(0) + ' m', input: v => l.distance = v});
   } else {
-    chips(modes, [['translate', 'Mover'], ['rotate', 'Girar'], ['scale', 'Escalar']], state.propMode, v => { state.propMode = v; tc.setMode(v); tc.setSpace(obj.userData.held ? 'local' : 'world'); });
+    chips(modes, [['translate', 'Mover'], ['rotate', 'Girar'], ['scale', 'Escalar@objeto']], state.propMode, v => { state.propMode = v; tc.setMode(v); tc.setSpace(obj.userData.held ? 'local' : 'world'); });
     const hold = document.createElement('div'); hold.className = 'chips'; extra.appendChild(hold);
     const h = obj.userData.held;
     chips(hold, [['R', 'En la mano derecha'], ['L', 'En la izquierda'], ['suelo', 'Soltar']], h && h.m === mq ? h.side : (h ? '' : 'suelo'), v => {
       if (v === 'suelo') releaseProp(obj); else holdProp(obj, mq, v);
       tc.setSpace(obj.userData.held ? 'local' : 'world'); syncHandUI(); pushHistory();
     });
-    const nt = document.createElement('p'); nt.className = 'tip'; nt.textContent = `Se agarra con la mano del personaje activo (${active + 1}).`; extra.appendChild(nt);
+    const nt = document.createElement('p'); nt.className = 'tip'; nt.textContent = tr('Se agarra con la mano del personaje activo ({n}).', {n: active + 1}); extra.appendChild(nt);
   }
   $('#objDup').hidden = isLight;
   $('#objCard').hidden = false;
@@ -418,7 +418,7 @@ function spotNear() {
 /* ---------- UI helpers ---------- */
 function slider(parent, o) {
   const wrap = document.createElement('div'); wrap.className = 'sl';
-  wrap.innerHTML = `<label for="${o.id}">${o.label}</label><output></output><input type="range" id="${o.id}" min="${o.min}" max="${o.max}" step="${o.step}">`;
+  wrap.innerHTML = `<label for="${o.id}">${tr(o.label)}</label><output></output><input type="range" id="${o.id}" min="${o.min}" max="${o.max}" step="${o.step}">`;
   const inp = wrap.querySelector('input'), out = wrap.querySelector('output');
   const set = v => { inp.value = v; out.textContent = o.fmt(+inp.value); };
   inp.addEventListener('input', () => { out.textContent = o.fmt(+inp.value); o.input(+inp.value); });
@@ -430,7 +430,7 @@ function chips(parent, items, cur, onPick) {
   parent.innerHTML = '';
   for (const [id, label] of items) {
     const b = document.createElement('button'); b.className = 'chip'; b.type = 'button';
-    b.dataset.v = id; b.textContent = label; b.setAttribute('aria-pressed', String(String(id) === String(cur)));
+    b.dataset.v = id; b.textContent = tr(String(label)); b.setAttribute('aria-pressed', String(String(id) === String(cur)));
     b.onclick = () => { setPressed(parent, id); onPick(id); };
     parent.appendChild(b);
   }
@@ -466,6 +466,14 @@ const openHelp = () => { $('#helpModal').hidden = false; $('#helpClose').focus()
 const closeHelp = () => { $('#helpModal').hidden = true; };
 $('#helpBtn').onclick = openHelp; $('#helpClose').onclick = closeHelp;
 $('#helpModal').onclick = e => { if (e.target === e.currentTarget) closeHelp(); };
+/* language: switching reloads the page and carries the current scene over */
+function setLang(l) {
+  if (l === LANG) return;
+  store.set('cdp.lang', l);
+  try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true)})); } catch (e) {}
+  location.reload();
+}
+$$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
 /* the canvas hint steps back once the user has tried posing */
 { let n = store.get('cdp.hintN', 0); if (n >= 3) $('#hint').classList.add('quiet');
   $('#viewport').addEventListener('pointerdown', () => { if (++n === 3) $('#hint').classList.add('quiet'); store.set('cdp.hintN', n); }); }
@@ -487,7 +495,7 @@ function buildBodyUI() {
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
   setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI();
-  $('#headsOut').textContent = mq.heads.toFixed(1).replace('.', ',');
+  $('#headsOut').textContent = dec(mq.heads);
 }
 const STYLE_NOTE = {
   construccion: 'Sombreado en tres tonos con anillos que rodean cada volumen: lo más útil para entender la forma.',
@@ -503,7 +511,7 @@ function applyDrawing() {
   LU.uLineA.value = state.style === 'silueta' || state.lineMode === 'ninguna' ? 0 : state.lineA;
   LU.uMer.value = state.lineMode === 'malla' ? 4 : 0;
   LU.uRender.value = state.style === 'lapiz' ? 1 : state.style === 'valores' ? 2 : 0;
-  $('#styleNote').textContent = STYLE_NOTE[state.style];
+  $('#styleNote').textContent = tr(STYLE_NOTE[state.style]);
   $('#hatchBox').hidden = state.style !== 'lapiz'; $('#valueBox').hidden = state.style !== 'valores';
   applyAmbient();
 }
@@ -511,9 +519,9 @@ function buildDrawUI() {
   chips($('#styleChips'), Object.entries(STYLES), state.style, id => { state.style = id; applyDrawing(); });
   chips($('#lineChips'), Object.entries(LINE_MODES), state.lineMode, id => { state.lineMode = id; applyDrawing(); });
   const box = $('#drawSliders'); box.innerHTML = '';
-  slider(box, {id: 'd_stride', label: 'Separación de anillos', min: .012, max: .08, step: .001, value: LU.uStride.value, fmt: v => (v * 100).toFixed(1).replace('.', ',') + ' cm', input: v => LU.uStride.value = v});
+  slider(box, {id: 'd_stride', label: 'Separación de anillos', min: .012, max: .08, step: .001, value: LU.uStride.value, fmt: v => dec(v * 100) + ' cm', input: v => LU.uStride.value = v});
   slider(box, {id: 'd_alpha', label: 'Intensidad de líneas', min: .1, max: 1, step: .01, value: state.lineA, fmt: pctFmt, input: v => { state.lineA = v; applyDrawing(); }});
-  slider(box, {id: 'd_out', label: 'Grosor del contorno', min: 0, max: 4, step: .1, value: state.outline, fmt: v => v.toFixed(1).replace('.', ',') + ' px', input: v => { state.outline = v; applyDrawing(); }});
+  slider(box, {id: 'd_out', label: 'Grosor del contorno', min: 0, max: 4, step: .1, value: state.outline, fmt: v => dec(v) + ' px', input: v => { state.outline = v; applyDrawing(); }});
   $('#centerChk').onchange = e => LU.uCenter.value = e.target.checked ? 1 : 0;
   slider($('#hatchBox'), {id: 'd_hatch', label: 'Cantidad de sombreado', min: .2, max: .7, step: .01, value: LU.uHatch.value, fmt: pctFmt, input: v => LU.uHatch.value = v});
   chips($('#levelChips'), [[2, 'Dos tonos'], [3, 'Tres tonos']], 3, v => LU.uLevels.value = +v);
@@ -541,8 +549,8 @@ let lightEls = {};
 function buildLightUI() {
   chips($('#lightChips'), Object.entries(LIGHTS).map(([k, v]) => [k, v.label]), state.lightPreset, id => setLightPreset(id));
   const box = $('#lightSliders'); box.innerHTML = '';
-  const defs = [['az', 'Dirección', -180, 180, 1, v => Math.round(v) + '°'], ['el', 'Altura', -40, 90, 1, v => Math.round(v) + '°'],
-    ['key', 'Luz principal', 0, 2, .01, pctFmt], ['fill', 'Relleno ambiente', 0, 1.5, .01, pctFmt], ['rim', 'Luz de recorte', 0, 1.5, .01, pctFmt], ['soft', 'Suavidad de sombra', 1, 12, .1, v => v.toFixed(1)]];
+  const defs = [['az', 'Dirección', -180, 180, 1, v => Math.round(v) + '°'], ['el', 'Altura@luz', -40, 90, 1, v => Math.round(v) + '°'],
+    ['key', 'Luz principal', 0, 2, .01, pctFmt], ['fill', 'Relleno ambiente', 0, 1.5, .01, pctFmt], ['rim', 'Luz de recorte', 0, 1.5, .01, pctFmt], ['soft', 'Suavidad de sombra', 1, 12, .1, v => dec(v)]];
   for (const [k, label, mn, mx, st, fmt] of defs) lightEls[k] = slider(box, {id: 'l_' + k, label, min: mn, max: mx, step: st, value: state.light[k], fmt,
     input: v => { state.light[k] = v; state.lightPreset = null; setPressed($('#lightChips'), ''); }});
   $('#shadowChk').onchange = e => state.shadows = e.target.checked;
@@ -559,7 +567,7 @@ function buildSceneUI() {
     const items = Object.entries(SCENES).filter(([, v]) => v.group === g).map(([k, v]) => [k, v.label]);
     if (g === 'x') for (const k of Object.keys(ENV_BUILD)) if (!SCENES[k] && k === 'vacio') items.push([k, ENVS[k]]);
     if (!items.length) continue;
-    const h = document.createElement('p'); h.className = 'lbl'; h.textContent = label; const c = document.createElement('div'); c.className = 'chips envg';
+    const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); const c = document.createElement('div'); c.className = 'chips envg';
     eb.append(h, c); chips(c, items, state.env, id => { eb.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id))); setEnv(id); pushHistory(); });
   }
   slider($('#practicalBox'), {id: 'e_prac', label: 'Luces del escenario', min: 0, max: 2, step: .01, value: state.practical, fmt: pctFmt, input: v => { state.practical = v; applyAmbient(); }});
@@ -569,8 +577,8 @@ function buildSceneUI() {
   const pb = $('#propChips'); pb.innerHTML = '';
   for (const [label, items] of [['Muebles y objetos', Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]])], ['Formas básicas', Object.entries(PROPS)]]) {
     const c = document.createElement('div'); c.className = 'chips';
-    if (label === 'Formas básicas') { const d = document.createElement('details'); d.className = 'more'; const sm = document.createElement('summary'); sm.textContent = label; d.append(sm, c); pb.append(d); }
-    else { const h = document.createElement('p'); h.className = 'lbl'; h.textContent = label; pb.append(h, c); }
+    if (label === 'Formas básicas') { const d = document.createElement('details'); d.className = 'more'; const sm = document.createElement('summary'); sm.textContent = tr(label); d.append(sm, c); pb.append(d); }
+    else { const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); pb.append(h, c); }
     chips(c, items, null, id => { setPressed(c, ''); const g = makeProp(id, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   }
   $('#clearProps').onclick = () => { if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; } clearProps(); pushHistory(); };
@@ -634,7 +642,7 @@ function poseCard(label, onClick, thumb, onDel, img) {
   if (img) { th.src = img; th.alt = ''; } else if (thumb) th.style.setProperty('--m', `url(${thumb})`);
   const sp = document.createElement('span'); sp.textContent = label;
   b.append(th, sp); b.onclick = onClick;
-  if (onDel) { const x = document.createElement('span'); x.className = 'del'; x.textContent = '×'; x.title = 'Borrar'; x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Borrar ' + label); x.onclick = ev => { ev.stopPropagation(); onDel(); }; b.appendChild(x); }
+  if (onDel) { const x = document.createElement('span'); x.className = 'del'; x.textContent = '×'; x.title = tr('Borrar'); x.setAttribute('role', 'button'); x.setAttribute('aria-label', tr('Borrar {x}', {x: label})); x.onclick = ev => { ev.stopPropagation(); onDel(); }; b.appendChild(x); }
   return b;
 }
 function markPose() { $$('#poseGrid .pose').forEach(el => el.classList.toggle('on', el.dataset.id === state.posePreset)); }
@@ -645,8 +653,8 @@ function buildPoseGrid() {
   chips($('#catChips'), Object.entries(POSE_CATS), state.cat, v => { state.cat = v; buildPoseGrid(); });
   const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), q = norm($('#poseSearch').value.trim());
   const list = (state.castN === 1 ? POSES.filter(p => state.cat === 'todas' || p.cat === state.cat) : GROUP_POSES[state.castN]).filter(p => !q || norm(p.label).includes(q));
-  $('#poseCount').textContent = `${list.length} poses`;
-  if (!list.length) g.innerHTML = '<p class="empty">Ninguna pose coincide con la búsqueda.</p>';
+  $('#poseCount').textContent = tr('{n} poses', {n: list.length});
+  if (!list.length) g.innerHTML = `<p class="empty">${tr('Ninguna pose coincide con la búsqueda.')}</p>`;
   thumbQueue = [];
   for (const p of list) {
     const el = poseCard(p.label, () => state.castN === 1 ? usePreset(p) : useGroup(p), thumbs.get(p.id));
@@ -672,9 +680,9 @@ function viewSnapshot() {
 }
 $('#saveForm').onsubmit = e => {
   e.preventDefault();
-  const name = $('#poseName').value.trim() || 'Escena ' + (myPoses.length + 1);
+  const name = $('#poseName').value.trim() || tr('Escena {n}', {n: myPoses.length + 1});
   myPoses.unshift({name, snap: {...snapshot(), ...sceneExtras(true)}, img: viewSnapshot()});
-  if (!store.set('cdp.scenes', myPoses)) $('#myEmpty').textContent = 'Este navegador no deja guardar datos; solo durará esta sesión.';
+  if (!store.set('cdp.scenes', myPoses)) $('#myEmpty').textContent = tr('Este navegador no deja guardar datos; solo durará esta sesión.');
   $('#poseName').value = ''; buildMyPoses();
 };
 
@@ -766,8 +774,8 @@ function setIK(on) {
   $$('#ikMode .chip').forEach(c => c.setAttribute('aria-pressed', String((c.dataset.v === 'ik') === on)));
   if (!toastKeep) $('#hint').innerHTML = on ? HINT_IK : HINT_FK;
 }
-const HINT_IK = 'Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla';
-const HINT_FK = 'Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro';
+const HINT_IK = tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla');
+const HINT_FK = tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro');
 function endDrag() {
   if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');
   if (drag && drag.id !== 'fk' && drag.id !== 'sun') tourEvent(drag.id === 'hips' ? 'hips' : 'ik');
@@ -907,7 +915,7 @@ function renderExport() {
   tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky;
   hidden.forEach((h, i) => h.visible = hv[i]);
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
-  $('#exMsg').textContent = `${out.width} × ${out.height} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.`;
+  $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
 }
 function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }
@@ -925,17 +933,17 @@ $('#exSave').onclick = () => {
     const call = (pl, m, o) => cap.Plugins && cap.Plugins[pl] ? cap.Plugins[pl][m](o) : cap.nativePromise(pl, m, o);
     call('Filesystem', 'writeFile', {path: a.download, data: $('#exImg').src.split(',')[1], directory: 'CACHE'})
       .then(r => call('Share', 'share', {title: 'NEOPOSE', files: [r.uri]}))
-      .catch(e => { if (!/cancel/i.test(String(e && e.message))) $('#exMsg').textContent = 'No se ha podido guardar la imagen: ' + (e && e.message || e); });
+      .catch(e => { if (!/cancel/i.test(String(e && e.message))) $('#exMsg').textContent = tr('No se ha podido guardar la imagen: ') + (e && e.message || e); });
     return;
   }
   a.href = $('#exImg').src; document.body.appendChild(a); a.click(); a.remove();
 };
 $('#exCopy').onclick = () => {
-  const msg = $('#exMsg'), fail = () => msg.textContent = 'Aquí no se puede copiar la imagen. Haz clic derecho sobre ella y elige «Guardar imagen».';
+  const msg = $('#exMsg'), fail = () => msg.textContent = tr('Aquí no se puede copiar la imagen. Haz clic derecho sobre ella y elige «Guardar imagen».');
   try {
     if (!navigator.clipboard || !window.ClipboardItem) throw 0;
     navigator.clipboard.write([new ClipboardItem({'image/png': new Promise(r => ex.canvas.toBlob(r, 'image/png'))})])
-      .then(() => msg.textContent = 'Imagen copiada. Pégala en tu programa de dibujo con Ctrl+V.').catch(fail);
+      .then(() => msg.textContent = tr('Imagen copiada. Pégala en tu programa de dibujo con Ctrl+V.')).catch(fail);
   } catch (_) { fail(); }
 };
 
@@ -957,11 +965,36 @@ $('#practiceBtn').onclick = () => { if (practice.active) return stopPractice(); 
 $('#prCancel').onclick = () => $('#practiceModal').hidden = true;
 $('#practiceModal').onclick = e => { if (e.target.id === 'practiceModal') $('#practiceModal').hidden = true; };
 $('#prStart').onclick = () => { $('#practiceModal').hidden = true; startPractice(); };
+// the options are remembered between sessions; body variety only applies with random bodies on
+const PR_OPTS = ['prVar', 'prGen', 'prCam', 'prLight', 'prSound', 'prBody', 'prAnthro', 'prChibi', 'prEnv'];
+function syncPracticeOpts() { const on = $('#prBody').checked; $('#prBodyOpts').classList.toggle('off', !on); $$('#prBodyOpts input').forEach(i => i.disabled = !on); }
+{ const saved = store.get('cdp.practice', {});
+  for (const id of PR_OPTS) { const el = $('#' + id); if (typeof saved[id] === 'boolean') el.checked = saved[id];
+    el.addEventListener('change', () => { store.set('cdp.practice', Object.fromEntries(PR_OPTS.map(k => [k, $('#' + k).checked]))); syncPracticeOpts(); }); }
+  syncPracticeOpts(); }
+// a random body per pose: any preset (chibi a quarter of the time, only if asked) nudged a little, anthro half of the time if asked
+function randomizeBody(m, o) {
+  const pick = a => a[Math.floor(Math.random() * a.length)], R = (a, b) => a + Math.random() * (b - a);
+  const id = o.chibi && Math.random() < .25 ? 'chibi' : pick(Object.keys(BODY_PRESETS).filter(k => k !== 'chibi'));
+  const b = bodyOf(id);
+  for (const k of ['muscle', 'weight', 'height']) b[k] = clamp(b[k] + R(-.15, .15), 0, 1);
+  if (id === 'chibi') b.gender = Math.random();
+  if (o.anthro && Math.random() < .5) {
+    b.species = pick(Object.keys(SPECIES).filter(k => k !== 'humano'));
+    const heads = Object.keys(HEAD_CATALOG).filter(k => HEAD_CATALOG[k].species.includes(b.species));
+    if (heads.length) b.headModel = pick(heads);
+  }
+  m.bodyPreset = id; m.build(b);
+}
+function randomEnv() {
+  const ids = Object.keys(SCENES).filter(k => k !== 'vacio' && k !== state.env), id = ids[Math.floor(Math.random() * ids.length)];
+  setEnv(id); $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id)));
+}
 const fmtT = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function startPractice() {
   practice.saved = JSON.stringify({...snapshot(), ...sceneExtras(false)});
   practice.active = true; practice.i = 0; practice.paused = false; practice.done = false;
-  document.body.classList.add('practicing'); $('#practiceBtn').lastChild.textContent = 'Terminar práctica';
+  document.body.classList.add('practicing'); $('#practiceBtn').lastChild.textContent = tr('Terminar práctica');
   select(null); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   nextPose(); practice.last = performance.now(); practice.timer = setInterval(tick, 200);
 }
@@ -973,6 +1006,8 @@ function nextPose() {
   practice.prevId = p.id;
   const v = $('#prVar').checked ? 9 : 0;
   setHideFig(false);
+  if ($('#prBody').checked) { for (const m of chars) if (!m.avatar) randomizeBody(m, {anthro: $('#prAnthro').checked, chibi: $('#prChibi').checked}); renderCast(); }
+  if ($('#prEnv').checked) randomEnv();
   if (n === 1 && $('#prGen').checked && Math.random() < .5) { mq.joints.hips.position.set(0, mq.rootY, 0); applyRandom(mq, 'cualquiera', false); mq.joints.hips.quaternion.premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), (Math.random() * 2 - 1) * Math.PI)); mq.ground(); }
   else if (n === 1) { mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, p, {variation: v, yaw: (Math.random() * 2 - 1) * Math.PI}); }
   else applyGroupTo(chars, p, {variation: v * .6});
@@ -991,29 +1026,29 @@ function renderHud() {
   const hud = $('#hud'); hud.hidden = false;
   if (practice.done) {
     const total = practice.count ? practice.count : practice.i - 1;
-    hud.innerHTML = `<h4>Sesión terminada</h4><div class="n">${total} poses · ${fmtT(total * practice.dur)} de dibujo</div>
-      <div class="row"><button class="btn small" id="hAgain">Otra ronda</button><button class="btn small primary" id="hEnd">Volver al editor</button></div>`;
+    hud.innerHTML = `<h4>${tr('Sesión terminada')}</h4><div class="n">${tr('{n} poses · {t} de dibujo', {n: total, t: fmtT(total * practice.dur)})}</div>
+      <div class="row"><button class="btn small" id="hAgain">${tr('Otra ronda')}</button><button class="btn small primary" id="hEnd">${tr('Volver al editor')}</button></div>`;
     $('#hAgain').onclick = () => { practice.i = 0; practice.done = false; hud.innerHTML = ''; nextPose(); practice.last = performance.now(); };
     $('#hEnd').onclick = () => stopPractice();
     return;
   }
   if (!hud.querySelector('.t')) {
     hud.innerHTML = `<div class="t" aria-live="off"></div><div class="n"></div><div class="bar"><i></i></div>
-      <div class="row"><button class="btn small" id="hPause">Pausa</button><button class="btn small" id="hNext">Siguiente</button><button class="btn small" id="hStop">Terminar</button></div>
-      <div class="row" style="margin-top:6px"><button class="btn small hideFigBtn" id="hHide">Ocultar figura</button><button class="btn small" id="hSketch">Dibujar encima</button></div>`;
+      <div class="row"><button class="btn small" id="hPause">${tr('Pausa')}</button><button class="btn small" id="hNext">${tr('Siguiente')}</button><button class="btn small" id="hStop">${tr('Terminar')}</button></div>
+      <div class="row" style="margin-top:6px"><button class="btn small hideFigBtn" id="hHide">${tr('Ocultar figura')}</button><button class="btn small" id="hSketch">${tr('Dibujar encima')}</button></div>`;
     $('#hHide').onclick = () => setHideFig(!sk.hideFig); $('#hSketch').onclick = () => setSketch(!sk.on);
-    $('#hPause').onclick = () => { practice.paused = !practice.paused; $('#hPause').textContent = practice.paused ? 'Seguir' : 'Pausa'; };
+    $('#hPause').onclick = () => { practice.paused = !practice.paused; $('#hPause').textContent = tr(practice.paused ? 'Seguir' : 'Pausa'); };
     $('#hNext').onclick = () => nextPose(); $('#hStop').onclick = () => stopPractice();
   }
   const t = hud.querySelector('.t'); t.textContent = fmtT(practice.left); t.classList.toggle('warn', practice.left <= 5);
-  hud.querySelector('.n').textContent = `Pose ${practice.i}${practice.count ? ` de ${practice.count}` : ''}`;
+  hud.querySelector('.n').textContent = practice.count ? tr('Pose {i} de {n}', {i: practice.i, n: practice.count}) : tr('Pose {i}', {i: practice.i});
   hud.querySelector('.bar i').style.width = (practice.left / practice.dur * 100) + '%';
 }
 function finishPractice() { practice.done = true; practice.i = practice.count + 1; beep(); renderHud(); }
 function stopPractice() {
   clearInterval(practice.timer); practice.active = false; practice.done = false;
   document.body.classList.remove('practicing'); $('#hud').hidden = true; $('#hud').innerHTML = '';
-  $('#practiceBtn').lastChild.textContent = 'Práctica de gesto';
+  $('#practiceBtn').lastChild.textContent = tr('Práctica');
   setHideFig(false);
   if (practice.saved) restore(practice.saved);
 }
@@ -1033,6 +1068,7 @@ function boot(data) {
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
   initThumbs(); buildPoseGrid(); buildMyPoses();
   resize(); setView(30, 8); frameAll();
+  if (data && data.snap && data.snap.cam) applySceneExtras({cam: data.snap.cam});
   pushHistory();
   window.claude?.hot?.snapshot?.(() => ({snap: snapshot()}));
 }

@@ -3,13 +3,14 @@
 import json, os
 H = os.path.dirname(os.path.abspath(__file__))
 rd = lambda p: open(os.path.join(H, p), encoding='utf-8').read()
-MODULES = ['01-core', '02-poses', '03-figure', '04-scene', '05-app', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '07-start']
-js = ('const ENV_MANIFEST = ' + rd('app/envs/manifest.json') + ';\n'
+MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '04-scene', '05-app', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '07-start']
+js = ('const I18N_EN = ' + json.dumps(json.load(open(os.path.join(H, 'src/i18n-en.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'
+      + 'const ENV_MANIFEST = ' + rd('app/envs/manifest.json') + ';\n'
       + 'const HEAD_CATALOG = ' + json.dumps(json.load(open(os.path.join(H, 'app/heads/catalog.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'
       + '\n'.join(rd(f'src/{m}.js') for m in MODULES))
 VENDOR = ['three.min.js', 'OrbitControls.js', 'TransformControls.js', 'GLTFLoader.js', 'meshopt_decoder.js', 'fflate.min.js', 'NURBSUtils.js', 'NURBSCurve.js', 'FBXLoader.js']
 html = f'''<!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

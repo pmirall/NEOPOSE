@@ -190,16 +190,16 @@ function avatarsTick() {
 /* --- sources: local files and the Open Source Avatars registry (CC0 / CC-BY VRM) --- */
 const AV_REG = 'https://raw.githubusercontent.com/toxsam/open-source-avatars/main/data/';
 async function loadAvatarFor(m, info, buf) {
-  m._avLoading = true; toast(`Cargando avatar «${info.name}»…`);
+  m._avLoading = true; toast(tr('Cargando avatar «{x}»…', {x: info.name}));
   try {
     if (!buf) { const r = await fetch(info.url); if (!r.ok) throw new Error(r.status); buf = await r.arrayBuffer(); }
     const parsed = await parseAvatar(buf, info.file || info.name);
     attachAvatar(m, parsed, info);
-    toast(`Avatar «${info.name}» listo. Se posa con los mismos controles.`);
+    toast(tr('Avatar «{x}» listo. Se posa con los mismos controles.', {x: info.name}));
     renderAvatarUI();
   } catch (e) {
     console.error(e); delete m.body.avatar;
-    toast(/humanoid/.test(e.message) ? 'Ese modelo no tiene un esqueleto humanoide reconocible.' : 'No se ha podido cargar el avatar' + (info.url ? ' (¿hay conexión?).' : '.'));
+    toast(tr(/humanoid/.test(e.message) ? 'Ese modelo no tiene un esqueleto humanoide reconocible.' : info.url ? 'No se ha podido cargar el avatar (¿hay conexión?).' : 'No se ha podido cargar el avatar.'));
   }
   m._avLoading = false;
 }
@@ -211,14 +211,14 @@ let AV_GAL = null;
 async function openAvatarGallery() {
   $('#avGallery').hidden = false; const grid = $('#avGrid'), msg = $('#avMsg');
   if (AV_GAL) return renderAvatarGallery();
-  msg.textContent = 'Cargando la galería…'; grid.innerHTML = '';
+  msg.textContent = tr('Cargando la galería…'); grid.innerHTML = '';
   try {
     const projects = (await (await fetch(AV_REG + 'projects.json')).json()).filter(p => /^CC/.test(p.license || ''));
     const lists = await Promise.all(projects.map(p => fetch(AV_REG + p.avatar_data_file).then(r => r.json()).then(a => a.map(x => ({...x, project: p.name, license: p.license}))).catch(() => [])));
     AV_GAL = {all: lists.flat().filter(a => a.model_file_url && /vrm/i.test(a.format || 'VRM')), projects: projects.map(p => p.name), filter: 'animales'};
     msg.textContent = '';
     renderAvatarGallery();
-  } catch (e) { msg.textContent = 'Necesitas conexión a Internet para ver la galería.'; }
+  } catch (e) { msg.textContent = tr('Necesitas conexión a Internet para ver la galería.'); }
 }
 const AV_ANIMAL = /fox|wolf|cat|dog|bunny|rabbit|bear|dragon|lizard|goat|deer|kitsune|neko|mouse|rat|tiger|lion|horse|shark|frog|bird|owl|monkey|ape|panda|pig|cow|bull|duck|croc|snake|bat|moth|furry|beast|kemono|dino/i;
 function renderAvatarGallery() {
@@ -226,13 +226,13 @@ function renderAvatarGallery() {
   chips($('#avFilter'), [['animales', 'Animales'], ['todos', 'Todos'], ...g.projects.map(p => [p, p])], g.filter, v => { g.filter = v; renderAvatarGallery(); });
   const list = g.all.filter(a => g.filter === 'todos' ? true : g.filter === 'animales' ? AV_ANIMAL.test(a.name + ' ' + (a.description || '')) : a.project === g.filter);
   grid.innerHTML = '';
-  $('#avCount').textContent = `${list.length} avatares`;
+  $('#avCount').textContent = tr('{n} avatares', {n: list.length});
   for (const a of list) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem';
     const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = a.thumbnail_url || '';
     img.onerror = () => { const d = document.createElement('div'); d.className = 'noimg'; d.textContent = a.name; img.replaceWith(d); };
     const t = document.createElement('span'); t.className = 'lt'; t.textContent = a.name;
-    b.append(img, t); b.title = `${a.name} · ${a.project} · ${a.license}`;
+    b.append(img, t); b.title = `${a.name} · ${a.project} · ${tr(a.license)}`;
     b.onclick = () => { $('#avGallery').hidden = true; mq.body.avatar = {id: a.id, name: a.name, url: a.model_file_url, license: a.license, project: a.project}; pushHistory(); };
     grid.appendChild(b);
   }
@@ -241,8 +241,8 @@ function renderAvatarUI() {
   const box = $('#avInfo'); if (!box) return;
   const a = mq.body.avatar;
   $('#avRemove').hidden = !a;
-  box.textContent = a ? `Avatar: «${a.name}»${a.project ? ' · ' + a.project : ''} · ${a.license || ''}. La ropa, la especie y los deslizadores del cuerpo solo cambian el maniquí.` :
-    'Usa tu propio modelo humanoide (VRM de VRoid o VRChat, GLB, FBX de Mixamo…) o elige uno libre de la galería. Se posa con los mismos controles.';
+  box.textContent = a ? tr('Avatar: «{x}»', {x: a.name}) + (a.project ? ' · ' + a.project : '') + ' · ' + tr(a.license || '') + tr('. La ropa, la especie y los deslizadores del cuerpo solo cambian el maniquí.') :
+    tr('Usa tu propio modelo humanoide (VRM de VRoid o VRChat, GLB, FBX de Mixamo…) o elige uno libre de la galería. Se posa con los mismos controles.');
 }
 function initAvatars() {
   $('#avImport').onclick = () => $('#avFile').click();

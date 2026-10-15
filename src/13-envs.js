@@ -511,5 +511,6 @@ Object.assign(SCENES, {
 });
 delete SCENES.bosque2;
 SCENES.vacio = {label: 'Vacío', group: 'x', assets: [], build() {}};
+tLabels(SCENES);
 // the old ids keep working in saved scenes
 for (const k of ['estudio', 'habitacion', 'calle', 'bosque', 'cafeteria', 'playa', 'dojo', 'ring', 'ruinas', 'escalinata', 'azotea']) if (!SCENES[k]) console.warn('missing scene', k);

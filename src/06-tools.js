@@ -30,6 +30,7 @@ const BRUSHES = {
   acuarela:   {label: 'Acuarela', spacing: .1, flow: .18, jitter: 3.14, tip: makeTip(128, (x, y, r) => { const d = Math.hypot(x, y) * (1 + .18 * Math.sin(Math.atan2(y, x) * 5)); return clamp((1 - d) * 3, 0, 1) * (.75 + .25 * r()) * (d > .78 ? 1.25 : .85); })},
   textura:    {label: 'Trama', spacing: .3, flow: .7, jitter: 0, tip: makeTip(96, (x, y) => disk(x, y, .8) * (Math.abs((((x + y) * 6) % 1 + 1) % 1 - .5) < .18 ? 1 : 0))}
 };
+tLabels(BRUSHES);
 function tinted(b, color) {
   b.cache = b.cache || {};
   if (b.cache[color]) return b.cache[color];
@@ -84,7 +85,7 @@ function sketchCanvas(k) {
 let lastPt = null, lastT = 0, smoothPt = null;
 function penPressure(e, x, y) {
   if (e.pointerType === 'pen' || (e.pressure > 0 && e.pressure !== .5)) {
-    if (!sk.pressureSeen && e.pressure > 0 && e.pressure !== .5) { sk.pressureSeen = true; $('#skPressure').textContent = 'Presión detectada: tableta o lápiz activo.'; }
+    if (!sk.pressureSeen && e.pressure > 0 && e.pressure !== .5) { sk.pressureSeen = true; $('#skPressure').textContent = tr('Presión detectada: tableta o lápiz activo.'); }
     return e.pressure || .5;
   }
   if (!sk.mouseSim || !lastPt) return .6;
@@ -136,7 +137,7 @@ function setSketch(on) {
   $('#sketchBtn').setAttribute('aria-pressed', String(on));
   if (on) select(null);
 }
-function setHideFig(v) { sk.hideFig = v; $$('.hideFigBtn').forEach(b => b.textContent = v ? 'Mostrar figura' : 'Ocultar figura'); }
+function setHideFig(v) { sk.hideFig = v; $$('.hideFigBtn').forEach(b => b.textContent = tr(v ? 'Mostrar figura' : 'Ocultar figura')); }
 
 /* ---------- Photoshop .abr brushes (sampled tips, versions 1, 2, 6 and 10) ---------- */
 function parseABR(buf) {
@@ -189,13 +190,13 @@ function parseABR(buf) {
           const bsize = dv.getUint32(o); o += 4; let bend = bsize; while (bend % 4) bend++;
           const next = o + bend;
           o += sub === 1 ? 47 : 301;
-          try { readImage('Pincel ' + (out.length + 1)); } catch (_) {}
+          try { readImage(tr('Pincel {n}', {n: out.length + 1})); } catch (_) {}
           o = next;
         }
       }
       o = end + (len % 2);
     }
-  } else throw new Error('Versión de .abr no compatible: ' + ver);
+  } else throw new Error(tr('Versión de .abr no compatible: ') + ver);
   return out;
 }
 // turn a grey mask (or any image) into a white tip with alpha, inverting if the background is opaque
@@ -255,9 +256,9 @@ async function importBrushFiles(files) {
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
         addImportedBrush(`img-${f.name}-${Date.now()}`, f.name.replace(/\.[^.]+$/, ''), tipFromImage(img), .2); URL.revokeObjectURL(url); n++;
       }
-    } catch (e) { msg.textContent = `No se ha podido leer ${f.name}: solo se admiten pinceles de muestra (.abr) e imágenes.`; }
+    } catch (e) { msg.textContent = tr('No se ha podido leer {f}: solo se admiten pinceles de muestra (.abr) e imágenes.', {f: f.name}); }
   }
-  if (n) msg.textContent = `${n} pincel${n > 1 ? 'es' : ''} importado${n > 1 ? 's' : ''}. Se guardan en este navegador.`;
+  if (n) msg.textContent = tr(n > 1 ? '{n} pinceles importados. Se guardan en este navegador.' : '1 pincel importado. Se guarda en este navegador.', {n});
   renderBrushGrid();
 }
 function renderBrushGrid() {
@@ -272,13 +273,13 @@ function renderBrushGrid() {
     const sp = document.createElement('span'); sp.textContent = b.label;
     btn.append(cv, sp);
     btn.onclick = () => { sk.brush = id; setPressed2(); };
-    if (b.imported) { const d = document.createElement('span'); d.className = 'bdel'; d.textContent = '×'; d.title = 'Quitar pincel';
+    if (b.imported) { const d = document.createElement('span'); d.className = 'bdel'; d.textContent = '×'; d.title = tr('Quitar pincel');
       d.onclick = e => { e.stopPropagation(); delete BRUSHES[id]; brushDB.del(id); if (sk.brush === id) sk.brush = 'lapiz'; renderBrushGrid(); }; btn.appendChild(d); }
     g.appendChild(btn);
   }
   function setPressed2() { g.querySelectorAll('.brush').forEach((b, i) => b.setAttribute('aria-pressed', String(Object.keys(BRUSHES)[i] === sk.brush))); }
 }
-function setErase(v) { sk.erase = v; $('#skErase').setAttribute('aria-pressed', String(v)); $('#skErase').textContent = v ? 'Goma activa' : 'Goma'; }
+function setErase(v) { sk.erase = v; $('#skErase').setAttribute('aria-pressed', String(v)); $('#skErase').textContent = tr(v ? 'Goma activa' : 'Goma'); }
 function buildSketchUI() {
   renderBrushGrid(); loadSavedBrushes();
   $('#skImport').onclick = () => $('#skFile').click();
@@ -289,11 +290,11 @@ function buildSketchUI() {
   $('#skColor').value = sk.color; $('#skColor').oninput = e => { sk.color = e.target.value; setErase(false); };
   $('#skErase').onclick = () => setErase(!sk.erase);
   const box = $('#skSliders'); box.innerHTML = '';
-  slider(box, {id: 'sk_size', label: 'Tamaño', min: 1, max: 90, step: .5, value: sk.size, fmt: v => v.toFixed(1).replace('.', ',') + ' px', input: v => sk.size = v});
+  slider(box, {id: 'sk_size', label: 'Tamaño', min: 1, max: 90, step: .5, value: sk.size, fmt: v => dec(v) + ' px', input: v => sk.size = v});
   slider(box, {id: 'sk_op', label: 'Opacidad', min: .05, max: 1, step: .01, value: sk.opacity, fmt: pctFmt, input: v => sk.opacity = v});
   slider(box, {id: 'sk_flow', label: 'Flujo', min: .05, max: 1, step: .01, value: sk.flow, fmt: pctFmt, input: v => sk.flow = v});
   slider(box, {id: 'sk_smooth', label: 'Estabilizador', min: 0, max: .95, step: .01, value: sk.smooth, fmt: pctFmt, input: v => sk.smooth = v});
-  slider(box, {id: 'sk_curve', label: 'Curva de presión (suave ↔ firme)', min: .35, max: 2.5, step: .05, value: sk.curve, fmt: v => v.toFixed(2).replace('.', ','), input: v => sk.curve = v});
+  slider(box, {id: 'sk_curve', label: 'Curva de presión (suave ↔ firme)', min: .35, max: 2.5, step: .05, value: sk.curve, fmt: v => dec(v, 2), input: v => sk.curve = v});
   $('#skPSize').checked = sk.pSize; $('#skPSize').onchange = e => sk.pSize = e.target.checked;
   $('#skPOpac').checked = sk.pOpac; $('#skPOpac').onchange = e => sk.pOpac = e.target.checked;
   $('#skMouse').checked = sk.mouseSim; $('#skMouse').onchange = e => sk.mouseSim = e.target.checked;
@@ -301,7 +302,7 @@ function buildSketchUI() {
   $('#skRedo').onclick = () => { const s = sk.redo.pop(); if (s) { sk.strokes.push(s); redrawSketch(); } };
   $('#skClear').onclick = () => { if (!sk.strokes.length) return; sk.redo = sk.strokes.slice().reverse(); sk.strokes = []; redrawSketch(); };
   $$('.hideFigBtn').forEach(b => b.onclick = () => setHideFig(!sk.hideFig));
-  $('#skDim').onclick = () => { sk.dim = !sk.dim; canvas.style.opacity = sk.dim ? .35 : 1; $('#skDim').textContent = sk.dim ? 'Escena normal' : 'Atenuar escena'; };
+  $('#skDim').onclick = () => { sk.dim = !sk.dim; canvas.style.opacity = sk.dim ? .35 : 1; $('#skDim').textContent = tr(sk.dim ? 'Escena normal' : 'Atenuar escena'); };
   $('#skClose').onclick = () => setSketch(false);
   $('#sketchBtn').onclick = () => setSketch(!sk.on);
   addEventListener('keydown', e => {
@@ -349,7 +350,7 @@ function randomPose(kind) {
     j['elbow' + s] = [-R(5, k === 'accion' ? 145 : 110)];
   }
   const g = ['relajada', 'relajada', 'abierta', 'puno', 'agarre', 'senalar', 'garra'];
-  return {id: 'rand', label: 'Pose generada', cat: k, j, ik, lift, stool, plant, hands: {L: pick(g), R: pick(g)}};
+  return {id: 'rand', label: tr('Pose generada'), cat: k, j, ik, lift, stool, plant, hands: {L: pick(g), R: pick(g)}};
 }
 // after a generated standing pose, put the floating foot back on the floor if it is close
 function plantFeet(m) {
@@ -546,7 +547,7 @@ function setForm(mode) {
 
 /* ---------- scene as text ---------- */
 function openJson(text) {
-  $('#jsonModal').hidden = false; $('#jsonText').value = text || ''; $('#jsonMsg').textContent = text ? 'Copia este texto para guardar o compartir la escena.' : 'Pega aquí el texto de una escena y pulsa Cargar.';
+  $('#jsonModal').hidden = false; $('#jsonText').value = text || ''; $('#jsonMsg').textContent = tr(text ? 'Copia este texto para guardar o compartir la escena.' : 'Pega aquí el texto de una escena y pulsa Cargar.');
   $('#jsonText').focus(); $('#jsonText').select();
 }
 function buildJsonUI() {
@@ -556,11 +557,11 @@ function buildJsonUI() {
   $('#jsonModal').onclick = e => { if (e.target.id === 'jsonModal') $('#jsonModal').hidden = true; };
   $('#jsonCopy').onclick = () => {
     const t = $('#jsonText'); t.select();
-    (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(() => $('#jsonMsg').textContent = 'Copiado.').catch(() => $('#jsonMsg').textContent = 'Selecciona el texto y cópialo con Ctrl+C.');
+    (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(() => $('#jsonMsg').textContent = tr('Copiado.')).catch(() => $('#jsonMsg').textContent = tr('Selecciona el texto y cópialo con Ctrl+C.'));
   };
   $('#jsonLoad').onclick = () => {
     try { const o = JSON.parse($('#jsonText').value); if (!o.chars) throw 0; restore(o); frameAll(); pushHistory(); $('#jsonModal').hidden = true; }
-    catch (_) { $('#jsonMsg').textContent = 'Ese texto no es una escena válida. Copia de nuevo el texto completo.'; }
+    catch (_) { $('#jsonMsg').textContent = tr('Ese texto no es una escena válida. Copia de nuevo el texto completo.'); }
   };
 }
 
@@ -568,9 +569,9 @@ function buildJsonUI() {
 function renderViews() {
   const box = $('#viewList'); box.innerHTML = '';
   (state.views || []).forEach((v, i) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `Vista ${i + 1}`;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = tr('Vista {n}', {n: i + 1});
     b.onclick = () => { camera.position.fromArray(v.p); controls.target.fromArray(v.t); $('#focal').value = v.f; setFocal(v.f, false); controls.update(); };
-    const x = document.createElement('span'); x.className = 'chipx'; x.textContent = '×'; x.title = 'Borrar vista';
+    const x = document.createElement('span'); x.className = 'chipx'; x.textContent = '×'; x.title = tr('Borrar vista');
     x.onclick = e => { e.stopPropagation(); state.views.splice(i, 1); renderViews(); };
     b.appendChild(x); box.appendChild(b);
   });

@@ -12,6 +12,7 @@ const TOUR_STEPS = [
   {id: 'env', title: 'Un escenario', text: 'En Escena elige un lugar. Trae sus propias luces y nunca tapará al personaje.', target: '#envChips', tab: 'escena', done: 'env'},
   {id: 'export', title: 'Llévatelo a tu dibujo', text: 'Pulsa Exportar para guardar la referencia como PNG (con fondo, transparente o solo trazo).', target: '#exportBtn', done: 'export'}
 ];
+for (const st of TOUR_STEPS) { st.title = tr(st.title); st.text = tr(st.text); }
 const TOUR = {on: false, i: 0, el: null};
 function tourEvent(name) {
   if (!TOUR.on) return;
@@ -55,9 +56,9 @@ function tourGo(i) {
   if (st.before) st.before();
   const c = TOUR.el; c.classList.remove('ok');
   c.querySelector('.tt').textContent = st.title; c.querySelector('.tx').textContent = st.text;
-  c.querySelector('.tn').textContent = `${i + 1} de ${TOUR_STEPS.length}`;
+  c.querySelector('.tn').textContent = tr('{i} de {n}', {i: i + 1, n: TOUR_STEPS.length});
   c.querySelector('.dots').innerHTML = TOUR_STEPS.map((_, k) => `<i class="${k < i ? 'd' : k === i ? 'c' : ''}"></i>`).join('');
-  c.querySelector('[data-a=next]').textContent = i === TOUR_STEPS.length - 1 ? 'Terminar' : 'Saltar paso';
+  c.querySelector('[data-a=next]').textContent = tr(i === TOUR_STEPS.length - 1 ? 'Terminar' : 'Saltar paso');
   if (st.done === 'orbit') TOUR.cam0 = camera.position.clone().sub(controls.target).normalize();
   requestAnimationFrame(tourPlace);
 }

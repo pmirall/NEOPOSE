@@ -16,7 +16,7 @@ const ARMS_CROSSED = {j: {shoulderL:[-25,-60,8,'ZXY'], elbowL:[-115], shoulderR:
 const GUARD_ARMS = {shoulderL:[-55,0,22], elbowL:[-120], shoulderR:[-30,0,-28], elbowR:[-135]};
 const SIT = sym({hipL:[-90,0,7], kneeL:[92], ankleL:[-2]});
 
-const P = (id, label, cat, j, extra = {}) => ({id, label, cat, j, ...extra});
+const P = (id, label, cat, j, extra = {}) => ({id, label: tr(label), cat, j, ...extra});
 const POSES = [
   // De pie
   P('pie', 'De pie', 'pie', {...ARMS_DOWN, ...LEGS_STAND}),
@@ -127,7 +127,7 @@ const POSES = [
   P('flexion', 'Estiramiento lateral', 'deporte', {chest:[0,0,-25], waist:[0,0,-12], shoulderL:[0,0,165], elbowL:[-15], shoulderR:[0,0,-15], elbowR:[-30], hipL:[0,0,8], hipR:[0,0,-8]}, {hands:{L:'plana'}})
 ];
 const POSE = Object.fromEntries(POSES.map(p => [p.id, p]));
-const POSE_CATS = {todas:'Todas', pie:'De pie', mov:'Movimiento', accion:'Acción', suelo:'Sentado y suelo', deporte:'Deporte y baile'};
+const POSE_CATS = tValues({todas:'Todas', pie:'De pie', mov:'Movimiento', accion:'Acción', suelo:'Sentado y suelo', deporte:'Deporte y baile'});
 
 /* ---------- group poses ----------
    chars: [{p: pose id, x, z, yaw (deg)}]; ik: [{c, e, tc, t, o}] → hand of char c to joint t of char tc (offset in tc's frame),
@@ -168,10 +168,10 @@ const DUOS = [
     {c:0, e:'handR', pt:[0,1.3,.32]}, {c:1, e:'handL', pt:[0,1.3,.34]}]]
 ];
 for (const [id, label, a, b, lay, ik] of DUOS) {
-  addGroup(2, id, label, [{p:a, ...lay[0]}, {p:b, ...lay[1]}], ik || []);
+  addGroup(2, id, tr(label), [{p:a, ...lay[0]}, {p:b, ...lay[1]}], ik || []);
   // second version: roles swapped and the whole layout turned 35° so it reads at an angle
   const r = 35 * DEG, rot = (x, z) => ({x: x * Math.cos(r) + z * Math.sin(r), z: -x * Math.sin(r) + z * Math.cos(r)});
-  addGroup(2, id + '-b', label + ' · en diagonal', [{p:b, ...rot(lay[0].x, lay[0].z), yaw:lay[0].yaw + 35}, {p:a, ...rot(lay[1].x, lay[1].z), yaw:lay[1].yaw + 35}],
+  addGroup(2, id + '-b', tr(label) + ' · ' + tr('en diagonal'), [{p:b, ...rot(lay[0].x, lay[0].z), yaw:lay[0].yaw + 35}, {p:a, ...rot(lay[1].x, lay[1].z), yaw:lay[1].yaw + 35}],
     (ik || []).map(k => ({...k, c: 1 - k.c, tc: k.tc === undefined ? undefined : 1 - k.tc, pt: k.pt && [rot(k.pt[0], k.pt[2]).x, k.pt[1], rot(k.pt[0], k.pt[2]).z]})));
 }
 // three and four people: formation × activity
@@ -214,10 +214,10 @@ for (const n of [3, 4]) {
       return {p: poses[(i + k) % poses.length], x: pt.x, z: pt.z, yaw};
     });
     if (tid === 'pelea') chars[0].yaw = Math.atan2(cx - pts[0].x, cz - pts[0].z) / DEG;
-    addGroup(n, `${tid}-${fid}`, `${tlabel} ${flabel}`, chars);
+    addGroup(n, `${tid}-${fid}`, `${tr(tlabel)} ${tr(flabel)}`, chars);
     k++;
   }
   // hand on the next person's shoulder, all in a row
   const row = Array.from({length: n}, (_, i) => ({p: 'contra', x: (i - (n - 1) / 2) * .62, z: 0, yaw: 0}));
-  addGroup(n, 'hombros', 'Hombro con hombro', row, row.slice(0, -1).map((_, i) => ({c: i, e: 'handL', tc: i + 1, t: 'shoulderR', o: [0, .05, -.02]})));
+  addGroup(n, 'hombros', tr('Hombro con hombro'), row, row.slice(0, -1).map((_, i) => ({c: i, e: 'handL', tc: i + 1, t: 'shoulderR', o: [0, .05, -.02]})));
 }
