@@ -256,6 +256,8 @@ const SUITES = {
       const m = await page.evaluate(() => ({scroll: document.documentElement.scrollWidth - innerWidth, canvas: document.querySelector('#gl').getBoundingClientRect().height}));
       ok(m.scroll <= 0, `${lang} phone: no horizontal scroll (${m.scroll}px)`);
       ok(m.canvas > 200, `${lang} phone: canvas is visible (${Math.round(m.canvas)}px)`);
+      const hh = await page.evaluate(() => document.querySelector('header.top').getBoundingClientRect().height);
+      ok(hh < 60, `${lang} phone: the top bar fits on one line (${Math.round(hh)}px)`);
       await page.screenshot({path: path.join(OUT, `${lang}-phone.png`)});
       ok(page.errors.length === 0, `${lang} phone: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
       await page.context().close();

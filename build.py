@@ -3,7 +3,7 @@
 import json, os
 H = os.path.dirname(os.path.abspath(__file__))
 rd = lambda p: open(os.path.join(H, p), encoding='utf-8').read()
-MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '04-scene', '05-app', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '20-scene', '21-export', '22-anim', '23-photo', '07-start']
+MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '20-scene', '21-export', '22-anim', '23-photo', '24-perf', '07-start']
 js = ('const I18N_EN = ' + json.dumps(json.load(open(os.path.join(H, 'src/i18n-en.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'
       + 'const ENV_MANIFEST = ' + rd('app/envs/manifest.json') + ';\n'
       + 'const HEAD_CATALOG = ' + json.dumps(json.load(open(os.path.join(H, 'app/heads/catalog.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'

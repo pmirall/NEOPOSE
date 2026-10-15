@@ -10,6 +10,7 @@ HAIR = sys.argv[2]
 sys.argv = sys.argv[:2]
 import build_ext as X
 from mhclo import parse_mhclo, parse_obj, parse_mhmat
+from repack_ropa import repack_file
 
 TITLES = {'afro01': 'Afro', 'bob01': 'Media melena', 'bob02': 'Bob', 'braid01': 'Trenza', 'long01': 'Melena larga', 'ponytail01': 'Coleta',
           'short01': 'Despeinado', 'short02': 'Ondulado', 'short03': 'De lado', 'short04': 'Hacia atrás'}
@@ -94,6 +95,7 @@ for name in ORDER:
     hj = json.dumps(hdr).encode(); hj += b' ' * ((4 - len(hj) % 4) % 4)
     hid = 'h-' + name
     open(os.path.join(OUT, hid + '.txt'), 'w').write(base64.b64encode(gzip.compress(struct.pack('<I', len(hj)) + hj + blob, 9)).decode())
+    repack_file(os.path.join(OUT, hid + '.txt'))
     # thumbnail: a render from the app itself when there is one (<name>/app-thumb.png), else MakeHuman's
     tf = os.path.join(d, 'app-thumb.png')
     th = io.BytesIO(); Image.open(tf if os.path.exists(tf) else os.path.join(d, name + '.thumb')).convert('RGB').resize((96, 96), Image.LANCZOS).save(th, 'WEBP', quality=80)

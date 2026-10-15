@@ -25,10 +25,16 @@ function loadItem(id) {
   const p = fetch(`ropa/${id}.txt`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
     .then(b64 => { const bin = atob(b64.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8.buffer; }).then(gunzip).then(buf => {
     const hl = new DataView(buf).getUint32(0, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl))), b0 = 4 + hl, o = h.offs, n = h.n, nt = h.nt;
+    // packed files (tools/makehuman/repack_ropa.py): arrays stored as byte planes, weights maybe as int16
+    const arr = (C, at, count) => { if (!h.pl || C.BYTES_PER_ELEMENT === 1) return new C(buf, b0 + at, count);
+      const k = C.BYTES_PER_ELEMENT, src = new Uint8Array(buf, b0 + at, count * k), out = new Uint8Array(count * k);
+      for (let p = 0; p < k; p++) for (let i = 0; i < count; i++) out[i * k + p] = src[p * count + i];
+      return new C(out.buffer); };
+    const w = h.wq ? Float32Array.from(arr(Int16Array, o[1], n * 3), v => v / h.wq) : arr(Float32Array, o[1], n * 3);
     const d = {...h, id,
-      refs: new Uint16Array(buf, b0 + o[0], n * 3), w: new Float32Array(buf, b0 + o[1], n * 3), off: new Int16Array(buf, b0 + o[2], n * 3),
-      uv: new Int16Array(buf, b0 + o[3], n * 2), si: new Uint8Array(buf, b0 + o[4], n * 4), sw: new Uint8Array(buf, b0 + o[5], n * 4),
-      bv: new Uint16Array(buf, b0 + o[6], n), idx: h.big ? new Uint32Array(buf, b0 + o[7], nt * 3) : new Uint16Array(buf, b0 + o[7], nt * 3), tex: null};
+      refs: arr(Uint16Array, o[0], n * 3), w, off: arr(Int16Array, o[2], n * 3),
+      uv: arr(Int16Array, o[3], n * 2), si: arr(Uint8Array, o[4], n * 4), sw: arr(Uint8Array, o[5], n * 4),
+      bv: arr(Uint16Array, o[6], n), idx: h.big ? arr(Uint32Array, o[7], nt * 3) : arr(Uint16Array, o[7], nt * 3), tex: null};
     const mk = list => { const M = new Uint8Array(FIG.meta.nV); for (const [a, b] of list || []) for (let i = a; i <= b && i < M.length; i++) M[i] = 1; return M; };
     d.mask = mk(h.del); d.cover = h.cov ? mk(h.cov) : d.mask;
     // welded vertex ids (same anchors and offset) so shading is smooth across uv seams

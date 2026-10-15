@@ -453,3 +453,12 @@ body.anim .hint{bottom:70px}
 .photoprev{margin:8px 0 4px;border:1.5px solid var(--line);border-radius:6px;overflow:hidden;background:var(--stage)}
 .photoprev canvas{display:block;width:100%;height:auto}
 .photo-overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;mix-blend-mode:multiply}
+/* phones: the whole top bar on one line */
+@media (max-width:480px){
+  header.top{gap:6px;flex-wrap:nowrap}
+  .top .spacer{flex:1 1 0;min-width:0}
+  .tb{gap:4px;flex-wrap:nowrap}
+  .tb .btn{padding:6px 6px}
+  .brand{font-size:20px}
+  #panelBtn{display:none}
+}
