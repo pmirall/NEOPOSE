@@ -17,7 +17,7 @@ Repo: https://github.com/pmirall/NEOPOSE.git
 Builds:
   - versionName: 1.0.0
     versionCode: 10000
-    commit: v1.0.0
+    commit: 70184bbfc73aab007a4f5a62cbe90fee45b3367f
     subdir: android/app
     sudo:
       - apt-get update
