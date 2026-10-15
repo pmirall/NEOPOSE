@@ -78,7 +78,16 @@ const GESTURES = {
   paz:     {label:'Paz',      c:[.85,0,0,1,1], s:.9},
   agarre:  {label:'Agarre',   c:[.45,.55,.6,.62,.66], s:0},
   pinza:   {label:'Pinza',    c:[.6,.55,.3,.25,.2], s:.3},
-  garra:   {label:'Garra',    c:[.35,.55,.55,.55,.55], s:.8}
+  garra:   {label:'Garra',    c:[.35,.55,.55,.55,.55], s:.8},
+  ok:      {label:'OK',       c:[.45,.62,.05,0,0], s:.5, t:.75},
+  pulgar:  {label:'Pulgar arriba', c:[0,1,1,1,1], s:0, t:0},
+  pistola: {label:'Pistola',  c:[0,0,1,1,1], s:.15},
+  cuernos: {label:'Cuernos',  c:[.8,0,1,1,0], s:.7, t:.6},
+  telefono:{label:'Teléfono@gesto', c:[0,1,1,1,0], s:1},
+  tres:    {label:'Tres',     c:[.8,0,0,0,1], s:.6, t:.6},
+  lapiz:   {label:'Sujetar lápiz', c:[.5,.42,.5,.78,.85], s:.1, t:.55},
+  copa:    {label:'Copa',     c:[.3,.35,.38,.4,.42], s:.15, t:.4},
+  tension: {label:'Tensa',    c:[.15,.28,.32,.36,.42], s:1}
 };
 tLabels(GESTURES);
 /* human facial expressions: MakeHuman expression units (FACS-like), weights 0..1, see tools/makehuman/build_ext.py */
@@ -99,7 +108,7 @@ const FACE_EXPR = {
 };
 tLabels(FACE_EXPR);
 const FINGER_NAMES = ['Pulgar','Índice','Corazón','Anular','Meñique'].map(s => tr(s));
-function gest(id) { const g = GESTURES[id] || GESTURES.relajada; return {c: [...g.c], s: g.s}; }
+function gest(id) { const g = GESTURES[id] || GESTURES.relajada; return {c: [...g.c], s: g.s, t: g.t || 0}; }
 
 /* ---------- light, look, scene ---------- */
 const LIGHTS = {

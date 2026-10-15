@@ -145,6 +145,29 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // posing helpers: a pinned hand stays put, a library pose can be blended with the one before, a chair can be sat on
+  async posing(browser) {
+    const page = await open(browser), A = f => page.evaluate(f);
+    await page.click('.tab[data-tab=pose]'); await page.evaluate(() => document.querySelector('[data-sec=ayudas]').open = true);
+    await page.click('#pinChips .chip[data-v="handL"]');
+    const d = await A(() => { const C = window.__cdp, m = C.mq, w0 = m.joints.wristL.getWorldPosition(new THREE.Vector3());
+      document.querySelector('.tab[data-tab=pose]').click(); m.joints.chest.rotation.x += .25; m.joints.chest.rotation.y += .2; m.group.updateMatrixWorld(true); C.enforcePins(m, 'chest');
+      return m.joints.wristL.getWorldPosition(new THREE.Vector3()).distanceTo(w0); });
+    ok(d < .02, `a pinned hand stays where it was (${(d * 100).toFixed(1)} cm)`);
+    await page.click('#pinChips .chip[data-v="handL"]');
+    await page.click('#poseGrid .pose[data-id="victoria"]'); await page.waitForTimeout(300);
+    ok(await A(() => !document.querySelector('#blendBar').hidden), 'picking a pose offers to blend it with the previous one');
+    const before = await A(() => window.__cdp.mq.joints.shoulderL.quaternion.toArray());
+    await page.evaluate(() => { const i = document.querySelector('#blendAmt'); i.value = 0; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); });
+    const back = await A(() => window.__cdp.mq.joints.shoulderL.quaternion.toArray());
+    ok(before.some((v, i) => Math.abs(v - back[i]) > .05), 'the blend slider brings back the previous pose');
+    const seat = await A(async () => { const C = window.__cdp, g = C.makeProp('silla', new THREE.Vector3(.8, 0, 0)); await g.userData.ready; await C.sitOn(C.mq, g);
+      const h = C.mq.joints.hips.getWorldPosition(new THREE.Vector3()); return {y: h.y, x: h.x, preset: C.state.posePreset}; });
+    ok(seat.preset === 'sentado' && seat.y > .45 && seat.y < .75 && Math.abs(seat.x - .8) < .3, `sitting on a chair puts the hips on its seat (${JSON.stringify(seat)})`);
+    await page.screenshot({path: path.join(OUT, 'posing.png')});
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);

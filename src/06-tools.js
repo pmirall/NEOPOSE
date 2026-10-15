@@ -628,7 +628,7 @@ function serializeProp(g) {
 function serializeLight(g) { const l = g.userData.ref.light; return {t: g.userData.light, p: g.position.toArray().map(v => +v.toFixed(3)), c: g.userData.color, i: +l.intensity.toFixed(2), d: +l.distance.toFixed(1)}; }
 function sceneExtras(withCam) {
   const o = {env: state.env, amb: state.amb, props: props.map(serializeProp), lights: extraLights.map(serializeLight)};
-  if (withCam) { o.cam = {p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal}; o.look = {style: state.style, form: state.form, light: state.light, lineMode: state.lineMode}; }
+  if (withCam) { o.cam = {p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}; o.look = {style: state.style, form: state.form, light: state.light, lineMode: state.lineMode}; }
   return o;
 }
 function clearProps() { for (const p of [...props]) { releaseProp(p); scene.remove(p); } props.length = 0; }
@@ -655,7 +655,7 @@ function applySceneExtras(o) {
       g.userData.color = d.c; l.color.set(c); g.userData.ref.bulb.material.color.set(c); l.intensity = d.i; l.distance = d.d;
     }
   }
-  if (o.cam) { camera.position.fromArray(o.cam.p); controls.target.fromArray(o.cam.t); $('#focal').value = o.cam.f; setFocal(o.cam.f, false); controls.update(); }
+  if (o.cam) { camera.position.fromArray(o.cam.p); controls.target.fromArray(o.cam.t); $('#focal').value = o.cam.f; setFocal(o.cam.f, false); setRoll(o.cam.r); controls.update(); }
   if (o.look) {
     if (o.look.style) { state.style = o.look.style; setPressed($('#styleChips'), state.style); }
     if (o.look.lineMode) { state.lineMode = o.look.lineMode; setPressed($('#lineChips'), state.lineMode); }
@@ -732,7 +732,7 @@ function renderViews() {
   const box = $('#viewList'); box.innerHTML = '';
   (state.views || []).forEach((v, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = tr('Vista {n}', {n: i + 1});
-    b.onclick = () => { camera.position.fromArray(v.p); controls.target.fromArray(v.t); $('#focal').value = v.f; setFocal(v.f, false); controls.update(); };
+    b.onclick = () => { camera.position.fromArray(v.p); controls.target.fromArray(v.t); $('#focal').value = v.f; setFocal(v.f, false); setRoll(v.r); controls.update(); };
     const x = document.createElement('span'); x.className = 'chipx'; x.textContent = '×'; x.title = tr('Borrar vista');
     x.onclick = e => { e.stopPropagation(); state.views.splice(i, 1); renderViews(); };
     b.appendChild(x); box.appendChild(b);
@@ -750,7 +750,7 @@ function buildToolsUI() {
   $('#symChk').onchange = e => { state.sym = e.target.checked; if (state.sym && state.selected) { mirrorJoint(mq, state.selected); pushHistory(); } };
   $('#poseSearch').oninput = () => buildPoseGrid();
   chips($('#ratioChips'), Object.entries(RATIOS).map(([k, v]) => [k, v[0]]), state.ratio, k => state.ratio = k);
-  $('#saveView').onclick = () => { if (state.views.length >= 8) state.views.shift(); state.views.push({p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal}); renderViews(); };
+  $('#saveView').onclick = () => { if (state.views.length >= 8) state.views.shift(); state.views.push({p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}); renderViews(); };
   renderViews();
   const ga = $('#gAction'); ga.checked = state.guides.action; ga.onchange = () => state.guides.action = ga.checked;
 }

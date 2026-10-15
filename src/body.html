@@ -123,6 +123,9 @@
             <p class="note">El fantasma deja una copia translúcida de la pose actual para compararla con la nueva.</p>
             <label class="check"><input type="checkbox" id="dotsChk" checked> Mostrar las articulaciones</label>
             <label class="check"><input type="checkbox" id="pinFeet" checked> Fijar los pies al mover la pelvis</label>
+            <p class="lbl">Clavar en su sitio</p>
+            <div class="chips" id="pinChips"></div>
+            <p class="note">Lo clavado no se mueve mientras posas el resto: arrastra la pelvis o gira la espalda y la mano o el pie se quedan donde estaban.</p>
             <label class="check"><input type="checkbox" id="stoolChk"> Taburete bajo la pelvis</label>
           </details>
           <details class="sec" data-sec="lib" open>
@@ -130,6 +133,7 @@
             <input class="search" id="poseSearch" type="search" placeholder="Buscar pose… (salto, sentado, abrazo)" autocomplete="off" aria-label="Buscar pose">
             <div class="filter"><span>Personas</span><div class="chips seg" id="castChips" aria-label="Número de personajes"></div></div>
             <div class="chips" id="catChips" style="margin-bottom:8px"></div>
+            <div class="blendbar" id="blendBar" hidden></div>
             <div class="pose-grid" id="poseGrid"></div>
             <p class="note">Las poses de una persona se aplican al personaje activo; las de grupo colocan a todo el reparto. Izquierda y derecha son siempre las del personaje.</p>
           </details>
@@ -281,6 +285,7 @@
           <details class="sec" data-sec="angulo" open>
             <summary><h3>Ángulo</h3></summary>
             <div class="chips" id="viewChips"></div>
+            <div id="rollBox" style="margin-top:8px"></div>
             <div class="row" style="margin-top:8px"><button class="btn small" id="frameBtn">Encuadrar a todos</button><button class="btn small" id="saveView">Guardar vista</button></div>
             <div class="chips" id="viewList" style="margin-top:6px"></div>
           </details>

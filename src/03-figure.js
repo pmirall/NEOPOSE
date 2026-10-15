@@ -627,7 +627,10 @@ class Mannequin {
         const d0 = pts[1].clone().sub(pts[0]).normalize(), lat = pts[0].clone().sub(mb);
         fingers.push({curl, spread: Math.sign(new V3().crossVectors(n, d0).dot(lat)) || 1});
       }
-      this.handAxes[s] = {n, fingers};
+      // thumb opposition: the thumb turns about the hand's long axis, towards the palm
+      const along = mb.clone().sub(w).normalize(), tv = jp(`tip${s}0`).sub(jp(`f${s}00`));
+      const opp = tv.clone().applyAxisAngle(along, .3).dot(n) > tv.dot(n) ? 1 : -1;
+      this.handAxes[s] = {n, fingers, along, opp};
     }
   }
   applyHands() {
@@ -638,6 +641,7 @@ class Mannequin {
       for (let f = 0; f < 5; f++) {
         const c = st.c[f], ax = A.fingers[f], ang = f === 0 ? [48, 45, 55] : [85, 100, 70];
         q2.setFromAxisAngle(A.n, ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
+        if (f === 0 && st.t) q2.premultiply(q.setFromAxisAngle(A.along, A.opp * st.t * 60 * DEG));
         F[f][0].quaternion.copy(q2).multiply(q.setFromAxisAngle(ax.curl[0], c * ang[0] * DEG));
         F[f][1].quaternion.setFromAxisAngle(ax.curl[1], c * ang[1] * DEG);
         F[f][2].quaternion.setFromAxisAngle(ax.curl[2], c * ang[2] * DEG);

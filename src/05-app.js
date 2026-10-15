@@ -1,5 +1,5 @@
 /* ---------- state ---------- */
-const state = {
+const state = {roll: 0, 
   style: 'construccion', lineMode: 'anillos', lineA: .8, outline: 1.6,
   light: {...LIGHTS.estudio}, lightPreset: 'estudio', env: 'estudio', practical: 1, lampShadows: true, ik: store.get('cdp.ik', true), dots: store.get('cdp.dots', true), amb: 'neutro', envOutline: true, shadows: true,
   focal: 50, handSide: 'both', selected: null, sel: null, propMode: 'translate', castN: 1, cat: 'todas', posePreset: null,
@@ -77,12 +77,12 @@ function renderCast() {
 /* ---------- applying poses to the cast ---------- */
 function usePreset(p) {
   tourEvent('pose');
-  const yaw = mq.yaw(), pos = mq.joints.hips.position.clone();
+  const yaw = mq.yaw(), pos = mq.joints.hips.position.clone(), prev = mq.getPose();
   mq.joints.hips.position.set(pos.x, mq.rootY, pos.z);
   applyPreset(mq, p, {yaw});
   mq.joints.hips.position.x = pos.x; mq.joints.hips.position.z = pos.z;
   state.posePreset = p.id; $('#stoolChk').checked = mq.stool;
-  markPose(); syncAll(); pushHistory();
+  markPose(); syncAll(); offerBlend(prev); pushHistory();
 }
 function applyGroupTo(list, def, o = {}) {
   const avg = list.slice(0, def.n).reduce((s, m) => s + m.size, 0) / def.n;
@@ -359,7 +359,7 @@ function buildJointSliders() {
   const axes = HINGE[name] ? [['x', tr('Flexión'), HINGE[name][0], HINGE[name][1]]] : [['x', tr('Flexión (X)'), -180, 180], ['y', tr('Giro (Y)'), -180, 180], ['z', tr('Inclinación (Z)'), -180, 180]];
   for (const [ax, label, mn, mx] of axes) {
     const el = slider(box, {id: 'j_' + ax, label, min: mn, max: mx, step: 1, value: 0, fmt: v => Math.round(v) + '°',
-      input: v => { mq.joints[state.selected].rotation[ax] = v * DEG; if (state.sym) mirrorJoint(mq, state.selected); }, change: pushHistory});
+      input: v => { mq.joints[state.selected].rotation[ax] = v * DEG; if (state.sym) mirrorJoint(mq, state.selected); enforcePins(mq, state.selected); }, change: pushHistory});
     el.ax = ax; jointSliderEls.push(el);
   }
   syncJointSliders();
@@ -391,6 +391,7 @@ function selectObj(obj) {
       tc.setSpace(obj.userData.held ? 'local' : 'world'); syncHandUI(); pushHistory();
     });
     const nt = document.createElement('p'); nt.className = 'tip'; nt.textContent = tr('Se agarra con la mano del personaje activo ({n}).', {n: active + 1}); extra.appendChild(nt);
+    seatButton(obj, extra);
   }
   $('#objDup').hidden = isLight;
   $('#objCard').hidden = false;
@@ -531,7 +532,7 @@ function buildDrawUI() {
 }
 
 /* hands */
-let fingerEls = [], spreadEl;
+let fingerEls = [], spreadEl, thumbEl;
 const handTargets = () => state.handSide === 'both' ? ['L', 'R'] : [state.handSide];
 function buildHandUI() {
   chips($('#gestureChips'), Object.entries(GESTURES).map(([k, v]) => [k, v.label]), null, id => { for (const s of handTargets()) mq.hands[s] = gest(id); mq.applyHands(); syncHandUI(); pushHistory(); });
@@ -539,10 +540,12 @@ function buildHandUI() {
   FINGER_NAMES.forEach((label, i) => fingerEls.push(slider(box, {id: 'f_' + i, label, min: 0, max: 1, step: .01, value: 0, fmt: v => Math.round(v * 100),
     input: v => { for (const s of handTargets()) mq.hands[s].c[i] = v; mq.applyHands(); setPressed($('#gestureChips'), ''); }, change: pushHistory})));
   spreadEl = slider(box, {id: 'f_spread', label: 'Separación de dedos', min: 0, max: 1, step: .01, value: 0, fmt: v => Math.round(v * 100),
-    input: v => { for (const s of handTargets()) mq.hands[s].s = v; mq.applyHands(); }, change: pushHistory});
+    input: v => { for (const s of handTargets()) mq.hands[s].s = v; mq.applyHands(); setPressed($('#gestureChips'), ''); }, change: pushHistory});
+  thumbEl = slider(box, {id: 'f_thumb', label: 'Pulgar hacia la palma', min: 0, max: 1, step: .01, value: 0, fmt: v => Math.round(v * 100),
+    input: v => { for (const s of handTargets()) mq.hands[s].t = v; mq.applyHands(); setPressed($('#gestureChips'), ''); }, change: pushHistory});
   bindChipGroup('#handSide', v => { state.handSide = v; syncHandUI(); });
 }
-function syncHandUI() { const h = mq.hands[handTargets()[0]]; fingerEls.forEach((el, i) => el.set(h.c[i])); spreadEl.set(h.s); }
+function syncHandUI() { const h = mq.hands[handTargets()[0]]; fingerEls.forEach((el, i) => el.set(h.c[i])); spreadEl.set(h.s); thumbEl.set(h.t || 0); }
 
 /* light */
 let lightEls = {};
@@ -588,9 +591,13 @@ function buildSceneUI() {
 }
 
 /* camera */
+let rollEl;
+function setRoll(v) { state.roll = v || 0; if (rollEl) rollEl.set(state.roll); }
 function buildCamUI() {
   chips($('#viewChips'), VIEWS.map(v => [v[0], v[0]]), null, id => { const v = VIEWS.find(x => x[0] === id); setView(v[1], v[2]); });
   $('#frameBtn').onclick = frameAll;
+  rollEl = slider($('#rollBox'), {id: 'roll', label: 'Inclinación (plano holandés)', min: -45, max: 45, step: 1, value: state.roll, fmt: v => Math.round(v) + '°', input: v => state.roll = Math.abs(v) < 1.5 ? 0 : v, change: () => rollEl.set(state.roll)});
+  rollEl.inp.ondblclick = () => setRoll(0);
   $('#focal').oninput = e => setFocal(+e.target.value, $('#dollyChk').checked);
   for (const mm of LENSES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = mm; b.title = mm + ' mm'; b.onclick = () => { $('#focal').value = mm; setFocal(mm, $('#dollyChk').checked); }; $('#lensTicks').appendChild(b); }
   const link = (id, k, after) => { const el = $(id); el.checked = state.guides[k]; el.onchange = () => { state.guides[k] = el.checked; after && after(); }; };
@@ -698,7 +705,7 @@ $('#resetBtn').onclick = () => usePreset(POSE.pie);
 $('#stoolChk').onchange = e => { mq.stool = e.target.checked; pushHistory(); };
 $('#undo').onclick = undo; $('#redo').onclick = redo;
 $('#jointClose').onclick = () => select(null);
-function syncAll() { syncJointSliders(); syncHandUI(); syncBodyUI(); if (typeof renderAvatarUI === 'function') renderAvatarUI(); $('#stoolChk').checked = mq.stool; if (typeof renderGarmentList === 'function') { renderGarmentList(); renderLibrary(); } }
+function syncAll() { refreshPins(mq); syncPinUI(); syncJointSliders(); syncHandUI(); syncBodyUI(); if (typeof renderAvatarUI === 'function') renderAvatarUI(); $('#stoolChk').checked = mq.stool; if (typeof renderGarmentList === 'function') { renderGarmentList(); renderLibrary(); } }
 
 /* ---------- pointer interaction ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -740,8 +747,8 @@ vp.addEventListener('pointermove', e => {
   if (drag.id === 'fk') {
     const p = ray.ray.intersectPlane(drag.plane, new V3()); if (!p) return;
     drag.moved = true;
-    if (drag.ik && EFFECTOR_OF[drag.joint]) { const id = EFFECTOR_OF[drag.joint]; solveIK(mq.chains[id], mq.joints[EFFECTOR[id]], p); if (state.sym) for (const l of mq.chains[id]) mirrorJoint(mq, l.obj.name); }
-    else if (JOINT_PARENT[drag.joint]) { aimParent(mq, drag.joint, p); if (state.sym) mirrorJoint(mq, JOINT_PARENT[drag.joint]); }
+    if (drag.ik && EFFECTOR_OF[drag.joint]) { const id = EFFECTOR_OF[drag.joint]; solveIK(mq.chains[id], mq.joints[EFFECTOR[id]], p); if (state.sym) for (const l of mq.chains[id]) mirrorJoint(mq, l.obj.name); if (pinsOf(mq)[id]) pinsOf(mq)[id].copy(p); }
+    else if (JOINT_PARENT[drag.joint]) { aimParent(mq, drag.joint, p); if (state.sym) mirrorJoint(mq, JOINT_PARENT[drag.joint]); enforcePins(mq, JOINT_PARENT[drag.joint]); }
     syncJointSliders(); return;
   }
   const p = ray.ray.intersectPlane(drag.plane, new V3()); if (!p) return;
@@ -750,9 +757,11 @@ vp.addEventListener('pointermove', e => {
     if (p.y < .05) p.y = .05;
     mq.joints.hips.position.copy(p); mq.group.updateMatrixWorld(true);
     if ($('#pinFeet').checked) for (const f of ['footL', 'footR']) solveIK(mq.chains[f], mq.joints[EFFECTOR[f]], drag.feet[f]);
+    enforcePins(mq, null);
   } else {
     if (drag.id.startsWith('foot') && p.y < .02) p.y = .02;
     solveIK(mq.chains[drag.id], mq.joints[EFFECTOR[drag.id]], p);
+    if (pinsOf(mq)[drag.id]) pinsOf(mq)[drag.id].copy(p);
     if (state.sym) for (const l of mq.chains[drag.id]) mirrorJoint(mq, l.obj.name);
   }
   syncJointSliders();
@@ -815,6 +824,7 @@ tc.addEventListener('objectChange', () => {
     const n = state.selected;
     if (n && HINGE[n]) { const j = mq.joints[n]; j.rotation.set(clamp(hingeAngle(j.quaternion), HINGE[n][0] * DEG, HINGE[n][1] * DEG), 0, 0, 'XYZ'); }
     if (state.sym && n) mirrorJoint(mq, n);
+    if (n) enforcePins(mq, n);
     syncJointSliders();
   } else if (s && s.kind === 'prop' && s.obj.position.y < 0) s.obj.position.y = 0;
 });
@@ -873,7 +883,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); pinTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
@@ -952,7 +962,7 @@ function boot(data) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI();
+  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI();
   setLightPreset('estudio');
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));

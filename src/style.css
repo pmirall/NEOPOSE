@@ -420,3 +420,8 @@ body.practicing .modebar{display:none}
 .hairsw .swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--page),0 0 0 3.5px var(--ink);border-color:transparent}
 .hairsw .swatches .orig{background:conic-gradient(#3a2a20 0 25%,#6b4a31 0 50%,#c7a066 0 75%,#94622f 0)}
 .hairsw input[type=color]{width:34px;height:28px;padding:0;border:1.5px solid var(--line);border-radius:6px;background:none;cursor:pointer;flex:none}
+/* pose blend */
+.blendbar{display:flex;align-items:flex-end;gap:6px;border:1.5px dashed var(--line);border-radius:6px;padding:6px 8px;margin:0 0 8px;background:var(--page)}
+.blendbar .sl{flex:1;margin:0}
+.blendbar .gx{border:0;background:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:0 2px 6px}
+.blendbar .gx:hover{color:var(--red)}
