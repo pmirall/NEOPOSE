@@ -168,6 +168,23 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // scene: a 360° panorama behind the cast, perspective framings, the four-view layout
+  async scene(browser) {
+    const page = await open(browser), A = f => page.evaluate(f);
+    await page.click('.tab[data-tab=escena]'); await page.click('#envChips .chip[data-v="pano_prado"]');
+    await page.waitForFunction(() => window.__cdp.panoReady(), null, {timeout: 30000}).catch(() => {});
+    ok(await A(() => window.__cdp.panoReady()), 'the panorama is shown behind the cast');
+    await page.click('.tab[data-tab=camara]'); await page.click('#perspChips .chip[data-v="p2"]'); await page.waitForTimeout(300);
+    const c = await A(() => ({y: window.__cdp.camera.position.y, t: window.__cdp.controls.target.y, g: document.querySelector('#gPersp').checked}));
+    ok(Math.abs(c.y - c.t) < .02 && c.g, `two-point framing: level camera, horizon guide on (${JSON.stringify(c)})`);
+    await page.click('#multiBtn'); await page.waitForTimeout(800);
+    const mv = await A(() => ({side: document.querySelector('#mvSide').getBoundingClientRect().width, gl: document.querySelector('#gl').getBoundingClientRect().width}));
+    ok(mv.side > 100 && mv.gl > mv.side, `four views: small views beside a narrower main view (${JSON.stringify(mv)})`);
+    await page.screenshot({path: path.join(OUT, 'scene.png')});
+    await page.click('#multiBtn'); await page.waitForTimeout(300);
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);

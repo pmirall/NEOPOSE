@@ -23,6 +23,7 @@
     <div class="stage-wrap">
       <div id="viewport">
         <canvas id="gl"></canvas>
+        <canvas id="mvSide" aria-hidden="true"></canvas>
         <canvas id="overlay"></canvas>
         <canvas id="sketch"></canvas>
         <canvas id="sketchLive"></canvas>
@@ -259,10 +260,11 @@
             <div id="envChips"></div>
             <p class="lbl">Momento del día</p>
             <div class="chips" id="ambChips"></div>
+            <div id="panoBox" hidden></div>
             <div id="practicalBox"></div>
             <label class="check"><input type="checkbox" id="lampShadowChk" checked> Sombras de las lámparas del escenario</label>
             <label class="check"><input type="checkbox" id="envOutlineChk" checked> Contorno de tinta en el escenario</label>
-            <p class="note">Modelos y texturas de <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> (dominio público, CC0). Cada escenario trae sus propias lámparas, con luz y sombra.</p>
+            <p class="note">Modelos, texturas y panoramas 360° de <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> (dominio público, CC0). Cada escenario trae sus propias lámparas, con luz y sombra.</p>
           </details>
           <details class="sec" data-sec="luz" id="secLuz">
             <summary><h3>Luz <span>respecto a la cámara</span></h3></summary>
@@ -286,6 +288,10 @@
             <summary><h3>Ángulo</h3></summary>
             <div class="chips" id="viewChips"></div>
             <div id="rollBox" style="margin-top:8px"></div>
+            <p class="lbl">Perspectiva</p>
+            <div class="chips" id="perspChips"></div>
+            <div class="row" style="margin-top:8px"><button class="btn small" id="multiBtn" aria-pressed="false">Cuatro vistas</button></div>
+            <p class="note">Encuadra la cámara para uno, dos o tres puntos de fuga y enciende la guía de horizonte. «Cuatro vistas» añade frente, perfil y planta al lado del lienzo.</p>
             <div class="row" style="margin-top:8px"><button class="btn small" id="frameBtn">Encuadrar a todos</button><button class="btn small" id="saveView">Guardar vista</button></div>
             <div class="chips" id="viewList" style="margin-top:6px"></div>
           </details>

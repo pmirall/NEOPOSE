@@ -152,6 +152,7 @@ function applyAmbient() {
     scene.fog = state.env === 'vacio' ? null : new THREE.Fog(LU.uPaper.value.clone(), out ? 25 : 11, out ? 90 : 42);
   }
   hemi.color.set(A.hemiS); hemi.groundColor.set(A.hemiG); key.color.set(A.keyCol);
+  if (typeof panoAmbient === 'function') panoAmbient();
   const pr = A.practical;
   for (const mat of EMISSIVE) mat.emissiveIntensity = mat.userData.night ? Math.max(0, pr - .3) * 1.3 : pr * (mat === EM.glass ? .8 : 1.1);
   if (envGroup) for (const l of envGroup.userData.lamps) { l.userData.base = l.userData.power * (l.userData.studio ? 1 : pr) * state.practical; l.intensity = l.userData.base; l.visible = l.userData.base > .01; l.castShadow = !!l.userData.sh0 && state.lampShadows; }
@@ -566,7 +567,7 @@ function syncLightUI() { for (const k in lightEls) lightEls[k].set(state.light[k
 /* scene */
 function buildSceneUI() {
   const eb = $('#envChips'); eb.innerHTML = '';
-  for (const [g, label] of [['in', 'Interiores'], ['out', 'Exteriores'], ['x', 'Otros']]) {
+  for (const [g, label] of [['in', 'Interiores'], ['out', 'Exteriores'], ['pano', 'Panoramas 360°'], ['x', 'Otros']]) {
     const items = Object.entries(SCENES).filter(([, v]) => v.group === g).map(([k, v]) => [k, v.label]);
     if (g === 'x') for (const k of Object.keys(ENV_BUILD)) if (!SCENES[k] && k === 'vacio') items.push([k, ENVS[k]]);
     if (!items.length) continue;
@@ -847,7 +848,7 @@ addEventListener('keydown', e => {
 /* ---------- render loop ---------- */
 let W = 1, Hh = 1;
 function resize() {
-  const r = vp.getBoundingClientRect(); W = Math.max(1, r.width); Hh = Math.max(1, r.height);
+  const r = canvas.getBoundingClientRect(); W = Math.max(1, r.width); Hh = Math.max(1, r.height);
   renderer.setSize(W, Hh, false);
   camera.aspect = W / Hh; camera.setFocalLength(state.focal); camera.updateProjectionMatrix();
   const pr = Math.min(devicePixelRatio, 2);
@@ -883,9 +884,9 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); pinTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
-  renderer.render(scene, camera); drawOverlay(octx, W, Hh);
+  renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
 renderer.setAnimationLoop(frame);
 
@@ -897,7 +898,8 @@ function renderExport() {
   const hidden = [...Object.values(handles), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : [])];
   const hv = hidden.map(h => h.visible);
   tc.visible = false; hidden.forEach(h => h.visible = false);
-  if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
+  const panoV = panoSphere.visible;
+  if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; panoSphere.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
   if (lines) { for (const m of chars) m.setStyle('contorno'); LU.uRender.value = 0; }
   const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value;
   LU.uLineW.value = lw * ex.size / pr; LU.uDpr.value = ex.size;
@@ -922,7 +924,7 @@ function renderExport() {
   if ($('#exSketch').checked && sk.strokes.length) c.drawImage(sketchCanvas(k), f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
   renderer.setPixelRatio(pr); renderer.setSize(W, Hh, false); LU.uLineW.value = lw; LU.uDpr.value = dpr;
   if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; }
-  tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky;
+  tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = panoV;
   hidden.forEach((h, i) => h.visible = hv[i]);
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
   $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
@@ -962,7 +964,7 @@ function boot(data) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI();
+  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI();
   setLightPreset('estudio');
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));

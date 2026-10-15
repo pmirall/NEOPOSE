@@ -11,6 +11,8 @@ Los huesos del modo de construcción «Esqueleto» proceden de [BodyParts3D](htt
 ## Escenarios: Poly Haven (CC0 1.0)
 Modelos y texturas de [Poly Haven](https://polyhaven.com), en dominio público. Se han simplificado y reempaquetado (solo textura de color, WebP 512 px).
 
+Los 8 panoramas 360° («Panoramas 360°») son HDRI de Poly Haven (CC0) en su versión tonemapeada, reducidos a 3072×1536 con `tools/scenery/hdri.py`.
+
 ## Cabezas esculpidas: Sketchfab (CC BY 4.0)
 Adaptadas para NEOPOSE (recortadas por el cuello, simplificadas, con pesos de rig, mandíbula y orejas añadidos):
 
