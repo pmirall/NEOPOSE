@@ -62,6 +62,7 @@
           <div id="objExtra"></div>
           <div class="row" style="margin-top:8px"><button class="btn small" id="objDup">Duplicar</button><button class="btn small" id="objDel">Borrar</button></div>
         </div>
+        <img class="photo-overlay" id="photoOverlay" alt="" hidden>
         <div class="timeline" id="timeline" hidden>
           <div class="tlrow">
             <button class="btn icon" id="tlPlay" aria-pressed="false" title="Reproducir (espacio)" aria-label="Reproducir"></button>
@@ -128,6 +129,16 @@
             <div class="chips" id="exprChips"></div>
             <div id="exprAmtBox"></div>
             <p class="note" id="exprNote"></p>
+          </details>
+          <details class="sec" data-sec="foto">
+            <summary><h3>Desde una foto <span>sin conexión</span></h3></summary>
+            <div class="row"><button class="btn small" id="photoPick">Elegir foto…</button></div>
+            <input type="file" id="photoFile" accept="image/*" hidden>
+            <div class="photoprev" id="photoPrev" hidden><canvas id="photoCv"></canvas></div>
+            <p class="msg" id="photoMsg" role="status"></p>
+            <label class="check"><input type="checkbox" id="photoRef" checked> Ver la foto sobre el lienzo</label>
+            <div id="photoAlphaBox"></div>
+            <p class="note">La foto se analiza en este dispositivo (BlazePose de MediaPipe con TensorFlow.js) y no sale de él. Funciona mejor con una persona entera y bien iluminada. También puedes soltar la foto sobre el lienzo.</p>
           </details>
           <details class="sec" data-sec="azar">
             <summary><h3>Pose al azar</h3></summary>

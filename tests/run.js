@@ -206,6 +206,25 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // pose from a photo, offline: a render of a known pose goes through the detector and comes back as the same pose
+  async photo(browser) {
+    const page = await open(browser);
+    const r = await page.evaluate(async () => {
+      const C = window.__cdp, m = C.mq; await C.setEnv('vacio'); document.querySelector('#styleChips .chip[data-v=volumen]').click(); C.usePreset(C.POSES.find(p => p.id === 'senalar')); m.group.updateMatrixWorld(true);
+      const bx = new THREE.Box3().setFromObject(m.body3), c = bx.getCenter(new THREE.Vector3());
+      C.controls.target.copy(c); C.camera.position.set(c.x, c.y, c.z + 4.5); C.controls.update();
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const img = new Image(); img.src = document.querySelector('#gl').toDataURL('image/png'); await img.decode();
+      const w = n => m.joints[n].getWorldPosition(new THREE.Vector3()), segs = [['shoulderL', 'elbowL'], ['elbowL', 'wristL'], ['shoulderR', 'elbowR'], ['elbowR', 'wristR'], ['hipL', 'kneeL'], ['hipR', 'kneeR']];
+      const dirs = () => segs.map(([a, b]) => w(b).sub(w(a)).normalize()), want = dirs();
+      const pose = await C.poseFromImage(img); if (!pose) return null;
+      C.applyPhotoPose(m, pose); m.group.updateMatrixWorld(true);
+      const got = dirs(); return want.reduce((s, v, i) => s + v.dot(got[i]), 0) / want.length;
+    });
+    ok(r !== null && r > .85, `a rendered pose is recognised and rebuilt (mean agreement ${r && r.toFixed(2)})`);
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);
