@@ -191,6 +191,21 @@ const SUITES = {
     await page.click('#exportBtn'); await page.waitForTimeout(1500);
     const src = await page.evaluate(() => document.querySelector('#exImg').src);
     ok(src.startsWith('data:image/png') && src.length > 20000, `export renders a PNG (${Math.round(src.length / 1024)} kB)`);
+    await page.click('#exKind .chip[data-v="turn"]'); await page.waitForTimeout(2000);
+    const turn = await page.evaluate(() => { const i = document.querySelector('#exImg'); return {w: i.naturalWidth, h: i.naturalHeight}; });
+    ok(turn.w > turn.h * 2, `the turnaround sheet puts the views side by side (${turn.w}×${turn.h})`);
+    await page.click('#exKind .chip[data-v="maps"]');
+    for (const m of ['depth', 'normal', 'openpose', 'lineart']) {
+      await page.click(`#exMap .chip[data-v="${m}"]`); await page.waitForTimeout(800);
+      const lit = await page.evaluate(() => { const i = document.querySelector('#exImg'), c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d'); x.drawImage(i, 0, 0, 64, 64);
+        const d = x.getImageData(0, 0, 64, 64).data, seen = new Set(); for (let k = 0; k < d.length; k += 4) seen.add(d[k] >> 4 << 8 | d[k + 1] >> 4 << 4 | d[k + 2] >> 4); return seen.size; });
+      ok(lit > 3, `the ${m} map has content (${lit} tones)`);
+    }
+    await page.click('#exKind .chip[data-v="m3d"]');
+    const glb = await page.evaluate(() => new Promise(res => { const b = window.__cdp.exportGLB(); new THREE.GLTFLoader().parse(b.buffer, '', g => { let n = 0; g.scene.traverse(o => { if (o.isMesh) n += o.geometry.attributes.position.count; }); res(n); }, e => res('error ' + e)); }));
+    ok(glb > 10000, `the GLB loads back with the posed figure (${glb} vertices)`);
+    const bvh = await page.evaluate(() => window.__cdp.exportBVH(window.__cdp.mq));
+    ok(/^HIERARCHY[\s\S]*ROOT hips[\s\S]*MOTION\nFrames: 1/.test(bvh), 'the BVH has a hierarchy and one frame');
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },

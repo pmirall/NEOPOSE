@@ -895,18 +895,17 @@ const ex = {bg: 'paper', size: 2};
 function renderExport() {
   const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines;
   const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value};
-  const hidden = [...Object.values(handles), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : [])];
+  const hidden = [...Object.values(handles), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : [])];
   const hv = hidden.map(h => h.visible);
   tc.visible = false; hidden.forEach(h => h.visible = false);
   const panoV = panoSphere.visible;
   if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; panoSphere.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
   if (lines) { for (const m of chars) m.setStyle('contorno'); LU.uRender.value = 0; }
-  const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value;
-  LU.uLineW.value = lw * ex.size / pr; LU.uDpr.value = ex.size;
-  renderer.setPixelRatio(ex.size); renderer.setSize(W, Hh, false);
+  const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, f = frameRect(W, Hh), k = exportScale(f);
+  LU.uLineW.value = lw * k / pr; LU.uDpr.value = k;
+  renderer.setPixelRatio(k); renderer.setSize(W, Hh, false);
   updateLights(); updateStools(); renderer.render(scene, camera);
-  const f = frameRect(W, Hh), k = ex.size;
-  const out = document.createElement('canvas'); out.width = Math.round(f.w * k); out.height = Math.round(f.h * k);
+  let out = document.createElement('canvas'); out.width = Math.round(f.w * k); out.height = Math.round(f.h * k);
   const c = out.getContext('2d');
   c.drawImage(renderer.domElement, f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
   if (lines) { // keep only the ink: paper-white becomes transparent, darker strokes stay
@@ -926,10 +925,11 @@ function renderExport() {
   if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; }
   tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = panoV;
   hidden.forEach((h, i) => h.visible = hv[i]);
+  out = onPaper(out, alpha);
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
   $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
 }
-function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
+function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }
 $('#exportBtn').onclick = openExport; $('#exClose').onclick = closeExport;
 $('#exportModal').onclick = e => { if (e.target.id === 'exportModal') closeExport(); };
@@ -964,7 +964,7 @@ function boot(data) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI();
+  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI();
   setLightPreset('estudio');
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));

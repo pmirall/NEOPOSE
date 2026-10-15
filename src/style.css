@@ -431,3 +431,7 @@ body.practicing .modebar{display:none}
 #viewport.mv #gl,#viewport.mv #overlay{right:34%;width:66%}
 #multiBtn[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
 #viewport.mv .modebar{right:calc(34% + 12px)}
+/* export kinds */
+.exkind{margin:4px 0 10px}
+#exOptTurn,#exOptMap,#exOpt3d,#exOptImg{display:flex;flex-direction:column;gap:6px}
+#exOptTurn[hidden],#exOptMap[hidden],#exOpt3d[hidden],#exOptImg[hidden],#exBgRow[hidden],#exSizeRow[hidden],#exImgWrap[hidden]{display:none}

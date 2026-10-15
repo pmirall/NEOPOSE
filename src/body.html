@@ -315,21 +315,40 @@
 
 <div class="modal" id="exportModal" hidden>
   <div class="sheet" role="dialog" aria-labelledby="exT">
-    <h2 id="exT">Exportar referencia</h2>
-    <p class="note">Úsala como capa de calco en tu programa de dibujo.</p>
+    <h2 id="exT">Exportar</h2>
+    <div class="chips seg exkind" id="exKind" role="group" aria-label="Qué exportar"></div>
     <div class="opts">
-      <div><p>Fondo</p><div class="chips" id="exBg">
+      <div id="exBgRow"><p>Fondo</p><div class="chips" id="exBg">
         <button class="chip" data-v="paper" aria-pressed="true">Con escenario</button>
         <button class="chip" data-v="alpha" aria-pressed="false">Transparente</button>
         <button class="chip" data-v="lines" aria-pressed="false">Solo trazo</button></div></div>
-      <div><p>Tamaño</p><div class="chips" id="exSize">
+      <div id="exSizeRow"><p>Tamaño</p><div class="chips" id="exSize">
         <button class="chip" data-v="1" aria-pressed="false">1×</button>
         <button class="chip" data-v="2" aria-pressed="true">2×</button>
-        <button class="chip" data-v="3" aria-pressed="false">3×</button></div></div>
-      <label class="check"><input type="checkbox" id="exGuides" checked> Incluir guías activas</label>
-      <label class="check"><input type="checkbox" id="exSketch" checked> Incluir la capa de boceto</label>
+        <button class="chip" data-v="3" aria-pressed="false">3×</button>
+        <button class="chip" data-v="a5" aria-pressed="false" title="A5 a 300 ppp">A5</button>
+        <button class="chip" data-v="a4" aria-pressed="false" title="A4 a 300 ppp">A4</button>
+        <button class="chip" data-v="a3" aria-pressed="false" title="A3 a 300 ppp">A3</button></div></div>
+      <div id="exOptImg">
+        <label class="check"><input type="checkbox" id="exGuides" checked> Incluir guías activas</label>
+        <label class="check"><input type="checkbox" id="exSketch" checked> Incluir la capa de boceto</label>
+      </div>
+      <div id="exOptTurn" hidden>
+        <div class="chips" id="exViews"></div>
+        <label class="check"><input type="checkbox" id="exNeutral"> De pie, en pose neutra</label>
+        <label class="check"><input type="checkbox" id="exHeads"> Líneas de cabezas</label>
+      </div>
+      <div id="exOptMap" hidden>
+        <div class="chips" id="exMap"></div>
+        <label class="check"><input type="checkbox" id="exHands"> Manos en el esqueleto OpenPose</label>
+        <label class="check"><input type="checkbox" id="exEnvMap"> Incluir el escenario en profundidad y normales</label>
+        <p class="note">Para ControlNet y herramientas parecidas: profundidad (cerca en blanco), normales en el espacio de la cámara, esqueleto OpenPose de 18 puntos y líneas blancas sobre negro.</p>
+      </div>
+      <div id="exOpt3d" hidden>
+        <div class="chips" id="ex3d"></div>
+      </div>
     </div>
-    <div class="preview"><img id="exImg" alt="Vista previa de la exportación"></div>
+    <div class="preview" id="exImgWrap"><img id="exImg" alt="Vista previa de la exportación"></div>
     <p class="msg" id="exMsg">Haz clic derecho sobre la imagen (o mantén pulsado en el móvil) y elige «Guardar imagen».</p>
     <div class="foot">
       <button class="btn" id="exClose">Cerrar</button>
