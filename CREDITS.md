@@ -28,6 +28,9 @@ Adaptadas para NEOPOSE (recortadas por el cuello, simplificadas, con pesos de ri
 
 Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+## Animaciones: Universal Animation Library de Quaternius (CC0 1.0)
+[Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) y [Universal Animation Library 2](https://quaternius.com/packs/universalanimationlibrary2.html) (versión Standard), de [Quaternius](https://quaternius.com): 84 animaciones de la galería. Pasadas al esqueleto de NEOPOSE con `tools/anims/build_ual.js` (solo se guardan las poses, no los modelos) en `app/anims/ual.txt`. Licencia: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/); el crédito es cortesía, no obligación.
+
 ## Pose desde una foto: TensorFlow.js y BlazePose (Apache 2.0)
 [TensorFlow.js](https://github.com/tensorflow/tfjs) 4.22 y `@tensorflow-models/pose-detection` 2.1.3, con los modelos BlazePose GHUM 3D de [MediaPipe](https://developers.google.com/mediapipe) (detector y landmark «full»), © Google LLC, licencia Apache 2.0. Se cargan solo al usar la función y la foto se analiza en el dispositivo. Copiados con `tools/pose/fetch.sh`; aviso en `app/vendor/pose/LICENSE.txt`.
 

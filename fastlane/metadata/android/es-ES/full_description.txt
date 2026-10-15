@@ -8,7 +8,7 @@
 <li><b>Ropa</b>: 469 prendas que se adaptan a cualquier cuerpo y pose.</li>
 <li><b>Escenarios</b>: 24 lugares con sus propias lámparas y sombras, 8 panoramas de 360° y objetos reales para colocar.</li>
 <li><b>Cámara</b>: objetivo, plano holandés, encuadres de uno, dos y tres puntos de fuga con guías, y vista de cuatro ventanas.</li>
-<li><b>Animación</b>: películas hechas de planos, cada uno con su reparto, escenario y movimientos de cámara; claves por personaje, papel cebolla y suavizado; un guion cuyas líneas mueven la boca y salen como subtítulos. Exporta cada fotograma en PNG, un guion gráfico, vídeo WebM o BVH.</li>
+<li><b>Animación</b>: películas hechas de planos, cada uno con su reparto, escenario y movimientos de cámara; claves por personaje, papel cebolla y suavizado; una galería de 96 movimientos listos (andar, correr, saltar, luchar, gestos…, con la Universal Animation Library de Quaternius, CC0) e importación de BVH, GLB y FBX; un guion cuyas líneas mueven la boca y salen como subtítulos. Exporta cada fotograma en PNG, un guion gráfico, vídeo WebM o BVH.</li>
 <li><b>Exportación</b>: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose, líneas), malla GLB posada y BVH.</li>
 <li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto. Práctica de gesto con temporizador, clases y cuerpos, ropa y escenarios al azar.</li>
 <li>En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>

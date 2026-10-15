@@ -299,6 +299,47 @@ const SUITES = {
     await page.context().close();
   },
   // phone layout: no horizontal scroll, the panel and the canvas are both reachable
+  // the animation gallery: the bundled library, a clip into a shot, saving a track, BVH round trip, use as pose
+  async clips(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    await page.click('#tlClips'); await page.waitForFunction(() => document.querySelectorAll('#agGrid .agItem').length > 20, null, {timeout: 60000});
+    const lib = await A(() => { const C = window.__cdp.clips.allClips(); return {n: C.length, ual: C.filter(c => c.src === 'ual').length, own: C.filter(c => c.src === 'neopose').length}; });
+    ok(lib.ual >= 80 && lib.own >= 10, `the gallery has NEOPOSE's clips and the Quaternius library (${lib.own} + ${lib.ual})`);
+    await page.waitForTimeout(1500);
+    ok(await A(() => document.querySelectorAll('#agGrid .agItem .th:not(.pending)').length > 6), 'cards get their silhouettes');
+    await page.fill('#agSearch', 'sword'); await page.waitForTimeout(300);
+    const found = await A(() => [...document.querySelectorAll('#agGrid .agItem')].map(b => b.title));
+    ok(found.length >= 5 && found.every(t => /sword/i.test(t)), `search filters by name (${found.length}: ${found.slice(0, 3).join(', ')}…)`);
+    await page.fill('#agSearch', ''); await A(() => { const C = window.__cdp.clips; C.AG.sel = C.allClips().find(c => c.id === 'ual1-Roll'); });
+    await page.click('#agAdd'); await page.waitForTimeout(500);
+    const ins = await A(() => { const S = window.__cdp.ANIM.shots[0], K = S.keys[0], a = K[0].pose.pos, b = K[K.length - 1].pose.pos; return {n: K.length, lin: K.slice(0, -1).every(k => k.lin), clip: K[0].clip, d: Math.hypot(b[0] - a[0], b[2] - a[2]), len: S.len, closed: document.querySelector('#animGallery').hidden}; });
+    ok(ins.closed && ins.n >= 17 && ins.lin && ins.clip, `the roll goes into the track as ${ins.n} straight keys named “${ins.clip}”`);
+    ok(ins.d > 3, `with its root motion: it travels ${ins.d.toFixed(1)} m`);
+    const mid = await A(() => { const C = window.__cdp; C.ANIM.f = 0; return C.mq.joints.kneeL.quaternion.angleTo(new THREE.Quaternion().fromArray(C.ANIM.shots[0].keys[0][8].pose.q.kneeL)) * 180 / Math.PI; });
+    ok(mid > 20, `the body really moves mid-roll (knee turns ${mid.toFixed(0)}° from the start)`);
+    // a track of yours, saved and played back; then the BVH export read back in
+    await A(() => window.__cdp.clips.openAnimGallery()); await page.waitForTimeout(500);
+    page.once('dialog', d => d.accept('Mi voltereta'));
+    await page.click('#agSaveTrack'); await page.waitForTimeout(800);
+    const mine = await A(() => { const C = window.__cdp.clips; return {n: C.CLIPS.mine.length, name: C.CLIPS.mine[0] && C.CLIPS.mine[0].name, cat: C.AG.cat, cards: document.querySelectorAll('#agGrid .agItem.mine').length}; });
+    ok(mine.n === 1 && mine.name === 'Mi voltereta' && mine.cat === 'mias' && mine.cards === 1, 'a track can be saved as an animation of your own');
+    const rt = await A(async () => {
+      const C = window.__cdp.clips, m = window.__cdp.mq, S = window.__cdp.ANIM.shots[0];
+      await C.importAnimFile(new File([window.__cdp.animBVH(m)], 'vuelta.bvh'));
+      const c = C.CLIPS.mine[0], err = [];
+      for (const f of [3, 8, 13]) { const k = S.keys[0].find(k => k.f === f), smp = C.sampleClip(c, f / window.__cdp.ANIM.fps); for (const j of ['shoulderL', 'elbowL', 'hipR', 'kneeR', 'head']) err.push(new THREE.Quaternion().fromArray(k.pose.q[j]).angleTo(new THREE.Quaternion().fromArray(smp.q[j])) * 180 / Math.PI); }
+      return {name: c.name, max: Math.max(...err)};
+    });
+    ok(rt.name === 'vuelta' && rt.max < 12, `a BVH file is carried onto the figure (our own export read back: worst joint ${rt.max.toFixed(1)}°)`);
+    await A(() => { const C = window.__cdp.clips; C.AG.sel = C.allClips().find(c => c.id === 'ual2-Idle_FoldArms_Loop'); C.AG.t = 1; });
+    await page.click('#agPose'); await page.waitForTimeout(300);
+    const arms = await A(() => { const m = window.__cdp.mq, w = m.joints.wristL.getWorldPosition(new THREE.Vector3()), c = m.joints.chest.getWorldPosition(new THREE.Vector3()); return w.distanceTo(c); });
+    ok(arms < .35, `“use as pose” folds the arms (left wrist ${arms.toFixed(2)} m from the chest)`);
+    await page.screenshot({path: path.join(OUT, 'clips.png')});
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

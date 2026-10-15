@@ -537,3 +537,57 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 .exprog i{display:block;height:100%;width:0;background:var(--ink);transition:width .15s}
 #exOptAnim{display:flex;flex-direction:column;gap:6px}
 #exOptAnim[hidden],#exAnimStepRow[hidden],#exSubsRow[hidden]{display:none}
+
+/* ---------- animation gallery ---------- */
+.tlrow .tlclips{height:32px;padding:0 10px;flex:none;border-color:var(--blue);color:var(--blue)}
+.tlrow .tlclips:hover{background:var(--blue-wash)}
+.tlrow .tlclips svg{width:18px;height:18px}
+.agsheet{width:min(1040px,100%);display:flex;flex-direction:column;max-height:calc(100% - 20px);overflow:hidden;padding-bottom:14px}
+.aghead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.aghead .btn.icon{flex:none}
+.agbody{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;min-height:0;flex:1;margin-top:8px}
+.agleft{display:flex;flex-direction:column;min-height:0}
+.agcats{margin:2px 0 8px}
+.aggrid{overflow:auto;min-height:0;flex:1;align-content:start;grid-auto-rows:max-content;padding:2px 2px 8px;grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.aggrid .pose .agmeta{font-size:10.5px;font-weight:500;color:var(--ink-soft)}
+.aggrid .pose.mine{border-style:dashed}
+.aggrid .empty{grid-column:1/-1}
+.agdetail{display:flex;flex-direction:column;gap:4px;min-height:0;overflow:auto;border-left:1.5px solid var(--line);padding-left:18px}
+#agView{width:100%;aspect-ratio:4/5;max-height:340px;border-radius:6px;background:var(--blue-wash);display:block;flex:none}
+.agdetail h3{margin:8px 0 0;font-size:17px;line-height:1.2}
+.agdetail .note{margin:0 0 6px}
+.agdetail .filter{flex-wrap:wrap}
+.agacts{display:flex;gap:8px;margin-top:6px}
+.agacts .primary{flex:1;justify-content:center}
+.agfoot{align-items:center;border-top:1.5px solid var(--line);padding-top:12px;margin-top:6px}
+.agfoot .note{flex:1 1 280px;margin:0;font-size:11.5px}
+@media (max-width:760px){
+  .modal#animGallery{padding:0}
+  .agsheet{padding:12px 12px 8px;width:100%;height:100%;max-height:100%;border-radius:0;border:0}
+  .aghead h2{font-size:22px}
+  .agbody{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+  .agleft{flex:1;min-height:0}
+  .agleft .search{margin-bottom:6px}
+  .agcats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px 6px;padding:0 12px}
+  .agcats::-webkit-scrollbar{display:none}
+  .agcats .chip{flex:none}
+  .aggrid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+  .aggrid .pose span{font-size:11px}
+  .agdetail{flex:none;border-left:0;border-top:1.5px solid var(--line);padding:8px 0 0;display:grid;grid-template-columns:92px minmax(0,1fr) minmax(0,1fr);column-gap:10px;row-gap:0;align-items:start;overflow:visible}
+  #agView{grid-row:1 / span 4;grid-column:1;max-height:none;aspect-ratio:3/4}
+  .agdetail h3{grid-column:2 / -1;margin:0;font-size:14.5px}
+  #agSrc{grid-column:2 / -1;font-size:11px;margin:0 0 2px}
+  .agdetail .filter{grid-column:2 / -1;margin:0 0 2px}
+  #agLoopsBox{grid-column:2}
+  #agSpeedBox{grid-column:3}
+  .agdetail .check{grid-column:1 / -1;margin:4px 0 0;font-size:12.5px}
+  #agWhen{display:none}
+  .agdetail .agacts{grid-column:1 / -1;margin-top:6px}
+  .agfoot{margin-top:6px;padding-top:6px;gap:6px}
+  .agfoot .note{display:none}
+  .agfoot .btn{flex:1;justify-content:center;font-size:12px;padding:6px 8px}
+  .tlrow .tlclips{padding:0 8px}
+  .tlrow .tlclips span{display:none}
+}
+#agMsg:empty{display:none}
+.libclips{width:100%;justify-content:center;margin-top:10px}

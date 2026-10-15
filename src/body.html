@@ -78,6 +78,7 @@
             <span class="mvtotal" id="mvTotal"></span>
             <button class="btn icon tlrec" id="tlCamRec" aria-pressed="false" title="Grabar la cámara: cada encuadre se guarda como clave" aria-label="Grabar la cámara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3z"/></svg><i></i></button>
             <button class="btn icon" id="tlLine" title="Añadir una línea de diálogo" aria-label="Añadir una línea de diálogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v10H9l-5 4z"/><path d="M12 8v4M10 10h4"/></svg></button>
+            <button class="btn tlclips" id="tlClips" title="Galería de animaciones: andar, correr, saltar, luchar… o importa las tuyas" aria-label="Galería de animaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg><span>Animaciones</span></button>
             <button class="btn icon" id="tlExport" title="Exportar la animación" aria-label="Exportar la animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
             <button class="btn icon" id="tlMore" aria-expanded="false" title="Opciones de animación" aria-label="Opciones de animación"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
             <button class="btn icon" id="tlMin" aria-expanded="true" title="Plegar o desplegar" aria-label="Plegar o desplegar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -195,6 +196,7 @@
             <div class="chips" id="catChips" style="margin-bottom:8px"></div>
             <div class="blendbar" id="blendBar" hidden></div>
             <div class="pose-grid" id="poseGrid"></div>
+            <button class="btn small libclips" id="libClips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg>Más posturas en la galería de animaciones</button>
             <p class="note">Las poses de una persona se aplican al personaje activo; las de grupo colocan a todo el reparto. Izquierda y derecha son siempre las del personaje.</p>
           </details>
         </section>
@@ -230,6 +232,8 @@
           <details class="sec" data-sec="avatar">
             <summary><h3>Avatar importado <span>VRM · GLB · FBX</span></h3></summary>
             <p class="note" id="avInfo"></p>
+            <div id="avScaleBox" hidden></div>
+            <button class="btn small avanims" id="avAnims" hidden></button>
             <div class="row">
               <button class="btn small" id="avBrowse">Galería de avatares libres</button>
               <button class="btn small" id="avImport">Importar archivo…</button>
@@ -547,6 +551,7 @@
         <li><b>Modo FK</b> (botón arriba a la derecha o tecla <kbd>I</kbd>): arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene.</li>
         <li>Toca cualquier pieza del cuerpo para girarla con el aro o con los deslizadores.</li>
         <li>Toca la mandíbula o una oreja de un anthro para moverlas a mano.</li>
+        <li><b>Animaciones</b> (Animar → Animaciones): andar, correr, saltar, luchar, gestos… listas para añadir a un plano o usar como pose. También importa BVH, GLB o FBX con animaciones, o guarda la pista de un personaje.</li>
         <li><b>Avatares</b> (Cuerpo → Avatar importado): suelta un VRM, GLB o FBX humanoide sobre el lienzo, o elige uno libre de la galería. Se posa igual que el maniquí.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">
@@ -595,6 +600,43 @@
   </div>
 </div>
 
+<div class="modal" id="animGallery" hidden>
+  <div class="sheet agsheet" role="dialog" aria-labelledby="agT">
+    <div class="aghead">
+      <h2 id="agT">Galería de animaciones <span id="agCount" class="note"></span></h2>
+      <button class="btn icon" id="agClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="agbody">
+      <div class="agleft">
+        <input class="search" id="agSearch" type="search" placeholder="Buscar: andar, saltar, espada…" aria-label="Buscar animaciones">
+        <div class="chips agcats" id="agCats"></div>
+        <div class="pose-grid aggrid" id="agGrid"></div>
+      </div>
+      <div class="agdetail" id="agDetail">
+        <canvas id="agView" aria-label="Vista previa de la animación"></canvas>
+        <h3 id="agName"></h3>
+        <p class="note" id="agSrc"></p>
+        <div class="filter"><span>Para</span><div class="chips" id="agWho"></div></div>
+        <div id="agLoopsBox"></div>
+        <div id="agSpeedBox"></div>
+        <label class="check"><input type="checkbox" id="agInPlace"> En el sitio (sin desplazarse)</label>
+        <p class="note" id="agWhen"></p>
+        <div class="agacts">
+          <button class="btn primary" id="agAdd">Añadir al plano</button>
+          <button class="btn" id="agPose" title="Pone en el personaje la postura que se ve ahora en la vista previa">Usar como pose</button>
+          <button class="btn" id="agDel" hidden>Borrar</button>
+        </div>
+      </div>
+    </div>
+    <p class="msg" id="agMsg" role="status"></p>
+    <div class="foot agfoot">
+      <p class="note">Incluye la <a href="https://quaternius.com" target="_blank" rel="noopener">Universal Animation Library</a> de Quaternius (CC0). Importa BVH, GLB, glTF o FBX con esqueleto humano (Mixamo, Rokoko, CMU, Blender…).</p>
+      <button class="btn" id="agSaveTrack" title="Guarda las claves del personaje activo en este plano como animación reutilizable">Guardar pista como animación</button>
+      <button class="btn" id="agImport">Importar archivo…</button>
+      <input type="file" id="agFile" accept=".bvh,.glb,.gltf,.fbx" hidden>
+    </div>
+  </div>
+</div>
 <div class="modal" id="avGallery" hidden>
   <div class="sheet avsheet" role="dialog" aria-labelledby="avT">
     <h2 id="avT">Avatares libres <span id="avCount" class="note"></span></h2>

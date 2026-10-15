@@ -700,12 +700,13 @@ class Mannequin {
   getPose() {
     const q = {};
     for (const n of JOINTS) q[n] = this.joints[n].quaternion.toArray().map(v => +v.toFixed(5));
-    return {q, pos: this.joints.hips.position.toArray().map(v => +v.toFixed(4)), hands: JSON.parse(JSON.stringify(this.hands)), stool: this.stool};
+    const pos = this.joints.hips.position.toArray(); pos[1] /= this.joints.hips.scale.y;  // an avatar's size is not part of the pose
+    return {q, pos: pos.map(v => +v.toFixed(4)), hands: JSON.parse(JSON.stringify(this.hands)), stool: this.stool};
   }
   setPose(p) {
     this._visJaw = 0;
     for (const n of JOINTS) { const j = this.joints[n]; j.rotation.order = 'XYZ'; if (p.q && p.q[n]) j.quaternion.fromArray(p.q[n]); else if (p.q) j.quaternion.identity(); }
-    if (p.pos) this.joints.hips.position.fromArray(p.pos);
+    if (p.pos) { this.joints.hips.position.fromArray(p.pos); this.joints.hips.position.y *= this.joints.hips.scale.y; }
     if (p.hands) this.hands = JSON.parse(JSON.stringify(p.hands));
     if ('stool' in p) this.stool = !!p.stool;
     this.applyHands();

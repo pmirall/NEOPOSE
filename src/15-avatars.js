@@ -23,7 +23,18 @@ for (const s of ['left', 'right']) for (const f of AV_FINGERS) {
 function guessHumanoid(root) {
   const bones = []; root.traverse(o => { if (o.isBone || (o.type === 'Object3D' && o.children.length && /hip|spine|arm|leg|head/i.test(o.name))) bones.push(o); });
   const norm = n => n.toLowerCase().replace(/^.*[:|]/, '').replace(/mixamorig\d*_?/, '').replace(/^j_bip_[clr]_?/, m => m.slice(6)).replace(/^(bip0?1|def|org|b|c)[ _.-]/, '').replace(/[ _.-]/g, '');
-  const side = n => { const r = n.toLowerCase(); if (/(^|[ _.:-])(l|left)([ _.-]|$)|left|^j_bip_l|\.l$|_l$/.test(r)) return 'left'; if (/(^|[ _.:-])(r|right)([ _.-]|$)|right|^j_bip_r|\.r$|_r$/.test(r)) return 'right'; return ''; };
+  const side = n => { if (/[a-z0-9]L$/.test(n)) return 'left'; if (/[a-z0-9]R$/.test(n)) return 'right'; const r = n.toLowerCase(); if (/(^|[ _.:-])(l|left)([ _.-]|$)|left|^j_bip_l|\.l$|_l$/.test(r)) return 'left'; if (/(^|[ _.:-])(r|right)([ _.-]|$)|right|^j_bip_r|\.r$|_r$/.test(r)) return 'right'; return ''; };
+  // NEOPOSE's own skeleton (our BVH and GLB exports)
+  const own = Object.fromEntries(bones.map(b => [b.name, b]));
+  if (own.elbowL && own.kneeL && own.hipL && own.shoulderL) {
+    const out = {hips: own.hips, spine: own.waist, chest: own.chest, neck: own.neck, head: own.head};
+    for (const [s, S] of [['L', 'left'], ['R', 'right']]) {
+      Object.assign(out, {[S + 'UpperArm']: own['shoulder' + s], [S + 'LowerArm']: own['elbow' + s], [S + 'Hand']: own['wrist' + s], [S + 'UpperLeg']: own['hip' + s], [S + 'LowerLeg']: own['knee' + s], [S + 'Foot']: own['ankle' + s]});
+      ['Thumb', 'Index', 'Middle', 'Ring', 'Little'].forEach((F, f) => (F === 'Thumb' ? ['Metacarpal', 'Proximal', 'Distal'] : ['Proximal', 'Intermediate', 'Distal']).forEach((g, k) => { const b = own[`f${s}${f}${k}`]; if (b) out[S + F + g] = b; }));
+    }
+    for (const k of Object.keys(out)) if (!out[k]) delete out[k];
+    return out;
+  }
   const mixamo = bones.some(b => /upleg/i.test(b.name));
   const out = {}, put = (k, b) => { if (!out[k]) out[k] = b; };
   for (const b of bones) {
@@ -46,9 +57,9 @@ function guessHumanoid(root) {
     else if (/^(upleg|upperleg|thigh|leg)$/.test(k)) m = (k === 'leg' && mixamo) ? 'LowerLeg' : 'UpperLeg';
     else if (/^(lowerleg|calf|shin|knee)$/.test(k)) m = 'LowerLeg';
     else if (/^(foot|ankle)$/.test(k)) m = 'Foot';
-    else if (/^(toebase|toes?|toe0?)$/.test(k)) m = 'Toes';
+    else if (/^(toebase|toes?|toe0?|ball)$/.test(k)) m = 'Toes';
     else {
-      const f = /(thumb|index|middle|ring|pinky|little)(\d)/.exec(k.replace(/proximal/, '1').replace(/intermediate/, '2').replace(/distal/, '3'));
+      const f = /(thumb|index|middle|ring|pinky|little)(\d+)/.exec(k.replace(/proximal/, '1').replace(/intermediate/, '2').replace(/distal/, '3'));
       if (f) { const nm = {thumb: 'Thumb', index: 'Index', middle: 'Middle', ring: 'Ring', pinky: 'Little', little: 'Little'}[f[1]]; const seg = nm === 'Thumb' ? ['Metacarpal', 'Proximal', 'Distal'] : ['Proximal', 'Intermediate', 'Distal']; const j = +f[2] - (/0$/.test(f[2]) ? 0 : 1); if (seg[j]) put(S + nm + seg[j], b); }
     }
     if (m) put(S + m, b);
@@ -73,7 +84,7 @@ async function parseAvatar(buf, name) {
   const lower = (name || '').toLowerCase(), isGLB = new DataView(buf).getUint32(0, true) === 0x46546C67;
   if (/\.fbx$/.test(lower) || (!isGLB && /FBX|Kaydara/.test(new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(64, buf.byteLength)))))) {
     const obj = new THREE.FBXLoader().parse(buf, '');
-    return {scene: obj, map: guessHumanoid(obj), vrm0: false, meta: {}};
+    return {scene: obj, map: guessHumanoid(obj), vrm0: false, meta: {}, animations: obj.animations || []};
   }
   const gl = await new Promise((res, rej) => avLoaderGLTF.parse(glbStripRequired(buf), '', res, rej));
   const j = gl.parser.json, ext = j.extensions || {}, map = {};
@@ -86,7 +97,7 @@ async function parseAvatar(buf, name) {
     for (const [k, v] of Object.entries(ext.VRMC_vrm.humanoid.humanBones || {})) map[k] = await gl.parser.getDependency('node', v.node);
   }
   const m = Object.keys(map).length ? map : guessHumanoid(gl.scene);
-  return {scene: gl.scene, map: m, vrm0, meta};
+  return {scene: gl.scene, map: m, vrm0, meta, animations: gl.animations || []};
 }
 // sketch-friendly materials (same lighting and pencil styles as the scenery) and ink outlines
 function avatarMaterials(root) {
@@ -123,7 +134,7 @@ function attachAvatar(m, parsed, info) {
   if (!map.hips || !map.leftUpperArm || !map.leftUpperLeg) { scene.remove(root); throw new Error('no humanoid'); }
   // scale: hip height of the avatar = hip height of the mannequin
   const bb = new THREE.Box3().setFromObject(inner), hipY = map.hips.getWorldPosition(new V3()).y - bb.min.y;
-  const s = (m.rootY || .95) / Math.max(hipY, 1e-3); root.scale.setScalar(s); root.updateMatrixWorld(true);
+  const s = (m.rootY || .95) / Math.max(hipY, 1e-3), k = m.body.avatarScale || 1; root.scale.setScalar(s); root.updateMatrixWorld(true);
   const wp = b => b.getWorldPosition(new V3()), J = m.J, jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
   const ours = [];
   for (const [j, vb] of Object.entries(AV_JOINTS)) ours.push([j, vb]);
@@ -149,7 +160,9 @@ function attachAvatar(m, parsed, info) {
   const depth = o => { let d = 0; while (o.parent) { d++; o = o.parent; } return d; };
   links.sort((a, c) => depth(a.b) - depth(c.b));
   const meshes = []; inner.traverse(o => { if (o.isMesh && !o.userData.isHull) { meshes.push(o); o.userData.avatarOf = m; } });
-  m.avatar = {root, inner, links, hips: map.hips, meshes, info, scale: s};
+  m.avatar = {root, inner, links, hips: map.hips, meshes, info, scale: s, k};
+  root.scale.setScalar(s * k); root.updateMatrixWorld(true);
+  scaleRig(m, k);
   m.body.avatar = info;
   retargetAvatar(m);
 }
@@ -157,7 +170,7 @@ function detachAvatar(m) {
   if (!m.avatar) return;
   scene.remove(m.avatar.root);
   m.avatar.root.traverse(o => { if (o.isMesh && !o.userData.isHull) { o.geometry.dispose(); } });
-  m.avatar = null;
+  m.avatar = null; scaleRig(m, 1);
   m.group.traverse(o => { if (o.isMesh && o.userData.avHidden) { o.visible = true; o.userData.avHidden = false; } });
 }
 const _avQ = new Q(), _avP = new Q(), _avV = new V3(), _avH = new V3();
@@ -198,6 +211,8 @@ async function loadAvatarFor(m, info, buf) {
     if (!buf) { const r = await fetch(info.url); if (!r.ok) throw new Error(r.status); buf = await r.arrayBuffer(); }
     const parsed = await parseAvatar(buf, info.file || info.name);
     attachAvatar(m, parsed, info);
+    // a model that brings its own animations (Mixamo and the like): they can go to the animation gallery
+    m.avatar.anims = parsed.animations.filter(a => a.duration >= .05).length ? {buf, file: info.file || info.name + '.glb', n: parsed.animations.filter(a => a.duration >= .05).length} : null;
     toast(tr('Avatar «{x}» listo. Se posa con los mismos controles.', {x: info.name}));
     renderAvatarUI();
   } catch (e) {
@@ -256,15 +271,28 @@ function renderAvatarGallery() {
     grid.appendChild(b);
   }
 }
+// each model comes at its own size: hip heights are matched, and this lets the user correct it
+let avScaleEl = null;
+// the avatar's own size: the hidden mannequin grows with it from the pelvis down, so the handles stay on the avatar's
+// hands and feet (poses keep the pelvis height in mannequin units: see getPose)
+function scaleRig(m, k) { const h = m.joints.hips, o = h.scale.x; if (o === k) return; h.position.y *= k / o; h.scale.setScalar(k); m.group.updateMatrixWorld(true); }
+function setAvatarScale(m, v) { m.body.avatarScale = v; if (m.avatar) { m.avatar.k = v; m.avatar.root.scale.setScalar(m.avatar.scale * v); scaleRig(m, v); m.avatar.root.updateMatrixWorld(true); retargetAvatar(m); } }
 function renderAvatarUI() {
   const box = $('#avInfo'); if (!box) return;
   const a = mq.body.avatar;
-  $('#avRemove').hidden = !a;
+  $('#avRemove').hidden = !a; $('#avScaleBox').hidden = !a;
+  const an = a && mq.avatar && mq.avatar.anims; $('#avAnims').hidden = !an;
+  if (an) $('#avAnims').textContent = tr('Añadir sus {n} animaciones a la galería', {n: an.n});
+  if (a && avScaleEl) avScaleEl.set(mq.body.avatarScale || 1);
   box.textContent = a ? tr('Avatar: «{x}»', {x: a.name}) + (a.project ? ' · ' + a.project : '') + ' · ' + tr(a.license || '') + tr('. La ropa, la especie y los deslizadores del cuerpo solo cambian el maniquí.') :
     tr('Usa tu propio modelo humanoide (VRM de VRoid o VRChat, GLB, FBX de Mixamo…) o elige uno libre de la galería. Se posa con los mismos controles.');
 }
 function initAvatars() {
+  avScaleEl = slider($('#avScaleBox'), {id: 'avScale', label: 'Escala del avatar', min: .3, max: 3, step: .01, value: 1, fmt: v => Math.round(v * 100) + ' %',
+    input: v => setAvatarScale(mq, v), change: pushHistory});
+  avScaleEl.inp.ondblclick = () => { setAvatarScale(mq, 1); avScaleEl.set(1); pushHistory(); };
   $('#avImport').onclick = () => $('#avFile').click();
+  $('#avAnims').onclick = () => { const an = mq.avatar && mq.avatar.anims; if (an) openAnimGallery().then(() => importAnimFile(new File([an.buf], an.file))); };
   $('#avFile').onchange = e => { importAvatarFile(e.target.files[0]); e.target.value = ''; };
   $('#avBrowse').onclick = openAvatarGallery;
   $('#avClose').onclick = () => { $('#avGallery').hidden = true; };

@@ -19,6 +19,7 @@ function restore(s) {
     const m = chars[i], body = {...BODY_BASE, ...c.body};
     if (JSON.stringify(body) !== JSON.stringify(m.body)) m.build(body);
     m.bodyPreset = c.preset ?? null; m.setPose(c.pose);
+    if (m.avatar && (m.body.avatarScale || 1) !== m.avatar.k) setAvatarScale(m, m.body.avatarScale || 1);
     if (c.outfit && JSON.stringify(c.outfit) !== JSON.stringify(m.outfit)) setOutfit(m, c.outfit);
     else if (!c.outfit && m.outfit.length) setOutfit(m, []);
   });

@@ -34,7 +34,7 @@ function around(K, f) {
   if (!K.length) return null;
   if (f <= K[0].f) return [K[0], K[0], 0]; if (f >= K[K.length - 1].f) return [K[K.length - 1], K[K.length - 1], 0];
   let i = 0; while (K[i + 1].f < f) i++;
-  return [K[i], K[i + 1], ease((f - K[i].f) / (K[i + 1].f - K[i].f))];
+  const t = (f - K[i].f) / (K[i + 1].f - K[i].f); return [K[i], K[i + 1], K[i].lin ? t : ease(t)];  // keys from a gallery clip: straight on, frame to frame
 }
 function poseAt(ci, f) { const s = shot(), r = s && s.keys[ci] && around(s.keys[ci], f); return r ? (r[2] ? mixPose(r[0].pose, r[1].pose, r[2]) : r[0].pose) : null; }
 function camAt(f) {
@@ -347,7 +347,19 @@ function drawTimeline() {
     } else {
       const K = ln === 'cam' ? s.cam : (s.keys[ln] || []), col = ln === 'cam' ? ink : MV_COLS[ln % 4];
       if (K.length > 1) { c.strokeStyle = col; c.globalAlpha = .35; c.lineWidth = 2; c.beginPath(); c.moveTo(trackX(K[0].f), y); c.lineTo(trackX(K[K.length - 1].f), y); c.stroke(); c.globalAlpha = 1; }
-      for (const k of K) diamond(trackX(k.f), y, 6, col, ANIM.sel && ANIM.sel.track === ln && ANIM.sel.f === k.f);
+      // a run of keys from a gallery clip reads as one block with its name; its own keys only at the ends
+      const isSel = k => ANIM.sel && ANIM.sel.track === ln && ANIM.sel.f === k.f;
+      for (let a = 0; a < K.length; a++) {
+        if (!K[a].lin) { diamond(trackX(K[a].f), y, 6, col, isSel(K[a])); continue; }
+        let b = a; while (b < K.length - 1 && K[b].lin) b++;
+        const x0 = trackX(K[a].f), x1 = trackX(K[b].f), hh = LANE() - 10;
+        c.fillStyle = col; c.globalAlpha = .28; c.beginPath(); c.roundRect ? c.roundRect(x0, y - hh / 2, x1 - x0, hh, 4) : c.rect(x0, y - hh / 2, x1 - x0, hh); c.fill(); c.globalAlpha = 1;
+        const name = K.slice(a, b + 1).find(k => k.clip);
+        if (name && x1 - x0 > 40) { c.save(); c.beginPath(); c.rect(x0 + 8, y - hh / 2, x1 - x0 - 16, hh); c.clip(); c.fillStyle = ink; c.textAlign = 'left'; c.font = `600 10px ${css('--f-body')}`; c.fillText(name.clip, x0 + 10, y + 3.5); c.restore(); }
+        diamond(x0, y, 5, col, isSel(K[a])); diamond(x1, y, 5, col, isSel(K[b]));
+        for (let k = a + 1; k < b; k++) if (isSel(K[k])) diamond(trackX(K[k].f), y, 5, col, true);
+        a = b;
+      }
       if (ln === 'cam' && ANIM.camRec) { c.fillStyle = css('--red'); c.beginPath(); c.arc(w - 10, y, 3.5, 0, Math.PI * 2); c.fill(); }
     }
   });
