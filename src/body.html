@@ -42,6 +42,12 @@
           <div class="row"><button class="btn small hideFigBtn">Ocultar figura</button><button class="btn small" id="skDim">Atenuar escena</button><button class="btn small primary" id="skClose">Cerrar</button></div>
         </div>
         <div class="cast" id="cast" aria-label="Personajes"></div>
+        <div class="modebar" role="group" aria-label="Modo de posado">
+          <div class="chips seg" id="ikMode">
+            <button class="chip" data-v="ik" aria-pressed="true" title="Arrastrar manos y pies mueve todo el brazo o la pierna (I)">IK</button>
+            <button class="chip" data-v="fk" aria-pressed="false" title="Arrastrar una articulación solo gira el hueso que la sostiene (I)">FK</button>
+          </div>
+        </div>
         <div class="joint-card" id="jointCard" hidden>
           <h4><span id="jointName">Codo</span><button id="jointClose" aria-label="Quitar selección">×</button></h4>
           <div id="jointSliders"></div>
@@ -114,6 +120,7 @@
             <summary><h3>Ayudas de posado</h3></summary>
             <div class="row"><button class="btn small" id="ghostBtn">Fijar fantasma</button><button class="btn small" id="ghostClr">Quitar fantasma</button></div>
             <p class="note">El fantasma deja una copia translúcida de la pose actual para compararla con la nueva.</p>
+            <label class="check"><input type="checkbox" id="dotsChk" checked> Mostrar las articulaciones</label>
             <label class="check"><input type="checkbox" id="pinFeet" checked> Fijar los pies al mover la pelvis</label>
             <label class="check"><input type="checkbox" id="stoolChk"> Taburete bajo la pelvis</label>
           </details>
@@ -137,14 +144,9 @@
             <summary><h3>Especie</h3></summary>
             <div class="chips" id="speciesChips"></div>
             <div id="headStyle" hidden>
-              <p class="lbl">Estilo de cabeza</p>
-              <div class="chips" id="headStyleChips"></div>
-              <div id="kemoBox"></div>
-              <p class="note">Nivel kemo (獣度): 1 es cara humana con orejas animales (kemonomimi); de 2 a 5 el hocico crece hasta el del animal.</p>
-              <details class="more"><summary>Modelo de cabeza</summary>
-                <div class="chips" id="headModelChips"></div>
-                <p class="note" id="headCredit"></p>
-              </details>
+              <div><p class="lbl">Cabeza</p>
+                <div class="chips" id="headModelChips"></div></div>
+              <p class="note" id="headCredit"></p>
             </div>
           </details>
           <details class="sec" data-sec="prop">
@@ -348,13 +350,15 @@
     <h2 id="hlT">Cómo se usa</h2>
     <div class="help">
       <section><h4>Posar</h4><ul>
-        <li>Arrastra los puntos <b class="r">●</b> para llevar manos y pies; el <b class="b">●</b> mueve todo el cuerpo.</li>
+        <li><b>Modo IK</b>: arrastra los puntos <b class="r">●</b> para llevar manos y pies; el <b class="b">●</b> mueve todo el cuerpo.</li>
+        <li><b>Modo FK</b> (botón arriba a la derecha o tecla <kbd>I</kbd>): arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene.</li>
         <li>Toca cualquier pieza del cuerpo para girarla con el aro o con los deslizadores.</li>
         <li>Toca la mandíbula o una oreja de un anthro para moverlas a mano.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">
         <dt><kbd>Ctrl</kbd> <kbd>Z</kbd> / <kbd>Ctrl</kbd> <kbd>Y</kbd></dt><dd>Deshacer / rehacer</dd>
         <dt><kbd>1</kbd> … <kbd>6</kbd></dt><dd>Cambiar de pestaña</dd>
+        <dt><kbd>I</kbd></dt><dd>Cambiar entre IK y FK</dd>
         <dt><kbd>\</kbd></dt><dd>Ocultar o mostrar el panel</dd>
         <dt><kbd>Supr</kbd></dt><dd>Borrar el objeto o luz seleccionada</dd>
         <dt><kbd>Esc</kbd></dt><dd>Quitar selección · salir de la práctica</dd>

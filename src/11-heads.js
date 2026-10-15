@@ -7,12 +7,11 @@ const HEADS = {cache: new Map()};
 const HEAD_STYLE_SCALE = {real: 1.04, toon: 1.05, kemono: 1.04}; // kemono and toony skulls are already enlarged by effBody
 const SNOUT_BY_LEVEL = [0, .45, .6, .75, .88, 1];
 function headModelFor(b) {
-  if (!b || b.species === 'humano' || b.headModel === 'mh') return null;
-  if ((b.kemo ?? 5) <= 1) return null; // kemonomimi: human face with animal ears (targets)
-  if (b.headModel && HEAD_CATALOG[b.headModel] && HEAD_CATALOG[b.headModel].species.includes(b.species)) return b.headModel;
-  const style = b.headStyle || 'real', list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(b.species));
-  const hit = list.find(([, c]) => c.style === style) || (style === 'real' ? null : null);
-  return hit ? hit[0] : null;
+  // only sculpted (downloaded) heads: the species' own sculpt first, or the one chosen in the panel
+  if (!b || b.species === 'humano') return null;
+  const list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(b.species));
+  if (b.headModel && list.some(([k]) => k === b.headModel)) return b.headModel;
+  return list.length ? list[0][0] : null;
 }
 function loadHeadModel(id) {
   if (HEADS.cache.has(id)) return HEADS.cache.get(id);

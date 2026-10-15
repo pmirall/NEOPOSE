@@ -14,7 +14,7 @@ const SCENES = {
       const g = new THREE.BufferGeometry(), pos = [], idx = [], uvs = [];
       pts.forEach(([z, y], i) => { for (const sx of [-1, 1]) { pos.push(sx * W / 2, y + .002, z); uvs.push(sx < 0 ? 0 : 1, i / pts.length); } if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } });
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
-      const sw = new THREE.Mesh(g, patchEnv(new THREE.MeshStandardMaterial({color: 0xf0ece4, roughness: 1, side: THREE.DoubleSide}))); sw.receiveShadow = true; sw.userData.noOutline = true; e.add(sw);
+      const sw = new THREE.Mesh(g, patchEnv(new THREE.MeshStandardMaterial({color: 0xf0ece4, roughness: 1, side: THREE.DoubleSide}))); sw.receiveShadow = true; sw.userData.noOutline = true; sw.userData.noOcclude = true; e.add(sw);
       cyl(e, EM.black, .05, W + .6, 0, Hc + .05, zb, 12).rotation.z = Math.PI / 2;
       // light stands: key softbox, fill umbrella, hair light
       const stand = (x, z, h, ry, head) => place(e, p => {

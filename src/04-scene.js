@@ -292,6 +292,17 @@ for (const id of ['handL', 'handR', 'footL', 'footR', 'hips']) {
   const m = new THREE.Mesh(handleGeo, new THREE.MeshBasicMaterial({color: 0xb0432c, depthTest: false, transparent: true, opacity: .9}));
   m.renderOrder = 999; m.userData.id = id; scene.add(m); handles[id] = m;
 }
+// joint dots: an ink ring around a paper centre, drawn on top so every joint reads clearly
+const jointDots = {}, dotGeo = new THREE.SphereGeometry(1, 14, 10);
+const DOT_INK = new THREE.MeshBasicMaterial({color: 0x2a2620, depthTest: false, transparent: true, opacity: .85});
+const DOT_FILL = new THREE.MeshBasicMaterial({color: 0xf2ede1, depthTest: false, transparent: true});
+const DOT_SEL = new THREE.MeshBasicMaterial({color: 0x2b5a9e, depthTest: false, transparent: true});
+for (const n of DOT_JOINTS) {
+  const ring = new THREE.Mesh(dotGeo, DOT_INK), fill = new THREE.Mesh(dotGeo, DOT_FILL);
+  ring.renderOrder = 997; fill.renderOrder = 998; fill.scale.setScalar(.62); ring.add(fill);
+  ring.userData.joint = n; fill.userData.joint = n; fill.raycast = () => {};
+  scene.add(ring); jointDots[n] = ring;
+}
 const grid = new THREE.GridHelper(12, 24, 0x6d6555, 0xb9ad94);
 grid.material.transparent = true; grid.material.opacity = .45; grid.position.y = .003; scene.add(grid);
 const skyMat = new THREE.MeshBasicMaterial({vertexColors: true, side: THREE.BackSide, fog: false});

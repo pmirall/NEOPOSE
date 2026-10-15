@@ -65,7 +65,7 @@ function tbox(p, mat, w, h, d, x, y, z, tile = 2, ry = 0) {
 function tplane(p, mat, w, d, x = 0, y = 0, z = 0, tile = 2) {
   const g = new THREE.PlaneGeometry(w, d), uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / tile, uv.getY(i) * d / tile);
-  const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; m.userData.noOutline = true; p.add(m); return m;
+  const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; m.userData.noOutline = true; m.userData.ground = true; p.add(m); return m;
 }
 // place a model: centred on x/z, resting on y; `node` keeps only matching child nodes (kits ship several variants)
 function A(p, id, x, z, ry = 0, o = {}) {
@@ -201,3 +201,47 @@ const ASSET_PROPS = {
   r_busto: ['Busto', 'marble_bust_01'], r_tele: ['Televisor', 'Television_01'], r_caballete: ['Pizarra', 'standing_chalkboard_01'], r_bidon: ['Bidón', 'Barrel_01'],
   r_hacha: ['Hacha', 'wooden_axe'], r_cubo: ['Cubo de madera', 'wooden_bucket_01'], r_neumatico: ['Neumático', 'old_tyre']
 };
+
+/* ---------- the scenery never hides the cast ----------
+   Each frame, rays go from the camera to several joints of every character; any piece of scenery crossed by
+   one (or with the camera inside it) is hidden until the view is clear again: the cutaway used by The Sims and
+   third-person games. Pieces the character stands in or sits on (their box contains that joint) don't count. */
+let OCC = [];
+function occBox(o) {
+  const b = new THREE.Box3(), t = new THREE.Box3(), m4 = new THREE.Matrix4();
+  o.updateMatrixWorld(true);
+  o.traverse(c => {
+    if (!c.isMesh || c.userData.isHull) return;
+    if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+    if (c.isInstancedMesh) for (let i = 0; i < c.count; i++) { c.getMatrixAt(i, m4); t.copy(c.geometry.boundingBox).applyMatrix4(m4).applyMatrix4(c.matrixWorld); b.union(t); }
+    else { t.copy(c.geometry.boundingBox).applyMatrix4(c.matrixWorld); b.union(t); }
+  });
+  return b;
+}
+function collectOccluders() {
+  for (const c of OCC) c.o.visible = true;
+  OCC = [];
+  if (!envGroup) return;
+  for (const o of envGroup.children) {
+    if (o.isLight || o.userData.ground || o.userData.noOcclude) continue;
+    const b = occBox(o); if (b.isEmpty() || b.max.y < .12) continue;
+    OCC.push({o, b, hidden: false});
+  }
+}
+const _occRay = new THREE.Ray(), _occHit = new V3(), OCC_JOINTS = ['head', 'neck', 'chest', 'hips', 'wristL', 'wristR', 'elbowL', 'elbowR', 'kneeL', 'kneeR', 'ankleL', 'ankleR'];
+let _occPts = [];
+function updateOcclusion() {
+  if (!OCC.length) return;
+  const cam = camera.position; let n = 0;
+  for (const m of chars) for (const j of OCC_JOINTS) { if (!m.joints[j]) continue; (_occPts[n] || (_occPts[n] = new V3())); m.joints[j].getWorldPosition(_occPts[n++]); }
+  for (const c of OCC) {
+    let block = c.b.containsPoint(cam);
+    for (let i = 0; i < n && !block; i++) {
+      const p = _occPts[i]; if (c.b.containsPoint(p)) continue;
+      _occRay.origin.copy(cam); _occRay.direction.subVectors(p, cam); const d = _occRay.direction.length(); if (d < 1e-4) continue;
+      _occRay.direction.multiplyScalar(1 / d);
+      if (_occRay.intersectBox(c.b, _occHit) && _occHit.distanceTo(cam) < d - .04) block = true;
+    }
+    if (block !== c.hidden) { c.hidden = block; c.o.visible = !block; }
+  }
+}

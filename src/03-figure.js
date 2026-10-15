@@ -336,6 +336,8 @@ class Mannequin {
     if (!this.bones) this.init();
     const prev = this.posed ? this.getPose() : null, oldRoot = this.rootY;
     this.body = {...BODY_BASE, ...body}; delete this.body.label;
+    if (!SPECIES[this.body.species]) this.body.species = 'humano';
+    if (this.body.species !== 'humano') { this.body.kemo = 5; const h = headModelFor(this.body); if (h) this.body.headStyle = HEAD_CATALOG[h].style; }
     const meta = FIG.meta, nV = meta.nV, nJ = meta.bones.length + meta.extra.length;
     const P = this.geo.attributes.position.array, J = new Float32Array(nJ * 3);
     P.set(FIG.base); J.set(FIG.j0);
@@ -352,7 +354,7 @@ class Mannequin {
       const d = FIG.hdeltas[FIG.setIdx[name]], q = meta.q * w; for (let i = 0; i < H.length; i++) H[i] += d[i] * q;
     }
     const swapId = headModelFor(this.body), swapReady = swapId && HEADS[swapId];
-    for (const [name, w] of Object.entries({...(swapReady ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {})})) {
+    for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {})})) {
       const x = FIG.xsets[name]; if (!x || Math.abs(w) < 1e-4) continue; const q = meta.q * w;
       for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; P[o] += x.dv[k * 3] * q; P[o + 1] += x.dv[k * 3 + 1] * q; P[o + 2] += x.dv[k * 3 + 2] * q; }
       for (let k = 0; k < x.ih.length; k++) { const o = x.ih[k] * 3; H[o] += x.dh[k * 3] * q; H[o + 1] += x.dh[k * 3 + 1] * q; H[o + 2] += x.dh[k * 3 + 2] * q; }

@@ -314,3 +314,9 @@ kbd{font-family:var(--f-mono);font-size:11.5px;border:1.5px solid var(--line);bo
   .quick{position:static}
 }
 details.sec > summary h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+/* posing mode switch (IK / FK) on the canvas */
+.modebar{position:absolute;right:12px;top:20px;z-index:3}
+.modebar .chip{background:var(--page);font-size:12px;padding:3px 12px}
+.modebar .chip[aria-pressed="true"]{background:var(--ink);color:var(--page)}
+body.practicing .modebar{display:none}

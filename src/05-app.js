@@ -1,7 +1,7 @@
 /* ---------- state ---------- */
 const state = {
   style: 'construccion', lineMode: 'anillos', lineA: .8, outline: 1.6,
-  light: {...LIGHTS.estudio}, lightPreset: 'estudio', env: 'estudio', practical: 1, lampShadows: true, amb: 'neutro', envOutline: true, shadows: true,
+  light: {...LIGHTS.estudio}, lightPreset: 'estudio', env: 'estudio', practical: 1, lampShadows: true, ik: store.get('cdp.ik', true), dots: store.get('cdp.dots', true), amb: 'neutro', envOutline: true, shadows: true,
   focal: 50, handSide: 'both', selected: null, sel: null, propMode: 'translate', castN: 1, cat: 'todas', posePreset: null,
   guides: {thirds: false, persp: false, grid: true, ruler: false, action: false},
   form: 'figura', ratio: 'libre', tab: 'pose', views: [], sym: false
@@ -127,7 +127,7 @@ function buildEnv(id) {
   (S ? S.build : ENV_BUILD[id])(envGroup);
   envGroup.traverse(o => { if (o.isMesh && o.parent && o.parent.parent && o.parent.parent.userData.asset) o.userData.shared = true; });
   addOutlines(envGroup); setOutlines(envGroup, state.envOutline);
-  scene.add(envGroup);
+  scene.add(envGroup); collectOccluders();
   state.guides.grid = id === 'vacio'; grid.visible = state.guides.grid; const gg = $('#gGrid'); if (gg) gg.checked = state.guides.grid;
   const want = S && S.amb ? S.amb : null;
   if (want && state.ambAuto !== false && state.amb !== want) { state.amb = want; setPressed($('#ambChips'), state.amb); }
@@ -698,9 +698,17 @@ vp.addEventListener('pointerdown', e => {
   down = {x: e.clientX, y: e.clientY}; gizmoDragged = false;
   if (tc.axis || practice.active) return;
   setNdc(e);
-  const hit = ray.intersectObjects([...Object.values(handles), sunHandle].filter(h => h.visible))[0];
+  const hit = ray.intersectObjects([...Object.values(handles), sunHandle].filter(h => h.visible))[0]
+    || ray.intersectObjects(Object.values(jointDots).filter(d => d.visible))[0];
   if (!hit) return;
   e.stopPropagation(); e.preventDefault();
+  if (hit.object.userData.joint) {
+    const jn = hit.object.userData.joint, start = hit.object.position.clone();
+    if (jn === 'hips') { drag = {id: 'hips', plane: new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new V3()), start), offset: new V3(), dot: jn}; const p0 = ray.ray.intersectPlane(drag.plane, new V3()) || start; drag.offset.copy(mq.joints.hips.position).sub(p0); drag.feet = {footL: mq.joints.ankleL.getWorldPosition(new V3()), footR: mq.joints.ankleR.getWorldPosition(new V3())}; }
+    else drag = {id: 'fk', joint: jn, plane: new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new V3()), start), moved: false, ik: state.ik};
+    controls.enabled = false; try { vp.setPointerCapture(e.pointerId); } catch (_) {} vp.style.cursor = 'grabbing';
+    return;
+  }
   if (hit.object === sunHandle) { drag = {id: 'sun'}; controls.enabled = false; try { vp.setPointerCapture(e.pointerId); } catch (_) {} return; }
   const id = hit.object.userData.id, start = hit.object.position.clone();
   drag = {id, plane: new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new V3()), start), offset: new V3()};
@@ -713,11 +721,18 @@ vp.addEventListener('pointerdown', e => {
 }, true);
 vp.addEventListener('pointermove', e => {
   if (!drag) {
-    if (e.target === canvas && !tc.dragging && !practice.active) { setNdc(e); vp.style.cursor = ray.intersectObjects(Object.values(handles).filter(h => h.visible)).length ? 'grab' : ''; }
+    if (e.target === canvas && !tc.dragging && !practice.active) { setNdc(e); vp.style.cursor = ray.intersectObjects([...Object.values(handles), ...Object.values(jointDots)].filter(h => h.visible)).length ? 'grab' : ''; }
     return;
   }
   setNdc(e);
   if (drag.id === 'sun') return dragSun(ray);
+  if (drag.id === 'fk') {
+    const p = ray.ray.intersectPlane(drag.plane, new V3()); if (!p) return;
+    drag.moved = true;
+    if (drag.ik && EFFECTOR_OF[drag.joint]) { const id = EFFECTOR_OF[drag.joint]; solveIK(mq.chains[id], mq.joints[EFFECTOR[id]], p); if (state.sym) for (const l of mq.chains[id]) mirrorJoint(mq, l.obj.name); }
+    else if (JOINT_PARENT[drag.joint]) { aimParent(mq, drag.joint, p); if (state.sym) mirrorJoint(mq, JOINT_PARENT[drag.joint]); }
+    syncJointSliders(); return;
+  }
   const p = ray.ray.intersectPlane(drag.plane, new V3()); if (!p) return;
   p.add(drag.offset);
   if (drag.id === 'hips') {
@@ -731,7 +746,28 @@ vp.addEventListener('pointermove', e => {
   }
   syncJointSliders();
 });
-function endDrag() { if (!drag) return; const wasSun = drag.id === 'sun'; drag = null; controls.enabled = true; vp.style.cursor = ''; if (!wasSun) pushHistory(); }
+// FK: turn the parent bone so the dragged joint points at the cursor (the rest of the chain is untouched)
+const EFFECTOR_OF = {wristL: 'handL', wristR: 'handR', ankleL: 'footL', ankleR: 'footR'};
+function aimParent(m, jn, target) {
+  const pn = JOINT_PARENT[jn], P = m.joints[pn], J = m.joints[jn]; if (!P || !J) return;
+  m.group.updateMatrixWorld(true);
+  const pp = P.getWorldPosition(new V3()), cur = J.getWorldPosition(new V3()).sub(pp), want = target.clone().sub(pp);
+  if (cur.lengthSq() < 1e-8 || want.lengthSq() < 1e-8) return;
+  const qw = new Q().setFromUnitVectors(cur.normalize(), want.normalize()), pw = P.getWorldQuaternion(new Q()), parentW = P.parent.getWorldQuaternion(new Q());
+  P.quaternion.copy(parentW.invert().multiply(qw.multiply(pw)));
+  if (HINGE[pn]) { const e = new THREE.Euler().setFromQuaternion(P.quaternion, 'XYZ'); P.rotation.set(clamp(e.x, HINGE[pn][0] * DEG, HINGE[pn][1] * DEG), 0, 0); }
+  m.group.updateMatrixWorld(true);
+}
+function setIK(on) {
+  state.ik = on; store.set('cdp.ik', on);
+  $$('#ikMode .chip').forEach(c => c.setAttribute('aria-pressed', String((c.dataset.v === 'ik') === on)));
+  if (!toastKeep) $('#hint').innerHTML = on ? HINT_IK : HINT_FK;
+}
+const HINT_IK = 'Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla';
+const HINT_FK = 'Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro';
+function endDrag() {
+  if (drag && drag.id === 'fk' && !drag.moved) { const jn = drag.joint; drag = null; controls.enabled = true; vp.style.cursor = ''; down = null; return select(jn); }
+  if (!drag) return; const wasSun = drag.id === 'sun'; drag = null; controls.enabled = true; vp.style.cursor = ''; if (!wasSun) pushHistory(); }
 vp.addEventListener('pointerup', e => {
   if (drag) { endDrag(); down = null; return; }
   if (down && !gizmoDragged && !practice.active && e.target === canvas && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
@@ -771,6 +807,7 @@ addEventListener('keydown', e => {
   else if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
   else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
   else if (k === 'delete' || k === 'backspace') { if (state.sel && state.sel.kind !== 'joint') { e.preventDefault(); deleteSel(); } }
+  else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
   else if (k === 'escape') { if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { showTab(tabs[+k - 1].dataset.tab); setPanel(true); }
@@ -791,9 +828,17 @@ function resize() {
 }
 new ResizeObserver(resize).observe(vp);
 function updateHandles() {
-  const show = !practice.active, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  const show = !practice.active && !sk.hideFig && !sk.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  for (const n of DOT_JOINTS) {
+    const d = jointDots[n], j = mq.joints[n];
+    d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n === 'hips' && state.ik);
+    if (!d.visible) continue;
+    j.getWorldPosition(_hp); d.position.copy(_hp);
+    d.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (state.ik ? .013 : .017) * coarse);
+    d.children[0].material = state.selected === n ? DOT_SEL : DOT_FILL;
+  }
   for (const id in handles) {
-    const h = handles[id]; h.visible = show && !sk.hideFig && !sk.on;
+    const h = handles[id]; h.visible = show && (state.ik || id === 'hips') && !(id === 'hips' && !state.ik && state.dots);
     mq.joints[EFFECTOR[id]].getWorldPosition(_hp); h.position.copy(_hp);
     h.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (id === 'hips' ? .03 : .026) * coarse);
   }
@@ -809,7 +854,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); updateLights(); envTick(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); updateLights(); envTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) m.group.visible = !sk.hideFig;
   renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
@@ -972,6 +1017,8 @@ function boot(data) {
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));
   showTab(store.get('cdp.tab', 'pose'));
+  $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
+  $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
   initThumbs(); buildPoseGrid(); buildMyPoses();
   resize(); setView(30, 8); frameAll();
   pushHistory();

@@ -71,7 +71,7 @@
       "artifactName": "NEOPOSE-${version}-portable.${ext}"
     },
     "linux": {
-      "icon": "build/icon.png",
+      "icon": "build/icons",
       "category": "Graphics",
       "synopsis": "Figura 3D para dibujar",
       "description": "Maniquí 3D de referencia para dibujo: poses, anatomía humana y anthro, ropa, escenarios y luces.",

@@ -234,23 +234,18 @@ const effBody = b => {
 let kemoSl = null;
 function buildHeadUI() {
   const box = $('#headStyle'); if (!box) return;
-  chips($('#headStyleChips'), Object.entries(HEAD_STYLES), mq.body.headStyle || 'real', v => { mq.body.headStyle = v; mq.body.kemo = 5; rebuildActive(true); syncHeadUI(); pushHistory(); });
-  $('#kemoBox').innerHTML = '';
-  kemoSl = slider($('#kemoBox'), {id: 'kemoLvl', label: 'Nivel kemo (獣度)', min: 1, max: 5, step: 1, value: mq.body.kemo ?? 5, fmt: v => `${v} · ${KEMO_LEVEL[v]}`,
-    input: v => { mq.body.kemo = v; rebuildActive(); }, change: pushHistory});
   syncHeadUI();
 }
 // sculpted head choices for this species (plus the MakeHuman target head)
 function renderHeadModels() {
   const box = $('#headModelChips'); if (!box) return;
   const sp = mq.body.species, list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
-  const items = [['auto', 'Según estilo'], ...list.map(([k, c]) => [k, c.label]), ['mh', 'Escultura MakeHuman']];
-  chips(box, items, mq.body.headModel || 'auto', v => {
-    mq.body.headModel = v === 'auto' ? undefined : v;
-    if (v !== 'auto' && v !== 'mh') { mq.body.headStyle = HEAD_CATALOG[v].style; if ((mq.body.kemo ?? 5) < 2) mq.body.kemo = 5; }
+  const id = headModelFor(mq.body), c = id && HEAD_CATALOG[id];
+  chips(box, list.map(([k, c]) => [k, c.label]), id, v => {
+    mq.body.headModel = v; mq.body.headStyle = HEAD_CATALOG[v].style;
     rebuildActive(true); syncHeadUI(); pushHistory();
   });
-  const id = headModelFor(mq.body), c = id && HEAD_CATALOG[id];
+  box.parentElement.hidden = list.length < 2;
   const cr = $('#headCredit'); cr.innerHTML = '';
   if (c) { cr.append('Cabeza: «' + c.label.replace(/ \(.*\)$/, '') + '» de ' + c.author + ' (CC-BY), '); const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Sketchfab'; cr.append(a, '.'); }
   else cr.textContent = HEAD_CREDITS;
@@ -258,8 +253,6 @@ function renderHeadModels() {
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
   const on = !!HEAD_RECIPES[mq.body.species]; box.hidden = !on;
-  setPressed($('#headStyleChips'), mq.body.headStyle || 'real');
-  if (kemoSl) kemoSl.set(mq.body.kemo ?? (mq.body.headStyle === 'kemono' ? 3 : 5));
   renderHeadModels();
 }
 

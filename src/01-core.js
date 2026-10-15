@@ -18,6 +18,10 @@ const JOINT_LABEL = {hips:'Pelvis · todo el cuerpo',waist:'Cintura',chest:'Pech
   tail1:'Cola · base',tail2:'Cola · centro',tail3:'Cola · punta'};
 const HINGE = {elbowL:[-150,0], elbowR:[-150,0], kneeL:[0,150], kneeR:[0,150]};
 const SPINE = ['waist','chest','neck','head'];
+// FK drag: moving a joint turns its parent bone towards the cursor
+const JOINT_PARENT = {waist:'hips', chest:'waist', neck:'chest', head:'neck', shoulderL:'chest', elbowL:'shoulderL', wristL:'elbowL', shoulderR:'chest', elbowR:'shoulderR', wristR:'elbowR',
+  hipL:'hips', kneeL:'hipL', ankleL:'kneeL', hipR:'hips', kneeR:'hipR', ankleR:'kneeR', tail2:'tail1', tail3:'tail2'};
+const DOT_JOINTS = ['hips','waist','chest','neck','head','shoulderL','elbowL','wristL','shoulderR','elbowR','wristR','hipL','kneeL','ankleL','hipR','kneeR','ankleR','tail1','tail2','tail3'];
 
 /* ---------- bodies ---------- */
 const BODY_BASE = {gender:1, age:1, muscle:.5, weight:.5, height:.5, ideal:.5, head:1, legs:1, arms:1, torso:1, species:'humano'};
@@ -53,15 +57,9 @@ const SPECIES = {
   lobo:   {label:'Lobo',    tail:{len:.55,r:.065,shape:'tupida'}},
   zorro:  {label:'Zorro',   tail:{len:.7,r:.1,shape:'tupida'}},
   perro:  {label:'Perro',   tail:{len:.45,r:.045,shape:'fina'}},
-  gato:   {label:'Gato',    tail:{len:.7,r:.03,shape:'fina'}},
-  tigre:  {label:'Tigre',   tail:{len:.75,r:.04,shape:'fina'}},
-  leon:   {label:'León',    tail:{len:.7,r:.032,shape:'fina'}},
-  oso:    {label:'Oso',     tail:{len:.07,r:.05,shape:'pompón'}},
   conejo: {label:'Conejo',  tail:{len:.08,r:.065,shape:'pompón'}},
-  caballo:{label:'Caballo', tail:{len:.8,r:.07,shape:'tupida'}},
   cabra:  {label:'Cabra',   tail:{len:.09,r:.04,shape:'pompón'}},
-  ciervo: {label:'Ciervo',  horns:{h:.6,r:.035,antler:true}, tail:{len:.1,r:.045,shape:'pompón'}},
-  dragon: {label:'Dragón',  horns:{h:.55,r:.065}, tail:{len:1.1,r:.12,shape:'reptil'}}
+  dragon: {label:'Dragón',  tail:{len:1.1,r:.12,shape:'reptil'}}
 };
 
 /* ---------- hands ---------- */
