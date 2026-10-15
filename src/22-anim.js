@@ -93,6 +93,7 @@ function drawTimeline() {
 function openTimeline(on) {
   ANIM.open = on; $('#timeline').hidden = !on; $('#animBtn').setAttribute('aria-pressed', String(on)); document.body.classList.toggle('anim', on);
   if (on && !ANIM.keys.length) setKey(0);
+  if (on) tourEvent('anim');
   if (!on) { play(false); clearOnion(); }
   else { drawTimeline(); updateOnion(); }
 }

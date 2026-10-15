@@ -13,22 +13,24 @@
     <p>NEOPOSE is a 3D mannequin for artists. Pose one or more characters, dress them, place them in a lit set and use the result as a drawing reference.</p>
     <p xml:lang="es">NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y usa el resultado como referencia de dibujo.</p>
     <ul>
-      <li>Pose with IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or by rotating each joint; pose library for one to four characters</li>
-      <li xml:lang="es">Posado con IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación; biblioteca de poses de uno a cuatro personajes</li>
-      <li>Human anatomy from MakeHuman: age, gender, muscle, weight, height and stylisation, from realistic to chibi</li>
-      <li xml:lang="es">Anatomía humana de MakeHuman: edad, género, músculo, peso, altura y estilización, de realista a chibi</li>
-      <li>Anthro characters: wolf, fox, dog, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono), digitigrade or hoofed legs, claws and tails</li>
-      <li xml:lang="es">Personajes anthro: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola</li>
+      <li>Pose with IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or by rotating each joint; pin hands and feet, blend poses, sit on furniture; almost 100 poses for one to four characters</li>
+      <li xml:lang="es">Posado con IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación; clava manos y pies, mezcla poses, siéntate en muebles; casi 100 poses de uno a cuatro personajes</li>
+      <li>Human anatomy from MakeHuman: from childhood to old age, gender, muscle, weight, height and stylisation, from realistic to chibi; hairstyles, facial expressions and a real skeleton view</li>
+      <li xml:lang="es">Anatomía humana de MakeHuman: de la infancia a la vejez, género, músculo, peso, altura y estilización, de realista a chibi; peinados, expresiones faciales y vista del esqueleto real</li>
+      <li>Anthro characters: wolf, fox, dog, cat, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono), digitigrade or hoofed legs, claws and tails</li>
+      <li xml:lang="es">Personajes anthro: lobo, zorro, perro, gato, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola</li>
       <li>Import your own humanoid avatars (VRM, GLB, FBX) or pick a free one from the Open Source Avatars gallery, and pose them with the same tools</li>
       <li xml:lang="es">Importa tus avatares humanoides (VRM, GLB, FBX) o elige uno libre de la galería de Open Source Avatars, y pósalos con las mismas herramientas</li>
-      <li>470 garments that fit any body and pose</li>
-      <li xml:lang="es">470 prendas que se adaptan a cualquier cuerpo y pose</li>
-      <li>24 sets with their own lamps and shadows: living room, tavern, castle, theatre, street, forest, beach…</li>
-      <li xml:lang="es">24 escenarios con lámparas y sombras propias: salón, taberna, castillo, teatro, calle, bosque, playa…</li>
+      <li>469 garments that fit any body and pose</li>
+      <li xml:lang="es">469 prendas que se adaptan a cualquier cuerpo y pose</li>
+      <li>24 sets with their own lamps and shadows (living room, tavern, castle, theatre, street, forest, beach…) and 8 360° panoramas</li>
+      <li xml:lang="es">24 escenarios con lámparas y sombras propias (salón, taberna, castillo, teatro, calle, bosque, playa…) y 8 panoramas de 360°</li>
       <li>Drawing finishes (construction, volume, pencil, values, silhouette), guides and a sketch layer</li>
       <li xml:lang="es">Acabados de dibujo (construcción, volumen, lápiz, valores, silueta), guías y capa de boceto</li>
-      <li>Gesture practice with a timer and PNG export</li>
-      <li xml:lang="es">Práctica de gesto con temporizador y exportación a PNG</li>
+      <li>Gesture practice with a timer; pose from a photo, offline; animation timeline</li>
+      <li>Export: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose), GLB, BVH and WebM</li>
+      <li xml:lang="es">Práctica de gesto con temporizador; pose desde una foto, sin conexión; línea de tiempo de animación</li>
+      <li xml:lang="es">Exportación: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose), GLB, BVH y WebM</li>
     </ul>
   </description>
   <launchable type="desktop-id">io.github.pmirall.NEOPOSE.desktop</launchable>

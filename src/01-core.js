@@ -62,6 +62,7 @@ const SPECIES = {
   lobo:   {label:'Lobo',    tail:{len:.55,r:.065,shape:'tupida'}},
   zorro:  {label:'Zorro',   tail:{len:.7,r:.1,shape:'tupida'}},
   perro:  {label:'Perro',   tail:{len:.45,r:.045,shape:'fina'}},
+  gato:   {label:'Gato',    tail:{len:.65,r:.045,shape:'fina'}},
   conejo: {label:'Conejo',  tail:{len:.08,r:.065,shape:'pompón'}},
   cabra:  {label:'Cabra',   tail:{len:.09,r:.04,shape:'pompón'}},
   dragon: {label:'Dragón',  tail:{len:1.1,r:.12,shape:'reptil'}}

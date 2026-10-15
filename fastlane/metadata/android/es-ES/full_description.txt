@@ -1,13 +1,16 @@
-<p>NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y usa el resultado como referencia de dibujo. Todo funciona sin conexión salvo la galería opcional de avatares.</p>
+<p>NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y úsalo como referencia para dibujar. Todo funciona sin conexión salvo la galería opcional de avatares.</p>
 <ul>
-<li><b>Posado</b>: IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o gira cada articulación. Biblioteca de poses de uno a cuatro personajes, poses al azar, gestos de mano, mirada y expresiones.</li>
-<li><b>Cuerpo</b>: anatomía humana de MakeHuman con edad, género, músculo, peso, altura y estilización, de realista a chibi.</li>
-<li><b>Anthro</b>: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola.</li>
-<li><b>Avatares</b>: importa tus VRM, GLB o FBX humanoides o elige uno libre de la galería de Open Source Avatars (necesita Internet).</li>
-<li><b>Ropa</b>: 470 prendas que se adaptan a cualquier cuerpo y pose.</li>
-<li><b>Escenarios</b>: 24 lugares con lámparas y sombras propias, y objetos reales para colocar.</li>
-<li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto.</li>
-<li><b>Práctica de gesto</b> con temporizador, cuerpos y escenarios aleatorios, y <b>exportación a PNG</b>.</li>
-<li>En <b>inglés</b> y <b>español</b>.</li>
+<li><b>Posado</b>: IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o gira cada articulación. Clava manos y pies en su sitio, mezcla dos poses y sienta a los personajes en sillas, sofás o camas. Casi 100 poses para una a cuatro personas, gestos de manos, mirada y expresiones faciales.</li>
+<li><b>Pose desde una foto</b>: la pose de una persona en una imagen, detectada en el propio dispositivo (BlazePose de MediaPipe), con la foto sobre el lienzo como referencia.</li>
+<li><b>Cuerpo</b>: anatomía humana de MakeHuman desde la infancia hasta la vejez, con género, musculatura, peso, altura y estilización, de realista a chibi. Diez peinados en cualquier color y una vista del esqueleto real.</li>
+<li><b>Anthro</b>: lobo, zorro, perro, gato, conejo, cabra y dragón con cabezas esculpidas, patas digitígradas o con pezuñas, garras y colas.</li>
+<li><b>Avatares</b>: importa tu propio VRM, GLB o FBX humanoide, o elige uno libre de la galería Open Source Avatars (necesita Internet).</li>
+<li><b>Ropa</b>: 469 prendas que se adaptan a cualquier cuerpo y pose.</li>
+<li><b>Escenarios</b>: 24 lugares con sus propias lámparas y sombras, 8 panoramas de 360° y objetos reales para colocar.</li>
+<li><b>Cámara</b>: objetivo, plano holandés, encuadres de uno, dos y tres puntos de fuga con guías, y vista de cuatro ventanas.</li>
+<li><b>Animación</b>: línea de tiempo con claves, papel cebolla y suavizado; exporta vídeo WebM o BVH.</li>
+<li><b>Exportación</b>: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose, líneas), malla GLB posada y BVH.</li>
+<li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto. Práctica de gesto con temporizador, clases y cuerpos, ropa y escenarios al azar.</li>
+<li>En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>
 </ul>
-<p>Recursos: MakeHuman (CC0), Poly Haven (CC0) y cinco cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio.</p>
+<p>Recursos: MakeHuman (CC0), Poly Haven (CC0), BodyParts3D (CC BY 4.0) y siete cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio del código.</p>

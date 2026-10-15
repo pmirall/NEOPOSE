@@ -8,9 +8,10 @@ const TOUR_STEPS = [
   {id: 'rotate', title: 'Gira una articulación', text: 'Toca el pecho, la cabeza o cualquier punto de articulación y gíralo con el aro de colores.', target: '#viewport', done: 'rotate'},
   {id: 'fk', title: 'Modo FK', text: 'Cambia a FK y arrastra un codo o una rodilla: solo gira ese hueso. Tecla I para alternar.', target: '#ikMode', done: 'fk'},
   {id: 'pose', title: 'Poses listas', text: 'Abre la pestaña Pose y elige una pose de la biblioteca. Las de 2 a 4 personas colocan a todo el reparto.', target: '#poseGrid', tab: 'pose', done: 'pose'},
-  {id: 'body', title: 'Cuerpo y especie', text: 'En Cuerpo cambia el tipo de cuerpo o elige una especie anthro (lobo, zorro, cabra…).', target: '[data-sec=tipo], [data-sec=especie]', tab: 'cuerpo', done: 'body'},
+  {id: 'body', title: 'Cuerpo y especie', text: 'En Cuerpo cambia el tipo de cuerpo, ponle pelo o elige una especie anthro (lobo, zorro, gato…).', target: '[data-sec=tipo], [data-sec=especie]', tab: 'cuerpo', done: 'body'},
   {id: 'env', title: 'Un escenario', text: 'En Escena elige un lugar. Trae sus propias luces y nunca tapará al personaje.', target: '#envChips', tab: 'escena', done: 'env'},
-  {id: 'export', title: 'Llévatelo a tu dibujo', text: 'Pulsa Exportar para guardar la referencia como PNG (con fondo, transparente o solo trazo).', target: '#exportBtn', done: 'export'}
+  {id: 'anim', title: 'Dale movimiento', text: 'Pulsa Animar: posa en dos momentos de la línea de tiempo y el paso de una pose a otra se hace solo.', target: '#animBtn', done: 'anim'},
+  {id: 'export', title: 'Llévatelo a tu dibujo', text: 'Pulsa Exportar: imagen PNG, hoja de giro, mapas para IA o modelo 3D.', target: '#exportBtn', done: 'export'}
 ];
 for (const st of TOUR_STEPS) { st.title = tr(st.title); st.text = tr(st.text); }
 const TOUR = {on: false, i: 0, el: null};

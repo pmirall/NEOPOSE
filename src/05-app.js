@@ -93,10 +93,35 @@ function applyGroupTo(list, def, o = {}) {
     m.joints.hips.position.x = c.x * avg; m.joints.hips.position.z = c.z * avg;
   });
   list.forEach(m => m.group.updateMatrixWorld(true));
-  for (const k of def.ik) {
+  const reach = () => { for (const k of def.ik) {
     const m = list[k.c], t = k.pt ? new V3(k.pt[0] * avg, k.pt[1] * avg, k.pt[2] * avg) : ikTarget(list[k.tc], k.t, k.o);
     solveSpec(m, k, t);
+  } };
+  reach();
+  // characters of different sizes can end up inside each other: push the trunks apart, then reach again
+  if (separateTrunks(list.slice(0, def.n))) { list.forEach(m => m.group.updateMatrixWorld(true)); reach(); }
+}
+// trunk of each character as a capsule (pelvis to neck), and the head as a ball; overlapping pairs move apart on the floor
+function separateTrunks(list) {
+  let moved = false;
+  for (let it = 0; it < 4; it++) {
+    let any = false;
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const A = list[i], B = list[j], w = (m, n) => m.joints[n].getWorldPosition(new V3());
+      const segs = m => [[w(m, 'hips'), w(m, 'neck'), .11 * m.size], [w(m, 'head'), w(m, 'head'), .1 * m.size]];
+      let worst = 0, dir = null;
+      for (const [a0, a1, ra] of segs(A)) for (const [b0, b1, rb] of segs(B)) {
+        const d = segSegDist(a0, a1, b0, b1), pen = ra + rb - d;
+        if (pen > worst) { worst = pen; dir = w(B, 'hips').sub(w(A, 'hips')); }
+      }
+      if (worst > .01 && dir) {
+        dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0); dir.normalize().multiplyScalar(worst / 2 + .005);
+        A.joints.hips.position.sub(dir); B.joints.hips.position.add(dir); A.group.updateMatrixWorld(true); B.group.updateMatrixWorld(true); any = moved = true;
+      }
+    }
+    if (!any) break;
   }
+  return moved;
 }
 function useGroup(def) {
   tourEvent('pose');

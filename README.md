@@ -4,15 +4,17 @@
 
 Figura 3D para dibujar. Un maniquí de referencia con anatomía humana y anthro, poses, ropa, escenarios y luces, pensado para artistas.
 
-- **Posado** en modo IK (arrastra manos, pies y pelvis), modo FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación con el aro; biblioteca de poses individuales y de grupo, poses al azar, manos y expresiones.
-- **Cuerpo**: edad, género, musculatura, grasa, altura y estilización sobre la malla anatómica de MakeHuman; tipos de cuerpo de realista a chibi.
-- **Anthro**: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola.
+- **Posado** en modo IK (arrastra manos, pies y pelvis), modo FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación con el aro; clavar manos y pies, mezclar poses y sentarse en muebles; casi 100 poses individuales y más de 50 de grupo, poses al azar, gestos de manos y expresiones faciales. **Pose desde una foto**, sin conexión (BlazePose).
+- **Cuerpo**: edad (de 11 a 90 años), género, musculatura, grasa, altura y estilización sobre la malla anatómica de MakeHuman; tipos de cuerpo de realista a chibi; 10 peinados con color; vista del esqueleto real (BodyParts3D).
+- **Anthro**: lobo, zorro, perro, gato, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola.
 - **Avatares importados**: VRM (VRoid, VRChat…), GLB o FBX humanoides propios, o la galería libre de [Open Source Avatars](https://opensourceavatars.com) (CC0/CC-BY). Se posan con los mismos controles.
 - **Ropa**: 469 prendas de la comunidad MakeHuman organizadas por carpetas, que se adaptan al cuerpo y a la pose.
-- **Escenarios**: 24 decorados (salón, taberna, castillo, teatro, calle, bosque, playa…) con modelos de Poly Haven y luces propias con sombra.
+- **Escenarios**: 24 decorados (salón, taberna, castillo, teatro, calle, bosque, playa…) con modelos de Poly Haven y luces propias con sombra, y 8 panoramas de 360°.
+- **Cámara**: objetivo, plano holandés, encuadres de 1, 2 y 3 puntos de fuga y vista de cuatro ventanas.
+- **Animación**: línea de tiempo con claves, papel cebolla y suavizado; vídeo WebM y BVH.
 - **Dibujo**: acabados de construcción, volumen, lápiz, valores y silueta; guías de tercios, fuga, regla de cabezas y línea de acción; capa de boceto con pinceles `.abr`.
 - **Tutorial interactivo** de 2 minutos al abrirla por primera vez (y desde el botón de ayuda).
-- **Práctica de gesto** con temporizador, con cuerpos aleatorios (con o sin anthro y chibis) y escenarios aleatorios si se quiere, y **exportación** a PNG (con fondo, transparente o solo trazo).
+- **Práctica de gesto** con temporizador, con cuerpos aleatorios (con o sin anthro y chibis) y escenarios aleatorios si se quiere, y **exportación**: PNG (con fondo, transparente o solo trazo, hasta A3 a 300 ppp), hoja de giro, mapas para IA (profundidad, normales, OpenPose, líneas), GLB posado y BVH. Las escenas se comparten con un enlace que abre la versión web.
 - **Idiomas**: inglés por defecto, español, y catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión) (Ayuda → Language · Idioma). Cómo traducir: `docs/TRANSLATING.md`. Los textos están en `src/i18n/<idioma>.json`, con el texto en español como clave (`tools/i18n_sync.py` los mantiene al día).
 
 ## Descargas

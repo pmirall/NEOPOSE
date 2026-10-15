@@ -5,7 +5,7 @@ import json, os, sys, struct, base64, gzip
 import numpy as np, trimesh, fast_simplification
 
 D = '/home/pmirall/Documentos/claude/DownloadedModels/'
-OUT = os.path.join(os.path.dirname(__file__), '..', 'heads'); os.makedirs(OUT, exist_ok=True)
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app', 'heads'); os.makedirs(OUT, exist_ok=True)
 
 def sst(a, b, x):
     t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
@@ -24,7 +24,15 @@ def load(cfg):
         if not isinstance(g, trimesh.Trimesh) or len(g.faces) == 0: continue
         v = trimesh.transform_points(g.vertices, R @ T)
         kind = 1 if node in cfg.get('ears', []) else 2 if node in cfg.get('eyes', []) else 3 if node in cfg.get('extras', []) else 0
-        parts.append((v, np.asarray(g.faces), kind))
+        f = np.asarray(g.faces)
+        if node in cfg.get('dropCentre', []):  # a piece sharing the mesh with the ears (a hat): drop the separate parts on the centre line
+            comp = trimesh.graph.connected_components(trimesh.Trimesh(v, f, process=False).face_adjacency, nodes=np.arange(len(f)), min_len=1)
+            keep = np.ones(len(f), bool)
+            for cf in comp:
+                cx = v[np.unique(f[cf])][:, 0]
+                if abs((cx.min() + cx.max()) / 2) < .15 * (v[:, 0].max() - v[:, 0].min()): keep[cf] = False
+            f = f[keep]
+        parts.append((v, f, kind))
     return parts
 
 def process(name, cfg):

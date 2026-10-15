@@ -57,5 +57,28 @@
 "style": "real",
 "scale": 0.8,
 "eyes": true
+},
+"gato_k": {
+"label": "Kemono Cat (kemono)",
+"author": "Pluem pp the furry",
+"url": "https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491",
+"species": [
+"gato"
+],
+"style": "kemono",
+"scale": 0.95,
+"eyes": false
+},
+"husky": {
+"label": "Husky (realista)",
+"author": "sneakyraccoon",
+"url": "https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304",
+"species": [
+"perro",
+"lobo"
+],
+"style": "real",
+"scale": 0.8,
+"eyes": false
 }
 }

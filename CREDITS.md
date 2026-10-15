@@ -23,6 +23,8 @@ Adaptadas para NEOPOSE (recortadas por el cuello, simplificadas, con pesos de ri
 | Base V2 (kemono) | 取名字好难啊 (12241218) | https://sketchfab.com/3d-models/base-v2-cfd2f5bf90574f1f95df16fc110f3a87 |
 | Kobold (toony) | RhoBoat | https://sketchfab.com/3d-models/furry-kobold-base-ae17d2770b7e498db33c05675db17724 |
 | Goat Head (realista) | 401guy | https://sketchfab.com/3d-models/goat-head-402b25bca04442e0b84f259568206b60 |
+| Kemono Cat v2 (kemono; una de las nueve variantes) | Pluem pp the furry | https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491 |
+| Husky (realista; sin el sombrero ni el monóculo) | sneakyraccoon | https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304 |
 
 Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 

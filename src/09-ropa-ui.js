@@ -61,7 +61,9 @@ async function randomOutfit() {
   return RANDOM_PLAN().map(c => cat.filter(x => x.cat === c)).filter(l => l.length).map(l => garmentSpec(pick(l).id));
 }
 let ropaSearch = '';
-function garmentTitle(id) { return ROPA.byId[id] ? ROPA.byId[id].title : id; }
+// garment titles: the authors' English names, translated per language (src/i18n/garments/<lang>.json)
+const gTitle = c => (GARMENT_TR[LANG] || {})[c.title] || c.title;
+function garmentTitle(id) { return ROPA.byId[id] ? gTitle(ROPA.byId[id]) : id; }
 function renderGarmentList() {
   const box = $('#garmentList'); if (!box) return;
   box.innerHTML = '';
@@ -133,7 +135,7 @@ function renderLibrary() {
   const q = ropaSearch.trim().toLowerCase(), worn = new Set(mq.outfit.map(s => s.id));
   const cats = [...new Set(ROPA.catalog.map(c => c.cat))].sort((a, b) => a === 'Varios' ? 1 : b === 'Varios' ? -1 : tr(a).localeCompare(tr(b), LANG));
   for (const cat of cats) {
-    const items = ROPA.catalog.filter(c => c.cat === cat && (!q || c.title.toLowerCase().includes(q)));
+    const items = ROPA.catalog.filter(c => c.cat === cat && (!q || c.title.toLowerCase().includes(q) || gTitle(c).toLowerCase().includes(q)));
     if (!items.length) continue;
     const det = document.createElement('details'); det.className = 'folder'; det.dataset.cat = cat; det.open = open.has(cat) || !!q;
     const nWorn = items.filter(c => worn.has(c.id)).length;
@@ -143,9 +145,9 @@ function renderLibrary() {
     const fill = () => {
       if (grid.childElementCount) return;
       for (const c of items) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem' + (worn.has(c.id) ? ' on' : ''); b.title = c.title; b.setAttribute('aria-pressed', worn.has(c.id));
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem' + (worn.has(c.id) ? ' on' : ''); b.title = gTitle(c) === c.title ? c.title : `${gTitle(c)} · ${c.title}`; b.setAttribute('aria-pressed', worn.has(c.id));
         b.innerHTML = c.thumb ? `<img loading="lazy" alt="" src="${c.thumb}">` : `<span class="noimg">${tr('sin imagen')}</span>`;
-        const t = document.createElement('span'); t.className = 'lt'; t.textContent = c.title; b.appendChild(t);
+        const t = document.createElement('span'); t.className = 'lt'; t.textContent = gTitle(c); b.appendChild(t);
         const why = !worn.has(c.id) && garmentBlock(mq, c);
         if (why) { b.classList.add('blocked'); b.title = why; b.setAttribute('aria-disabled', 'true'); }
         b.onclick = () => toggleGarment(c.id);

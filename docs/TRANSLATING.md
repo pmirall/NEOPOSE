@@ -26,3 +26,7 @@ Configuración del componente:
 | Filtro de idioma | `^(?!es$|en$).*` si el inglés se mantiene en el repositorio, o vacío para traducir también el inglés en Weblate |
 
 Catalán, francés, portugués, alemán e italiano empezaron como traducción automática y esperan revisión.
+
+## Títulos de las prendas
+
+Los 467 títulos del armario son los nombres en inglés que les dieron sus autores en la comunidad MakeHuman. Sus traducciones están en `src/i18n/garments/<idioma>.json` (clave = título original). En Weblate es un segundo componente: formato «JSON file», máscara `src/i18n/garments/*.json`, archivo base `src/i18n/garments/en.json`, idioma de origen inglés. La búsqueda del armario encuentra una prenda tanto por su título traducido como por el original.

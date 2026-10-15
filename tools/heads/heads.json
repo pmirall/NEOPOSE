@@ -188,5 +188,83 @@
   "hingeZ": 0.45,
   "budget": 16000,
   "scale": 0.8
+ },
+ "gato_k": {
+  "file": "all_head_kemono_cat_v2.glb",
+  "label": "Kemono Cat (kemono)",
+  "author": "Pluem pp the furry",
+  "url": "https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491",
+  "species": [
+   "gato"
+  ],
+  "style": "kemono",
+  "include": [
+   "Object_2"
+  ],
+  "cutY": 5.2,
+  "neckY": 5.36,
+  "eyeL": [
+   0.42,
+   6.0,
+   3.15
+  ],
+  "crownY": 6.9,
+  "chinY": 5.3,
+  "mouthY": 5.52,
+  "hingeZ": 2.6,
+  "earBase": [
+   0.55,
+   6.72,
+   2.85
+  ],
+  "earAxis": [
+   0.2,
+   0.84,
+   0.28
+  ],
+  "earR": 0.24,
+  "earFade": 0.08,
+  "eyeRad": 0.1,
+  "budget": 9000,
+  "scale": 0.95
+ },
+ "husky": {
+  "file": "husky.glb",
+  "label": "Husky (realista)",
+  "author": "sneakyraccoon",
+  "url": "https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304",
+  "species": [
+   "perro",
+   "lobo"
+  ],
+  "style": "real",
+  "include": [
+   "Object_2",
+   "Object_4",
+   "Object_5"
+  ],
+  "ears": [
+   "Object_4"
+  ],
+  "extras": [
+   "Object_5"
+  ],
+  "cutY": -1.95,
+  "neckY": -1.5,
+  "eyeL": [
+   0.45,
+   0.75,
+   1.12
+  ],
+  "crownY": 1.95,
+  "chinY": -1.1,
+  "mouthY": -0.5,
+  "hingeZ": 0.4,
+  "eyeRad": 0.08,
+  "budget": 14000,
+  "scale": 0.8,
+  "dropCentre": [
+   "Object_4"
+  ]
  }
 }
