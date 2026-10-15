@@ -31,7 +31,11 @@ modules:
     build-commands:
       - npm ci --offline --ignore-scripts
       - python3 build.py
-      - . flatpak-node/electron-builder-arch-args.sh; npm run build:dir -- $ELECTRON_BUILDER_ARCH_ARGS
+      # use the Electron zip from generated-sources.json directly (no download)
+      - ARCH=$(case "$(uname -m)" in aarch64) echo arm64;; *) echo x64;; esac);
+        ZIP=$(find flatpak-node -name "electron-v*-linux-$ARCH.zip" | head -1);
+        python3 -m zipfile -e "$ZIP" electron-dist && chmod +x electron-dist/electron
+      - . flatpak-node/electron-builder-arch-args.sh; npm run build:dir -- $ELECTRON_BUILDER_ARCH_ARGS -c.electronDist=electron-dist
       - cp -a dist/linux*unpacked /app/main
       - install -Dm755 neopose.sh /app/bin/neopose
       - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.desktop -t /app/share/applications
