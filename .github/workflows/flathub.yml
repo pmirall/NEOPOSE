@@ -30,6 +30,6 @@ jobs:
           flatpak-builder --user --install-deps-from=flathub --force-clean --repo=fprepo --sandbox fpbuild ci-manifest.yml
       - name: Flathub linter
         run: |
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/io.github.pmirall.NEOPOSE.yml || true
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/io.github.pmirall.NEOPOSE.yml
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/io.github.pmirall.NEOPOSE.metainfo.xml
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo fprepo
