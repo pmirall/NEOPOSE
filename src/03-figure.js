@@ -320,9 +320,10 @@ class Mannequin {
     // the body skeleton also carries the ear bones (indices after the baked ones), so sculpted ears can bend
     this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R]);
     // furry parts use their own skeleton: pelvis, head and the three tail bones
-    this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R];
+    this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R,
+      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]]))];
     this.accSkeleton = new THREE.Skeleton(this.accBones);
-    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR'];
+    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR'];
     const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
@@ -362,6 +363,7 @@ class Mannequin {
     }
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
+    remodelLegs(this.body, P, J, H);
     anthroHead(this, P); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
@@ -538,6 +540,7 @@ class Mannequin {
       geos.push(loft({origin: this.tailRoot, axis: this.tailDir, side: new V3(1, 0, 0), secs, radial: 16, sub: 3,
         weights: chainW([[0, -1e9], [2, .015], [3, L / 3], [4, L * 2 / 3]], Math.min(.05, L * .08))}));
     }
+    for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];

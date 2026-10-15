@@ -12,6 +12,7 @@ function garmentBlock(m, it) {
   const ears = (HEAD_RECIPES[m.body.species].ears || []).length > 0;
   if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return `Las gafas no se apoyan en un hocico de ${sp}.`;
   if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return `La máscara está hecha para una cara humana, no para un hocico de ${sp}.`;
+  if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return `Las patas de ${sp} no entran en calzado humano.`;
   if (it.cat === 'Sombreros, cascos y máscaras' && ears && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return `Las orejas de ${sp} no caben dentro: haría falta una versión con agujeros para las orejas.`;
   return null;
 }

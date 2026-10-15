@@ -320,3 +320,23 @@ details.sec > summary h3{white-space:nowrap;overflow:hidden;text-overflow:ellips
 .modebar .chip{background:var(--page);font-size:12px;padding:3px 12px}
 .modebar .chip[aria-pressed="true"]{background:var(--ink);color:var(--page)}
 body.practicing .modebar{display:none}
+
+/* welcome + tutorial */
+.welcome{text-align:center;max-width:460px}
+.welcome img{display:block;margin:0 auto 6px}
+.welcome .wlist{text-align:left;margin:12px auto;padding-left:20px;display:grid;gap:6px;font-size:14px;max-width:360px}
+.welcome .foot{justify-content:center}
+#tour{position:fixed;inset:0;z-index:30;pointer-events:none}
+#tourHole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(25,20,12,.45);border:2px solid var(--blue);transition:all .25s ease;pointer-events:none}
+#tourCard{position:fixed;pointer-events:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);box-shadow:var(--lift);padding:12px 14px 12px;transition:left .25s,top .25s}
+#tourCard .th{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase}
+#tourCard .tq{border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft)}
+#tourCard h4{font-family:var(--f-hand);font-size:21px;margin:2px 0 4px}
+#tourCard .tx{margin:0 0 10px;font-size:14px}
+#tourCard .tf{display:flex;align-items:center;gap:8px}
+#tourCard .dots{flex:1;display:flex;gap:4px}
+#tourCard .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+#tourCard .dots i.d{background:var(--ink-soft)} #tourCard .dots i.c{background:var(--blue)}
+#tourCard .ok{display:none;color:#3c8a4a;font-weight:700;font-size:13px}
+#tourCard.ok .ok{display:inline} #tourCard.ok{border-color:#3c8a4a}
+@media (prefers-reduced-motion:reduce){#tourHole,#tourCard{transition:none}}

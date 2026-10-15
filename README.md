@@ -6,10 +6,11 @@ Figura 3D para dibujar. Un maniquí de referencia con anatomía humana y anthro,
 
 - **Posado** en modo IK (arrastra manos, pies y pelvis), modo FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación con el aro; biblioteca de poses individuales y de grupo, poses al azar, manos y expresiones.
 - **Cuerpo**: edad, género, musculatura, grasa, altura y estilización sobre la malla anatómica de MakeHuman; tipos de cuerpo de realista a chibi.
-- **Anthro**: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono).
+- **Anthro**: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola.
 - **Ropa**: 470 prendas de la comunidad MakeHuman organizadas por carpetas, que se adaptan al cuerpo y a la pose.
 - **Escenarios**: 24 decorados (salón, taberna, castillo, teatro, calle, bosque, playa…) con modelos de Poly Haven y luces propias con sombra.
 - **Dibujo**: acabados de construcción, volumen, lápiz, valores y silueta; guías de tercios, fuga, regla de cabezas y línea de acción; capa de boceto con pinceles `.abr`.
+- **Tutorial interactivo** de 2 minutos al abrirla por primera vez (y desde el botón de ayuda).
 - **Práctica de gesto** con temporizador y **exportación** a PNG (con fondo, transparente o solo trazo).
 
 ## Descargas

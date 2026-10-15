@@ -76,6 +76,7 @@ function renderCast() {
 
 /* ---------- applying poses to the cast ---------- */
 function usePreset(p) {
+  tourEvent('pose');
   const yaw = mq.yaw(), pos = mq.joints.hips.position.clone();
   mq.joints.hips.position.set(pos.x, mq.rootY, pos.z);
   applyPreset(mq, p, {yaw});
@@ -98,6 +99,7 @@ function applyGroupTo(list, def, o = {}) {
   }
 }
 function useGroup(def) {
+  tourEvent('pose');
   ensureCount(def.n);
   applyGroupTo(chars, def);
   state.posePreset = def.id;
@@ -109,6 +111,7 @@ function useGroup(def) {
 let envGroup = null, envToken = 0;
 const isOutdoor = id => SCENES[id] ? !!SCENES[id].out : OUTDOOR.includes(id);
 function setEnv(id) {
+  if (typeof TOUR !== 'undefined' && TOUR.on && id !== state.env) tourEvent('env');
   if (!SCENES[id] && !ENV_BUILD[id]) id = 'estudio';
   const tok = ++envToken, S = SCENES[id];
   state.env = id;
@@ -471,10 +474,10 @@ $('#helpModal').onclick = e => { if (e.target === e.currentTarget) closeHelp(); 
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo}; mq.bodyPreset = id; rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, feet: mq.body.feet}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   chips($('#speciesChips'), Object.entries(SPECIES).map(([k, v]) => [k, v.label]), mq.body.species, id => {
-    mq.body.species = id; rebuildActive(true); syncHeadUI(); pushHistory();
+    mq.body.species = id; tourEvent('body'); rebuildActive(true); syncHeadUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -766,6 +769,8 @@ function setIK(on) {
 const HINT_IK = 'Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla';
 const HINT_FK = 'Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro';
 function endDrag() {
+  if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');
+  if (drag && drag.id !== 'fk' && drag.id !== 'sun') tourEvent(drag.id === 'hips' ? 'hips' : 'ik');
   if (drag && drag.id === 'fk' && !drag.moved) { const jn = drag.joint; drag = null; controls.enabled = true; vp.style.cursor = ''; down = null; return select(jn); }
   if (!drag) return; const wasSun = drag.id === 'sun'; drag = null; controls.enabled = true; vp.style.cursor = ''; if (!wasSun) pushHistory(); }
 vp.addEventListener('pointerup', e => {
@@ -791,7 +796,7 @@ vp.addEventListener('pointerup', e => {
 vp.addEventListener('pointercancel', endDrag);
 tc.addEventListener('dragging-changed', e => { controls.enabled = !e.value; if (e.value) gizmoDragged = true; });
 tc.addEventListener('objectChange', () => {
-  const s = state.sel;
+  const s = state.sel; if (s && s.kind === 'joint') tourEvent('rotate');
   if (s && s.kind === 'joint') {
     const n = state.selected;
     if (n && HINGE[n]) { const j = mq.joints[n]; j.rotation.set(clamp(hingeAngle(j.quaternion), HINGE[n][0] * DEG, HINGE[n][1] * DEG), 0, 0, 'XYZ'); }
@@ -808,7 +813,7 @@ addEventListener('keydown', e => {
   else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
   else if (k === 'delete' || k === 'backspace') { if (state.sel && state.sel.kind !== 'joint') { e.preventDefault(); deleteSel(); } }
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
-  else if (k === 'escape') { if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
+  else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { showTab(tabs[+k - 1].dataset.tab); setPanel(true); }
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
@@ -898,7 +903,7 @@ function renderExport() {
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
   $('#exMsg').textContent = `${out.width} × ${out.height} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.`;
 }
-function openExport() { $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
+function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }
 $('#exportBtn').onclick = openExport; $('#exClose').onclick = closeExport;
 $('#exportModal').onclick = e => { if (e.target.id === 'exportModal') closeExport(); };
@@ -1017,6 +1022,7 @@ function boot(data) {
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));
   showTab(store.get('cdp.tab', 'pose'));
+  initTour();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
   initThumbs(); buildPoseGrid(); buildMyPoses();

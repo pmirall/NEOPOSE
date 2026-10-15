@@ -2,7 +2,7 @@
 <ul>
 <li><b>Posing</b>: IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or rotate each joint. Pose library for one to four characters, random poses, hand gestures, gaze and expressions.</li>
 <li><b>Body</b>: human anatomy from MakeHuman with age, gender, muscle, weight, height and stylisation, from realistic to chibi.</li>
-<li><b>Anthro</b>: wolf, fox, dog, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono).</li>
+<li><b>Anthro</b>: wolf, fox, dog, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono), digitigrade or hoofed legs, claws and tails.</li>
 <li><b>Clothes</b>: 470 garments that fit any body and pose.</li>
 <li><b>Sets</b>: 24 places with their own lamps and shadows, plus real objects to place.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer.</li>

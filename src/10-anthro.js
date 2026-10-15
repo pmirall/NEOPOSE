@@ -227,6 +227,7 @@ function buildExprUI() {
 // body proportions by style: kemono bigger, rounder head and slightly shorter legs; western toony a little bigger head
 const effBody = b => {
   if (!HEAD_RECIPES[b.species]) return b;
+  const L = legSpec(b); if (L) b = {...b, legs: (b.legs ?? 1) * (L.type === 'ungu' ? .84 : .88)};
   if (b.headStyle === 'kemono') return {...b, head: (b.head ?? 1) * 1.12, legs: (b.legs ?? 1) * .96};
   if (b.headStyle === 'toon') return {...b, head: (b.head ?? 1) * 1.05};
   return b;
@@ -234,6 +235,7 @@ const effBody = b => {
 let kemoSl = null;
 function buildHeadUI() {
   const box = $('#headStyle'); if (!box) return;
+  chips($('#feetChips'), [['animal', 'Del animal'], ['humano', 'Humanas']], mq.body.feet || 'animal', v => { mq.body.feet = v === 'animal' ? undefined : v; rebuildActive(true); pushHistory(); });
   syncHeadUI();
 }
 // sculpted head choices for this species (plus the MakeHuman target head)
@@ -253,6 +255,8 @@ function renderHeadModels() {
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
   const on = !!HEAD_RECIPES[mq.body.species]; box.hidden = !on;
+  setPressed($('#feetChips'), mq.body.feet || 'animal');
+  const L = ANIMAL_LEGS[mq.body.species]; $('#feetNote').textContent = L ? (L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
   renderHeadModels();
 }
 
@@ -281,4 +285,99 @@ function eyeSetup(m, P) {
   const lvl = m.body.kemo ?? 5, pup = r ? PUPILS[style === 'kemono' && r.pupil === 'rendija' ? 'redonda' : r.pupil] : PUPILS.redonda;
   U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' ? 1 : 0;
   U.uPupil.value.set(pup[0], pup[1] * (style === 'kemono' ? 1.15 : 1), pup[2]);
+}
+
+/* ---------- animal legs (researched) ----------
+   Digitigrade animals (canids, rabbits, most anthro dragons) stand on their toes: the heel is lifted into a
+   "hock" and the long metatarsus reads as a backwards knee. Ungulates (goats) stand on the tip of the toe, a hoof.
+   Hind-limb ratios from comparative anatomy: metatarsus ≈ 0.45 × femur in wolves and dogs (Garland & Janis 1993),
+   ≈ 0.6 × femur in goats (tibia 1.14 × femur, metatarsus 0.53 × tibia); rabbits have a long, fully furred foot
+   without pads. The human foot here is a single bone (the ankle), so the rest geometry is remodelled: the heel
+   rises along the metatarsus, the toes stay flat on the ground as the paw, and the ankle joint becomes the hock. */
+const ANIMAL_LEGS = {
+  lobo:   {type: 'digi', mt: .52, th: 30, hock: .4, knee: .14, toe: .85, claws: .022, hand: .014},
+  perro:  {type: 'digi', mt: .5, th: 28, hock: .38, knee: .14, toe: .85, claws: .02, hand: .012},
+  zorro:  {type: 'digi', mt: .54, th: 30, hock: .4, knee: .14, toe: .8, claws: .018, hand: .012},
+  conejo: {type: 'digi', mt: .5, th: 30, hock: .36, knee: .12, toe: 1.65, claws: 0, hand: 0},
+  cabra:  {type: 'ungu', mt: .62, th: 14, hock: .32, knee: .12, toe: .32, hoof: true, claws: 0, hand: 0},
+  dragon: {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .95, claws: .034, hand: .026}
+};
+const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[b.species] || null : null;
+const animalFeet = m => !!legSpec(m && m.body);
+function remodelLegs(b, P, J, H) {
+  const L = legSpec(b); if (!L) return null;
+  const sst = (a, c, x) => { const t = clamp((x - a) / (c - a), 0, 1); return t * t * (3 - 2 * t); };
+  const res = {};
+  for (const s of ['L', 'R']) {
+    const ai = FIG.jIdx['ankle' + s], jv = i => new V3(J[i * 3], J[i * 3 + 1], J[i * 3 + 2]);
+    // zig-zag of the hind leg: knee a little forward, hock well back (the shin slopes back to the hock)
+    {
+      const hi = FIG.jIdx['hip' + s], ki = FIG.jIdx['knee' + s], Hy = J[hi * 3 + 1], Ky = J[ki * 3 + 1], Ay = J[ai * 3 + 1];
+      const fwd = (L.knee ?? .12) * (Hy - Ky), back = (L.hock ?? .3) * (Ky - Ay);
+      const dz = y => fwd * clamp((Hy - y) / (Hy - Ky), 0, 1) - back * clamp((Ky - y) / (Ky - Ay), 0, 1);
+      const legW = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) { const b = si[i * 4 + k]; if (b === hi || b === ki || b === ai) w += sw[i * 4 + k] / 255; } return w; };
+      const shear = (Q, cnt, si, sw) => { for (let i = 0; i < cnt; i++) { const w = legW(si, sw, i); if (w > .01) Q[i * 3 + 2] += dz(Q[i * 3 + 1]) * w; } };
+      shear(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) shear(H, FIG.nH, FIG.hsi, FIG.hsw);
+      for (const j of [ki, ai, FIG.jIdx['toe' + s]]) if (j !== undefined) J[j * 3 + 2] += dz(J[j * 3 + 1]);
+    }
+    const A = jv(ai), femur = jv(FIG.jIdx['hip' + s]).distanceTo(jv(FIG.jIdx['knee' + s]));
+    const wA = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) if (si[i * 4 + k] === ai) w += sw[i * 4 + k] / 255; return w; };
+    let soleY = Infinity, fmin = Infinity, fmax = -Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (P[i * 3 + 1] < A.y && wA(FIG.si, FIG.sw, i) > .5) {
+      soleY = Math.min(soleY, P[i * 3 + 1]); fmin = Math.min(fmin, P[i * 3 + 2]); fmax = Math.max(fmax, P[i * 3 + 2]);
+    }
+    if (!isFinite(soleY)) continue;
+    const fb = fmin + .68 * (fmax - fmin), hMid = (A.y - soleY) * .55, Lmt = L.mt * femur, th = L.th * DEG;
+    const u = new V3(0, -Math.cos(th), Math.sin(th)), n = new V3(0, Math.sin(th), Math.cos(th)), B = A.clone().addScaledVector(u, Lmt);
+    const map = (x, y, z, o) => {
+      const sp = (z - fmin) / (fb - fmin), h = y - soleY;
+      const my = A.y + u.y * sp * Lmt + n.y * (h - hMid), mz = A.z + u.z * sp * Lmt + n.z * (h - hMid);
+      const ty = B.y + (h - hMid), tz = B.z + (z - fb) * L.toe;
+      const w = sst(.8, 1.2, sp); o[0] = x; o[1] = my + (ty - my) * w; o[2] = mz + (tz - mz) * w;
+    };
+    const o = [0, 0, 0];
+    const apply = (Q, cnt, si, sw) => {
+      for (let i = 0; i < cnt; i++) {
+        const y = Q[i * 3 + 1], g = wA(si, sw, i) * sst(A.y + .035, A.y - .005, y); if (g < .01) continue;
+        map(Q[i * 3], y, Q[i * 3 + 2], o);
+        Q[i * 3] += (o[0] - Q[i * 3]) * g; Q[i * 3 + 1] += (o[1] - y) * g; Q[i * 3 + 2] += (o[2] - Q[i * 3 + 2]) * g;
+      }
+    };
+    apply(P, FIG.meta.nV, FIG.si, FIG.sw);
+    if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
+    const ti = FIG.jIdx['toe' + s];
+    if (ti !== undefined) { map(J[ti * 3], J[ti * 3 + 1], J[ti * 3 + 2], o); J[ti * 3] = o[0]; J[ti * 3 + 1] = o[1]; J[ti * 3 + 2] = o[2]; }
+    res[s] = {B, u, n};
+  }
+  return res;
+}
+// claws on fingers and paws, hooves on goats: rigid on the finger tips and the ankles (accessory skeleton)
+function pawGeos(m, P) {
+  const L = legSpec(m.body), out = []; if (!L) return out;
+  const sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
+  const ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]);
+  const claw = (origin, axis, len, r, bone) => loft({origin, axis, side: new V3(1, 0, 0), secs: [[-r * .5, r * .9, r * .75], [0, r, r * .8], [len * .5, r * .65, r * .55], [len, .0015, .0015]], radial: 8, sub: 2, bend: -.35, weights: () => [[bone, 1]]});
+  for (const s of ['L', 'R']) {
+    const ai = FIG.jIdx['ankle' + s], A = jp('ankle' + s);
+    // paw extent from the remodelled geometry (front of the toes, width, sole)
+    let zmax = -Infinity, sole = Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < A.y) { zmax = Math.max(zmax, P[i * 3 + 2]); sole = Math.min(sole, P[i * 3 + 1]); }
+    if (!isFinite(zmax)) continue;
+    let x0 = Infinity, x1 = -Infinity, ytop = -Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (m.dom[i] === ai && P[i * 3 + 2] > zmax - .05 * sz && P[i * 3 + 1] < sole + .06 * sz) { x0 = Math.min(x0, P[i * 3]); x1 = Math.max(x1, P[i * 3]); ytop = Math.max(ytop, P[i * 3 + 1]); }
+    const bone = ACC('ankle' + s);
+    if (L.hoof) {
+      // cloven hoof: two keratin wedges under the front of the foot
+      const cx = (x0 + x1) / 2, hw = clamp((x1 - x0) * .28, .01, .025 * sz), hz = zmax - hw * 1.4, hh = .045 * sz;
+      for (const k of [-1, 1]) out.push(loft({origin: new V3(cx + k * hw * .95, sole - .002, hz), axis: new V3(0, 1, -.15), side: new V3(1, 0, 0),
+        secs: [[0, hw, hw * 1.7], [hh * .55, hw * .95, hw * 1.45], [hh, hw * .8, hw * 1.1], [hh * 1.05, hw * .5, hw * .6]], radial: 12, sub: 2, n: 3, weights: () => [[bone, 1]]}));
+    } else if (L.claws) {
+      for (const f of [.15, .38, .62, .85]) out.push(claw(new V3(x0 + (x1 - x0) * f, sole + (ytop - sole) * .45, zmax - .006 * sz), new V3(0, -.35, 1), L.claws * sz, L.claws * .28 * sz, bone));
+    }
+    if (L.hand) for (let f = 1; f < 5; f++) {
+      const tip = jp(`tip${s}${f}`), last = jp(`f${s}${f}2`), dir = tip.clone().sub(last).normalize();
+      out.push(claw(tip.clone().addScaledVector(dir, -.004 * sz), dir, L.hand * sz, L.hand * .3 * sz, ACC(`f${s}${f}2`)));
+    }
+  }
+  return out;
 }

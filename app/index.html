@@ -328,6 +328,26 @@ details.sec > summary h3{white-space:nowrap;overflow:hidden;text-overflow:ellips
 .modebar .chip{background:var(--page);font-size:12px;padding:3px 12px}
 .modebar .chip[aria-pressed="true"]{background:var(--ink);color:var(--page)}
 body.practicing .modebar{display:none}
+
+/* welcome + tutorial */
+.welcome{text-align:center;max-width:460px}
+.welcome img{display:block;margin:0 auto 6px}
+.welcome .wlist{text-align:left;margin:12px auto;padding-left:20px;display:grid;gap:6px;font-size:14px;max-width:360px}
+.welcome .foot{justify-content:center}
+#tour{position:fixed;inset:0;z-index:30;pointer-events:none}
+#tourHole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(25,20,12,.45);border:2px solid var(--blue);transition:all .25s ease;pointer-events:none}
+#tourCard{position:fixed;pointer-events:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);box-shadow:var(--lift);padding:12px 14px 12px;transition:left .25s,top .25s}
+#tourCard .th{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase}
+#tourCard .tq{border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft)}
+#tourCard h4{font-family:var(--f-hand);font-size:21px;margin:2px 0 4px}
+#tourCard .tx{margin:0 0 10px;font-size:14px}
+#tourCard .tf{display:flex;align-items:center;gap:8px}
+#tourCard .dots{flex:1;display:flex;gap:4px}
+#tourCard .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+#tourCard .dots i.d{background:var(--ink-soft)} #tourCard .dots i.c{background:var(--blue)}
+#tourCard .ok{display:none;color:#3c8a4a;font-weight:700;font-size:13px}
+#tourCard.ok .ok{display:inline} #tourCard.ok{border-color:#3c8a4a}
+@media (prefers-reduced-motion:reduce){#tourHole,#tourCard{transition:none}}
 </style>
 </head>
 <body>
@@ -477,6 +497,9 @@ body.practicing .modebar{display:none}
             <summary><h3>Especie</h3></summary>
             <div class="chips" id="speciesChips"></div>
             <div id="headStyle" hidden>
+              <p class="lbl">Patas</p>
+              <div class="chips seg" id="feetChips"></div>
+              <p class="note" id="feetNote"></p>
               <div><p class="lbl">Cabeza</p>
                 <div class="chips" id="headModelChips"></div></div>
               <p class="note" id="headCredit"></p>
@@ -698,7 +721,34 @@ body.practicing .modebar{display:none}
         <dt><kbd>?</kbd></dt><dd>Esta ayuda</dd>
         <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd></dl></section>
     </div>
-    <div class="foot"><button class="btn primary" id="helpClose">Entendido</button></div>
+    <div class="foot"><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose">Entendido</button></div>
+  </div>
+</div>
+
+<div class="modal" id="welcome" hidden>
+  <div class="sheet welcome" role="dialog" aria-labelledby="wT">
+    <img src="icon.png" alt="" width="72" height="72">
+    <h2 id="wT">Te damos la bienvenida a NEOPOSE</h2>
+    <p>Un maniquí 3D para dibujar: posa a tus personajes, vístelos, ponlos en un escenario y llévate la referencia.</p>
+    <ul class="wlist">
+      <li><b>Posa</b> arrastrando manos y pies, o articulación a articulación.</li>
+      <li><b>Personaliza</b> el cuerpo, la especie anthro y la ropa.</li>
+      <li><b>Ilumina</b> en 24 escenarios y exporta a PNG.</li>
+    </ul>
+    <div class="foot">
+      <button class="btn" id="wSkip">Explorar por mi cuenta</button>
+      <button class="btn primary" id="wStart">Tutorial interactivo · 2 min</button>
+    </div>
+    <p class="note">Puedes volver a verlo cuando quieras desde el botón <b>?</b> de arriba a la derecha.</p>
+  </div>
+</div>
+<div id="tour" hidden>
+  <div id="tourHole" hidden></div>
+  <div id="tourCard" role="dialog" aria-live="polite">
+    <div class="th"><span class="tn"></span><button class="tq" data-a="quit" aria-label="Salir del tutorial">×</button></div>
+    <h4 class="tt"></h4>
+    <p class="tx"></p>
+    <div class="tf"><span class="dots"></span><span class="ok">✓ ¡Hecho!</span><button class="btn small" data-a="next">Saltar paso</button></div>
   </div>
 </div>
 
@@ -1368,9 +1418,10 @@ class Mannequin {
     // the body skeleton also carries the ear bones (indices after the baked ones), so sculpted ears can bend
     this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R]);
     // furry parts use their own skeleton: pelvis, head and the three tail bones
-    this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R];
+    this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R,
+      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]]))];
     this.accSkeleton = new THREE.Skeleton(this.accBones);
-    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR'];
+    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR'];
     const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
@@ -1410,6 +1461,7 @@ class Mannequin {
     }
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
+    remodelLegs(this.body, P, J, H);
     anthroHead(this, P); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
@@ -1586,6 +1638,7 @@ class Mannequin {
       geos.push(loft({origin: this.tailRoot, axis: this.tailDir, side: new V3(1, 0, 0), secs, radial: 16, sub: 3,
         weights: chainW([[0, -1e9], [2, .015], [3, L / 3], [4, L * 2 / 3]], Math.min(.05, L * .08))}));
     }
+    for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];
@@ -2168,6 +2221,7 @@ function renderCast() {
 
 /* ---------- applying poses to the cast ---------- */
 function usePreset(p) {
+  tourEvent('pose');
   const yaw = mq.yaw(), pos = mq.joints.hips.position.clone();
   mq.joints.hips.position.set(pos.x, mq.rootY, pos.z);
   applyPreset(mq, p, {yaw});
@@ -2190,6 +2244,7 @@ function applyGroupTo(list, def, o = {}) {
   }
 }
 function useGroup(def) {
+  tourEvent('pose');
   ensureCount(def.n);
   applyGroupTo(chars, def);
   state.posePreset = def.id;
@@ -2201,6 +2256,7 @@ function useGroup(def) {
 let envGroup = null, envToken = 0;
 const isOutdoor = id => SCENES[id] ? !!SCENES[id].out : OUTDOOR.includes(id);
 function setEnv(id) {
+  if (typeof TOUR !== 'undefined' && TOUR.on && id !== state.env) tourEvent('env');
   if (!SCENES[id] && !ENV_BUILD[id]) id = 'estudio';
   const tok = ++envToken, S = SCENES[id];
   state.env = id;
@@ -2563,10 +2619,10 @@ $('#helpModal').onclick = e => { if (e.target === e.currentTarget) closeHelp(); 
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo}; mq.bodyPreset = id; rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, feet: mq.body.feet}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   chips($('#speciesChips'), Object.entries(SPECIES).map(([k, v]) => [k, v.label]), mq.body.species, id => {
-    mq.body.species = id; rebuildActive(true); syncHeadUI(); pushHistory();
+    mq.body.species = id; tourEvent('body'); rebuildActive(true); syncHeadUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -2858,6 +2914,8 @@ function setIK(on) {
 const HINT_IK = 'Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla';
 const HINT_FK = 'Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro';
 function endDrag() {
+  if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');
+  if (drag && drag.id !== 'fk' && drag.id !== 'sun') tourEvent(drag.id === 'hips' ? 'hips' : 'ik');
   if (drag && drag.id === 'fk' && !drag.moved) { const jn = drag.joint; drag = null; controls.enabled = true; vp.style.cursor = ''; down = null; return select(jn); }
   if (!drag) return; const wasSun = drag.id === 'sun'; drag = null; controls.enabled = true; vp.style.cursor = ''; if (!wasSun) pushHistory(); }
 vp.addEventListener('pointerup', e => {
@@ -2883,7 +2941,7 @@ vp.addEventListener('pointerup', e => {
 vp.addEventListener('pointercancel', endDrag);
 tc.addEventListener('dragging-changed', e => { controls.enabled = !e.value; if (e.value) gizmoDragged = true; });
 tc.addEventListener('objectChange', () => {
-  const s = state.sel;
+  const s = state.sel; if (s && s.kind === 'joint') tourEvent('rotate');
   if (s && s.kind === 'joint') {
     const n = state.selected;
     if (n && HINGE[n]) { const j = mq.joints[n]; j.rotation.set(clamp(hingeAngle(j.quaternion), HINGE[n][0] * DEG, HINGE[n][1] * DEG), 0, 0, 'XYZ'); }
@@ -2900,7 +2958,7 @@ addEventListener('keydown', e => {
   else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
   else if (k === 'delete' || k === 'backspace') { if (state.sel && state.sel.kind !== 'joint') { e.preventDefault(); deleteSel(); } }
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
-  else if (k === 'escape') { if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
+  else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { showTab(tabs[+k - 1].dataset.tab); setPanel(true); }
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
@@ -2990,7 +3048,7 @@ function renderExport() {
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
   $('#exMsg').textContent = `${out.width} × ${out.height} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.`;
 }
-function openExport() { $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
+function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExport(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }
 $('#exportBtn').onclick = openExport; $('#exClose').onclick = closeExport;
 $('#exportModal').onclick = e => { if (e.target.id === 'exportModal') closeExport(); };
@@ -3109,6 +3167,7 @@ function boot(data) {
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));
   showTab(store.get('cdp.tab', 'pose'));
+  initTour();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
   initThumbs(); buildPoseGrid(); buildMyPoses();
@@ -4016,6 +4075,7 @@ function garmentBlock(m, it) {
   const ears = (HEAD_RECIPES[m.body.species].ears || []).length > 0;
   if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return `Las gafas no se apoyan en un hocico de ${sp}.`;
   if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return `La máscara está hecha para una cara humana, no para un hocico de ${sp}.`;
+  if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return `Las patas de ${sp} no entran en calzado humano.`;
   if (it.cat === 'Sombreros, cascos y máscaras' && ears && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return `Las orejas de ${sp} no caben dentro: haría falta una versión con agujeros para las orejas.`;
   return null;
 }
@@ -4400,6 +4460,7 @@ function buildExprUI() {
 // body proportions by style: kemono bigger, rounder head and slightly shorter legs; western toony a little bigger head
 const effBody = b => {
   if (!HEAD_RECIPES[b.species]) return b;
+  const L = legSpec(b); if (L) b = {...b, legs: (b.legs ?? 1) * (L.type === 'ungu' ? .84 : .88)};
   if (b.headStyle === 'kemono') return {...b, head: (b.head ?? 1) * 1.12, legs: (b.legs ?? 1) * .96};
   if (b.headStyle === 'toon') return {...b, head: (b.head ?? 1) * 1.05};
   return b;
@@ -4407,6 +4468,7 @@ const effBody = b => {
 let kemoSl = null;
 function buildHeadUI() {
   const box = $('#headStyle'); if (!box) return;
+  chips($('#feetChips'), [['animal', 'Del animal'], ['humano', 'Humanas']], mq.body.feet || 'animal', v => { mq.body.feet = v === 'animal' ? undefined : v; rebuildActive(true); pushHistory(); });
   syncHeadUI();
 }
 // sculpted head choices for this species (plus the MakeHuman target head)
@@ -4426,6 +4488,8 @@ function renderHeadModels() {
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
   const on = !!HEAD_RECIPES[mq.body.species]; box.hidden = !on;
+  setPressed($('#feetChips'), mq.body.feet || 'animal');
+  const L = ANIMAL_LEGS[mq.body.species]; $('#feetNote').textContent = L ? (L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
   renderHeadModels();
 }
 
@@ -4454,6 +4518,101 @@ function eyeSetup(m, P) {
   const lvl = m.body.kemo ?? 5, pup = r ? PUPILS[style === 'kemono' && r.pupil === 'rendija' ? 'redonda' : r.pupil] : PUPILS.redonda;
   U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' ? 1 : 0;
   U.uPupil.value.set(pup[0], pup[1] * (style === 'kemono' ? 1.15 : 1), pup[2]);
+}
+
+/* ---------- animal legs (researched) ----------
+   Digitigrade animals (canids, rabbits, most anthro dragons) stand on their toes: the heel is lifted into a
+   "hock" and the long metatarsus reads as a backwards knee. Ungulates (goats) stand on the tip of the toe, a hoof.
+   Hind-limb ratios from comparative anatomy: metatarsus ≈ 0.45 × femur in wolves and dogs (Garland & Janis 1993),
+   ≈ 0.6 × femur in goats (tibia 1.14 × femur, metatarsus 0.53 × tibia); rabbits have a long, fully furred foot
+   without pads. The human foot here is a single bone (the ankle), so the rest geometry is remodelled: the heel
+   rises along the metatarsus, the toes stay flat on the ground as the paw, and the ankle joint becomes the hock. */
+const ANIMAL_LEGS = {
+  lobo:   {type: 'digi', mt: .52, th: 30, hock: .4, knee: .14, toe: .85, claws: .022, hand: .014},
+  perro:  {type: 'digi', mt: .5, th: 28, hock: .38, knee: .14, toe: .85, claws: .02, hand: .012},
+  zorro:  {type: 'digi', mt: .54, th: 30, hock: .4, knee: .14, toe: .8, claws: .018, hand: .012},
+  conejo: {type: 'digi', mt: .5, th: 30, hock: .36, knee: .12, toe: 1.65, claws: 0, hand: 0},
+  cabra:  {type: 'ungu', mt: .62, th: 14, hock: .32, knee: .12, toe: .32, hoof: true, claws: 0, hand: 0},
+  dragon: {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .95, claws: .034, hand: .026}
+};
+const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[b.species] || null : null;
+const animalFeet = m => !!legSpec(m && m.body);
+function remodelLegs(b, P, J, H) {
+  const L = legSpec(b); if (!L) return null;
+  const sst = (a, c, x) => { const t = clamp((x - a) / (c - a), 0, 1); return t * t * (3 - 2 * t); };
+  const res = {};
+  for (const s of ['L', 'R']) {
+    const ai = FIG.jIdx['ankle' + s], jv = i => new V3(J[i * 3], J[i * 3 + 1], J[i * 3 + 2]);
+    // zig-zag of the hind leg: knee a little forward, hock well back (the shin slopes back to the hock)
+    {
+      const hi = FIG.jIdx['hip' + s], ki = FIG.jIdx['knee' + s], Hy = J[hi * 3 + 1], Ky = J[ki * 3 + 1], Ay = J[ai * 3 + 1];
+      const fwd = (L.knee ?? .12) * (Hy - Ky), back = (L.hock ?? .3) * (Ky - Ay);
+      const dz = y => fwd * clamp((Hy - y) / (Hy - Ky), 0, 1) - back * clamp((Ky - y) / (Ky - Ay), 0, 1);
+      const legW = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) { const b = si[i * 4 + k]; if (b === hi || b === ki || b === ai) w += sw[i * 4 + k] / 255; } return w; };
+      const shear = (Q, cnt, si, sw) => { for (let i = 0; i < cnt; i++) { const w = legW(si, sw, i); if (w > .01) Q[i * 3 + 2] += dz(Q[i * 3 + 1]) * w; } };
+      shear(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) shear(H, FIG.nH, FIG.hsi, FIG.hsw);
+      for (const j of [ki, ai, FIG.jIdx['toe' + s]]) if (j !== undefined) J[j * 3 + 2] += dz(J[j * 3 + 1]);
+    }
+    const A = jv(ai), femur = jv(FIG.jIdx['hip' + s]).distanceTo(jv(FIG.jIdx['knee' + s]));
+    const wA = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) if (si[i * 4 + k] === ai) w += sw[i * 4 + k] / 255; return w; };
+    let soleY = Infinity, fmin = Infinity, fmax = -Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (P[i * 3 + 1] < A.y && wA(FIG.si, FIG.sw, i) > .5) {
+      soleY = Math.min(soleY, P[i * 3 + 1]); fmin = Math.min(fmin, P[i * 3 + 2]); fmax = Math.max(fmax, P[i * 3 + 2]);
+    }
+    if (!isFinite(soleY)) continue;
+    const fb = fmin + .68 * (fmax - fmin), hMid = (A.y - soleY) * .55, Lmt = L.mt * femur, th = L.th * DEG;
+    const u = new V3(0, -Math.cos(th), Math.sin(th)), n = new V3(0, Math.sin(th), Math.cos(th)), B = A.clone().addScaledVector(u, Lmt);
+    const map = (x, y, z, o) => {
+      const sp = (z - fmin) / (fb - fmin), h = y - soleY;
+      const my = A.y + u.y * sp * Lmt + n.y * (h - hMid), mz = A.z + u.z * sp * Lmt + n.z * (h - hMid);
+      const ty = B.y + (h - hMid), tz = B.z + (z - fb) * L.toe;
+      const w = sst(.8, 1.2, sp); o[0] = x; o[1] = my + (ty - my) * w; o[2] = mz + (tz - mz) * w;
+    };
+    const o = [0, 0, 0];
+    const apply = (Q, cnt, si, sw) => {
+      for (let i = 0; i < cnt; i++) {
+        const y = Q[i * 3 + 1], g = wA(si, sw, i) * sst(A.y + .035, A.y - .005, y); if (g < .01) continue;
+        map(Q[i * 3], y, Q[i * 3 + 2], o);
+        Q[i * 3] += (o[0] - Q[i * 3]) * g; Q[i * 3 + 1] += (o[1] - y) * g; Q[i * 3 + 2] += (o[2] - Q[i * 3 + 2]) * g;
+      }
+    };
+    apply(P, FIG.meta.nV, FIG.si, FIG.sw);
+    if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
+    const ti = FIG.jIdx['toe' + s];
+    if (ti !== undefined) { map(J[ti * 3], J[ti * 3 + 1], J[ti * 3 + 2], o); J[ti * 3] = o[0]; J[ti * 3 + 1] = o[1]; J[ti * 3 + 2] = o[2]; }
+    res[s] = {B, u, n};
+  }
+  return res;
+}
+// claws on fingers and paws, hooves on goats: rigid on the finger tips and the ankles (accessory skeleton)
+function pawGeos(m, P) {
+  const L = legSpec(m.body), out = []; if (!L) return out;
+  const sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
+  const ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]);
+  const claw = (origin, axis, len, r, bone) => loft({origin, axis, side: new V3(1, 0, 0), secs: [[-r * .5, r * .9, r * .75], [0, r, r * .8], [len * .5, r * .65, r * .55], [len, .0015, .0015]], radial: 8, sub: 2, bend: -.35, weights: () => [[bone, 1]]});
+  for (const s of ['L', 'R']) {
+    const ai = FIG.jIdx['ankle' + s], A = jp('ankle' + s);
+    // paw extent from the remodelled geometry (front of the toes, width, sole)
+    let zmax = -Infinity, sole = Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < A.y) { zmax = Math.max(zmax, P[i * 3 + 2]); sole = Math.min(sole, P[i * 3 + 1]); }
+    if (!isFinite(zmax)) continue;
+    let x0 = Infinity, x1 = -Infinity, ytop = -Infinity;
+    for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (m.dom[i] === ai && P[i * 3 + 2] > zmax - .05 * sz && P[i * 3 + 1] < sole + .06 * sz) { x0 = Math.min(x0, P[i * 3]); x1 = Math.max(x1, P[i * 3]); ytop = Math.max(ytop, P[i * 3 + 1]); }
+    const bone = ACC('ankle' + s);
+    if (L.hoof) {
+      // cloven hoof: two keratin wedges under the front of the foot
+      const cx = (x0 + x1) / 2, hw = clamp((x1 - x0) * .28, .01, .025 * sz), hz = zmax - hw * 1.4, hh = .045 * sz;
+      for (const k of [-1, 1]) out.push(loft({origin: new V3(cx + k * hw * .95, sole - .002, hz), axis: new V3(0, 1, -.15), side: new V3(1, 0, 0),
+        secs: [[0, hw, hw * 1.7], [hh * .55, hw * .95, hw * 1.45], [hh, hw * .8, hw * 1.1], [hh * 1.05, hw * .5, hw * .6]], radial: 12, sub: 2, n: 3, weights: () => [[bone, 1]]}));
+    } else if (L.claws) {
+      for (const f of [.15, .38, .62, .85]) out.push(claw(new V3(x0 + (x1 - x0) * f, sole + (ytop - sole) * .45, zmax - .006 * sz), new V3(0, -.35, 1), L.claws * sz, L.claws * .28 * sz, bone));
+    }
+    if (L.hand) for (let f = 1; f < 5; f++) {
+      const tip = jp(`tip${s}${f}`), last = jp(`f${s}${f}2`), dir = tip.clone().sub(last).normalize();
+      out.push(claw(tip.clone().addScaledVector(dir, -.004 * sz), dir, L.hand * sz, L.hand * .3 * sz, ACC(`f${s}${f}2`)));
+    }
+  }
+  return out;
 }
 
 /* ======================= sculpted anthro heads (head swap) =======================
@@ -5385,6 +5544,96 @@ delete SCENES.bosque2;
 SCENES.vacio = {label: 'Vacío', group: 'x', assets: [], build() {}};
 // the old ids keep working in saved scenes
 for (const k of ['estudio', 'habitacion', 'calle', 'bosque', 'cafeteria', 'playa', 'dojo', 'ring', 'ruinas', 'escalinata', 'azotea']) if (!SCENES[k]) console.warn('missing scene', k);
+
+/* ---------- welcome screen and interactive tutorial ----------
+   Research (NN/g "Mobile tutorials"; Autodesk Maya's in-app tutorial): passive deck-of-cards tips don't improve
+   success and make tasks feel harder; what works is short, skippable learn-by-doing: each step asks for one real
+   action, highlights where to do it and moves on by itself when the user has done it. */
+const TOUR_STEPS = [
+  {id: 'orbit', title: 'Mira alrededor', text: 'Arrastra el fondo del lienzo para girar la cámara. Rueda (o pellizca) para acercarte.', target: '#viewport', done: 'orbit'},
+  {id: 'ik', title: 'Mueve una mano', text: 'Arrastra el punto rojo de una mano: el brazo entero la sigue (IK).', target: () => handleRect('handR'), done: 'ik', before: () => setIK(true)},
+  {id: 'rotate', title: 'Gira una articulación', text: 'Toca el pecho, la cabeza o cualquier punto de articulación y gíralo con el aro de colores.', target: '#viewport', done: 'rotate'},
+  {id: 'fk', title: 'Modo FK', text: 'Cambia a FK y arrastra un codo o una rodilla: solo gira ese hueso. Tecla I para alternar.', target: '#ikMode', done: 'fk'},
+  {id: 'pose', title: 'Poses listas', text: 'Abre la pestaña Pose y elige una pose de la biblioteca. Las de 2 a 4 personas colocan a todo el reparto.', target: '#poseGrid', tab: 'pose', done: 'pose'},
+  {id: 'body', title: 'Cuerpo y especie', text: 'En Cuerpo cambia el tipo de cuerpo o elige una especie anthro (lobo, zorro, cabra…).', target: '[data-sec=tipo], [data-sec=especie]', tab: 'cuerpo', done: 'body'},
+  {id: 'env', title: 'Un escenario', text: 'En Escena elige un lugar. Trae sus propias luces y nunca tapará al personaje.', target: '#envChips', tab: 'escena', done: 'env'},
+  {id: 'export', title: 'Llévatelo a tu dibujo', text: 'Pulsa Exportar para guardar la referencia como PNG (con fondo, transparente o solo trazo).', target: '#exportBtn', done: 'export'}
+];
+const TOUR = {on: false, i: 0, el: null};
+function tourEvent(name) {
+  if (!TOUR.on) return;
+  const st = TOUR_STEPS[TOUR.i]; if (!st || st.done !== name || TOUR.busy) return;
+  TOUR.busy = true; TOUR.el.classList.add('ok'); const i = TOUR.i; setTimeout(() => { if (TOUR.on && TOUR.i === i) tourGo(i + 1); }, 750);
+}
+function handleRect(id) {
+  const h = handles[id]; if (!h) return null;
+  const p = h.position.clone().project(camera), r = canvas.getBoundingClientRect();
+  const x = r.left + (p.x + 1) / 2 * r.width, y = r.top + (1 - p.y) / 2 * r.height;
+  return {left: x - 34, top: y - 34, width: 68, height: 68};
+}
+function tourRect(st) {
+  if (typeof st.target === 'function') return st.target();
+  const els = $$(st.target).filter(e => e.offsetParent); if (!els.length) return null;
+  const rs = els.map(e => e.getBoundingClientRect());
+  const l = Math.min(...rs.map(r => r.left)), t = Math.min(...rs.map(r => r.top)), rr = Math.max(...rs.map(r => r.right)), b = Math.max(...rs.map(r => r.bottom));
+  return {left: l, top: t, width: rr - l, height: Math.min(b - t, innerHeight - t - 8)};
+}
+function tourPlace() {
+  if (!TOUR.on) return;
+  const st = TOUR_STEPS[TOUR.i], r = tourRect(st), hole = $('#tourHole'), card = TOUR.el;
+  if (r) { const pad = 6; Object.assign(hole.style, {left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px'}); hole.hidden = false; } else hole.hidden = true;
+  // card: next to the target where it fits, else at the bottom
+  const cw = Math.min(340, innerWidth - 24), ch = card.offsetHeight || 180;
+  let x = 12, y = innerHeight - ch - 12;
+  if (r && innerWidth > 760) {
+    const big = r.width > innerWidth * .5 && r.height > innerHeight * .5;
+    if (big) { x = r.left + 16; y = r.top + 16; }
+    else if (r.left - cw - 20 > 0) { x = r.left - cw - 20; y = clamp(r.top, 12, innerHeight - ch - 12); }
+    else if (r.left + r.width + cw + 20 < innerWidth) { x = r.left + r.width + 20; y = clamp(r.top, 12, innerHeight - ch - 12); }
+    else { x = clamp(r.left, 12, innerWidth - cw - 12); y = r.top + r.height + 16 + ch < innerHeight ? r.top + r.height + 16 : Math.max(12, r.top - ch - 16); }
+  }
+  Object.assign(card.style, {left: x + 'px', top: y + 'px', width: cw + 'px'});
+}
+function tourGo(i) {
+  TOUR.i = i; TOUR.busy = false;
+  if (i >= TOUR_STEPS.length) return tourEnd(true);
+  const st = TOUR_STEPS[i];
+  if (st.tab) { showTab(st.tab); setPanel(true); const d = document.querySelector(st.target.split(',')[0].trim()); const sec = d && d.closest('details.sec'); if (sec) sec.open = true; }
+  if (st.before) st.before();
+  const c = TOUR.el; c.classList.remove('ok');
+  c.querySelector('.tt').textContent = st.title; c.querySelector('.tx').textContent = st.text;
+  c.querySelector('.tn').textContent = `${i + 1} de ${TOUR_STEPS.length}`;
+  c.querySelector('.dots').innerHTML = TOUR_STEPS.map((_, k) => `<i class="${k < i ? 'd' : k === i ? 'c' : ''}"></i>`).join('');
+  c.querySelector('[data-a=next]').textContent = i === TOUR_STEPS.length - 1 ? 'Terminar' : 'Saltar paso';
+  if (st.done === 'orbit') TOUR.cam0 = camera.position.clone().sub(controls.target).normalize();
+  requestAnimationFrame(tourPlace);
+}
+function tourStart() {
+  closeWelcome(); closeHelp && closeHelp();
+  TOUR.on = true; $('#tour').hidden = false; TOUR.el = $('#tourCard');
+  tourGo(0);
+}
+function tourEnd(finished) {
+  TOUR.on = false; $('#tour').hidden = true; store.set('cdp.welcomed', true);
+  if (finished) toast('¡Listo! Tienes la ayuda y el tutorial en el botón ? de arriba a la derecha.');
+}
+function openWelcome() { $('#welcome').hidden = false; $('#wStart').focus(); }
+function closeWelcome() { $('#welcome').hidden = true; store.set('cdp.welcomed', true); }
+function initTour() {
+  $('#wStart').onclick = tourStart; $('#wSkip').onclick = closeWelcome;
+  $('#helpTour').onclick = tourStart;
+  $('#tourCard').addEventListener('click', e => { const a = e.target.dataset.a; if (a === 'next') tourGo(TOUR.i + 1); else if (a === 'quit') tourEnd(false); });
+  addEventListener('resize', tourPlace);
+  // the camera step completes after a clear orbit; the IK target follows the hand while the camera moves
+  setInterval(() => {
+    if (!TOUR.on) return;
+    const st = TOUR_STEPS[TOUR.i];
+    if (st.done === 'orbit' && TOUR.cam0 && camera.position.clone().sub(controls.target).normalize().angleTo(TOUR.cam0) > .35) tourEvent('orbit');
+  }, 200);
+  const follow = () => { if (TOUR.on && typeof TOUR_STEPS[TOUR.i]?.target === 'function') tourPlace(); requestAnimationFrame(follow); };
+  requestAnimationFrame(follow);
+  if (!store.get('cdp.welcomed', false)) openWelcome();
+}
 
 const HINT = $('#hint').innerHTML;
 function start(data) {
