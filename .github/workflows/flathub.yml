@@ -32,4 +32,7 @@ jobs:
         run: |
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/io.github.pmirall.NEOPOSE.yml
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/io.github.pmirall.NEOPOSE.metainfo.xml
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo fprepo
+          # screenshot mirroring only happens on Flathub's own builders, so those two errors are expected here
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo fprepo > lint.json || true
+          cat lint.json
+          python3 -c "import json,sys; e=set(json.load(open('lint.json')).get('errors',[]))-{'appstream-screenshots-not-mirrored-in-ostree','appstream-external-screenshot-url'}; sys.exit(1 if e else 0)"
