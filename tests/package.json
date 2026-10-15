@@ -1,0 +1,7 @@
+{
+  "name": "neopose-tests",
+  "private": true,
+  "description": "Browser tests for NEOPOSE (kept apart from the app's dependencies, so they never touch the reproducible APK build)",
+  "scripts": { "test": "node run.js" },
+  "devDependencies": { "playwright-core": "1.64.1" }
+}

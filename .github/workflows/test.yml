@@ -1,0 +1,27 @@
+# Browser tests (tests/run.js): every panel in both languages, language switch, gesture practice, export, phone layout.
+name: Tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: python3 build.py
+      - name: Chromium
+        working-directory: tests
+        run: npm ci && npx playwright-core install --with-deps chromium
+      - name: Run
+        working-directory: tests
+        run: node run.js
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: test-screenshots
+          path: tests/out/

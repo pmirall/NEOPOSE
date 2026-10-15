@@ -1,0 +1,137 @@
+// Browser tests for NEOPOSE: the built app (app/index.html) in headless Chromium with software WebGL.
+//   node run.js                 all suites
+//   node run.js i18n practice   only some
+// CHROMIUM=/path/to/chrome overrides the browser playwright-core installed.
+const {chromium} = require('playwright-core');
+const fs = require('fs'), path = require('path'), http = require('http');
+
+const APP = path.join(__dirname, '..', 'app'), OUT = path.join(__dirname, 'out');
+fs.mkdirSync(OUT, {recursive: true});
+const DICT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n-en.json'), 'utf8'));
+const want = process.argv.slice(2);
+let failed = 0;
+const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) failed++; };
+
+const server = http.createServer((q, r) => {
+  let u = decodeURIComponent(q.url.split('?')[0]); if (u === '/') u = '/index.html';
+  fs.readFile(path.join(APP, u), (e, d) => { if (e) { r.statusCode = 404; return r.end(); } if (u.endsWith('.html')) r.setHeader('content-type', 'text/html'); r.end(d); });
+});
+
+async function open(browser, {lang = 'en', viewport = {width: 1400, height: 900}, mobile = false} = {}) {
+  const ctx = await browser.newContext({viewport, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile});
+  await ctx.addInitScript(l => { if (!localStorage.getItem('cdp.lang')) localStorage.setItem('cdp.lang', JSON.stringify(l)); localStorage.setItem('cdp.welcomed', 'true'); }, lang);
+  const page = await ctx.newPage();
+  page.errors = [];
+  page.on('pageerror', e => page.errors.push(String(e.stack || e).slice(0, 300)));
+  page.on('console', m => { if (m.type() === 'error' && !/404|favicon|Failed to load resource/.test(m.text())) page.errors.push(m.text().slice(0, 300)); });
+  await page.goto(`http://localhost:${server.address().port}/`);
+  await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+  await page.waitForTimeout(800);
+  return page;
+}
+// every visible text and labelled attribute
+const texts = page => page.evaluate(() => {
+  const out = [], w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) { const s = w.currentNode.nodeValue.trim(); if (s && !w.currentNode.parentElement.closest('script,style,textarea')) out.push(s); }
+  for (const el of document.querySelectorAll('[title],[aria-label],[placeholder],[alt]')) for (const a of ['title', 'aria-label', 'placeholder', 'alt']) { const v = el.getAttribute(a); if (v) out.push(v); }
+  return out;
+});
+const waitIdle = page => page.waitForFunction(() => !window.__cdp.practice.busy, null, {timeout: 120000});
+
+const SUITES = {
+  // every panel, card and window in English: nothing left in Spanish, no errors
+  async i18n(browser) {
+    for (const lang of ['en', 'es']) {
+      const page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
+      await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
+      for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) {
+        await page.click(`.tab[data-tab=${tab}]`); await page.waitForTimeout(400);
+        if (tab === 'ropa') { await page.click('#outfitChips .chip'); await page.waitForTimeout(2500); await page.evaluate(() => document.querySelectorAll('#garmentList details, #garmentAdd details').forEach(d => d.open = true)); }
+        if (tab === 'cuerpo') { await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1200); }
+        await grab(); await page.screenshot({path: path.join(OUT, `${lang}-${tab}.png`)});
+      }
+      await page.click('.tab[data-tab=escena]');
+      await page.evaluate(() => document.querySelector('#propChips .chip').click()); await page.waitForTimeout(800); await grab();
+      await page.evaluate(() => document.querySelector('#addSpot').click()); await page.waitForTimeout(300); await grab();
+      for (const b of ['#exportBtn', '#helpBtn', '#practiceBtn']) { await page.click(b); await page.waitForTimeout(900); await grab(); await page.evaluate(() => document.querySelectorAll('.modal').forEach(m => m.hidden = true)); }
+      await page.click('#sketchBtn'); await page.waitForTimeout(300); await grab(); await page.click('#skClose');
+      if (lang === 'en') {
+        const left = [...seen].filter(t => DICT[t] !== undefined && DICT[t] !== t);
+        ok(left.length === 0, `en: no untranslated text (${left.slice(0, 5).join(' | ') || 'none'})`);
+      } else {
+        ok([...seen].includes('Práctica'), 'es: the interface is in Spanish');
+      }
+      ok(page.errors.length === 0, `${lang}: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+      await page.context().close();
+    }
+  },
+  // switching language reloads the page and keeps the scene
+  async language(browser) {
+    const page = await open(browser);
+    const before = await page.evaluate(async () => { const A = window.__cdp; A.useGroup(A.GROUP_POSES[2][3]); await A.setEnv('bosque'); return {n: A.chars.length, env: A.state.env}; });
+    await page.click('#helpBtn');
+    await Promise.all([page.waitForNavigation(), page.click('#helpModal .langChips .chip[data-v=es]')]);
+    await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length === 2, null, {timeout: 120000});
+    const after = await page.evaluate(() => ({lang: document.documentElement.lang, n: window.__cdp.chars.length, env: window.__cdp.state.env}));
+    ok(after.lang === 'es' && after.n === before.n && after.env === before.env, `language switch keeps the scene (${JSON.stringify(after)})`);
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
+  // gesture practice with everything random: bodies, clothes, sets, objects in hand; the scene comes back
+  async practice(browser) {
+    const page = await open(browser);
+    const before = await page.evaluate(() => { const A = window.__cdp; A.useGroup(A.GROUP_POSES[2][0]); return {env: A.state.env, bodies: A.chars.map(m => JSON.stringify(m.body))}; });
+    await page.click('#practiceBtn');
+    await page.evaluate(() => { const $ = s => document.querySelector(s); for (const id of ['prBody', 'prAnthro', 'prChibi', 'prEnv', 'prProps']) if (!$('#' + id).checked) $('#' + id).click(); $('#prSound').checked = false; $('#prClothes .chip[data-v=random]').click(); });
+    await page.click('#prStart');
+    let withProps = 0;
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(300); await waitIdle(page); await page.waitForTimeout(800);
+      const s = await page.evaluate(() => { const A = window.__cdp; return {props: A.practice.props.length, held: A.practice.props.every(g => g.userData.held), chars: A.chars.length}; });
+      if (s.props > 0) withProps++;
+      ok(s.held, `pose ${i + 1}: every practice object is held (${s.props})`);
+      await page.screenshot({path: path.join(OUT, `practice-${i}.png`)});
+      await page.click('#hNext');
+    }
+    ok(withProps >= 2, `objects were placed in most poses (${withProps}/4)`);
+    await waitIdle(page); await page.click('#hStop'); await page.waitForTimeout(2500);
+    const after = await page.evaluate(() => { const A = window.__cdp; return {env: A.state.env, bodies: A.chars.map(m => JSON.stringify(m.body)), props: A.props.length}; });
+    ok(after.env === before.env && after.bodies.every((b, i) => b === before.bodies[i]) && after.props === 0, 'stopping practice restores the scene');
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
+  // the export window renders a PNG
+  async export(browser) {
+    const page = await open(browser);
+    await page.click('#exportBtn'); await page.waitForTimeout(1500);
+    const src = await page.evaluate(() => document.querySelector('#exImg').src);
+    ok(src.startsWith('data:image/png') && src.length > 20000, `export renders a PNG (${Math.round(src.length / 1024)} kB)`);
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
+  // phone layout: no horizontal scroll, the panel and the canvas are both reachable
+  async mobile(browser) {
+    for (const lang of ['en', 'es']) {
+      const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});
+      const m = await page.evaluate(() => ({scroll: document.documentElement.scrollWidth - innerWidth, canvas: document.querySelector('#gl').getBoundingClientRect().height}));
+      ok(m.scroll <= 0, `${lang} phone: no horizontal scroll (${m.scroll}px)`);
+      ok(m.canvas > 200, `${lang} phone: canvas is visible (${Math.round(m.canvas)}px)`);
+      await page.screenshot({path: path.join(OUT, `${lang}-phone.png`)});
+      ok(page.errors.length === 0, `${lang} phone: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+      await page.context().close();
+    }
+  }
+};
+
+(async () => {
+  await new Promise(r => server.listen(0, r));
+  const browser = await chromium.launch({executablePath: process.env.CHROMIUM || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']});
+  for (const [name, fn] of Object.entries(SUITES)) {
+    if (want.length && !want.includes(name)) continue;
+    console.log(name);
+    try { await fn(browser); } catch (e) { ok(false, `${name} crashed: ${String(e).slice(0, 300)}`); }
+  }
+  await browser.close(); server.close();
+  console.log(failed ? `\n${failed} check(s) failed` : '\nall checks passed');
+  process.exit(failed ? 1 : 0);
+})();
