@@ -21,7 +21,8 @@ jobs:
       - name: fdroidserver
         run: |
           sudo apt-get update && sudo apt-get install -y python3-pip python3-venv
-          python3 -m venv ~/fd && ~/fd/bin/pip install -q fdroidserver
+          git clone -q --depth 1 https://gitlab.com/fdroid/fdroidserver.git ~/fdroidserver
+          python3 -m venv ~/fd && ~/fd/bin/pip install -q -e ~/fdroidserver
       - name: Lint the recipe
         run: |
           git clone -q --depth 1 --filter=blob:none --sparse https://gitlab.com/fdroid/fdroiddata.git ~/fdroiddata
@@ -33,5 +34,6 @@ jobs:
       - name: Build like F-Droid (from the tagged source)
         run: |
           cd ~/fdroiddata
-          ~/fd/bin/fdroid build -v -l --no-tarball io.github.pmirall.neopose
-          ls -la unsigned/ || true
+          ~/fd/bin/fdroid build -v -l --no-tarball io.github.pmirall.neopose 2>&1 | tee build.log
+          ls -la unsigned/
+          grep -q 'BUILD SUCCESSFUL' build.log
