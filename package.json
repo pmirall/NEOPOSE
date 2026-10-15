@@ -95,6 +95,7 @@
       "baseVersion": "26.08",
       "finishArgs": [
         "--share=ipc",
+        "--share=network",
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",

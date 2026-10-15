@@ -1,8 +1,9 @@
-<p>NEOPOSE is a 3D mannequin for artists. Pose one or more characters, dress them, place them in a lit set and use the result as a drawing reference. Everything works offline.</p>
+<p>NEOPOSE is a 3D mannequin for artists. Pose one or more characters, dress them, place them in a lit set and use the result as a drawing reference. Everything works offline except the optional avatar gallery.</p>
 <ul>
 <li><b>Posing</b>: IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or rotate each joint. Pose library for one to four characters, random poses, hand gestures, gaze and expressions.</li>
 <li><b>Body</b>: human anatomy from MakeHuman with age, gender, muscle, weight, height and stylisation, from realistic to chibi.</li>
 <li><b>Anthro</b>: wolf, fox, dog, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono), digitigrade or hoofed legs, claws and tails.</li>
+<li><b>Avatars</b>: import your own humanoid VRM, GLB or FBX, or pick a free one from the Open Source Avatars gallery (needs Internet).</li>
 <li><b>Clothes</b>: 470 garments that fit any body and pose.</li>
 <li><b>Sets</b>: 24 places with their own lamps and shadows, plus real objects to place.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer.</li>

@@ -152,6 +152,17 @@
               <p class="note" id="headCredit"></p>
             </div>
           </details>
+          <details class="sec" data-sec="avatar">
+            <summary><h3>Avatar importado <span>VRM · GLB · FBX</span></h3></summary>
+            <p class="note" id="avInfo"></p>
+            <div class="row">
+              <button class="btn small" id="avBrowse">Galería de avatares libres</button>
+              <button class="btn small" id="avImport">Importar archivo…</button>
+              <button class="btn small" id="avRemove" hidden>Volver al maniquí</button>
+            </div>
+            <input type="file" id="avFile" accept=".vrm,.glb,.gltf,.fbx" hidden>
+            <p class="note">También puedes soltar el archivo sobre el lienzo. Necesita un esqueleto humanoide (caderas, columna, brazos y piernas).</p>
+          </details>
           <details class="sec" data-sec="prop">
             <summary><h3>Proporciones</h3></summary>
             <div id="bodySliders"></div>
@@ -357,6 +368,7 @@
         <li><b>Modo FK</b> (botón arriba a la derecha o tecla <kbd>I</kbd>): arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene.</li>
         <li>Toca cualquier pieza del cuerpo para girarla con el aro o con los deslizadores.</li>
         <li>Toca la mandíbula o una oreja de un anthro para moverlas a mano.</li>
+        <li><b>Avatares</b> (Cuerpo → Avatar importado): suelta un VRM, GLB o FBX humanoide sobre el lienzo, o elige uno libre de la galería. Se posa igual que el maniquí.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">
         <dt><kbd>Ctrl</kbd> <kbd>Z</kbd> / <kbd>Ctrl</kbd> <kbd>Y</kbd></dt><dd>Deshacer / rehacer</dd>
@@ -396,5 +408,16 @@
     <h4 class="tt"></h4>
     <p class="tx"></p>
     <div class="tf"><span class="dots"></span><span class="ok">✓ ¡Hecho!</span><button class="btn small" data-a="next">Saltar paso</button></div>
+  </div>
+</div>
+
+<div class="modal" id="avGallery" hidden>
+  <div class="sheet avsheet" role="dialog" aria-labelledby="avT">
+    <h2 id="avT">Avatares libres <span id="avCount" class="note"></span></h2>
+    <p class="note">De <a href="https://opensourceavatars.com" target="_blank" rel="noopener">Open Source Avatars</a>: modelos VRM con licencia CC0 o CC-BY (las colecciones CC-BY piden citar a su autor).</p>
+    <div class="chips" id="avFilter"></div>
+    <p class="msg" id="avMsg"></p>
+    <div class="lib avgrid" id="avGrid"></div>
+    <div class="foot"><button class="btn" id="avClose">Cerrar</button></div>
   </div>
 </div>

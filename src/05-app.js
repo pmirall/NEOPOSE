@@ -690,7 +690,7 @@ $('#resetBtn').onclick = () => usePreset(POSE.pie);
 $('#stoolChk').onchange = e => { mq.stool = e.target.checked; pushHistory(); };
 $('#undo').onclick = undo; $('#redo').onclick = redo;
 $('#jointClose').onclick = () => select(null);
-function syncAll() { syncJointSliders(); syncHandUI(); syncBodyUI(); $('#stoolChk').checked = mq.stool; if (typeof renderGarmentList === 'function') { renderGarmentList(); renderLibrary(); } }
+function syncAll() { syncJointSliders(); syncHandUI(); syncBodyUI(); if (typeof renderAvatarUI === 'function') renderAvatarUI(); $('#stoolChk').checked = mq.stool; if (typeof renderGarmentList === 'function') { renderGarmentList(); renderLibrary(); } }
 
 /* ---------- pointer interaction ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -778,11 +778,17 @@ vp.addEventListener('pointerup', e => {
   if (down && !gizmoDragged && !practice.active && e.target === canvas && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {
     setNdc(e);
     const targets = [...chars.flatMap(m => m.meshes), ...props.flatMap(p => { const a = []; p.traverse(o => { if (o.isMesh && !o.userData.isHull) a.push(o); }); return a; }),
-      ...extraLights.map(g => g.userData.ref.bulb)];
+      ...extraLights.map(g => g.userData.ref.bulb), ...chars.flatMap(m => m.avatar ? m.avatar.meshes : [])];
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) select(null);
     else if (hit.object.userData.lightRoot) selectObj(hit.object.userData.lightRoot);
     else if (hit.object.userData.propRoot) selectObj(hit.object.userData.propRoot);
+    else if (hit.object.userData.avatarOf) {
+      const owner = hit.object.userData.avatarOf, ci = chars.indexOf(owner); let best = null, bd = Infinity;
+      for (const n of DOT_JOINTS) { const j = owner.joints[n]; if (!j || (n.startsWith('tail') && !owner.hasTail)) continue; const d = j.getWorldPosition(new V3()).distanceTo(hit.point); if (d < bd) { bd = d; best = n; } }
+      if (ci !== active) setActive(ci);
+      select(best);
+    }
     else {
       const ci = chars.findIndex(m => m.meshes.includes(hit.object));
       const owner = chars[ci], jn = owner.pick(hit);
@@ -859,7 +865,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); updateLights(); envTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) m.group.visible = !sk.hideFig;
   renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
@@ -1022,7 +1028,7 @@ function boot(data) {
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));
   showTab(store.get('cdp.tab', 'pose'));
-  initTour();
+  initTour(); initAvatars();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
   initThumbs(); buildPoseGrid(); buildMyPoses();

@@ -13,6 +13,8 @@ command: neopose
 separate-locales: false
 finish-args:
   - --share=ipc
+  # optional: the free-avatar gallery downloads VRM models
+  - --share=network
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri

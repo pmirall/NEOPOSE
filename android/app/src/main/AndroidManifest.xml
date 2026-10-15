@@ -35,4 +35,6 @@
         </provider>
     </application>
 
+    <!-- optional: the free-avatar gallery downloads VRM models -->
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

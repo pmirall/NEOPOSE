@@ -340,3 +340,7 @@ body.practicing .modebar{display:none}
 #tourCard .ok{display:none;color:#3c8a4a;font-weight:700;font-size:13px}
 #tourCard.ok .ok{display:inline} #tourCard.ok{border-color:#3c8a4a}
 @media (prefers-reduced-motion:reduce){#tourHole,#tourCard{transition:none}}
+
+.avsheet{width:min(860px,100%)}
+.avgrid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));max-height:56vh;overflow:auto;margin-top:10px}
+.avgrid .libItem img{background:var(--rule)}
