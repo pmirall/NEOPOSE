@@ -311,6 +311,7 @@ function pushHistory() {
   hist.stack = hist.stack.slice(0, hist.i + 1); hist.stack.push(s);
   if (hist.stack.length > 80) hist.stack.shift();
   hist.i = hist.stack.length - 1; updateUndo();
+  if (typeof animAutoKey === 'function') animAutoKey();
 }
 function restore(s) {
   const o = typeof s === 'string' ? JSON.parse(s) : s;
@@ -886,7 +887,7 @@ function frame() {
   if (!mq) return;
   controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
-  renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
+  animTick(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
 renderer.setAnimationLoop(frame);
 
@@ -964,7 +965,7 @@ function boot(data) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI();
+  buildDrawUI(); buildBodyUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildAnimUI();
   setLightPreset('estudio');
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));

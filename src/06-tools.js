@@ -628,12 +628,13 @@ function serializeProp(g) {
 function serializeLight(g) { const l = g.userData.ref.light; return {t: g.userData.light, p: g.position.toArray().map(v => +v.toFixed(3)), c: g.userData.color, i: +l.intensity.toFixed(2), d: +l.distance.toFixed(1)}; }
 function sceneExtras(withCam) {
   const o = {env: state.env, amb: state.amb, props: props.map(serializeProp), lights: extraLights.map(serializeLight)};
-  if (withCam) { o.cam = {p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}; o.look = {style: state.style, form: state.form, light: state.light, lineMode: state.lineMode}; }
+  if (withCam) { o.cam = {p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}; o.look = {style: state.style, form: state.form, light: state.light, lineMode: state.lineMode}; const an = typeof animState === 'function' && animState(); if (an) o.anim = an; }
   return o;
 }
 function clearProps() { for (const p of [...props]) { releaseProp(p); scene.remove(p); } props.length = 0; }
 function clearLights() { for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; }
 function applySceneExtras(o) {
+  if (o.anim && typeof applyAnimState === 'function') applyAnimState(o.anim);
   if (o.env && o.env !== state.env) { setEnv(o.env); $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === o.env))); }
   if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }
   if (o.props && JSON.stringify(props.map(serializeProp)) !== JSON.stringify(o.props)) {

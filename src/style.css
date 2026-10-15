@@ -435,3 +435,17 @@ body.practicing .modebar{display:none}
 .exkind{margin:4px 0 10px}
 #exOptTurn,#exOptMap,#exOpt3d,#exOptImg{display:flex;flex-direction:column;gap:6px}
 #exOptTurn[hidden],#exOptMap[hidden],#exOpt3d[hidden],#exOptImg[hidden],#exBgRow[hidden],#exSizeRow[hidden],#exImgWrap[hidden]{display:none}
+/* animation timeline */
+.timeline{position:absolute;left:12px;right:12px;bottom:12px;z-index:4;background:var(--page);border:1.5px solid var(--ink);border-radius:8px;box-shadow:var(--lift);padding:6px 8px}
+.tlrow{display:flex;align-items:center;gap:4px}
+.tlrow .btn.icon{width:32px;height:32px;padding:0;flex:none}
+.tlrow .btn.icon svg{width:18px;height:18px}
+#tlPlay{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.tlkey[aria-pressed="true"]{color:var(--red);border-color:var(--red)}
+#tlTrack{flex:1;min-width:60px;height:38px;cursor:pointer;touch-action:none;display:block}
+#tlFrame{font:600 11px var(--f-mono);color:var(--ink-soft);min-width:52px;text-align:center;flex:none}
+.tlopts{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;display:flex;flex-direction:column;gap:6px;max-height:45vh;overflow:auto}
+.tlchecks{display:flex;flex-wrap:wrap;gap:2px 14px}
+#animBtn[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+body.anim .hint{bottom:70px}
+@media (max-width:600px){.tlrow .btn.icon{width:30px;height:30px}#tlPrev,#tlNext{display:none}#tlFrame{min-width:40px}}

@@ -185,6 +185,27 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // animation: posing at another frame stores a key, frames between keys blend, the BVH has every frame
+  async anim(browser) {
+    const page = await open(browser), A = f => page.evaluate(f);
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    ok(await A(() => !document.querySelector('#timeline').hidden), 'the timeline opens');
+    const box = await page.evaluate(() => { const r = document.querySelector('#tlTrack').getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; });
+    await page.mouse.click(box.x + 10 + (box.w - 20) * 24 / 47, box.y + box.h / 2); await page.waitForTimeout(200);
+    await page.evaluate(() => document.querySelector('[data-sec=lib]').open = true);
+    await page.click('#poseGrid .pose[data-id="salto"]'); await page.waitForTimeout(300);
+    const keys = await A(() => window.__cdp.ANIM.keys.map(k => k.f));
+    ok(keys.length === 2 && keys[1] === 24, `posing at frame 25 stores a key (${keys})`);
+    await page.mouse.click(box.x + 10 + (box.w - 20) * 12 / 47, box.y + box.h / 2); await page.waitForTimeout(200);
+    const mid = await A(() => { const C = window.__cdp, q = C.mq.joints.shoulderL.quaternion.toArray(), k = C.ANIM.keys; return {q, a: k[0].poses[0].q.shoulderL, b: k[1].poses[0].q.shoulderL}; });
+    const d = (x, y) => Math.abs(x.reduce((s, v, i) => s + v * y[i], 0));
+    ok(d(mid.q, mid.a) < .9999 && d(mid.q, mid.b) < .9999, 'a frame between two keys is a blend of both');
+    const bvh = await A(() => window.__cdp.animBVH(window.__cdp.mq));
+    ok(/Frames: 48/.test(bvh), 'the BVH holds every frame');
+    await page.screenshot({path: path.join(OUT, 'anim.png')});
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);
