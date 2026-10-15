@@ -9,6 +9,8 @@ const APP = path.join(__dirname, '..', 'app'), OUT = path.join(__dirname, 'out')
 fs.mkdirSync(OUT, {recursive: true});
 const DICT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n-en.json'), 'utf8'));
 const want = process.argv.slice(2);
+// legitimately non-English: the language switcher, garment titles as their authors wrote them, avatar names
+const ALLOW = new Set(['Español', 'Language · Idioma', 'Café', ...JSON.parse(fs.readFileSync(path.join(APP, 'ropa', 'catalog.json'), 'utf8')).map(c => c.title)]);
 let failed = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) failed++; };
 
@@ -58,6 +60,9 @@ const SUITES = {
       if (lang === 'en') {
         const left = [...seen].filter(t => DICT[t] !== undefined && DICT[t] !== t);
         ok(left.length === 0, `en: no untranslated text (${left.slice(0, 5).join(' | ') || 'none'})`);
+        // text that looks Spanish and is not in the dictionary at all (new strings someone forgot to translate)
+        const spanish = [...seen].filter(t => !ALLOW.has(t) && (/[áéíóúñ¿¡]/i.test(t) || /\b(de|la|el|los|las|con|para|una|por|que|del|sin|cada|tu|tus)\b/.test(t)));
+        ok(spanish.length === 0, `en: no Spanish-looking text left (${spanish.slice(0, 5).join(' | ') || 'none'})`);
       } else {
         ok([...seen].includes('Práctica'), 'es: the interface is in Spanish');
       }
@@ -94,7 +99,9 @@ const SUITES = {
       await page.click('#hNext');
     }
     ok(withProps >= 2, `objects were placed in most poses (${withProps}/4)`);
-    await waitIdle(page); await page.click('#hStop'); await page.waitForTimeout(2500);
+    await waitIdle(page); await page.click('#hStop'); await page.waitForTimeout(800);
+    ok(await page.evaluate(() => !document.querySelector('#prSummary').hidden), 'finishing shows the session summary');
+    await page.click('#psClose'); await page.waitForTimeout(2500);
     const after = await page.evaluate(() => { const A = window.__cdp; return {env: A.state.env, bodies: A.chars.map(m => JSON.stringify(m.body)), props: A.props.length}; });
     ok(after.env === before.env && after.bodies.every((b, i) => b === before.bodies[i]) && after.props === 0, 'stopping practice restores the scene');
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);

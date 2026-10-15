@@ -317,28 +317,66 @@
 </div>
 
 <div class="modal" id="practiceModal" hidden>
-  <div class="sheet" role="dialog" aria-labelledby="prT">
-    <h2 id="prT">Práctica de gesto</h2>
-    <p class="note">Poses aleatorias con temporizador, para tantos personajes como tengas en escena. Dibuja la línea de acción primero y no corrijas: cuando suena, siguiente.</p>
-    <div class="opts">
-      <div><p>Tiempo por pose</p><div class="chips" id="prDur">
-        <button class="chip" data-v="30" aria-pressed="true">30 s</button>
-        <button class="chip" data-v="60" aria-pressed="false">1 min</button>
-        <button class="chip" data-v="120" aria-pressed="false">2 min</button>
-        <button class="chip" data-v="300" aria-pressed="false">5 min</button></div></div>
-      <div><p>Número de poses</p><div class="chips" id="prCount">
-        <button class="chip" data-v="5" aria-pressed="false">5</button>
-        <button class="chip" data-v="10" aria-pressed="true">10</button>
-        <button class="chip" data-v="20" aria-pressed="false">20</button>
-        <button class="chip" data-v="0" aria-pressed="false">Sin límite</button></div></div>
+  <div class="sheet prsheet" role="dialog" aria-labelledby="prT">
+    <div class="prhead">
       <div>
+        <h2 id="prT">Práctica de gesto</h2>
+        <p class="note">Poses aleatorias con temporizador. Dibuja la línea de acción primero y no corrijas: cuando suena, siguiente.</p>
+      </div>
+      <div class="prstats" id="prStats"></div>
+    </div>
+    <div class="prgrid">
+      <section>
+        <h3>Sesión</h3>
+        <div class="chips seg" id="prMode">
+          <button class="chip" data-v="libre" aria-pressed="true">Libre</button>
+          <button class="chip" data-v="clase" aria-pressed="false">Clase</button></div>
+        <div id="prLibre">
+          <p class="lbl">Tiempo por pose</p>
+          <div class="chips" id="prDur">
+            <button class="chip" data-v="30" aria-pressed="true">30 s</button>
+            <button class="chip" data-v="60" aria-pressed="false">1 min</button>
+            <button class="chip" data-v="120" aria-pressed="false">2 min</button>
+            <button class="chip" data-v="300" aria-pressed="false">5 min</button>
+            <button class="chip" data-v="custom" aria-pressed="false">Otro…</button></div>
+          <div class="prcustom" id="prCustom" hidden>
+            <input type="number" id="prCustomMin" min="0" max="60" value="0" aria-label="Minutos"><span>min</span>
+            <input type="number" id="prCustomSec" min="0" max="59" value="45" aria-label="Segundos"><span>s</span></div>
+          <p class="lbl">Número de poses</p>
+          <div class="chips" id="prCount">
+            <button class="chip" data-v="5" aria-pressed="false">5</button>
+            <button class="chip" data-v="10" aria-pressed="true">10</button>
+            <button class="chip" data-v="20" aria-pressed="false">20</button>
+            <button class="chip" data-v="0" aria-pressed="false">Sin límite</button></div>
+        </div>
+        <div id="prClase" hidden>
+          <p class="lbl">Programa</p>
+          <div class="chips" id="prClass"></div>
+          <ol class="prplan" id="prPlan"></ol>
+        </div>
+        <h3>Qué dibujar</h3>
+        <div class="chips" id="prFocus">
+          <button class="chip" data-v="figura" aria-pressed="true">Figura completa</button>
+          <button class="chip" data-v="manos" aria-pressed="false">Manos</button>
+          <button class="chip" data-v="pies" aria-pressed="false">Pies</button>
+          <button class="chip" data-v="cabezas" aria-pressed="false">Cabezas</button>
+          <button class="chip" data-v="escorzo" aria-pressed="false">Escorzos</button></div>
+        <p class="note" id="prFocusNote"></p>
+        <label class="check"><input type="checkbox" id="prMemory"> De memoria: ver la pose unos segundos y ocultarla</label>
+        <div class="subchecks" id="prMemoryOpts">
+          <div class="chips seg" id="prMemSecs">
+            <button class="chip" data-v="5" aria-pressed="false">5 s</button>
+            <button class="chip" data-v="10" aria-pressed="true">10 s</button>
+            <button class="chip" data-v="20" aria-pressed="false">20 s</button></div>
+        </div>
+      </section>
+      <section>
+        <h3>Variedad</h3>
         <label class="check"><input type="checkbox" id="prVar" checked> Variar ligeramente cada pose</label>
         <label class="check"><input type="checkbox" id="prGen" checked> Mezclar poses generadas al azar (con un personaje)</label>
         <label class="check"><input type="checkbox" id="prCam" checked> Ángulo y objetivo aleatorios</label>
         <label class="check"><input type="checkbox" id="prLight"> Luz aleatoria</label>
-        <label class="check"><input type="checkbox" id="prSound" checked> Aviso sonoro al cambiar</label>
-      </div>
-      <div><p>Personajes y escenario</p>
+        <h3>Personajes y escenario</h3>
         <label class="check"><input type="checkbox" id="prBody"> Cuerpo aleatorio en cada pose</label>
         <div class="subchecks" id="prBodyOpts">
           <label class="check"><input type="checkbox" id="prAnthro" checked> Incluir no humanos (anthro)</label>
@@ -351,11 +389,29 @@
         <label class="check"><input type="checkbox" id="prProps"> Objetos en las manos (sin chocar con nada)</label>
         <label class="check"><input type="checkbox" id="prEnv"> Escenario aleatorio en cada pose</label>
         <p class="note">Los avatares importados conservan su cuerpo y su ropa.</p>
-      </div>
+        <h3>Sonido</h3>
+        <label class="check"><input type="checkbox" id="prSound" checked> Aviso sonoro al cambiar</label>
+      </section>
     </div>
     <div class="foot">
+      <span class="prtotal" id="prTotal"></span>
       <button class="btn" id="prCancel">Cancelar</button>
       <button class="btn primary" id="prStart">Empezar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="prSummary" hidden>
+  <div class="sheet prsheet" role="dialog" aria-labelledby="psT">
+    <h2 id="psT">Sesión terminada</h2>
+    <p class="prsum" id="psLine"></p>
+    <div id="psGallery" hidden>
+      <p class="lbl">Tus bocetos sobre la referencia <span class="note">toca uno para ver solo la referencia</span></p>
+      <div class="psgrid" id="psGrid"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="psAgain">Otra ronda</button>
+      <button class="btn primary" id="psClose">Volver al editor</button>
     </div>
   </div>
 </div>
