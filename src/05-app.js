@@ -874,7 +874,7 @@ function updateStools() {
 function frame() {
   if (!mq) return;
   controls.update(); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
-  for (const m of chars) m.group.visible = !sk.hideFig;
+  for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
 renderer.setAnimationLoop(frame);

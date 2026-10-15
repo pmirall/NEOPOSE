@@ -390,6 +390,8 @@ body.practicing .modebar{display:none}
 .prfigs b{font-family:var(--f-hand);font-size:22px;color:var(--ink);font-weight:700;line-height:1}
 /* session summary */
 .prsum{font-size:15px;margin:4px 0 10px}
+.lblnote{font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;font-size:12px}
+.lblnote::before{content:'· ';}
 .psgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:55vh;overflow:auto;padding:2px}
 .psgrid button{position:relative;border:1.5px solid var(--line);border-radius:10px;padding:0;background:var(--page);cursor:pointer;overflow:hidden;aspect-ratio:3/4}
 .psgrid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -820,7 +822,7 @@ body.practicing .modebar{display:none}
     <h2 id="psT">Sesión terminada</h2>
     <p class="prsum" id="psLine"></p>
     <div id="psGallery" hidden>
-      <p class="lbl">Tus bocetos sobre la referencia <span class="note">toca uno para ver solo la referencia</span></p>
+      <p class="lbl">Tus bocetos sobre la referencia<span class="lblnote">toca uno para ver solo la referencia</span></p>
       <div class="psgrid" id="psGrid"></div>
     </div>
     <div class="foot">
@@ -3234,7 +3236,7 @@ function updateStools() {
 function frame() {
   if (!mq) return;
   controls.update(); updateLights(); envTick(); avatarsTick(); updateOcclusion(); updateHandles(); updateStools(); updateSun(); clothTick(); anthroTick();
-  for (const m of chars) m.group.visible = !sk.hideFig;
+  for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
 renderer.setAnimationLoop(frame);
