@@ -472,6 +472,20 @@ function bodyCapsules(m) {
   // tails and dragon tails: a capsule per tail bone
   if (m.hasTail) { const sp = SPECIES[m.body.species], r = (sp.tail ? sp.tail.r : .05) * m.size + pad, t = ['tail1', 'tail2', 'tail3'].map(wp);
     out.push({k: 'tail', a: t[0], b: t[1], r}, {k: 'tail', a: t[1], b: t[2], r}, {k: 'tail', a: t[2], b: t[2].clone().add(t[2].clone().sub(t[1])), r}); }
+  // sculpted heads, horns, claws, tails and ears are their own meshes: their real vertices go in a 3 cm grid
+  if (m.acc && m.acc.length) {
+    m.accSkeleton.update(); const grid = new Map(), cell = .03;
+    for (const am of m.acc) {
+      if (!am.isSkinnedMesh || !am.visible || am.userData.hull) continue;
+      const pos = am.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 2) {
+        v.fromBufferAttribute(pos, i); am.boneTransform(i, v); v.applyMatrix4(am.matrixWorld);
+        const k = `${Math.floor(v.x / cell)},${Math.floor(v.y / cell)},${Math.floor(v.z / cell)}`;
+        (grid.get(k) || grid.set(k, []).get(k)).push(v.clone());
+      }
+    }
+    out.grid = grid; out.cell = cell;
+  }
   // animal ears stand up from the head
   if (m.hasEars) { const up = new V3(0, 1, 0).applyQuaternion(m.joints.head.getWorldQuaternion(new Q())), len = .55 * m.headH;
     for (const s of ['L', 'R']) { const a = wp('ear' + s); out.push({k: 'ear', a, b: a.clone().addScaledVector(up, len), r: .06 * m.size + pad}); } }
@@ -524,6 +538,13 @@ function propCollides(g, caps, boxes) {
     for (const [m, list] of caps) for (const c of list) {
       if (m === holder && (c.k === 'hand' + h.side || (c.k === 'elbow' + h.side && q.distanceTo(grip) < gripR))) continue;
       if (segDist(q, c.a, c.b) < c.r) return m === holder ? 'cuerpo' : 'otro';
+    }
+    for (const [m, list] of caps) {
+      if (!list.grid || (m === holder && q.distanceTo(grip) < gripR)) continue;
+      const cs = list.cell, gx = Math.floor(q.x / cs), gy = Math.floor(q.y / cs), gz = Math.floor(q.z / cs);
+      for (let x = gx - 1; x <= gx + 1; x++) for (let y = gy - 1; y <= gy + 1; y++) for (let z = gz - 1; z <= gz + 1; z++) {
+        const pts = list.grid.get(`${x},${y},${z}`); if (pts) for (const p of pts) if (p.distanceTo(q) < cs) return 'anthro';
+      }
     }
     for (const o of others) if (o.box.containsPoint(l.copy(q).applyMatrix4(o.inv))) return 'objeto';
     for (const b of boxes) if (b.containsPoint(q)) return 'escenario';
