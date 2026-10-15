@@ -448,6 +448,8 @@ class Mannequin {
   buildForms() {
     for (const f of this.forms) { f.parent && f.parent.remove(f); if (f.userData.own) f.geometry.dispose(); }
     this.forms = [];
+    if (this.formMode === 'esqueleto') { buildSkeleton(this); return this.applyFormVis(); }
+    disposeSkeleton(this);
     if (!this.lib.form || this.formMode === 'figura') return this.applyFormVis();
     const meta = FIG.meta, nB = meta.bones.length, P = this.geo.attributes.position.array, nV = meta.nV, J = this.J;
     const bb = Array.from({length: nB}, () => new THREE.Box3()), v = new V3();
@@ -510,14 +512,15 @@ class Mannequin {
     this.applyFormVis();
   }
   applyFormVis() {
-    const mode = this.formMode, ghost = mode === 'mixto';
+    const mode = this.formMode, ghost = mode === 'mixto' || mode === 'esqueleto';
     this.body3.visible = mode !== 'formas';
-    for (const a of this.acc) a.visible = mode !== 'formas' && (!a.userData.hull || this.outlineOn !== false) && (!a.userData.mouth || !!this.mouthOpen);
+    for (const a of this.acc) a.visible = mode !== 'formas' && mode !== 'esqueleto' && (!a.userData.hull || this.outlineOn !== false) && (!a.userData.mouth || !!this.mouthOpen);
     if (this.hulls[0]) this.hulls[0].visible = mode === 'figura' && this.outlineOn !== false;
     for (const k of ['construccion', 'contorno', 'volumen', 'silueta']) {
       const m = this.lib[k]; if (!m || !m.isMaterial) continue;
-      m.transparent = ghost; m.opacity = ghost ? .3 : 1; m.depthWrite = !ghost; m.needsUpdate = true;
+      m.transparent = ghost; m.opacity = ghost ? (mode === 'esqueleto' ? .16 : .3) : 1; m.depthWrite = !ghost; m.needsUpdate = true;
     }
+    applySkeletonVis(this);
     if (this.garments) applyGarmentVis(this);
   }
   setFormMode(mode) { this.formMode = mode; this.buildForms(); }

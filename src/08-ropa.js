@@ -279,7 +279,7 @@ function setOutfit(m, specs) {
   return Promise.all(m.garments.map(g => g.ready));
 }
 function applyGarmentVis(m) {
-  const show = m.formMode !== 'formas';
+  const show = m.formMode !== 'formas' && m.formMode !== 'esqueleto';
   for (const g of m.garments || []) { if (!g.d) continue; for (const x of g.meshes) { x.visible = show; x.material = g.mat(m.style); } g.hull.visible = show && m.outlineOn !== false; }
 }
 // the body changed (age, build, proportions): refit every garment

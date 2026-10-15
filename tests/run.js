@@ -128,6 +128,23 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // skeleton construction mode: the bones appear inside a ghost of the figure, follow body changes, and go away again
+  async skeleton(browser) {
+    const page = await open(browser), A = f => page.evaluate(f);
+    await page.click('.tab[data-tab=dibujo]'); await page.evaluate(() => document.querySelector('[data-sec=constr]').open = true);
+    await page.click('#formChips .chip[data-v="esqueleto"]');
+    await page.waitForFunction(() => window.__cdp.mq.skel && window.__cdp.mq.skel.mesh.visible, null, {timeout: 30000});
+    ok(await A(() => !document.querySelector('#skelNote').hidden), 'the skeleton credit is shown');
+    const h0 = await A(() => { const g = window.__cdp.mq.skel.geo; g.computeBoundingBox(); return g.boundingBox.max.y; });
+    await page.click('.tab[data-tab=cuerpo]'); await page.click('#bodyChips .chip[data-v="nino"]'); await page.waitForTimeout(1200);
+    const h1 = await A(() => { const g = window.__cdp.mq.skel.geo; g.computeBoundingBox(); return g.boundingBox.max.y; });
+    ok(h1 < h0 * .9, `the bones follow a smaller body (${h0.toFixed(2)} → ${h1.toFixed(2)} m)`);
+    await page.screenshot({path: path.join(OUT, 'skeleton.png')});
+    await page.click('.tab[data-tab=dibujo]'); await page.click('#formChips .chip[data-v="figura"]'); await page.waitForTimeout(300);
+    ok(await A(() => !window.__cdp.mq.skel), 'back to the figure, the skeleton is removed');
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);

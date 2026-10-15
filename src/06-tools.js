@@ -700,10 +700,11 @@ function drawAction(ctx, w, h) {
 }
 
 /* ---------- construction forms ---------- */
-const FORM_MODES = {figura: 'Figura', formas: 'Formas básicas', mixto: 'Figura + formas'};
+const FORM_MODES = {figura: 'Figura', formas: 'Formas básicas', mixto: 'Figura + formas', esqueleto: 'Esqueleto'};
 function setForm(mode) {
   state.form = mode; setPressed($('#formChips'), mode);
   for (const m of chars) m.setFormMode(mode);
+  $('#skelNote').hidden = mode !== 'esqueleto';
 }
 
 /* ---------- scene as text ---------- */
