@@ -1,5 +1,6 @@
-# Draft for the fdroiddata merge request (https://gitlab.com/fdroid/fdroiddata → metadata/io.github.pmirall.neopose.yml).
-# Descriptions, icon and screenshots come from fastlane/metadata/android in this repo.
+# Submitted to F-Droid: https://gitlab.com/fdroid/fdroiddata/-/merge_requests/52668
+# Copy of metadata/io.github.pmirall.neopose.yml in fdroiddata, formatted with `fdroid rewritemeta`.
+# Node 22 is installed by hand because Capacitor 8 needs a newer Node than Debian ships.
 Categories:
   - Draw
   - Graphics
@@ -22,16 +23,16 @@ Builds:
     sudo:
       - apt-get update
       - apt-get install -y python3 xz-utils
-      # Capacitor 8 needs Node 22, newer than Debian's
       - curl -Lo /tmp/node.tar.xz https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz
-      - echo "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de /tmp/node.tar.xz" | sha256sum -c
+      - echo "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de /tmp/node.tar.xz"
+        | sha256sum -c
       - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
     init: cd ../.. && npm ci --ignore-scripts
+    gradle:
+      - yes
     prebuild: cd ../.. && python3 build.py && npx cap sync android
     scandelete:
       - node_modules
-    gradle:
-      - yes
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
