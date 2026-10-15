@@ -1,8 +1,8 @@
 {
   "name": "neopose",
   "productName": "NEOPOSE",
-  "version": "1.0.0",
-  "description": "Figura 3D para dibujar: poses, anatomía humana y anthro, ropa, escenarios y luces.",
+  "version": "1.1.0",
+  "description": "3D figure for drawing: poses, human and anthro anatomy, clothes, sets and lights.",
   "author": {
     "name": "pmirall",
     "email": "paumirallmovil@gmail.com"
@@ -73,13 +73,14 @@
     "linux": {
       "icon": "build/icons",
       "category": "Graphics",
-      "synopsis": "Figura 3D para dibujar",
-      "description": "Maniquí 3D de referencia para dibujo: poses, anatomía humana y anthro, ropa, escenarios y luces.",
+      "synopsis": "3D figure for drawing",
+      "description": "3D reference mannequin for drawing: poses, human and anthro anatomy, clothes, sets and lights.",
       "desktop": {
         "entry": {
           "Name": "NEOPOSE",
-          "Comment": "Figura 3D para dibujar",
-          "Keywords": "pose;dibujo;anatomía;referencia;3D;drawing;reference;"
+          "Comment": "3D figure for drawing",
+          "Comment[es]": "Figura 3D para dibujar",
+          "Keywords": "pose;drawing;anatomy;reference;mannequin;3D;dibujo;anatomía;referencia;maniquí;"
         }
       },
       "target": [

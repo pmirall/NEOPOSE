@@ -7,6 +7,7 @@
 <li><b>Ropa</b>: 470 prendas que se adaptan a cualquier cuerpo y pose.</li>
 <li><b>Escenarios</b>: 24 lugares con lámparas y sombras propias, y objetos reales para colocar.</li>
 <li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto.</li>
-<li><b>Práctica de gesto</b> con temporizador y <b>exportación a PNG</b>.</li>
+<li><b>Práctica de gesto</b> con temporizador, cuerpos y escenarios aleatorios, y <b>exportación a PNG</b>.</li>
+<li>En <b>inglés</b> y <b>español</b>.</li>
 </ul>
 <p>Recursos: MakeHuman (CC0), Poly Haven (CC0) y cinco cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio.</p>

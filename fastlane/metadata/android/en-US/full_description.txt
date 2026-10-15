@@ -7,6 +7,7 @@
 <li><b>Clothes</b>: 470 garments that fit any body and pose.</li>
 <li><b>Sets</b>: 24 places with their own lamps and shadows, plus real objects to place.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer.</li>
-<li><b>Gesture practice</b> with a timer and <b>PNG export</b>.</li>
+<li><b>Gesture practice</b> with a timer, random bodies and sets, and <b>PNG export</b>.</li>
+<li>In <b>English</b> and <b>Spanish</b>.</li>
 </ul>
 <p>Assets: MakeHuman (CC0), Poly Haven (CC0) and five sculpted heads from Sketchfab (CC BY 4.0). Full credits in the source repository.</p>
