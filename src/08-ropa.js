@@ -271,10 +271,10 @@ function disposeGarment(m, g) {
   if (g.geo) g.geo.dispose(); for (const k in g.mats) g.mats[k].dispose(); if (g.hull) g.hull.material.dispose();
 }
 function setOutfit(m, specs) {
-  for (const g of m.garments || []) disposeGarment(m, g);
+  for (const g of m.garments || []) if (g !== m.hairG) disposeGarment(m, g);
   m.outfit = (specs || []).filter(s => s && s.id).map(s => ({...s}));
-  m.garments = [];
-  m.garments = m.outfit.map(s => createGarment(m, s));
+  m.garments = m.hairG ? [m.hairG] : [];
+  m.garments = [...m.outfit.map(s => createGarment(m, s)), ...m.garments];
   updateBodyHide(m); updateGroundPad(m);
   return Promise.all(m.garments.map(g => g.ready));
 }
@@ -285,6 +285,7 @@ function applyGarmentVis(m) {
 // the body changed (age, build, proportions): refit every garment
 function garmentsAfterBuild(m) {
   if (!m.garments) return;
+  syncHair(m);
   for (const g of m.garments) if (g.d && g.geo) refitGeometry(m, g.d, g.geo);
   updateBodyHide(m); updateGroundPad(m);
 }

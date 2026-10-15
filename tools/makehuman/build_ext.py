@@ -119,29 +119,33 @@ for p in fhbase:
     d = ((full0[notused] - p) ** 2).sum(1); k = int(np.argmin(d)); assert d[k] < 1e-10, ('helper not found', p, d[k]); hidx.append(int(notused[k]))
 print('helper anchors matched', len(hidx))
 
-# ---- new sparse sets ----
-xsets = []; xdata = []
-def add(name, Vf, ref_full, ref_J):
-    m, j = bake(Vf); m[:, 1] -= floor; j[:, 1] -= floor
-    dm = m[used] - ref_full[used]; dh = m[hidx] - ref_full[hidx]; dj = j - ref_J
-    iv = np.where(np.abs(dm).max(1) > 2e-5)[0]; ih = np.where(np.abs(dh).max(1) > 2e-5)[0]
-    xsets.append({'name': name, 'n': int(len(iv)), 'nh': int(len(ih))}); xdata.append((iv, dm[iv], ih, dh[ih], dj))
-    print(f'  {name}: {len(iv)} vertices, {len(ih)} helpers, max {np.abs(dm).max() * 100:.1f} cm')
-fJ = bake(femaleBase)[1]; fJ[:, 1] -= floor
-add('old-male', V0 + avg(lambda e: P('t', f'{e}-male-old.target')), full0, J0)
-add('old-female', V0 + avg(lambda e: P('t', f'{e}-female-old.target')), fb_full, fJ)
-for unit in sorted(f[:-7] for f in os.listdir(P('ex', 'caucasian')) if f.endswith('.target')):
-    add('e-' + unit, maleBase + avg(lambda e: P('ex', e, unit + '.target')), full0, J0)
+def main():
+    global xsets, xdata
+    # ---- new sparse sets ----
+    xsets = []; xdata = []
+    def add(name, Vf, ref_full, ref_J):
+        m, j = bake(Vf); m[:, 1] -= floor; j[:, 1] -= floor
+        dm = m[used] - ref_full[used]; dh = m[hidx] - ref_full[hidx]; dj = j - ref_J
+        iv = np.where(np.abs(dm).max(1) > 2e-5)[0]; ih = np.where(np.abs(dh).max(1) > 2e-5)[0]
+        xsets.append({'name': name, 'n': int(len(iv)), 'nh': int(len(ih))}); xdata.append((iv, dm[iv], ih, dh[ih], dj))
+        print(f'  {name}: {len(iv)} vertices, {len(ih)} helpers, max {np.abs(dm).max() * 100:.1f} cm')
+    fJ = bake(femaleBase)[1]; fJ[:, 1] -= floor
+    add('old-male', V0 + avg(lambda e: P('t', f'{e}-male-old.target')), full0, J0)
+    add('old-female', V0 + avg(lambda e: P('t', f'{e}-female-old.target')), fb_full, fJ)
+    for unit in sorted(f[:-7] for f in os.listdir(P('ex', 'caucasian')) if f.endswith('.target')):
+        add('e-' + unit, maleBase + avg(lambda e: P('ex', e, unit + '.target')), full0, J0)
 
-QS = meta['q']
-ext = {'xsets': xsets, 'q': QS, 'nV': nV, 'nH': nH, 'license': 'Age and expression targets: MakeHuman, CC0 1.0 (makehumancommunity.org)'}
-js = json.dumps(ext).encode(); js += b' ' * ((4 - len(js) % 4) % 4)
-buf = bytearray(struct.pack('<I', len(js)) + js)
-def pad(b):
-    buf.extend(b); buf.extend(b'\0' * ((4 - len(b) % 4) % 4))
-for iv, dv, ih, dh, dj in xdata:
-    pad(iv.astype(np.uint16).tobytes()); pad(np.clip(np.round(dv / QS), -32767, 32767).astype(np.int16).tobytes())
-    pad(ih.astype(np.uint16).tobytes()); pad(np.clip(np.round(dh / QS), -32767, 32767).astype(np.int16).tobytes())
-    pad(dj.astype(np.float32).tobytes())
-open(os.path.join(APPDIR, 'figure-ext.txt'), 'w').write(base64.b64encode(bytes(buf)).decode())
-print('app/figure-ext.txt', len(xsets), 'sets', round(len(buf) / 1024), 'kB')
+    QS = meta['q']
+    ext = {'xsets': xsets, 'q': QS, 'nV': nV, 'nH': nH, 'license': 'Age and expression targets: MakeHuman, CC0 1.0 (makehumancommunity.org)'}
+    js = json.dumps(ext).encode(); js += b' ' * ((4 - len(js) % 4) % 4)
+    buf = bytearray(struct.pack('<I', len(js)) + js)
+    def pad(b):
+        buf.extend(b); buf.extend(b'\0' * ((4 - len(b) % 4) % 4))
+    for iv, dv, ih, dh, dj in xdata:
+        pad(iv.astype(np.uint16).tobytes()); pad(np.clip(np.round(dv / QS), -32767, 32767).astype(np.int16).tobytes())
+        pad(ih.astype(np.uint16).tobytes()); pad(np.clip(np.round(dh / QS), -32767, 32767).astype(np.int16).tobytes())
+        pad(dj.astype(np.float32).tobytes())
+    open(os.path.join(APPDIR, 'figure-ext.txt'), 'w').write(base64.b64encode(bytes(buf)).decode())
+    print('app/figure-ext.txt', len(xsets), 'sets', round(len(buf) / 1024), 'kB')
+
+if __name__ == '__main__': main()

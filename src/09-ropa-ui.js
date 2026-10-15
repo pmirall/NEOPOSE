@@ -67,6 +67,7 @@ function renderGarmentList() {
   box.innerHTML = '';
   if (!mq.outfit.length) { box.innerHTML = `<p class="empty">${tr('Sin ropa. Elige un conjunto o añade prendas de la biblioteca.')}</p>`; return; }
   mq.garments.forEach((g, gi) => {
+    if (g === mq.hairG) return;
     const s = g.spec, card = document.createElement('details'); card.className = 'garment';
     card.open = !!g.open; card.ontoggle = () => g.open = card.open;
     const sum = document.createElement('summary'), it = ROPA.byId[s.id];

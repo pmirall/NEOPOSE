@@ -123,6 +123,11 @@ function randomizeBody(m, o) {
     const heads = Object.keys(HEAD_CATALOG).filter(k => HEAD_CATALOG[k].species.includes(b.species));
     if (heads.length) b.headModel = pickOne(heads);
   }
+  // a hairstyle most of the time, grey or white on older people
+  if (b.species === 'humano' && HAIR.list && Math.random() < .85) {
+    b.hair = pickOne(HAIR.list).id;
+    b.hairCol = pickOne(HAIR_COLORS.slice(...(b.age > 1.4 ? [7, 9] : Math.random() < .08 ? [9, 12] : [0, 7])))[0];
+  }
   m.bodyPreset = id; m.build(b);
 }
 function randomEnv() {

@@ -107,6 +107,27 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // hairstyles: worn and tinted, kept when dressing, undone, refused by species heads
+  async hair(browser) {
+    const page = await open(browser), A = f => page.evaluate(f);
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(500);
+    ok(await A(() => document.querySelectorAll('#hairGrid .hairItem').length) === 11, 'every hairstyle has a tile, plus bald');
+    await page.click('#hairGrid .hairItem[data-v="h-long01"]'); await page.waitForTimeout(2000);
+    await page.click('#hairSw button[data-c="#c7a066"]'); await page.waitForTimeout(300);
+    let s = await A(() => { const m = window.__cdp.mq; return {g: !!(m.hairG && m.hairG.d), col: m.hairG && '#' + m.hairG.U.uColA.value.getHexString()}; });
+    ok(s.g && s.col === '#c7a066', `the hair is worn and tinted (${JSON.stringify(s)})`);
+    await page.screenshot({path: path.join(OUT, 'hair.png')});
+    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(2500);
+    s = await A(() => { const m = window.__cdp.mq; return {kept: m.garments.includes(m.hairG), cards: document.querySelectorAll('#garmentList .garment').length, outfit: m.outfit.length}; });
+    ok(s.kept && s.cards === s.outfit, `dressing keeps the hair out of the outfit (${JSON.stringify(s)})`);
+    for (let i = 0; i < 3; i++) { await page.click('#undo'); await page.waitForTimeout(600); }
+    ok(await A(() => !window.__cdp.mq.hairG && !window.__cdp.mq.body.hair), 'undo takes the hair off again');
+    await page.click('#redo'); await page.waitForTimeout(1500);
+    await page.click('.tab[data-tab=cuerpo]'); await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1500);
+    ok(await A(() => !window.__cdp.mq.hairG && document.querySelector('#hairGrid').classList.contains('off')), 'species heads do not wear human hair');
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // the export window renders a PNG
   async export(browser) {
     const page = await open(browser);
