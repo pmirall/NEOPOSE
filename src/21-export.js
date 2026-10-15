@@ -3,9 +3,10 @@
    AI maps: depth, normals, OpenPose skeleton (body and hands) and white-on-black lines, for ControlNet-style tools.
    3D: the posed scene as a GLB mesh, or the active character's skeleton and pose as BVH.
    Print sizes: A5, A4 or A3 at 300 ppi, with the resolution written into the PNG. */
-const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb'};
+const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true};
 const PRINT = {a5: ['A5', 1748, 2480], a4: ['A4', 2480, 3508], a3: ['A3', 3508, 4961]};
-const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D'};
+const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D', anim: 'Animación'};
+const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', video: 'Vídeo WebM', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
 const EX_MAPS = {depth: 'Profundidad', normal: 'Normales', openpose: 'Esqueleto OpenPose', lineart: 'Líneas'};
 const TURN_VIEWS = {4: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [180, 'Espalda']], 8: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [135, 'Tres cuartos de espalda'], [180, 'Espalda'], [225, 'Tres cuartos de espalda'], [270, 'Perfil'], [315, 'Tres cuartos']]};
 
@@ -319,15 +320,19 @@ const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0');
 /* ---------- the window ---------- */
 function exportKindUI() {
   const k = EXK.kind;
-  $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d';
-  $('#exBgRow').hidden = k === 'maps' || k === 'm3d'; $('#exSizeRow').hidden = k === 'm3d';
-  $('#exImgWrap').hidden = k === 'm3d'; $('#exCopy').hidden = k === 'm3d';
+  const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'board';
+  $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d'; $('#exOptAnim').hidden = k !== 'anim';
+  $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic; $('#exSizeRow').hidden = k === 'm3d' || !pic;
+  $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim';
+  $('#exAnimStepRow').hidden = w !== 'frames'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'board');
+  $('#exAnimRange').querySelectorAll('.chip').forEach(b => b.disabled = w === 'bvh' && b.dataset.v === 'movie');
   $('#exBg .chip[data-v=paper]').textContent = tr(k === 'turn' ? 'Papel' : 'Con escenario');
-  $('#exSave').textContent = k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
+  $('#exSave').textContent = k === 'anim' ? tr('Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
 }
 function renderExportKind() {
   exportKindUI();
   if (EXK.kind === 'img') return renderExport();
+  if (EXK.kind === 'anim') return animExportPreview();
   if (EXK.kind === 'm3d') {
     $('#exMsg').textContent = EXK.fmt3d === 'bvh' ? tr('El esqueleto del personaje {n} y su pose, en centímetros, para Blender, Maya o cualquier programa de animación.', {n: active + 1})
       : tr('Todos los personajes y objetos tal como están posados, como malla (sin esqueleto), para Blender u otro programa 3D.');
@@ -338,6 +343,7 @@ function renderExportKind() {
   $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
 }
 function saveExport() {
+  if (EXK.kind === 'anim') return exportAnimation();
   if (EXK.kind === 'm3d') {
     if (EXK.fmt3d === 'bvh') return saveFile(`pose-${stamp()}.bvh`, new TextEncoder().encode(exportBVH(mq)), 'text/plain');
     return saveFile(`escena-${stamp()}.glb`, exportGLB(), 'model/gltf-binary');
@@ -352,11 +358,98 @@ function buildExportUI() {
   chips($('#exViews'), [['4', '4 vistas'], ['8', '8 vistas']], String(EXK.views), v => { EXK.views = +v; setPressed($('#exViews'), v); renderExportKind(); });
   chips($('#ex3d'), [['glb', 'GLB (malla posada)'], ['bvh', 'BVH (esqueleto y pose)']], EXK.fmt3d, v => { EXK.fmt3d = v; setPressed($('#ex3d'), v); renderExportKind(); });
   const chk = (id, key) => { const el = $(id); el.checked = EXK[key]; el.onchange = () => { EXK[key] = el.checked; renderExportKind(); }; };
-  chk('#exNeutral', 'neutral'); chk('#exHeads', 'heads'); chk('#exHands', 'hands'); chk('#exEnvMap', 'envInMap');
+  chk('#exNeutral', 'neutral'); chk('#exHeads', 'heads'); chk('#exHands', 'hands'); chk('#exEnvMap', 'envInMap'); chk('#exSubs', 'subs');
+  chips($('#exAnimWhat'), Object.entries(EX_ANIM), EXK.animWhat, v => { EXK.animWhat = v; setPressed($('#exAnimWhat'), v); if (v === 'bvh') { EXK.animRange = 'shot'; setPressed($('#exAnimRange'), 'shot'); } renderExportKind(); });
+  chips($('#exAnimRange'), [['shot', 'Este plano'], ['movie', 'Toda la película']], EXK.animRange, v => { EXK.animRange = v; setPressed($('#exAnimRange'), v); renderExportKind(); });
+  chips($('#exAnimStep'), [['1', 'Cada fotograma'], ['2', 'De 2 en 2'], ['4', 'De 4 en 4'], ['keys', 'Solo claves']], EXK.animStep, v => { EXK.animStep = v; setPressed($('#exAnimStep'), v); renderExportKind(); });
   // the old controls redraw whatever kind is chosen
   bindChipGroup('#exBg', v => { ex.bg = v; renderExportKind(); });
   bindChipGroup('#exSize', v => { ex.size = isNaN(+v) ? v : +v; renderExportKind(); });
   $('#exGuides').onchange = renderExportKind; $('#exSketch').onchange = renderExportKind;
   $('#exSave').onclick = saveExport;
   exportKindUI();
+}
+
+/* ---------- animation: frames, video, storyboard, BVH ---------- */
+const slug = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 30) || 'plano';
+function countFrames() {
+  const list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], st = EXK.animStep;
+  return list.reduce((a, s) => a + (st === 'keys' ? new Set([0, ...s.keys.flat().map(k => k.f), ...s.cam.map(k => k.f), ...s.lines.map(l => l.f), s.len - 1]).size : Math.ceil(s.len / +st)), 0);
+}
+function animExportPreview() {
+  exportKindUI();
+  if (!ANIM.shots.length) { $('#exAnimNote').textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.'); $('#exSave').disabled = true; $('#exImgWrap').hidden = true; return; }
+  $('#exSave').disabled = false;
+  const w = EXK.animWhat, list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], secs = list.reduce((a, s) => a + s.len, 0) / ANIM.fps;
+  $('#exAnimNote').textContent = w === 'frames' ? tr('{n} fotogramas en PNG, en carpetas por plano dentro de un archivo ZIP.', {n: countFrames()})
+    : w === 'video' ? tr('Se graba mientras se reproduce: {s} s. Sin subtítulos (van en los fotogramas y el guion gráfico).', {s: dec(secs)})
+    : w === 'board' ? tr('Una viñeta por plano, con su nombre, duración, cámara y diálogo: {n} viñetas.', {n: list.length})
+    : tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))});
+  if (w === 'frames' || w === 'board') { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
+    $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
+  else $('#exMsg').textContent = '';
+}
+function exportBusy(on, p) {
+  for (const id of ['#exSave', '#exClose', '#exCopy']) $(id).disabled = on;
+  $('#exProg').hidden = !on; if (on) $('#exProg i').style.width = Math.round((p || 0) * 100) + '%';
+}
+async function exportAnimation() {
+  if (!ANIM.shots.length) return;
+  const w = EXK.animWhat;
+  if (w === 'bvh') return saveFile(`animacion-${stamp()}.bvh`, new TextEncoder().encode(animBVH(mq)), 'text/plain');
+  storeShot();
+  if (w === 'video') { exportBusy(true, 0); $('#exMsg').textContent = tr('Grabando la animación…'); closeExport(); return recordVideo(EXK.animRange, () => exportBusy(false)); }
+  exportBusy(true, 0);
+  try {
+    if (w === 'frames') {
+      const files = {}, total = countFrames(); let n = 0;
+      await eachFrame(EXK.animRange, EXK.animStep === 'keys' ? 'keys' : +EXK.animStep, async (i, f, s) => {
+        const cv = renderExportCanvas(EXK.subs ? f : null), b = await new Promise(r => cv.toBlob(r, 'image/png'));
+        files[`${String(i + 1).padStart(2, '0')}-${slug(s.name)}/${String(f + 1).padStart(4, '0')}.png`] = new Uint8Array(await b.arrayBuffer());
+        n++; exportBusy(true, n / total); $('#exMsg').textContent = tr('Fotograma {n} de {t}…', {n, t: total});
+      });
+      saveFile(`animacion-${stamp()}.zip`, fflate.zipSync(files, {level: 0}), 'application/zip');
+      $('#exMsg').textContent = tr('{n} fotogramas exportados.', {n});
+    } else if (w === 'board') {
+      const pages = await storyboardPages(), fname = `guion-grafico-${stamp()}`;
+      if (pages.length === 1) saveFile(fname + '.png', new Uint8Array(await (await new Promise(r => pages[0].toBlob(r, 'image/png'))).arrayBuffer()), 'image/png');
+      else { const files = {}; for (const [k, p] of pages.entries()) files[`${fname}-${k + 1}.png`] = new Uint8Array(await (await new Promise(r => p.toBlob(r, 'image/png'))).arrayBuffer()); saveFile(fname + '.zip', fflate.zipSync(files, {level: 0}), 'application/zip'); }
+      ex.canvas = pages[0]; $('#exImg').src = pages[0].toDataURL('image/png'); $('#exMsg').textContent = tr('Guion gráfico listo: {n} página(s).', {n: pages.length});
+    }
+  } catch (e) { console.warn('anim export', e); $('#exMsg').textContent = tr('No se ha podido exportar: {e}', {e: e && e.message || e}); }
+  exportBusy(false);
+}
+// storyboard: a panel per shot (its first frame) with number, name, length, camera and the lines of the script
+async function storyboardPages() {
+  const list = EXK.animRange === 'movie' ? ANIM.shots.map((_, i) => i) : [ANIM.cur], back = {cur: ANIM.cur, f: ANIM.f}, panels = [];
+  for (const [n, i] of list.entries()) {
+    if (i !== ANIM.cur) await enterShot(i, 0); else setFrame(0);
+    const s = shot(); panels.push({img: renderExportCanvas(EXK.subs ? 0 : null), s, i}); exportBusy(true, (n + 1) / list.length * .9);
+  }
+  if (back.cur !== ANIM.cur) await enterShot(back.cur, back.f); else setFrame(back.f);
+  const cols = panels.length <= 2 ? panels.length : 3, PW = 560, per = cols * 3, pages = [], ink = '#2a2620', soft = '#6d6555', font = css('--f-body'), hand = css('--f-hand');
+  for (let p0 = 0; p0 < panels.length; p0 += per) {
+    const P = panels.slice(p0, p0 + per), rows = Math.ceil(P.length / cols), ph = Math.round(PW * P[0].img.height / P[0].img.width), cap = 112, gap = 28, head = 86;
+    const cv = document.createElement('canvas'); cv.width = cols * PW + (cols + 1) * gap; cv.height = head + rows * (ph + cap + gap) + gap;
+    const c = cv.getContext('2d'); c.fillStyle = '#fbf8f1'; c.fillRect(0, 0, cv.width, cv.height);
+    c.fillStyle = ink; c.font = `700 34px ${hand}`; c.fillText(tr('Guion gráfico'), gap, 52);
+    c.font = `14px ${font}`; c.fillStyle = soft; const tot = ANIM.shots.reduce((a, s) => a + s.len, 0) / ANIM.fps;
+    c.fillText(`NEOPOSE · ${new Date().toLocaleDateString(LANG)} · ${tr('{n} planos · {s} s', {n: ANIM.shots.length, s: dec(tot)})}${pages.length || panels.length > per ? ' · ' + tr('página {n}', {n: pages.length + 1}) : ''}`, gap, 74);
+    P.forEach(({img, s, i}, k) => {
+      const x = gap + (k % cols) * (PW + gap), y = head + Math.floor(k / cols) * (ph + cap + gap);
+      c.drawImage(img, x, y, PW, ph); c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(x, y, PW, ph);
+      c.fillStyle = ink; c.font = `700 15px ${font}`; c.fillText(`${i + 1}. ${s.name}`, x, y + ph + 22);
+      c.font = `13px ${font}`; c.fillStyle = soft; const meta = [`${dec(s.len / ANIM.fps)} s`]; if (s.cam.length > 1) meta.push(tr('movimiento de cámara'));
+      c.textAlign = 'right'; c.fillText(meta.join(' · '), x + PW, y + ph + 22); c.textAlign = 'left';
+      let ly = y + ph + 42; c.font = `13px ${font}`;
+      for (const l of s.lines.filter(l => l.text.trim()).slice(0, 4)) {
+        const who = speaker(l.c) + ': '; c.fillStyle = MV_COLS[l.c % 4]; c.font = `700 13px ${font}`; c.fillText(who, x, ly);
+        const ww = c.measureText(who).width; c.fillStyle = ink; c.font = `13px ${font}`;
+        let t = l.text.trim(); while (c.measureText(t).width > PW - ww && t.length > 3) t = t.slice(0, -2); if (t !== l.text.trim()) t = t.trimEnd() + '…';
+        c.fillText(t, x + ww, ly); ly += 18;
+      }
+    });
+    pages.push(cv);
+  }
+  return pages;
 }

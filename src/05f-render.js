@@ -46,9 +46,15 @@ renderer.setAnimationLoop(frame);
 /* ---------- export ---------- */
 const ex = {bg: 'paper', size: 2};
 function renderExport() {
+  const out = renderExportCanvas();
+  ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
+  $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
+}
+// the picture of the current view, with the chosen background, size and layers (also each frame of an animation)
+function renderExportCanvas(subsFrame) {
   const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines;
   const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value};
-  const hidden = [...Object.values(handles), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : [])];
+  const hidden = [...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];
   const hv = hidden.map(h => h.visible);
   tc.visible = false; hidden.forEach(h => h.visible = false);
   const panoV = panoSphere.visible;
@@ -78,9 +84,8 @@ function renderExport() {
   if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; }
   tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = panoV;
   hidden.forEach((h, i) => h.visible = hv[i]);
-  out = onPaper(out, alpha);
-  ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
-  $('#exMsg').textContent = tr('{w} × {h} px. Pulsa «Guardar PNG» o copia la imagen para pegarla en tu programa de dibujo.', {w: out.width, h: out.height});
+  if (subsFrame != null) burnSubs(out, subsFrame);
+  return onPaper(out, alpha);
 }
 function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }

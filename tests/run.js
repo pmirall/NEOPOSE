@@ -213,23 +213,42 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
-  // animation: posing at another frame stores a key, frames between keys blend, the BVH has every frame
+  // animation: a film of shots. Posing at a frame keys that character, lines of dialogue move the mouth,
+  // the film plays from shot to shot with each shot's own set, and the storyboard has a panel per shot
   async anim(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
     await page.click('#animBtn'); await page.waitForTimeout(300);
-    ok(await A(() => !document.querySelector('#timeline').hidden), 'the timeline opens');
-    const box = await page.evaluate(() => { const r = document.querySelector('#tlTrack').getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; });
-    await page.mouse.click(box.x + 10 + (box.w - 20) * 24 / 47, box.y + box.h / 2); await page.waitForTimeout(200);
+    ok(await A(() => !document.querySelector('#timeline').hidden && document.querySelectorAll('#mvStrip .mvshot').length === 1), 'the film opens with one shot');
+    const box = await page.evaluate(() => { const r = document.querySelector('#tlTrack').getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width}; });
+    const xOf = f => box.x + 12 + (box.w - 24) * f / 47;
+    await page.mouse.click(xOf(24), box.y + 18 + 24 + 12); await page.waitForTimeout(200);
     await page.evaluate(() => document.querySelector('[data-sec=lib]').open = true);
     await page.click('#poseGrid .pose[data-id="salto"]'); await page.waitForTimeout(300);
-    const keys = await A(() => window.__cdp.ANIM.keys.map(k => k.f));
-    ok(keys.length === 2 && keys[1] === 24, `posing at frame 25 stores a key (${keys})`);
-    await page.mouse.click(box.x + 10 + (box.w - 20) * 12 / 47, box.y + box.h / 2); await page.waitForTimeout(200);
-    const mid = await A(() => { const C = window.__cdp, q = C.mq.joints.shoulderL.quaternion.toArray(), k = C.ANIM.keys; return {q, a: k[0].poses[0].q.shoulderL, b: k[1].poses[0].q.shoulderL}; });
+    const keys = await A(() => window.__cdp.ANIM.shots[0].keys[0].map(k => k.f));
+    ok(keys.join() === '0,24', `posing at frame 25 keys that character, keeping the start (${keys})`);
+    await page.mouse.click(xOf(12), box.y + 8); await page.waitForTimeout(200);
+    const mid = await A(() => { const C = window.__cdp, q = C.mq.joints.shoulderL.quaternion.toArray(), k = C.ANIM.shots[0].keys[0]; return {q, a: k[0].pose.q.shoulderL, b: k[1].pose.q.shoulderL}; });
     const d = (x, y) => Math.abs(x.reduce((s, v, i) => s + v * y[i], 0));
     ok(d(mid.q, mid.a) < .9999 && d(mid.q, mid.b) < .9999, 'a frame between two keys is a blend of both');
+    await page.click('#tlLine'); await page.waitForTimeout(200);
+    await page.fill('#leText', 'Hola, ¿qué tal? Me alegro de verte.'); await page.click('#leDone'); await page.waitForTimeout(200);
+    const talk = await A(() => { const C = window.__cdp, l = C.ANIM.shots[0].lines[0]; let open = 0; for (let f = l.f; f < l.f + l.len; f++) { C.ANIM.f = f; document.querySelector('#tlTrack'); } return {n: C.ANIM.shots[0].lines.length, len: l.len}; });
+    await page.mouse.click(xOf(18), box.y + 8); await page.waitForTimeout(200);
+    const mouth = await A(() => ({inf: Math.max(...window.__cdp.mq.body3.morphTargetInfluences), subs: !document.querySelector('#subs').hidden}));
+    ok(talk.n === 1 && mouth.inf > .05 && mouth.subs, `a line of dialogue moves the mouth and shows as a subtitle (${JSON.stringify({...talk, ...mouth})})`);
     const bvh = await A(() => window.__cdp.animBVH(window.__cdp.mq));
-    ok(/Frames: 48/.test(bvh), 'the BVH holds every frame');
+    ok(/Frames: 48/.test(bvh), 'the BVH holds every frame of the shot');
+    await page.click('#mvStrip .mvadd'); await page.waitForTimeout(300);
+    await page.evaluate(async () => { await window.__cdp.setEnv('bosque'); });
+    await page.waitForTimeout(500);
+    ok(await A(() => window.__cdp.ANIM.shots.length === 2 && window.__cdp.ANIM.cur === 1), 'a new shot is added after the current one');
+    await page.click('#mvStrip .mvshot:first-child .mvthumb'); await page.waitForFunction(() => window.__cdp.ANIM.cur === 0 && !window.__cdp.ANIM.busy, null, {timeout: 60000});
+    ok(await A(() => window.__cdp.state.env !== 'bosque'), 'each shot keeps its own set');
+    await page.click('#tlPlay');
+    await page.waitForFunction(() => window.__cdp.ANIM.cur === 1 && window.__cdp.state.env === 'bosque', null, {timeout: 60000}).catch(() => {});
+    ok(await A(() => window.__cdp.ANIM.cur === 1 && window.__cdp.state.env === 'bosque'), 'the film plays on into the next shot and its set');
+    await page.evaluate(() => { if (window.__cdp.ANIM.playing) document.querySelector('#tlPlay').click(); });
+    await page.waitForTimeout(500);
     await page.screenshot({path: path.join(OUT, 'anim.png')});
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
@@ -238,7 +257,9 @@ const SUITES = {
   async photo(browser) {
     const page = await open(browser);
     const r = await page.evaluate(async () => {
-      const C = window.__cdp, m = C.mq; await C.setEnv('vacio'); document.querySelector('#styleChips .chip[data-v=volumen]').click(); C.usePreset(C.POSES.find(p => p.id === 'senalar')); m.group.updateMatrixWorld(true);
+      const C = window.__cdp, m = C.mq; await C.setEnv('vacio'); document.querySelector('#styleChips .chip[data-v=volumen]').click(); document.body.classList.add('nopanel'); C.state.dots = false; C.state.ik = false;
+      for (const s of ['#hint', '.cast', '.modebar']) document.querySelectorAll(s).forEach(e => e.style.visibility = 'hidden');
+      C.usePreset(C.POSES.find(p => p.id === 'senalar')); m.group.updateMatrixWorld(true); await new Promise(r => setTimeout(r, 300));
       const bx = new THREE.Box3().setFromObject(m.body3), c = bx.getCenter(new THREE.Vector3());
       C.controls.target.copy(c); C.camera.position.set(c.x, c.y, c.z + 4.5); C.controls.update();
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));

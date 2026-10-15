@@ -35,6 +35,7 @@ function addChar(presetId = 'hombre', body = null, withPose = true) {
 }
 function removeChar(i) {
   if (chars.length <= 1) return;
+  if (typeof animCharRemoved === 'function') animCharRemoved(i);
   const m = chars[i];
   for (const p of props) if (p.userData.held && p.userData.held.m === m) releaseProp(p);
   scene.remove(m.group); scene.remove(m.stoolMesh);
@@ -142,7 +143,7 @@ function setEnv(id) {
   state.env = id;
   const ready = S ? Promise.all(S.assets.map(loadAsset)) : Promise.resolve();
   if (S && S.assets.some(a => !SETS[a])) toast('Cargando escenario…');
-  return ready.then(() => { if (tok === envToken) buildEnv(id); }, err => { console.error(err); if (tok === envToken) { toast('No se ha podido cargar el escenario.'); buildEnv('vacio'); } });
+  return state.envReady = ready.then(() => { if (tok === envToken) buildEnv(id); }, err => { console.error(err); if (tok === envToken) { toast('No se ha podido cargar el escenario.'); buildEnv('vacio'); } });
 }
 function buildEnv(id) {
   if (envGroup) {

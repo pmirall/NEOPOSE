@@ -111,6 +111,7 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
   side: THREE.BackSide,
   vertexShader: `#include <common>
     #include <skinning_pars_vertex>
+    #include <morphtarget_pars_vertex>
     uniform float uW; uniform vec2 uPx; attribute float aHide; varying float vHide;
     void main() {
       vHide = aHide;
@@ -118,6 +119,7 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
       #include <skinbase_vertex>
       #include <skinnormal_vertex>
       #include <begin_vertex>
+      #include <morphtarget_vertex>
       #include <skinning_vertex>
       #include <project_vertex>
       vec3 nv = normalize(normalMatrix * objectNormal);
@@ -178,6 +180,18 @@ function parseFigureExt(buf) {
   let o = 4 + jl; const nJ = FIG.meta.bones.length + FIG.meta.extra.length;
   const take = (C, n) => { const a = new C(buf, o, n); o += a.byteLength; o = (o + 3) & ~3; return a; };
   for (const x of meta.xsets) FIG.xsets[x.name] = {iv: take(Uint16Array, x.n), dv: take(Int16Array, x.n * 3), ih: take(Uint16Array, x.nh), dh: take(Int16Array, x.nh * 3), dj: take(Float32Array, nJ * 3)};
+}
+// the speech units, as dense relative morph targets shared by every character (built once)
+const VISEME_UNITS = ['mouth-open', 'mouth-pursing', 'mouth-protusion', 'mouth-compression', 'mouth-corner-puller', 'mouth-retraction', 'mouth-eversion'];
+function visemeTargets() {
+  if (FIG.visemes !== undefined) return FIG.visemes;
+  if (!FIG.xsets['e-mouth-open']) return (FIG.visemes = null);
+  const nV = FIG.meta.nV, q = FIG.meta.q;
+  return (FIG.visemes = VISEME_UNITS.map(u => {
+    const x = FIG.xsets['e-' + u], a = new Float32Array(nV * 3);
+    if (x) for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; a[o] = x.dv[k * 3] * q; a[o + 1] = x.dv[k * 3 + 1] * q; a[o + 2] = x.dv[k * 3 + 2] * q; }
+    const attr = new THREE.BufferAttribute(a, 3); attr.name = u; return attr;
+  }));
 }
 // age 0..1 is 11 to 25 years (the original range, so saved scenes keep their age); 1..2 goes on to 90
 const ageYears = a => Math.round(a <= 1 ? 11 + a * 14 : 25 + (a - 1) * 65);
@@ -332,6 +346,8 @@ class Mannequin {
     g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Array.from(FIG.si), 4));
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(Array.from(FIG.sw, v => v / 255), 4));
     g.boundingSphere = new THREE.Sphere(new V3(), 20);
+    // mouth shapes for speech: MakeHuman's mouth units as morph targets, mixed at run time (no rebuild)
+    const vis = visemeTargets(); if (vis) { g.morphAttributes.position = vis; g.morphTargetsRelative = true; }
     this.geo = g;
     this.dom = new Uint8Array(nV);
     for (let i = 0; i < nV; i++) { let b = 0, bw = -1; for (let k = 0; k < 4; k++) if (FIG.sw[i * 4 + k] > bw) { bw = FIG.sw[i * 4 + k]; b = FIG.si[i * 4 + k]; } this.dom[i] = b; }
@@ -346,6 +362,7 @@ class Mannequin {
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
     if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; this.group.add(o); this.hulls.push(o); }
+    if (g.morphAttributes.position) for (const x of [m, ...this.hulls]) x.updateMorphTargets();
     this.acc = [];
     const hinge = n => ({obj: this.joints[n], hinge: HINGE[n].map(v => v * DEG)});
     this.chains = {handL: [hinge('elbowL'), {obj: this.joints.shoulderL}], handR: [hinge('elbowR'), {obj: this.joints.shoulderR}],
@@ -686,6 +703,7 @@ class Mannequin {
     return {q, pos: this.joints.hips.position.toArray().map(v => +v.toFixed(4)), hands: JSON.parse(JSON.stringify(this.hands)), stool: this.stool};
   }
   setPose(p) {
+    this._visJaw = 0;
     for (const n of JOINTS) { const j = this.joints[n]; j.rotation.order = 'XYZ'; if (p.q && p.q[n]) j.quaternion.fromArray(p.q[n]); else if (p.q) j.quaternion.identity(); }
     if (p.pos) this.joints.hips.position.fromArray(p.pos);
     if (p.hands) this.hands = JSON.parse(JSON.stringify(p.hands));

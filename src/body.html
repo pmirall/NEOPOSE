@@ -63,16 +63,29 @@
           <div class="row" style="margin-top:8px"><button class="btn small" id="objDup">Duplicar</button><button class="btn small" id="objDel">Borrar</button></div>
         </div>
         <img class="photo-overlay" id="photoOverlay" alt="" hidden>
+        <div class="subs" id="subs" hidden aria-live="polite"></div>
         <div class="timeline" id="timeline" hidden>
+          <div class="mvhead">
+            <div class="mvstrip" id="mvStrip" role="list" aria-label="Planos"></div>
+          </div>
           <div class="tlrow">
             <button class="btn icon" id="tlPlay" aria-pressed="false" title="Reproducir (espacio)" aria-label="Reproducir"></button>
-            <button class="btn icon" id="tlPrev" title="Clave anterior" aria-label="Clave anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg></button>
+            <button class="btn icon" id="tlPrev" title="Clave anterior (Mayús+,)" aria-label="Clave anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg></button>
             <button class="btn icon tlkey" id="tlKey" aria-pressed="false" aria-label="Clave"><svg viewBox="0 0 24 24"><path d="M12 3 21 12 12 21 3 12z" fill="currentColor"/></svg></button>
-            <button class="btn icon" id="tlNext" title="Clave siguiente" aria-label="Clave siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
-            <canvas id="tlTrack" aria-label="Fotogramas"></canvas>
-            <output id="tlFrame">1 / 48</output>
+            <button class="btn icon" id="tlNext" title="Clave siguiente (Mayús+.)" aria-label="Clave siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            <div class="tltime"><output id="tlFrame">0:00.0 / 0:04.0</output><span id="tlShot"></span></div>
+            <div class="tlgap"></div>
+            <span class="mvtotal" id="mvTotal"></span>
+            <button class="btn icon tlrec" id="tlCamRec" aria-pressed="false" title="Grabar la cámara: cada encuadre se guarda como clave" aria-label="Grabar la cámara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3z"/></svg><i></i></button>
+            <button class="btn icon" id="tlLine" title="Añadir una línea de diálogo" aria-label="Añadir una línea de diálogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v10H9l-5 4z"/><path d="M12 8v4M10 10h4"/></svg></button>
+            <button class="btn icon" id="tlExport" title="Exportar la animación" aria-label="Exportar la animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
             <button class="btn icon" id="tlMore" aria-expanded="false" title="Opciones de animación" aria-label="Opciones de animación"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+            <button class="btn icon" id="tlMin" aria-expanded="true" title="Plegar o desplegar" aria-label="Plegar o desplegar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
             <button class="btn icon" id="tlClose" title="Cerrar la línea de tiempo" aria-label="Cerrar la línea de tiempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </div>
+          <div class="tlbody">
+            <div class="tllabels" id="tlLabels"></div>
+            <canvas id="tlTrack" aria-label="Pistas de la animación"></canvas>
           </div>
           <div class="tlopts" id="tlOpts" hidden>
             <div class="filter"><span>Fotogramas por segundo</span><div class="chips seg" id="tlFps"></div></div>
@@ -81,11 +94,21 @@
               <label class="check"><input type="checkbox" id="tlAuto"> Clave automática al posar</label>
               <label class="check"><input type="checkbox" id="tlOnion"> Papel cebolla</label>
               <label class="check"><input type="checkbox" id="tlEase"> Entrada y salida suaves</label>
+              <label class="check"><input type="checkbox" id="tlAll"> Reproducir toda la película</label>
               <label class="check"><input type="checkbox" id="tlLoop"> Repetir</label>
+              <label class="check"><input type="checkbox" id="tlSubs"> Subtítulos del guion</label>
             </div>
-            <div class="row"><button class="btn small" id="tlVideo">Grabar vídeo (WebM)</button><button class="btn small" id="tlBvh">Guardar BVH</button></div>
-            <p class="note">Ve a un fotograma, posa a los personajes y se guarda una clave (◆). Entre claves la pose se interpola. Arrastra un rombo para moverlo en el tiempo.</p>
+            <div class="row"><button class="btn small" id="tlSaveFilm">Guardar película…</button><button class="btn small" id="tlOpenFilm">Abrir película…</button><input type="file" id="tlFilmFile" accept=".json,application/json" hidden></div>
+            <p class="note">Cada plano tiene su reparto, escenario y cámara. Posa en un fotograma y se guarda una clave (◆) del personaje; activa la grabación de cámara para animar el encuadre. En Diálogo, escribe lo que dice cada personaje: mueve la boca y sale como subtítulo. Arrastra rombos y líneas para cambiarlos de tiempo.</p>
           </div>
+        </div>
+        <div class="lineedit" id="lineEdit" hidden role="dialog" aria-label="Línea de diálogo">
+          <p class="lbl">Quién habla</p>
+          <div class="chips" id="leChar"></div>
+          <textarea id="leText" rows="2" maxlength="300" placeholder="Escribe lo que dice…" aria-label="Texto de la línea"></textarea>
+          <div id="leLenBox"></div>
+          <label class="check"><input type="checkbox" id="leAuto" checked> Duración según el texto</label>
+          <div class="row"><button class="btn small" id="leDel">Borrar</button><span class="tlgap"></span><button class="btn small primary" id="leDone">Hecho</button></div>
         </div>
         <div class="hud" id="hud" hidden></div>
         <div class="hint" id="hint" role="status">Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza para girarla</div>
@@ -382,6 +405,14 @@
       </div>
       <div id="exOpt3d" hidden>
         <div class="chips" id="ex3d"></div>
+      </div>
+      <div id="exOptAnim" hidden>
+        <div class="chips" id="exAnimWhat"></div>
+        <div class="filter"><span>Alcance</span><div class="chips seg" id="exAnimRange"></div></div>
+        <div class="filter" id="exAnimStepRow"><span>Cadencia</span><div class="chips seg" id="exAnimStep"></div></div>
+        <label class="check" id="exSubsRow"><input type="checkbox" id="exSubs" checked> Subtítulos del guion</label>
+        <p class="note" id="exAnimNote"></p>
+        <div class="exprog" id="exProg" hidden><i></i></div>
       </div>
     </div>
     <div class="preview" id="exImgWrap"><img id="exImg" alt="Vista previa de la exportación"></div>

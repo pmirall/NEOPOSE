@@ -8,7 +8,7 @@
 <li><b>Clothes</b>: 469 garments that fit any body and pose.</li>
 <li><b>Sets</b>: 24 places with their own lamps and shadows, 8 360° panoramas, and real objects to place.</li>
 <li><b>Camera</b>: lens, Dutch angle, one-, two- and three-point perspective framings with vanishing guides, and a four-view layout.</li>
-<li><b>Animation</b>: a timeline with keys, onion skin and easing; export as WebM video or BVH.</li>
+<li><b>Animation</b>: films made of shots, each with its own cast, set and camera moves; keys per character, onion skin and easing; a script whose lines move the mouths and show as subtitles. Export every frame as PNG, a storyboard sheet, WebM video or BVH.</li>
 <li><b>Export</b>: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose, lines), posed GLB mesh and BVH.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer. Gesture practice with a timer, classes and random bodies, clothes and sets.</li>
 <li>In English and Spanish, plus Catalan, French, Portuguese, German and Italian (machine translations awaiting review). Scenes can be shared as a link.</li>

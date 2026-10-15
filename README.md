@@ -11,7 +11,7 @@ Figura 3D para dibujar. Un maniquí de referencia con anatomía humana y anthro,
 - **Ropa**: 469 prendas de la comunidad MakeHuman organizadas por carpetas, que se adaptan al cuerpo y a la pose.
 - **Escenarios**: 24 decorados (salón, taberna, castillo, teatro, calle, bosque, playa…) con modelos de Poly Haven y luces propias con sombra, y 8 panoramas de 360°.
 - **Cámara**: objetivo, plano holandés, encuadres de 1, 2 y 3 puntos de fuga y vista de cuatro ventanas.
-- **Animación**: línea de tiempo con claves, papel cebolla y suavizado; vídeo WebM y BVH.
+- **Animación**: películas por planos (cada uno con su reparto, escenario y cámara animada), claves por personaje, papel cebolla y suavizado, y un guion de diálogo que mueve la boca (formas de Preston Blair) y sale en subtítulos. Exporta fotogramas PNG en ZIP, guion gráfico, vídeo WebM y BVH.
 - **Dibujo**: acabados de construcción, volumen, lápiz, valores y silueta; guías de tercios, fuga, regla de cabezas y línea de acción; capa de boceto con pinceles `.abr`.
 - **Tutorial interactivo** de 2 minutos al abrirla por primera vez (y desde el botón de ayuda).
 - **Práctica de gesto** con temporizador, con cuerpos aleatorios (con o sin anthro y chibis) y escenarios aleatorios si se quiere, y **exportación**: PNG (con fondo, transparente o solo trazo, hasta A3 a 300 ppp), hoja de giro, mapas para IA (profundidad, normales, OpenPose, líneas), GLB posado y BVH. Las escenas se comparten con un enlace que abre la versión web.

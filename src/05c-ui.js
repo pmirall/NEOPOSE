@@ -2,12 +2,12 @@
 const hist = {stack: [], i: -1};
 const snapshot = () => ({chars: chars.map(m => ({body: {...m.body}, preset: m.bodyPreset, pose: m.getPose(), outfit: m.outfit})), active});
 function pushHistory() {
-  const s = JSON.stringify({...snapshot(), ...sceneExtras(false)});
+  if (typeof animAutoKey === 'function') animAutoKey();
+  const s = JSON.stringify({...snapshot(), ...sceneExtras(false), mv: typeof animHist === 'function' ? animHist() : undefined});
   if (hist.stack[hist.i] === s) return;
   hist.stack = hist.stack.slice(0, hist.i + 1); hist.stack.push(s);
   if (hist.stack.length > 80) hist.stack.shift();
   hist.i = hist.stack.length - 1; updateUndo();
-  if (typeof animAutoKey === 'function') animAutoKey();
 }
 function restore(s) {
   const o = typeof s === 'string' ? JSON.parse(s) : s;
@@ -24,6 +24,7 @@ function restore(s) {
   });
   applySceneExtras(o);
   setActive(Math.min(o.active || 0, chars.length - 1));
+  if (o.mv && typeof animHistRestore === 'function') animHistRestore(o.mv);
 }
 function undo() { if (hist.i > 0) { restore(hist.stack[--hist.i]); updateUndo(); } }
 function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++hist.i]); updateUndo(); } }
