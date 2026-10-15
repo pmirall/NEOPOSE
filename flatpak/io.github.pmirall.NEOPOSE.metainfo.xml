@@ -13,12 +13,12 @@
     <p>NEOPOSE is a 3D mannequin for artists. Pose one or more characters, dress them, place them in a lit set and use the result as a drawing reference.</p>
     <p xml:lang="es">NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y usa el resultado como referencia de dibujo.</p>
     <ul>
-      <li>Pose by dragging hands, feet and hips, or by rotating each joint; pose library for one to four characters</li>
-      <li xml:lang="es">Posado arrastrando manos, pies y pelvis o girando cada articulación; biblioteca de poses de uno a cuatro personajes</li>
+      <li>Pose with IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or by rotating each joint; pose library for one to four characters</li>
+      <li xml:lang="es">Posado con IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación; biblioteca de poses de uno a cuatro personajes</li>
       <li>Human anatomy from MakeHuman: age, gender, muscle, weight, height and stylisation, from realistic to chibi</li>
       <li xml:lang="es">Anatomía humana de MakeHuman: edad, género, músculo, peso, altura y estilización, de realista a chibi</li>
-      <li>Anthro characters: 13 species, realistic, toony and kemono head styles and sculpted heads</li>
-      <li xml:lang="es">Personajes anthro: 13 especies, estilos de cabeza realista, toony y kemono y cabezas esculpidas</li>
+      <li>Anthro characters: wolf, fox, dog, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono)</li>
+      <li xml:lang="es">Personajes anthro: lobo, zorro, perro, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono)</li>
       <li>470 garments that fit any body and pose</li>
       <li xml:lang="es">470 prendas que se adaptan a cualquier cuerpo y pose</li>
       <li>24 sets with their own lamps and shadows: living room, tavern, castle, theatre, street, forest, beach…</li>
