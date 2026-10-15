@@ -16,6 +16,18 @@ Figura 3D para dibujar. Un maniquí de referencia con anatomía humana y anthro,
 
 ## Descargas
 
+**Linux (recomendado): repositorio Flatpak** en <https://pmirall.github.io/NEOPOSE/>. Un clic en «Instalar NEOPOSE» la abre en Bazaar, GNOME Software o Discover, y se actualiza con el resto de apps. Desde la terminal:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists neopose https://pmirall.github.io/NEOPOSE/neopose.flatpakrepo
+flatpak install --user neopose io.github.pmirall.NEOPOSE
+```
+
+El repositorio se publica solo con cada tag (flujo «Flatpak repo») y está firmado con GPG.
+
+### Archivos sueltos
+
 En [Releases](https://github.com/pmirall/NEOPOSE/releases):
 
 | Sistema | Archivo | Cómo instalar |
