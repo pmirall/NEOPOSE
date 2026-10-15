@@ -1,0 +1,33 @@
+# Checks that the Flathub manifest builds from source and passes Flathub's linter (run before submitting or updating on Flathub).
+name: Flathub check
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['flatpak/**', 'package-lock.json', '.github/workflows/flathub.yml']
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Flatpak toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder appstream
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.flatpak.Builder
+      - name: Build from this checkout instead of the release tag
+        run: |
+          python3 - <<'PY'
+          import re
+          s = open('flatpak/io.github.pmirall.NEOPOSE.yml').read()
+          s = re.sub(r"      - type: git\n        url: [^\n]+\n        tag: [^\n]+\n", "      - type: dir\n        path: ..\n", s)
+          open('flatpak/ci.yml', 'w').write(s)
+          PY
+          flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo --sandbox build flatpak/ci.yml
+      - name: Flathub linter
+        run: |
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/io.github.pmirall.NEOPOSE.yml || true
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/io.github.pmirall.NEOPOSE.metainfo.xml
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo

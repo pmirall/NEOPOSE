@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><g transform="translate(512 540) scale(.6) translate(-505 -545)"><!-- gesture figure: line of action, head, ribcage, pelvis, limbs -->
+  <g fill="none" stroke="#2b5a9e" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M420 300 C470 420 520 520 600 820" stroke-width="16" opacity=".35"/>
+    <ellipse cx="452" cy="250" rx="66" ry="76" stroke-width="22" transform="rotate(-14 452 250)"/>
+    <path d="M410 360 C470 335 560 350 585 420 C600 470 560 520 500 525 C440 528 395 480 410 360Z" stroke-width="22"/>
+    <path d="M500 525 C520 560 540 585 560 600" stroke-width="22"/>
+    <rect x="510" y="585" width="120" height="90" rx="26" stroke-width="22" transform="rotate(18 570 630)"/>
+  </g>
+  <g fill="none" stroke="#2a2620" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M420 370 L320 470 L250 400"/>
+    <path d="M575 400 L690 320 L760 210"/>
+    <path d="M545 680 L470 800 L520 880"/>
+    <path d="M620 670 L720 760 L760 880"/>
+  </g>
+  <g fill="#b0432c"><circle cx="250" cy="400" r="26"/><circle cx="760" cy="210" r="26"/><circle cx="520" cy="880" r="26"/><circle cx="760" cy="880" r="26"/></g>
+</g></svg>

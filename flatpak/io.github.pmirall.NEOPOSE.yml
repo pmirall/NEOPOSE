@@ -1,0 +1,51 @@
+# Flathub manifest: builds NEOPOSE from source, offline (npm packages and Electron come from generated-sources.json).
+# Regenerate generated-sources.json whenever package-lock.json changes:
+#   flatpak-node-generator npm package-lock.json -o flatpak/generated-sources.json
+app-id: io.github.pmirall.NEOPOSE
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '26.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node24
+command: neopose
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  # exported PNGs go to Pictures/Downloads (the save dialog uses portals for anything else)
+  - --filesystem=xdg-pictures
+  - --filesystem=xdg-download
+modules:
+  - name: neopose
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node24/bin
+      env:
+        XDG_CACHE_HOME: /run/build/neopose/flatpak-node/cache
+        npm_config_cache: /run/build/neopose/flatpak-node/npm-cache
+        npm_config_offline: 'true'
+    build-commands:
+      - npm ci --offline --ignore-scripts
+      - python3 build.py
+      - . flatpak-node/electron-builder-arch-args.sh; npm run build:dir -- $ELECTRON_BUILDER_ARCH_ARGS
+      - cp -a dist/linux*unpacked /app/main
+      - install -Dm755 neopose.sh /app/bin/neopose
+      - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.desktop -t /app/share/applications
+      - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 build/icon.png /app/share/icons/hicolor/512x512/apps/io.github.pmirall.NEOPOSE.png
+      - install -Dm644 LICENSE -t /app/share/licenses/io.github.pmirall.NEOPOSE
+      - install -Dm644 CREDITS.md -t /app/share/licenses/io.github.pmirall.NEOPOSE
+    sources:
+      - type: git
+        url: https://github.com/pmirall/NEOPOSE.git
+        tag: v1.0.0
+      - generated-sources.json
+      - type: script
+        dest-filename: neopose.sh
+        commands:
+          - export TMPDIR="$XDG_RUNTIME_DIR/app/$FLATPAK_ID"
+          - exec zypak-wrapper /app/main/neopose "$@"

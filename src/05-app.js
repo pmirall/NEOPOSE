@@ -863,6 +863,15 @@ $('#exGuides').onchange = renderExport;
 $('#exSave').onclick = () => {
   const a = document.createElement('a'), d = new Date(), pad = n => String(n).padStart(2, '0');
   a.download = `pose-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.png`;
+  // Android (Capacitor): no downloads in the WebView, so write the PNG to the cache and open the share sheet (Galería, Drive, Telegram…)
+  const cap = window.Capacitor;
+  if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+    const call = (pl, m, o) => cap.Plugins && cap.Plugins[pl] ? cap.Plugins[pl][m](o) : cap.nativePromise(pl, m, o);
+    call('Filesystem', 'writeFile', {path: a.download, data: $('#exImg').src.split(',')[1], directory: 'CACHE'})
+      .then(r => call('Share', 'share', {title: 'NEOPOSE', files: [r.uri]}))
+      .catch(e => { if (!/cancel/i.test(String(e && e.message))) $('#exMsg').textContent = 'No se ha podido guardar la imagen: ' + (e && e.message || e); });
+    return;
+  }
   a.href = $('#exImg').src; document.body.appendChild(a); a.click(); a.remove();
 };
 $('#exCopy').onclick = () => {

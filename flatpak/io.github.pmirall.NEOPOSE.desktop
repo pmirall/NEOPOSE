@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=NEOPOSE
+GenericName=3D pose reference
+GenericName[es]=Referencia de poses 3D
+Comment=3D figure for drawing: poses, human and anthro anatomy, clothes, sets and lights
+Comment[es]=Figura 3D para dibujar: poses, anatomía humana y anthro, ropa, escenarios y luces
+Icon=io.github.pmirall.NEOPOSE
+Exec=neopose %U
+Terminal=false
+Categories=Graphics;3DGraphics;Education;Art;
+Keywords=pose;drawing;anatomy;reference;mannequin;3D;anthro;furry;dibujo;anatomía;referencia;maniquí;

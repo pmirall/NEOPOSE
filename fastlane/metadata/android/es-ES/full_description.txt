@@ -1,0 +1,11 @@
+<p>NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y usa el resultado como referencia de dibujo. Todo funciona sin conexión.</p>
+<ul>
+<li><b>Posado</b>: arrastra manos, pies y pelvis, o gira cada articulación. Biblioteca de poses de uno a cuatro personajes, poses al azar, gestos de mano, mirada y expresiones.</li>
+<li><b>Cuerpo</b>: anatomía humana de MakeHuman con edad, género, músculo, peso, altura y estilización, de realista a chibi.</li>
+<li><b>Anthro</b>: 13 especies con estilos de cabeza realista, toony y kemono y cabezas esculpidas.</li>
+<li><b>Ropa</b>: 470 prendas que se adaptan a cualquier cuerpo y pose.</li>
+<li><b>Escenarios</b>: 24 lugares con lámparas y sombras propias, y objetos reales para colocar.</li>
+<li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto.</li>
+<li><b>Práctica de gesto</b> con temporizador y <b>exportación a PNG</b>.</li>
+</ul>
+<p>Recursos: MakeHuman (CC0), Poly Haven (CC0) y cinco cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio.</p>

@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.pmirall.neopose",
+  "appName": "NEOPOSE",
+  "webDir": "app",
+  "android": {
+    "backgroundColor": "#e4ddcb",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}

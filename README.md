@@ -22,6 +22,7 @@ En [Releases](https://github.com/pmirall/NEOPOSE/releases):
 | Windows | `NEOPOSE-x.y.z-portable.exe` | Sin instalar: ejecútalo y listo. |
 | Linux | `NEOPOSE-x.y.z-x86_64.flatpak` | `flatpak install --user NEOPOSE-x.y.z-x86_64.flatpak` (necesita el remoto Flathub para el runtime). |
 | Linux | `NEOPOSE-x.y.z-linux-x86_64.AppImage` | `chmod +x` y ejecutar. |
+| Android 7+ | `NEOPOSE-x.y.z-android.apk` | Ábrela en el móvil y permite instalar desde esa fuente. |
 
 Los ejecutables no están firmados: Windows SmartScreen puede pedir «Más información → Ejecutar de todos modos».
 
@@ -34,19 +35,34 @@ npm install
 npm start            # compila app/index.html y abre la app
 npm run dist:linux   # Flatpak + AppImage en dist/ (necesita flatpak y flatpak-builder)
 npm run dist:win     # instalador NSIS + portable en dist/
+npx cap sync android && (cd android && ./gradlew assembleRelease)   # APK (necesita JDK 21 y el SDK de Android)
 ```
 
 - `src/`: código de la app (módulos JS, HTML y CSS). `build.py` los une en `app/index.html`.
 - `app/`: lo que se empaqueta: la página, three.js r147 y las fuentes (incluidos, funciona sin conexión), la figura, la ropa, las cabezas y los escenarios.
 - `electron/main.js`: la ventana de escritorio. Sirve `app/` por un esquema privado `app://`.
+- `android/`: proyecto Android de [Capacitor](https://capacitorjs.com). `npx cap sync android` copia `app/` dentro.
+- `flatpak/`: manifiesto de Flathub (compila desde el código, sin conexión), ficha AppStream y entrada de escritorio.
+- `fdroid/` y `fastlane/`: receta y fichas para F-Droid.
 - `tools/`: los procesos que generaron los datos (malla y ropa de MakeHuman, cabezas esculpidas, escenarios de Poly Haven). Necesitan los recursos originales y no hacen falta para compilar la app.
 
 ## Publicar una versión
 
-1. Sube la versión en `package.json`.
-2. `git tag v1.2.3 && git push origin v1.2.3`.
-3. GitHub Actions compila Windows y Linux y adjunta los archivos a un **borrador** de release. Revísalo y pulsa «Publish release».
+1. Sube la versión en `package.json`, `versionName`/`versionCode` en `android/app/build.gradle` y añade la versión a `flatpak/io.github.pmirall.NEOPOSE.metainfo.xml` y un `fastlane/metadata/android/*/changelogs/<versionCode>.txt`.
+2. Si cambió `package-lock.json`: `flatpak-node-generator npm package-lock.json -o flatpak/generated-sources.json`.
+3. `git tag v1.2.3 && git push origin v1.2.3`.
+4. GitHub Actions compila Windows, Linux y Android y adjunta los archivos a un **borrador** de release. Revísalo y pulsa «Publish release».
+5. Flathub y F-Droid detectan el tag nuevo (F-Droid lo hace solo; en Flathub se actualiza el manifiesto en su repositorio `flathub/io.github.pmirall.NEOPOSE`).
 
-## Créditos
+La APK de GitHub se firma con la clave guardada en los secretos del repositorio (`NEOPOSE_KEYSTORE_*`). F-Droid compila y firma la suya.
 
-Ver [CREDITS.md](CREDITS.md).
+## Tiendas
+
+- **Flathub** (y con ello Bazaar, GNOME Software y KDE Discover): el manifiesto está en `flatpak/`. El flujo «Flathub check» comprueba que compila y pasa el linter de Flathub.
+- **F-Droid**: la receta está en `fdroid/` y las fichas en `fastlane/`.
+
+## Licencia
+
+El código de NEOPOSE es software libre bajo la [GNU GPL v3 o posterior](LICENSE): puedes usarlo, estudiarlo, modificarlo y redistribuirlo, siempre que las versiones derivadas sigan siendo libres con la misma licencia.
+
+Los recursos de terceros (malla, ropa, escenarios, cabezas, fuentes y librerías) mantienen sus propias licencias libres: ver [CREDITS.md](CREDITS.md).

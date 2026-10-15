@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pmirall.NEOPOSE</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>NEOPOSE</name>
+  <summary>3D figure for drawing: poses, anatomy, clothes and sets</summary>
+  <summary xml:lang="es">Figura 3D para dibujar: poses, anatomía, ropa y escenarios</summary>
+  <developer id="io.github.pmirall">
+    <name>pmirall</name>
+  </developer>
+  <description>
+    <p>NEOPOSE is a 3D mannequin for artists. Pose one or more characters, dress them, place them in a lit set and use the result as a drawing reference.</p>
+    <p xml:lang="es">NEOPOSE es un maniquí 3D para artistas. Posa a uno o varios personajes, vístelos, colócalos en un escenario iluminado y usa el resultado como referencia de dibujo.</p>
+    <ul>
+      <li>Pose by dragging hands, feet and hips, or by rotating each joint; pose library for one to four characters</li>
+      <li>Human anatomy from MakeHuman: age, gender, muscle, weight, height and stylisation, from realistic to chibi</li>
+      <li>Anthro characters: 13 species, realistic, toony and kemono head styles and sculpted heads</li>
+      <li>470 garments that fit any body and pose</li>
+      <li>24 sets with their own lamps and shadows: living room, tavern, castle, theatre, street, forest, beach…</li>
+      <li>Drawing finishes (construction, volume, pencil, values, silhouette), guides and a sketch layer</li>
+      <li>Gesture practice with a timer and PNG export</li>
+    </ul>
+    <ul xml:lang="es">
+      <li>Posado arrastrando manos, pies y pelvis o girando cada articulación; biblioteca de poses de uno a cuatro personajes</li>
+      <li>Anatomía humana de MakeHuman: edad, género, músculo, peso, altura y estilización, de realista a chibi</li>
+      <li>Personajes anthro: 13 especies, estilos de cabeza realista, toony y kemono y cabezas esculpidas</li>
+      <li>470 prendas que se adaptan a cualquier cuerpo y pose</li>
+      <li>24 escenarios con lámparas y sombras propias: salón, taberna, castillo, teatro, calle, bosque, playa…</li>
+      <li>Acabados de dibujo (construcción, volumen, lápiz, valores, silueta), guías y capa de boceto</li>
+      <li>Práctica de gesto con temporizador y exportación a PNG</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.pmirall.NEOPOSE.desktop</launchable>
+  <url type="homepage">https://github.com/pmirall/NEOPOSE</url>
+  <url type="bugtracker">https://github.com/pmirall/NEOPOSE/issues</url>
+  <url type="vcs-browser">https://github.com/pmirall/NEOPOSE</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/pmirall/NEOPOSE/v1.0.0/docs/screenshots/desk-1-pose.png</image>
+      <caption>Posing a dressed character in a living room</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pmirall/NEOPOSE/v1.0.0/docs/screenshots/desk-2-anthro.png</image>
+      <caption>A kemono fox character in a dojo</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pmirall/NEOPOSE/v1.0.0/docs/screenshots/desk-3-grupo.png</image>
+      <caption>Two characters in a sword duel in a castle hall</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pmirall/NEOPOSE/v1.0.0/docs/screenshots/desk-4-dibujo.png</image>
+      <caption>Pencil finish with head ruler and line of action</caption>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Graphics</category>
+    <category>3DGraphics</category>
+    <category>Education</category>
+  </categories>
+  <keywords>
+    <keyword>pose</keyword>
+    <keyword>drawing</keyword>
+    <keyword>anatomy</keyword>
+    <keyword>reference</keyword>
+    <keyword>mannequin</keyword>
+    <keyword>anthro</keyword>
+  </keywords>
+  <branding>
+    <color type="primary" scheme_preference="light">#e4ddcb</color>
+    <color type="primary" scheme_preference="dark">#2b5a9e</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <releases>
+    <release version="1.0.0" date="2026-10-15">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
