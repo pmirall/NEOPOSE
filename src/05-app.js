@@ -482,10 +482,10 @@ $$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, feet: mq.body.feet}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, feet: mq.body.feet, expr: mq.body.expr, exprAmt: mq.body.exprAmt}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   chips($('#speciesChips'), Object.entries(SPECIES).map(([k, v]) => [k, v.label]), mq.body.species, id => {
-    mq.body.species = id; tourEvent('body'); rebuildActive(true); syncHeadUI(); pushHistory();
+    mq.body.species = id; tourEvent('body'); rebuildActive(true); syncHeadUI(); syncExprUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -494,7 +494,7 @@ function buildBodyUI() {
 }
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
-  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI();
+  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncExprUI === 'function') syncExprUI();
   $('#headsOut').textContent = dec(mq.heads);
 }
 const STYLE_NOTE = {

@@ -40,12 +40,14 @@ const BODY_PRESETS = {
   animeM:     {label:'Anime (chico)', gender:1, age:.75, muscle:.55, weight:.22, height:.6, ideal:.85, head:.9, legs:1.12, arms:1.04, torso:.96},
   animeF:     {label:'Anime (chica)', gender:0, age:.7, muscle:.4, weight:.28, height:.55, ideal:.85, head:.9, legs:1.15, arms:1.02, torso:.94},
   chibi:      {label:'Chibi', gender:.5, age:.1, weight:.6, ideal:0, head:1.8, legs:.62, arms:.72, torso:.82},
-  heroico:    {label:'Heroico (cómic)', gender:1, muscle:1, weight:.4, height:.68, ideal:1, head:.86, legs:1.06}
+  heroico:    {label:'Heroico (cómic)', gender:1, muscle:1, weight:.4, height:.68, ideal:1, head:.86, legs:1.06},
+  mayor:      {label:'Hombre mayor', gender:1, age:1.65, muscle:.35, weight:.6, height:.45},
+  mayora:     {label:'Mujer mayor', gender:0, age:1.65, muscle:.3, weight:.6, height:.4}
 };
 tLabels(BODY_PRESETS);
 const bodyOf = id => { const p = {...BODY_BASE, ...BODY_PRESETS[id]}; delete p.label; return p; };
 const BODY_SLIDERS = [
-  ['age','Edad',0,1,v => tr('≈ {n} años', {n: Math.round(11 + v * 14)})],
+  ['age','Edad',0,2,v => tr('≈ {n} años', {n: ageYears(v)})],
   ['gender','Mujer · Hombre',0,1],['muscle','Musculatura',0,1],['weight','Grasa corporal',0,1],['height','Altura',0,1],
   ['ideal','Proporciones idealizadas',0,1]
 ];
@@ -79,6 +81,23 @@ const GESTURES = {
   garra:   {label:'Garra',    c:[.35,.55,.55,.55,.55], s:.8}
 };
 tLabels(GESTURES);
+/* human facial expressions: MakeHuman expression units (FACS-like), weights 0..1, see tools/makehuman/build_ext.py */
+const FACE_EXPR = {
+  neutra:    {label:'Neutra', u:{}},
+  sonrisa:   {label:'Sonrisa', u:{'mouth-corner-puller':1.15, 'mouth-upward-retraction':.15, 'eye-left-slit':.35, 'eye-right-slit':.35}},
+  risa:      {label:'Risa', u:{'mouth-corner-puller':1, 'mouth-open':.55, 'mouth-upward-retraction':.35, 'eye-left-slit':.6, 'eye-right-slit':.6}},
+  triste:    {label:'Triste', u:{'eyebrows-left-inner-up':1, 'eyebrows-right-inner-up':1, 'mouth-depression':.8, 'eye-left-slit':.2, 'eye-right-slit':.2}},
+  enfado:    {label:'Enfado', u:{'eyebrows-left-down':1.4, 'eyebrows-right-down':1.4, 'mouth-compression':.9, 'mouth-depression':.3, 'nose-left-elevation':.6, 'nose-right-elevation':.6, 'eye-left-slit':.45, 'eye-right-slit':.45, 'neck-platysma':.3}},
+  sorpresa:  {label:'Sorpresa', u:{'eyebrows-left-up':1, 'eyebrows-right-up':1, 'eye-left-opened-up':1, 'eye-right-opened-up':1, 'mouth-open':.6}},
+  miedo:     {label:'Miedo', u:{'eyebrows-left-inner-up':.8, 'eyebrows-right-inner-up':.8, 'eyebrows-left-up':.5, 'eyebrows-right-up':.5, 'eye-left-opened-up':.9, 'eye-right-opened-up':.9, 'mouth-part-later':.7, 'mouth-open':.25, 'neck-platysma':.5}},
+  asco:      {label:'Asco', u:{'mouth-elevation':.8, 'nose-left-elevation':.9, 'nose-right-elevation':.9, 'eyebrows-left-down':.5, 'eyebrows-right-down':.5, 'eye-left-slit':.35, 'eye-right-slit':.35}},
+  grito:     {label:'Grito', u:{'mouth-open':1, 'eyebrows-left-down':.8, 'eyebrows-right-down':.8, 'eye-left-slit':.35, 'eye-right-slit':.35, 'neck-platysma':.6}},
+  concentrado:{label:'Concentrado', u:{'eyebrows-left-down':.45, 'eyebrows-right-down':.45, 'mouth-compression':.35, 'eye-left-slit':.3, 'eye-right-slit':.3}},
+  guino:     {label:'Guiño', u:{'eye-left-closure':1, 'mouth-corner-puller':.6, 'eyebrows-left-down':.3}},
+  morros:    {label:'Morros', u:{'mouth-pursing':1, 'mouth-protusion':.4}},
+  dormido:   {label:'Ojos cerrados', u:{'eye-left-closure':1, 'eye-right-closure':1}}
+};
+tLabels(FACE_EXPR);
 const FINGER_NAMES = ['Pulgar','Índice','Corazón','Anular','Meñique'].map(s => tr(s));
 function gest(id) { const g = GESTURES[id] || GESTURES.relajada; return {c: [...g.c], s: g.s}; }
 

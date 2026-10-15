@@ -171,8 +171,26 @@ function parseFigure(buf) {
     : /^(hip|knee)[LR]$/.test(n) ? 'leg' + n.slice(-1) : 'foot' + n.slice(-1);
   FIG.region = [...meta.bones, ...meta.extra].map(region);
 }
+// extension: extra sparse sets (old age, facial expression units) baked by tools/makehuman/build_ext.py
+function parseFigureExt(buf) {
+  const dv = new DataView(buf), jl = dv.getUint32(0, true), meta = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, jl)));
+  if (meta.nV !== FIG.meta.nV || meta.nH !== FIG.nH) return;
+  let o = 4 + jl; const nJ = FIG.meta.bones.length + FIG.meta.extra.length;
+  const take = (C, n) => { const a = new C(buf, o, n); o += a.byteLength; o = (o + 3) & ~3; return a; };
+  for (const x of meta.xsets) FIG.xsets[x.name] = {iv: take(Uint16Array, x.n), dv: take(Int16Array, x.n * 3), ih: take(Uint16Array, x.nh), dh: take(Int16Array, x.nh * 3), dj: take(Float32Array, nJ * 3)};
+}
+// age 0..1 is 11 to 25 years (the original range, so saved scenes keep their age); 1..2 goes on to 90
+const ageYears = a => Math.round(a <= 1 ? 11 + a * 14 : 25 + (a - 1) * 65);
+// sets from the extension: growing old, and the face of a human expression
+function extMorphs(b) {
+  const w = {}, old = clamp((b.age ?? 1) - 1, 0, 1);
+  if (old > 0) { w['old-male'] = b.gender * old; w['old-female'] = (1 - b.gender) * old; }
+  const e = b.species === 'humano' && FACE_EXPR[b.expr];
+  if (e) for (const [k, v] of Object.entries(e.u)) w['e-' + k] = (w['e-' + k] || 0) + v * (b.exprAmt ?? 1);
+  return w;
+}
 function morphWeights(b) {
-  const g = b.gender, f = 1 - g, a = b.age ?? 1, ad = .25 + .75 * a, w = {female: f, 'child-male': g * (1 - a), 'child-female': f * (1 - a)};
+  const g = b.gender, f = 1 - g, a = Math.min(b.age ?? 1, 1), ad = .25 + .75 * a, w = {female: f, 'child-male': g * (1 - a), 'child-female': f * (1 - a)};
   const tri = v => { const mn = Math.max(0, 1 - 2 * v), mx = Math.max(0, 2 * v - 1); return [mn, 1 - mn - mx, mx]; };
   const M = tri(b.muscle), Wt = tri(b.weight), mN = ['minmuscle', 'averagemuscle', 'maxmuscle'], wN = ['minweight', 'averageweight', 'maxweight'];
   for (const [gn, gw] of [['male', g], ['female', f]]) {
@@ -355,7 +373,7 @@ class Mannequin {
       const d = FIG.hdeltas[FIG.setIdx[name]], q = meta.q * w; for (let i = 0; i < H.length; i++) H[i] += d[i] * q;
     }
     const swapId = headModelFor(this.body), swapReady = swapId && HEADS[swapId];
-    for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {})})) {
+    for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {}), ...extMorphs(this.body)})) {
       const x = FIG.xsets[name]; if (!x || Math.abs(w) < 1e-4) continue; const q = meta.q * w;
       for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; P[o] += x.dv[k * 3] * q; P[o + 1] += x.dv[k * 3 + 1] * q; P[o + 2] += x.dv[k * 3 + 2] * q; }
       for (let k = 0; k < x.ih.length; k++) { const o = x.ih[k] * 3; H[o] += x.dh[k * 3] * q; H[o + 1] += x.dh[k * 3 + 1] * q; H[o + 2] += x.dh[k * 3 + 2] * q; }

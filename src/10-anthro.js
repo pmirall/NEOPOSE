@@ -219,8 +219,28 @@ function applyExpression(m, id) {
     m.joints['ear' + k].rotation.set(-e.back * DEG, sd * e.twist * DEG, -sd * out * DEG);
   }
 }
+// the face: humans get MakeHuman's facial expressions (stored in the body, with an intensity);
+// anthro characters keep the jaw-and-ears expressions of their sculpted heads
+let exprAmtEl = null, exprFor = null;
 function buildExprUI() {
-  chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); pushHistory(); });
+  exprAmtEl = slider($('#exprAmtBox'), {id: 'exprAmt', label: 'Intensidad', min: 0, max: 1.3, step: .01, value: 1, fmt: pctFmt,
+    input: v => { mq.body.exprAmt = v; rebuildActive(); }, change: pushHistory});
+  syncExprUI();
+}
+function syncExprUI() {
+  if (!exprAmtEl) return;
+  const human = mq.body.species === 'humano' && !mq.avatar, kind = human ? 'h' : 'a';
+  if (exprFor !== kind) {
+    exprFor = kind;
+    if (human) chips($('#exprChips'), Object.entries(FACE_EXPR).map(([k, v]) => [k, v.label]), mq.body.expr || 'neutra', id => {
+      mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); });
+    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); pushHistory(); });
+  }
+  if (human) setPressed($('#exprChips'), mq.body.expr || 'neutra');
+  $('#exprAmtBox').hidden = !human || !mq.body.expr;
+  exprAmtEl.set(mq.body.exprAmt ?? 1);
+  $('#exprNote').textContent = tr(human ? 'Cejas, ojos y boca de MakeHuman. Para abrir más la boca, toca la mandíbula y gírala.'
+    : 'Abre la boca y mueve las orejas de los personajes anthro. También puedes tocar la mandíbula o una oreja para girarlas a mano.');
 }
 
 // the body as the skeleton stretch sees it: kemono heads are larger, rounder craniums
