@@ -49,7 +49,7 @@ modules:
       - type: git
         url: https://github.com/pmirall/NEOPOSE.git
         tag: v1.0.0
-        commit: 5ad937889bdf24975517ef0ae48567642791ca57
+        commit: 70184bbfc73aab007a4f5a62cbe90fee45b3367f
       - generated-sources.json
       - type: script
         dest-filename: neopose.sh
