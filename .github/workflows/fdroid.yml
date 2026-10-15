@@ -24,10 +24,10 @@ jobs:
           python3 -m venv ~/fd && ~/fd/bin/pip install -q fdroidserver
       - name: Lint the recipe
         run: |
-          mkdir -p ~/fdroiddata/metadata && cd ~/fdroiddata
+          git clone -q --depth 1 --filter=blob:none --sparse https://gitlab.com/fdroid/fdroiddata.git ~/fdroiddata
+          cd ~/fdroiddata && git sparse-checkout set config && mkdir -p metadata
           cp "$GITHUB_WORKSPACE/fdroid/io.github.pmirall.neopose.yml" metadata/
-          printf 'sdk_path: %s\n' "$ANDROID_HOME" > config.yml && chmod 600 config.yml
-          mkdir -p config && curl -sfL https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml -o config/categories.yml
+          printf 'sdk_path: %s\n' "$ANDROID_HOME" >> config.yml && chmod 600 config.yml
           ~/fd/bin/fdroid lint -v io.github.pmirall.neopose
           ~/fd/bin/fdroid rewritemeta io.github.pmirall.neopose && git diff --no-index "$GITHUB_WORKSPACE/fdroid/io.github.pmirall.neopose.yml" metadata/io.github.pmirall.neopose.yml || true
       - name: Build like F-Droid (from the tagged source)
