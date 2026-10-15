@@ -101,8 +101,9 @@ jobs:
           cp "$UNSIGNED" dist/unsigned.apk
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/neopose.p12"
-            # minSdk 24: v2/v3 only; a v1 (JAR) signature would add META-INF entries and shift the whole zip
-            apksigner sign --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
+            # minSdk 24: v2/v3 only (a v1 JAR signature would add META-INF entries), and keep AGP's zip alignment:
+            # then the APK is the unsigned one plus the signing block, so the signature can be copied onto a rebuild
+            apksigner sign --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true --alignment-preserved \
               --ks "$RUNNER_TEMP/neopose.p12" --ks-type PKCS12 --ks-key-alias "$NEOPOSE_KEY_ALIAS" \
               --ks-pass env:NEOPOSE_KEYSTORE_PASSWORD --key-pass env:NEOPOSE_KEY_PASSWORD \
               --in dist/unsigned.apk --out "dist/NEOPOSE-$VERSION-android.apk"
