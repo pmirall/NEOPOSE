@@ -1,8 +1,8 @@
 # Draft for the fdroiddata merge request (https://gitlab.com/fdroid/fdroiddata → metadata/io.github.pmirall.neopose.yml).
 # Descriptions, icon and screenshots come from fastlane/metadata/android in this repo.
 Categories:
+  - Draw
   - Graphics
-  - Science & Education
 License: GPL-3.0-or-later
 AuthorName: pmirall
 SourceCode: https://github.com/pmirall/NEOPOSE
