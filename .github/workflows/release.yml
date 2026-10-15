@@ -1,0 +1,53 @@
+# Builds the Windows (.exe) and Linux (Flatpak, AppImage) packages and attaches them to a draft release.
+# Trigger: push a tag like v1.0.0, or run it by hand from the Actions tab.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win nsis portable
+          - os: ubuntu-24.04
+            target: --linux flatpak AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Flatpak toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.electronjs.Electron2.BaseApp//26.08
+      - run: npm ci
+      - run: python build.py
+      - name: Package and upload to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
+        run: npx electron-builder ${{ matrix.target }} --publish always
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neopose-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.flatpak
+            dist/*.AppImage
+          if-no-files-found: ignore

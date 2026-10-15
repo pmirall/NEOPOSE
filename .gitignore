@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.flatpak-builder/
+__pycache__/
+*.pyc
+tools/scenery/src/
+tools/scenery/tool/
+tools/scenery/out/
+tools/scenery/build/

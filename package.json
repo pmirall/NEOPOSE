@@ -1,0 +1,108 @@
+{
+  "name": "neopose",
+  "productName": "NEOPOSE",
+  "version": "1.0.0",
+  "description": "Figura 3D para dibujar: poses, anatomía humana y anthro, ropa, escenarios y luces.",
+  "author": {
+    "name": "pmirall",
+    "email": "paumirallmovil@gmail.com"
+  },
+  "homepage": "https://github.com/pmirall/NEOPOSE",
+  "main": "electron/main.js",
+  "scripts": {
+    "build:web": "python3 build.py",
+    "start": "python3 build.py && electron .",
+    "dist:linux": "python3 build.py && electron-builder --linux flatpak AppImage",
+    "dist:win": "python3 build.py && electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "io.github.pmirall.NEOPOSE",
+    "productName": "NEOPOSE",
+    "copyright": "© 2026 pmirall",
+    "artifactName": "NEOPOSE-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "app/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "NEOPOSE",
+      "artifactName": "NEOPOSE-${version}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "NEOPOSE-${version}-portable.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Graphics",
+      "synopsis": "Figura 3D para dibujar",
+      "description": "Maniquí 3D de referencia para dibujo: poses, anatomía humana y anthro, ropa, escenarios y luces.",
+      "desktop": {
+        "entry": {
+          "Name": "NEOPOSE",
+          "Comment": "Figura 3D para dibujar",
+          "Keywords": "pose;dibujo;anatomía;referencia;3D;drawing;reference;"
+        }
+      },
+      "target": [
+        "flatpak",
+        "AppImage"
+      ]
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "26.08",
+      "sdk": "org.freedesktop.Sdk",
+      "base": "org.electronjs.Electron2.BaseApp",
+      "baseVersion": "26.08",
+      "finishArgs": [
+        "--share=ipc",
+        "--socket=x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--filesystem=xdg-pictures",
+        "--filesystem=xdg-download"
+      ],
+      "artifactName": "NEOPOSE-${version}-x86_64.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "pmirall",
+      "repo": "NEOPOSE",
+      "releaseType": "draft"
+    }
+  },
+  "desktopName": "io.github.pmirall.NEOPOSE.desktop"
+}
