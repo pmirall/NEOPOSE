@@ -178,7 +178,10 @@ function retargetAvatar(m) {
 function avatarsTick() {
   for (const m of chars) {
     const want = m.body.avatar;
-    if (want && (!m.avatar || m.avatar.info.id !== want.id) && !m._avLoading && want.url) loadAvatarFor(m, want);
+    if (want && (!m.avatar || m.avatar.info.id !== want.id) && !m._avLoading) {
+      if (want.url) loadAvatarFor(m, want);
+      else { m._avLoading = true; avatarDB.get(want.id).then(r => { m._avLoading = false; if (r) loadAvatarFor(m, want, r.buf); else { delete m.body.avatar; toast(tr('El avatar «{x}» ya no está guardado en este navegador; vuelve a importarlo.', {x: want.name})); } }); }
+    }
     if (!want && m.avatar) detachAvatar(m);
     if (!m.avatar) continue;
     m.group.traverse(o => { if (o.isMesh && o.visible) { o.visible = false; o.userData.avHidden = true; } });
@@ -203,9 +206,25 @@ async function loadAvatarFor(m, info, buf) {
   }
   m._avLoading = false;
 }
+// avatars from a file are kept in this browser (the 8 most recent), so scenes that use them can load them again
+const avatarDB = {
+  open() { return new Promise((res, rej) => { try { const r = indexedDB.open('cdp-avatars', 1); r.onupgradeneeded = () => r.result.createObjectStore('a', {keyPath: 'id'}); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); },
+  async get(id) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('a').objectStore('a').get(id); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (_) { return null; } },
+  async put(v) {
+    try {
+      const db = await this.open(), st = db.transaction('a', 'readwrite').objectStore('a');
+      st.put({...v, at: Date.now()});
+      const q = st.getAll(); q.onsuccess = () => { for (const old of (q.result || []).sort((a, b) => b.at - a.at).slice(8)) st.delete(old.id); };
+    } catch (_) {}
+  }
+};
 function importAvatarFile(file) {
   if (!file) return;
-  file.arrayBuffer().then(buf => loadAvatarFor(mq, {id: 'file:' + file.name + ':' + file.size, name: file.name.replace(/\.(vrm|glb|gltf|fbx)$/i, ''), file: file.name, license: 'Archivo propio'}, buf)).then(pushHistory);
+  file.arrayBuffer().then(buf => {
+    const info = {id: 'file:' + file.name + ':' + file.size, name: file.name.replace(/\.(vrm|glb|gltf|fbx)$/i, ''), file: file.name, license: 'Archivo propio'};
+    avatarDB.put({id: info.id, file: file.name, buf});
+    return loadAvatarFor(mq, info, buf);
+  }).then(pushHistory);
 }
 let AV_GAL = null;
 async function openAvatarGallery() {

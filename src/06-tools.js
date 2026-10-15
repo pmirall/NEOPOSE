@@ -359,12 +359,55 @@ function plantFeet(m) {
   if (hi.y - lo.y < .25 * m.size) { solveIK(m.chains[e], m.joints[EFFECTOR[e]], new V3(hi.x, lo.y, hi.z)); m.ground(); }
 }
 function applyRandom(m, kind, keep = true) {
-  const p = randomPose(kind), yaw = keep ? m.yaw() : 0, pos = m.joints.hips.position.clone();
-  m.joints.hips.position.set(pos.x, m.rootY, pos.z);
-  applyPreset(m, p, {yaw});
-  if (p.plant) plantFeet(m);
-  m.joints.hips.position.x = pos.x; m.joints.hips.position.z = pos.z;
-  return p;
+  const yaw = keep ? m.yaw() : 0, pos = m.joints.hips.position.clone();
+  // a generated pose must not put a limb through the body: up to 10 tries, keeping the least bad one
+  let best = null;
+  for (let t = 0; t < 10; t++) {
+    const p = randomPose(kind);
+    m.joints.hips.position.set(pos.x, m.rootY, pos.z);
+    applyPreset(m, p, {yaw});
+    if (p.plant) plantFeet(m);
+    m.joints.hips.position.x = pos.x; m.joints.hips.position.z = pos.z;
+    const clip = selfClip(m);
+    if (!best || clip < best.clip) best = {p, clip, pose: m.getPose()};
+    if (clip <= 0) return p;
+  }
+  m.setPose(best.pose);
+  return best.p;
+}
+// how deep limbs go into the rest of the body (0 = they only touch, or not even that)
+const CLIP_PAIRS = (() => {
+  const out = [], limb = s => ['elbow' + s, 'hand' + s, 'knee' + s, 'foot' + s], other = s => s === 'L' ? 'R' : 'L';
+  for (const s of ['L', 'R']) {
+    for (const a of ['elbow' + s, 'hand' + s]) for (const b of ['hips', 'waist', 'chest', 'head', 'hip' + s, 'knee' + s, 'foot' + s, ...limb(other(s)), 'hip' + other(s), 'shoulder' + other(s)]) out.push([a, b]);
+    for (const a of ['knee' + s, 'foot' + s]) for (const b of ['chest', 'head', 'knee' + other(s), 'foot' + other(s), 'hip' + other(s)]) out.push([a, b]);
+  }
+  const seen = new Set(); return out.filter(pr => { const k = [...pr].sort().join('|'); return !seen.has(k) && seen.add(k); });
+})();
+function segSegDist(p1, q1, p2, q2) {
+  const d1 = _sa.subVectors(q1, p1), d2 = _sb.subVectors(q2, p2), r = _sc.subVectors(p1, p2);
+  const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+  let s, t;
+  if (a < 1e-9 && e < 1e-9) return p1.distanceTo(p2);
+  if (a < 1e-9) { s = 0; t = clamp(f / e, 0, 1); }
+  else {
+    const c = d1.dot(r);
+    if (e < 1e-9) { t = 0; s = clamp(-c / a, 0, 1); }
+    else { const b = d1.dot(d2), den = a * e - b * b; s = den > 1e-9 ? clamp((b * f - c * e) / den, 0, 1) : 0; t = (b * s + f) / e;
+      if (t < 0) { t = 0; s = clamp(-c / a, 0, 1); } else if (t > 1) { t = 1; s = clamp((b - c) / a, 0, 1); } }
+  }
+  return _sd.copy(p1).addScaledVector(d1, s).distanceTo(_se.copy(p2).addScaledVector(d2, t));
+}
+const _sa = new V3(), _sb = new V3(), _sc = new V3(), _sd = new V3(), _se = new V3();
+function selfClip(m) {
+  const caps = Object.fromEntries(bodyCapsules(m).map(c => [c.k, c]));
+  let worst = 0;
+  for (const [a, b] of CLIP_PAIRS) {
+    const A = caps[a], B = caps[b]; if (!A || !B) continue;
+    // touching is fine (hands on hips, crossed arms): only count clear overlap
+    worst = Math.max(worst, (A.r + B.r) * .75 - segSegDist(A.a, A.b, B.a, B.b));
+  }
+  return worst;
 }
 
 /* ---------- ghost: freeze the current pose to compare ---------- */

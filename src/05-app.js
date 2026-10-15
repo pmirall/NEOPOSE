@@ -652,7 +652,7 @@ function buildPoseGrid() {
   $('#catChips').hidden = state.castN !== 1;
   chips($('#catChips'), Object.entries(POSE_CATS), state.cat, v => { state.cat = v; buildPoseGrid(); });
   const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), q = norm($('#poseSearch').value.trim());
-  const list = (state.castN === 1 ? POSES.filter(p => state.cat === 'todas' || p.cat === state.cat) : GROUP_POSES[state.castN]).filter(p => !q || norm(p.label).includes(q));
+  const list = (state.castN === 1 ? POSES.filter(p => state.cat === 'todas' || p.cat === state.cat) : GROUP_POSES[state.castN]).filter(p => !q || q.split(/\s+/).every(w => norm(p.label + ' ' + (p.find || '')).includes(w)));
   $('#poseCount').textContent = tr('{n} poses', {n: list.length});
   if (!list.length) g.innerHTML = `<p class="empty">${tr('Ninguna pose coincide con la búsqueda.')}</p>`;
   thumbQueue = [];
