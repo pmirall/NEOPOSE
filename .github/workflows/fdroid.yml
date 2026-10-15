@@ -1,0 +1,36 @@
+# Checks the F-Droid recipe (fdroid/io.github.pmirall.neopose.yml) with fdroidserver, the way fdroiddata's CI does.
+name: F-Droid check
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['fdroid/**', 'fastlane/**', 'android/**', '.github/workflows/fdroid.yml']
+
+jobs:
+  fdroid:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: fdroidserver
+        run: |
+          sudo apt-get update && sudo apt-get install -y python3-pip python3-venv
+          python3 -m venv ~/fd && ~/fd/bin/pip install -q fdroidserver
+      - name: Lint the recipe
+        run: |
+          mkdir -p ~/fdroiddata/metadata && cd ~/fdroiddata
+          cp "$GITHUB_WORKSPACE/fdroid/io.github.pmirall.neopose.yml" metadata/
+          printf 'sdk_path: %s\n' "$ANDROID_HOME" > config.yml && chmod 600 config.yml
+          ~/fd/bin/fdroid lint -v io.github.pmirall.neopose
+          ~/fd/bin/fdroid rewritemeta io.github.pmirall.neopose && git diff --no-index "$GITHUB_WORKSPACE/fdroid/io.github.pmirall.neopose.yml" metadata/io.github.pmirall.neopose.yml || true
+      - name: Build like F-Droid (from the tagged source)
+        run: |
+          cd ~/fdroiddata
+          ~/fd/bin/fdroid build -v -l --no-tarball io.github.pmirall.neopose
+          ls -la unsigned/ || true
