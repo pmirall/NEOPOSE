@@ -1,0 +1,2 @@
+Gesture practice can dress characters (a random outfit or random garments) and put an object in their hand that never clips through anyone or anything.
+The katana, bat and axe are now held by the handle.
