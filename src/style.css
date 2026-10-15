@@ -462,3 +462,6 @@ body.anim .hint{bottom:70px}
   .brand{font-size:20px}
   #panelBtn{display:none}
 }
+/* long languages: the section subtitle goes under the title instead of being cut */
+details.sec > summary h3{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.15}
+details.sec > summary h3 span{display:inline-block;white-space:normal;line-height:1.3}

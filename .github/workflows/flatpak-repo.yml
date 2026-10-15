@@ -1,4 +1,5 @@
-# Publishes NEOPOSE as a signed Flatpak repository on GitHub Pages (https://pmirall.github.io/NEOPOSE/).
+# Publishes NEOPOSE as a signed Flatpak repository on GitHub Pages (https://pmirall.github.io/NEOPOSE/),
+# and the web version of the same release under /app/ (shared scene links open there).
 # Built from source with the same manifest as Flathub. Runs on every release tag, or by hand.
 name: Flatpak repo (GitHub Pages)
 on:
@@ -53,6 +54,9 @@ jobs:
           flatpak build-update-repo --gpg-sign="$FPR" --title=NEOPOSE --default-branch=stable \
             --prune --prune-depth=2 site/repo
           du -sh site/repo
+      - name: Web version of the same release (https://pmirall.github.io/NEOPOSE/app/)
+        run: |
+          [ -f app-src/app/index.html ] && cp -r app-src/app site/app && du -sh site/app || echo "this release has no web build"
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site

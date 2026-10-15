@@ -17,7 +17,7 @@ const GUARD_ARMS = {shoulderL:[-55,0,22], elbowL:[-120], shoulderR:[-30,0,-28], 
 const SIT = sym({hipL:[-90,0,7], kneeL:[92], ankleL:[-2]});
 
 // search words: the name in both languages plus words for its category, so 'jump', 'salto' or 'saltar' all find it
-const both = s => s + ' ' + (I18N_EN[s] || '');
+const both = s => s + ' ' + Object.values(I18N).map(D => D[s] || '').join(' ');
 const CAT_WORDS = {pie: 'de pie parado erguido standing stand upright', mov: 'movimiento moverse dinámico movement motion moving dynamic',
   accion: 'acción pelea lucha combate action fight fighting combat', suelo: 'suelo sentado sentarse tumbado floor ground sit sitting lying',
   deporte: 'deporte baile gimnasio yoga sport dance gym exercise', grupo: 'grupo pareja group couple'};

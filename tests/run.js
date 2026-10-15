@@ -7,7 +7,8 @@ const fs = require('fs'), path = require('path'), http = require('http');
 
 const APP = path.join(__dirname, '..', 'app'), OUT = path.join(__dirname, 'out');
 fs.mkdirSync(OUT, {recursive: true});
-const DICT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n-en.json'), 'utf8'));
+const DICT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'en.json'), 'utf8'));
+const LANG_DICT = l => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', l + '.json'), 'utf8'));
 const want = process.argv.slice(2);
 // legitimately non-English: the language switcher, garment titles as their authors wrote them, avatar names
 const ALLOW = new Set(['Español', 'Language · Idioma', 'Café', ...JSON.parse(fs.readFileSync(path.join(APP, 'ropa', 'catalog.json'), 'utf8')).map(c => c.title)]);
@@ -69,6 +70,33 @@ const SUITES = {
       ok(page.errors.length === 0, `${lang}: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
       await page.context().close();
     }
+  },
+  // the machine-translated languages: every panel translated, no errors, the review note shown
+  async languages(browser) {
+    for (const lang of ['ca', 'fr', 'pt', 'de', 'it']) {
+      const D = LANG_DICT(lang), page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
+      await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
+      for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) { await page.click(`.tab[data-tab=${tab}]`); await page.waitForTimeout(250); await grab(); }
+      await page.click('#helpBtn'); await page.waitForTimeout(300); await grab();
+      const note = await page.evaluate(() => !document.querySelector('#helpModal .mtnote').hidden);
+      await page.screenshot({path: path.join(OUT, `${lang}-help.png`)}); await page.click('#helpClose');
+      const vals = new Set(Object.values(D)), left = [...seen].filter(t => D[t] !== undefined && D[t] !== t && !vals.has(t));
+      ok(left.length === 0 && note, `${lang}: no untranslated text, review note shown (${left.slice(0, 4).join(' | ') || 'ok'})`);
+      ok(page.errors.length === 0, `${lang}: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+      await page.context().close();
+    }
+  },
+  // a scene shared as a link opens again with the same cast and set
+  async share(browser) {
+    const page = await open(browser);
+    const link = await page.evaluate(async () => { const A = window.__cdp; A.useGroup(A.GROUP_POSES[3][5]); await A.setEnv('bosque'); return A.sceneLink(); });
+    const ctx = page.context(), p2 = await ctx.newPage(); p2.errors = []; p2.on('pageerror', e => p2.errors.push(String(e)));
+    await p2.goto(`http://localhost:${server.address().port}/` + link.slice(link.indexOf('#')));
+    await p2.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length === 3, null, {timeout: 120000}).catch(() => {});
+    const r = await p2.evaluate(() => ({n: window.__cdp.chars.length, env: window.__cdp.state.env, hash: location.hash}));
+    ok(r.n === 3 && r.env === 'bosque' && !r.hash, `the shared link rebuilds the scene (${JSON.stringify(r)}, ${link.length} characters)`);
+    ok(page.errors.length + p2.errors.length === 0, `no JS errors ${[...page.errors, ...p2.errors].slice(0, 2).join(' | ')}`);
+    await ctx.close();
   },
   // switching language reloads the page and keeps the scene
   async language(browser) {

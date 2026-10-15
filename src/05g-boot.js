@@ -15,5 +15,6 @@ function boot(data) {
   resize(); setView(30, 8); frameAll();
   if (data && data.snap && data.snap.cam) applySceneExtras({cam: data.snap.cam});
   pushHistory();
+  buildShareUI(); openSharedScene();
   window.claude?.hot?.snapshot?.(() => ({snap: snapshot()}));
 }

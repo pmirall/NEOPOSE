@@ -173,6 +173,7 @@ function setLang(l) {
   location.reload();
 }
 $$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
+$$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 /* the canvas hint steps back once the user has tried posing */
 { let n = store.get('cdp.hintN', 0); if (n >= 3) $('#hint').classList.add('quiet');
   $('#viewport').addEventListener('pointerdown', () => { if (++n === 3) $('#hint').classList.add('quiet'); store.set('cdp.hintN', n); }); }
