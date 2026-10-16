@@ -229,11 +229,10 @@ function exportGLB() {
   const add = (name, o, color) => { if (!o || !o.visible || !o.geometry || !o.geometry.attributes.position) return; items.push({name, geo: bakedMesh(o), color}); };
   chars.forEach((m, ci) => {
     if (!m.group.visible) return;
-    const skin = new THREE.Color(0xcfc5b3);
+    const coat = coatOf(m.body), skin = new THREE.Color(coat ? coat.c[0] : 0xcfc5b3);  // an anthro in its coat's base colour
     add(`personaje${ci + 1}`, m.body3, skin);
     for (const a of m.acc || []) if (!a.userData.hull && a.visible && a.isMesh) add(`personaje${ci + 1}_extra`, a, skin);
     for (const g of m.garments || []) if (g.meshes && g.meshes[0]) add(`personaje${ci + 1}_${g.hair ? 'pelo' : 'ropa'}`, g.meshes[0], new THREE.Color(g.spec.mode === 'tex' ? (g.d && g.d.avg ? `rgb(${g.d.avg.join(',')})` : '#888') : g.spec.colA));
-    if (m.headSwap && m.headSwap.mesh) add(`personaje${ci + 1}_cabeza`, m.headSwap.mesh, skin);
   });
   for (const p of props) p.traverse(o => { if (o.isMesh && !o.userData.isHull && !o.isInstancedMesh) add('objeto', o, o.material && o.material.color ? o.material.color : new THREE.Color(0x999999)); });
   return glbBytes(items);
@@ -265,8 +264,13 @@ function glbBytes(items) {
   return out;
 }
 function exportBVH(m) {
-  const names = FIG.meta.bones, par = FIG.meta.parents, J = m.J, cm = 100, kids = names.map(() => []);
-  par.forEach((p, i) => { if (p >= 0) kids[p].push(i); });
+  // the body's bones, then an anthro's tail (from the pelvis) and ears (from the head), which live outside FIG
+  const names = FIG.meta.bones.slice(), par = FIG.meta.parents.slice(), J = Array.from(m.J.slice(0, names.length * 3)), bones = m.bones.slice(0, names.length), cm = 100;
+  const extra = (n, p, b, pos) => { names.push(n); par.push(p); bones.push(b); J.push(pos.x, pos.y, pos.z); };
+  const jv = i => new V3(J[i * 3], J[i * 3 + 1], J[i * 3 + 2]);
+  if (m.hasTail) { let p = FIG.jIdx.hips, at = jv(p); m.tail.forEach((b, k) => { at = at.clone().add(b.position); extra('tail' + (k + 1), p, b, at); p = names.length - 1; }); }
+  if (m.hasEars) for (const k of ['L', 'R']) extra('ear' + k, FIG.jIdx.head, m.ears[k], jv(FIG.jIdx.head).add(m.ears[k].position));
+  const kids = names.map(() => []); par.forEach((p, i) => { if (p >= 0) kids[p].push(i); });
   const E = FIG.jIdx;
   const endOf = n => { const t = n.match(/^f([LR])(\d)2$/); if (t) return `tip${t[1]}${t[2]}`; if (/^ankle[LR]$/.test(n)) return 'toe' + n.slice(-1); return null; };
   const f = x => (x * cm).toFixed(4);
@@ -277,7 +281,8 @@ function exportBVH(m) {
     txt += `${ind}${p < 0 ? 'ROOT' : 'JOINT'} ${n}\n${ind}{\n${ind}  OFFSET ${o.map(f).join(' ')}\n${ind}  CHANNELS ${p < 0 ? '6 Xposition Yposition Zposition ' : '3 '}Zrotation Xrotation Yrotation\n`;
     if (kids[i].length) for (const c of kids[i]) rec(c, depth + 1);
     else {
-      const e = endOf(n), t = e != null && E[e] != null ? [J[E[e] * 3] - J[i * 3], J[E[e] * 3 + 1] - J[i * 3 + 1], J[E[e] * 3 + 2] - J[i * 3 + 2]] : n === 'head' || n === 'jaw' ? [0, .1 * m.size, 0] : [0, .05, 0];
+      const e = endOf(n), t = e != null && E[e] != null ? [J[E[e] * 3] - J[i * 3], J[E[e] * 3 + 1] - J[i * 3 + 1], J[E[e] * 3 + 2] - J[i * 3 + 2]]
+        : n === 'tail3' ? m.tail[2].position.toArray() : /^ear/.test(n) ? [0, .08 * m.size, 0] : n === 'head' || n === 'jaw' ? [0, .1 * m.size, 0] : [0, .05, 0];
       txt += `${ind}  End Site\n${ind}  {\n${ind}    OFFSET ${t.map(f).join(' ')}\n${ind}  }\n`;
     }
     txt += `${ind}}\n`;
@@ -286,7 +291,7 @@ function exportBVH(m) {
   const order = []; const walk = i => { order.push(i); for (const c of kids[i]) walk(c); }; par.forEach((p, i) => { if (p < 0) walk(i); });
   const e = new THREE.Euler(), vals = [];
   for (const i of order) {
-    const b = m.bones[i]; if (par[i] < 0) vals.push(f(b.position.x), f(b.position.y), f(b.position.z));
+    const b = bones[i]; if (par[i] < 0) vals.push(f(b.position.x), f(b.position.y), f(b.position.z));
     e.setFromQuaternion(b.quaternion, 'ZXY'); vals.push(...[e.z, e.x, e.y].map(a => (a / DEG).toFixed(4)));
   }
   txt += `MOTION\nFrames: 1\nFrame Time: 0.0333333\n${vals.join(' ')}\n`;

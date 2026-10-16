@@ -95,7 +95,7 @@ vp.addEventListener('pointerup', e => {
     else if (hit.object.userData.propRoot) selectObj(hit.object.userData.propRoot);
     else if (hit.object.userData.avatarOf) {
       const owner = hit.object.userData.avatarOf, ci = chars.indexOf(owner); let best = null, bd = Infinity;
-      for (const n of DOT_JOINTS) { const j = owner.joints[n]; if (!j || (n.startsWith('tail') && !owner.hasTail)) continue; const d = j.getWorldPosition(new V3()).distanceTo(hit.point); if (d < bd) { bd = d; best = n; } }
+      for (const n of DOT_JOINTS) { const j = owner.joints[n]; if (!j || (n.startsWith('tail') && !owner.hasTail) || (n.startsWith('ear') && !owner.hasEars)) continue; const d = j.getWorldPosition(new V3()).distanceTo(hit.point); if (d < bd) { bd = d; best = n; } }
       if (ci !== active) setActive(ci);
       select(best);
     }

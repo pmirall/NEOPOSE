@@ -260,12 +260,33 @@
             <summary><h3>Especie</h3></summary>
             <div class="chips" id="speciesChips"></div>
             <div id="headStyle" hidden>
+              <div><p class="lbl">Cabeza</p>
+                <div class="chips" id="headModelChips"></div></div>
+              <div id="snoutBox"></div>
               <p class="lbl">Patas</p>
               <div class="chips seg" id="feetChips"></div>
               <p class="note" id="feetNote"></p>
-              <div><p class="lbl">Cabeza</p>
-                <div class="chips" id="headModelChips"></div></div>
+              <div id="padsRow"><label class="chk"><input type="checkbox" id="padsChk"> Almohadillas en manos y pies</label></div>
+              <div id="tailUI"><p class="lbl">Cola</p>
+                <div class="chips" id="tailChips"></div>
+                <div id="tailLenBox"></div><div id="tailThickBox"></div>
+                <p class="lbl">En la animación</p>
+                <div class="chips seg" id="tailMoveChips"></div>
+                <p class="note">Viva: la cola sigue con retraso los giros y los saltos del cuerpo. Meneo: además, se mueve de lado a lado.</p></div>
               <p class="note" id="headCredit"></p>
+            </div>
+          </details>
+          <details class="sec" data-sec="pelaje" open id="coatSec">
+            <summary><h3>Pelaje y marcas</h3></summary>
+            <div id="coatBox" hidden>
+              <div class="chips" id="coatChips"></div>
+              <div id="coatEdit">
+                <div class="coatcols" id="coatCols"></div>
+                <p class="lbl">Marcas</p>
+                <div class="chips coatmarks" id="coatMarks"></div>
+                <div id="coatSockBox"></div><div id="coatTipBox"></div>
+                <p class="note">Toca una marca para ponerla en el color claro, otra vez para el oscuro y otra para quitarla. Las marcas siguen la pose y se ven desde cualquier lado.</p>
+              </div>
             </div>
           </details>
           <details class="sec" data-sec="pelo" open>

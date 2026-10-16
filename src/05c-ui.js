@@ -184,10 +184,23 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, feet: mq.body.feet, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
-  chips($('#speciesChips'), Object.entries(SPECIES).map(([k, v]) => [k, v.label]), mq.body.species, id => {
-    mq.body.species = id; tourEvent('body'); rebuildActive(true); syncHeadUI(); syncExprUI(); renderHairUI(); pushHistory();
+  // species by family, so the list reads like a field guide
+  const fams = [['', ''], ['can', 'Cánidos'], ['fel', 'Felinos'], ['otro', 'Osos y prociónidos'], ['pre', 'Conejos y ungulados'], ['rep', 'Reptiles']], spBox = $('#speciesChips');
+  spBox.innerHTML = ''; spBox.classList.add('spfam');
+  for (const [f, title] of fams) {
+    const list = Object.entries(SPECIES).filter(([, v]) => (v.fam || '') === f); if (!list.length) continue;
+    const row = document.createElement('div'); row.className = 'chips';
+    if (title) { const h = document.createElement('span'); h.className = 'famlbl'; h.textContent = tr(title); row.append(h); }
+    for (const [k, v] of list) { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.dataset.v = k; b.textContent = v.label; row.append(b); }
+    spBox.append(row);
+  }
+  spBox.querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    const id = b.dataset.v; spBox.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+    // a new species starts from its own head, coat and tail
+    if (id !== mq.body.species) { mq.body.species = id; delete mq.body.coat; delete mq.body.tail; delete mq.body.headModel; delete mq.body.pads; }
+    tourEvent('body'); rebuildActive(true); restTail(mq); syncHeadUI(); syncExprUI(); syncCoatUI(); renderHairUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -199,7 +212,7 @@ function buildBodyUI() {
 }
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
-  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI();
+  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncCoatUI === 'function') syncCoatUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI();
   $('#headsOut').textContent = dec(mq.heads);
   if (typeof syncAdvancedUI === 'function') { syncAdvancedUI(); renderBuilds(); }
   if (typeof syncLimbsUI === 'function') syncLimbsUI();

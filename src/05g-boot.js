@@ -3,7 +3,7 @@ function boot(data) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
+  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildCoatUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
   setLightPreset('estudio');
   if (data && data.snap && data.snap.chars) { try { restore(data.snap); } catch (_) {} }
   setActive(Math.min(active, chars.length - 1));

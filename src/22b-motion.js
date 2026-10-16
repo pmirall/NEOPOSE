@@ -102,7 +102,31 @@ function motionPoseAt(ci, f) {
     for (const n of JOINTS) { const lag = (DRAG_DEPTH[n] || 0) * drag; if (lag > 0) { const o = at(f - lag); if (o && o.q[n]) p.q[n] = o.q[n]; } }
     const hl = 3 * drag, ho = at(f - hl); if (ho && ho.hands) p.hands = ho.hands;
   } else p = trackAt(K, f, st);
-  return exaggerate(p, st.exag);
+  return tailLife(chars[ci], exaggerate(p, st.exag), t => trackAt(K, t, st), f);
+}
+/* a living tail: the keys say where the tail is; on top of them it lags behind the pelvis when the body turns, rises
+   and falls against a bounce (inertia, down the chain: the tip later and further), and can wag. Worked out from the
+   frame number alone, so scrubbing, playing and exporting give the same tail. body.tailMove: quieta, viva, meneo, rapido */
+const TAIL_WAG = {meneo: [2.2, 16], rapido: [4.2, 12]};  // wags a second, degrees at the base
+function tailLife(m, p, at, f) {
+  const mode = m && m.hasTail ? (m.body.tailMove || 'viva') : 'quieta'; if (mode === 'quieta' || !p || !p.q) return p;
+  const fps = ANIM.fps || 24, yawOf = q => { const v = new V3(0, 0, 1).applyQuaternion(_qa.fromArray(q)); return Math.atan2(v.x, v.z); };
+  const hips = t => { const o = at(t); return o && o.q && o.q.hips ? o : null; }, h0 = hips(f); if (!h0) return p;
+  const q = {...p.q}, E = new THREE.Euler(), off = [0, 0, 0].map(() => new V3());
+  [1, 2, 3].forEach((k, i) => {
+    const lag = k * 2 * fps / 24, a = hips(f - lag); if (!a) return;
+    let dy = yawOf(h0.q.hips) - yawOf(a.q.hips); dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    const dv = (h0.pos[1] - a.pos[1]) / (m.size || 1);
+    off[i].y = clamp(-dy * 1.4, -.8, .8); off[i].x = clamp(dv * 2.2, -.5, .5);
+  });
+  const wg = TAIL_WAG[mode];
+  if (wg) { const w = 2 * Math.PI * wg[0] * f / fps; [0, 1, 2].forEach(i => { off[i].y += wg[1] * DEG * (1 + i * .35) * Math.sin(w - i * .9); }); }
+  ['tail1', 'tail2', 'tail3'].forEach((n, i) => {
+    const base = q[n] ? new Q().fromArray(q[n]) : new Q(), o = off[i];
+    if (Math.abs(o.x) + Math.abs(o.y) < 1e-5) return;
+    q[n] = base.multiply(new Q().setFromEuler(E.set(o.x, o.y, 0))).toArray();
+  });
+  return {...p, q};
 }
 // squash and stretch: from how fast the pelvis goes up or down, and how hard it stops; the whole figure, its volume kept
 function applySquash(m, ci, f) {

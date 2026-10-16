@@ -9,7 +9,7 @@ const SNOUT_BY_LEVEL = [0, .45, .6, .75, .88, 1];
 function headModelFor(b) {
   // only sculpted (downloaded) heads: the species' own sculpt first, or the one chosen in the panel
   if (!b || b.species === 'humano') return null;
-  const list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(b.species));
+  const sp = headSp(b), list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
   if (b.headModel && list.some(([k]) => k === b.headModel)) return b.headModel;
   return list.length ? list[0][0] : null;
 }
@@ -55,7 +55,7 @@ function computeHeadSwap(m, P, J) {
   cx /= nc || 1; cz /= nc || 1;
   for (const i of ring) { const a = Math.atan2(P[i * 3] - cx, P[i * 3 + 2] - cz), k = ((Math.round(a / (2 * Math.PI) * NB) % NB) + NB) % NB; Rb[k] = Math.max(Rb[k], Math.hypot(P[i * 3] - cx, P[i * 3 + 2] - cz)); }
   fillRing(Rb);
-  const lvl = clamp(Math.round(m.body.kemo ?? 5), 2, 5), kSn = SNOUT_BY_LEVEL[lvl];
+  const lvl = clamp(Math.round(m.body.kemo ?? 5), 2, 5), kSn = m.body.snout ?? SNOUT_BY_LEVEL[lvl];
   const L = d.L, n = d.n, Q = new Float32Array(n * 3), src = d.P;
   // model neck centre vs body neck centre: the neck slides onto the body below the chin
   const mnx = E.x + s * L.neck[0], mnz = E.z + s * L.neck[2], chinY = E.y + s * L.chin;
@@ -94,10 +94,10 @@ function computeHeadSwap(m, P, J) {
     if (an) earBase[k] = new V3(ax / an, ay / an, az / an);
   }
   const tip = [E.x + s * L.tip[0], E.y + s * L.tip[1], E.z + s * L.tip[2] * kSn];
-  m.headSwap = {d, Q, keep, s, E, yc, yHead, cx, cz, ringIdx: ring, earBase};
+  m.headSwap = {d, Q, keep, s, E, yc, yHead, cx, cz, ringIdx: ring, earBase, kSn};
   m.anthro = {L: {eyeX: Math.abs(L.eyeL[0]) * s, eyeY: E.y, eyeZ: E.z, chin: E.y + s * L.chin, crown: E.y + s * L.crown, hh: s, hw: .4 * s, front: tip[2]},
-    mouthY: E.y + s * L.mouthY, tip, spec: {snout: (tip[2] - E.z) / s, nose: (HEAD_RECIPES[m.body.species] || {}).mouth || 'canino'},
-    recipe: HEAD_RECIPES[m.body.species], earBase: Object.keys(earBase).length ? earBase : null, swap: true};
+    mouthY: E.y + s * L.mouthY, tip, spec: {snout: (tip[2] - E.z) / s, nose: (HEAD_RECIPES[headSp(m.body)] || {}).mouth || 'canino'},
+    recipe: HEAD_RECIPES[headSp(m.body)], earBase: Object.keys(earBase).length ? earBase : null, swap: true};
 }
 function fillRing(R) {
   const n = R.length;
@@ -150,6 +150,7 @@ function attachHeadSwap(m) {
   }
   geo.setAttribute('aLine', new THREE.BufferAttribute(Ln, 4)); geo.setAttribute('aEye', new THREE.BufferAttribute(Ey, 4));
   geo.setAttribute('aLip', new THREE.BufferAttribute(Lp, 1)); geo.setAttribute('aHide', new THREE.BufferAttribute(Hd, 1));
+  furAttrsHead(m, geo, hs);
   geo.computeVertexNormals(); geo.boundingSphere = new THREE.Sphere(new V3(), 20);
   const I = new THREE.Matrix4(), mesh = new THREE.SkinnedMesh(geo, m.lib[m.style]);
   mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.userData.acc = true; mesh.userData.headSwap = true;

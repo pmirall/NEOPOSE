@@ -6,7 +6,7 @@
    - the mouths move word by word with the sound,
    - the voices go into the exported video and can be saved as a WAV of the whole dialogue.
    Each character has a voice of their own from their body (a woman's or a man's, a child's or an older one's, an
-   anthro's lower or higher one), which can be changed. The Web Speech API is not used: Android's WebView has none,
+   anthro's lower or higher one by the animal's size), which can be changed. The Web Speech API is not used: Android's WebView has none,
    Linux often has no voices, and its sound cannot be recorded. */
 const VOICE = {mod: null, w: null, ctx: null, cache: new Map(), on: store.get('cdp.tts', true), src: [], started: new Set(), dest: null, failed: false};
 const SR_TTS = 22050;
@@ -17,12 +17,14 @@ function espeak() {
   })().catch(e => { console.warn('tts', e); VOICE.mod = null; VOICE.failed = true; throw e; });
   return VOICE.mod;
 }
+// an anthro's voice follows the animal's size: big chests sound lower (bears, lions, horses), small ones higher
+const VOICE_SPECIES = {lobo: -6, perro: -4, zorro: 2, coyote: -3, hiena: -2, gato: 4, tigre: -10, leon: -14, leopardo: -5, oso: -16, mapache: 4, panda: 6, mofeta: 5, conejo: 10, ciervo: 0, cabra: 2, caballo: -10, dragon: -14};
 // the voice of a character: from their body unless chosen (body.voice = {g: 'f'|'m', v: 1..5, p: pitch 0..99, r: words a minute})
 const VOICE_LANGS = {es: 'es', en: 'en-gb', ca: 'ca', fr: 'fr', pt: 'pt', de: 'de', it: 'it'};
 function voiceOf(m, i = 0) {
   const b = (m && m.body) || {}, own = b.voice || {}, woman = b.preset === 'mujer' || b.gender < .5 || (m && m.bodyPreset === 'mujer'), age = b.age || 30;
   const g = own.g || (woman ? 'f' : 'm'), base = g === 'f' ? 62 : 42;
-  const p = own.p ?? clamp(base + (age < 15 ? 22 : age < 20 ? 8 : age > 60 ? -8 : 0) + (b.species && b.species !== 'humano' ? -6 : 0) + ((i % 3) - 1) * 5, 5, 95);
+  const p = own.p ?? clamp(base + (age < 15 ? 22 : age < 20 ? 8 : age > 60 ? -8 : 0) + (VOICE_SPECIES[b.species] || 0) + ((i % 3) - 1) * 5, 5, 95);
   return {g, v: own.v || 1 + (i % 4), p: Math.round(p), r: own.r || (age > 65 ? 150 : 168)};
 }
 const voiceKey = (text, lang, vo) => [text, lang, vo.g, vo.v, vo.p, vo.r].join('|');

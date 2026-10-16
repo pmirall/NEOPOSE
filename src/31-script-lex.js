@@ -228,3 +228,24 @@ function parseScript(src) {
   }
   return out;
 }
+// animals a character can be (seven languages, both genders, no accents): the species of the anthro cast
+const SC_SPECIES = Object.entries({
+  lobo: 'lobo loba lobos wolf wolves llop lloba loup louve lupo lupa wolfin werewolf licantropo hombre-lobo',
+  zorro: 'zorro zorra fox vixen guineu guilla renard renarde raposa raposo fuchs fuchsin volpe kitsune',
+  perro: 'perro perra dog puppy cachorro gos gossa chien chienne cao cadela hund hundin cane cagna husky',
+  coyote: 'coyote coiote kojote',
+  hiena: 'hiena hyena hyene hyane iena',
+  gato: 'gato gata cat kitty kitten gat gata chatte katze kater gatto gatta',
+  tigre: 'tigre tigresa tiger tigress tigressa tigresse tigerin',
+  leon: 'leon leona lion lioness lleo lleona lionne leao leoa lowe lowin leone leonessa',
+  leopardo: 'leopardo leoparda leopard lleopard leopardin irbis guepardo cheetah',
+  oso: 'oso osa bear ossa ours ourse urso ursa orso orsa',
+  mapache: 'mapache raccoon racoon guaxinim waschbar procione',
+  panda: 'panda',
+  mofeta: 'mofeta zorrillo skunk moufette mofette gamba stinktier puzzola',
+  conejo: 'conejo coneja rabbit bunny conill conilla lapin lapine coelho coelha hase kaninchen coniglio coniglia',
+  ciervo: 'ciervo cierva venado deer stag doe cervol cerf biche veado cervo cerva hirsch reh',
+  cabra: 'cabra cabron goat chevre bouc ziege capra',
+  caballo: 'caballo yegua horse stallion cavall euga cheval jument cavalo egua pferd stute cavallo cavalla',
+  dragon: 'dragon dragona drac dragao drache drago dragonessa kobold'
+}).map(([k, v]) => [k, v.split(' ')]);

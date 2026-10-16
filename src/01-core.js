@@ -22,7 +22,7 @@ const SPINE = ['waist','chest','neck','head'];
 // FK drag: moving a joint turns its parent bone towards the cursor
 const JOINT_PARENT = {waist:'hips', chest:'waist', neck:'chest', head:'neck', shoulderL:'chest', elbowL:'shoulderL', wristL:'elbowL', shoulderR:'chest', elbowR:'shoulderR', wristR:'elbowR',
   hipL:'hips', kneeL:'hipL', ankleL:'kneeL', hipR:'hips', kneeR:'hipR', ankleR:'kneeR', tail2:'tail1', tail3:'tail2'};
-const DOT_JOINTS = ['hips','waist','chest','neck','head','shoulderL','elbowL','wristL','shoulderR','elbowR','wristR','hipL','kneeL','ankleL','hipR','kneeR','ankleR','tail1','tail2','tail3'];
+const DOT_JOINTS = ['hips','waist','chest','neck','head','shoulderL','elbowL','wristL','shoulderR','elbowR','wristR','hipL','kneeL','ankleL','hipR','kneeR','ankleR','tail1','tail2','tail3','earL','earR'];
 
 /* ---------- bodies ---------- */
 const BODY_BASE = {flex:1, stretch:1, limbs:{}, adv:{}, shape:'ninguna', shapeAmt:.7, build:null, gender:1, age:1, muscle:.5, weight:.5, height:.5, ideal:.5, head:1, legs:1, arms:1, torso:1, species:'humano', hair:'', hairCol:'#3a2a20'};
@@ -55,18 +55,40 @@ const STYLE_SLIDERS = [
   ['head','Tamaño de cabeza',.75,2],['legs','Largo de piernas',.55,1.3],['arms','Largo de brazos',.6,1.25],['torso','Largo de torso',.7,1.2]
 ];
 for (const r of [...BODY_SLIDERS, ...STYLE_SLIDERS]) r[1] = tr(r[1]);
-// Furry anatomy: ear/horn, muzzle and tail shapes in head heights (ears, muzzle) or metres (tail)
-/* species: the head comes from sculpted MakeHuman community targets (see 10-anthro.js); tails and horns are built here */
+/* species: the head is a downloaded sculpt or MakeHuman community targets (see 10-anthro.js and 11-heads.js); tails,
+   horns and antlers are built here. A species can borrow another's head and legs (head:), so close relatives (coyote,
+   snow leopard, raccoon…) are told apart by their coat, tail and size the way the animals are. tail.rest is the
+   natural carriage (degrees on tail1..3: x lifts, y swings, z rolls). coat: the default coat (10c-coat.js). */
 const SPECIES = {
-  humano: {label:'Humano'},
-  lobo:   {label:'Lobo',    tail:{len:.55,r:.065,shape:'tupida'}},
-  zorro:  {label:'Zorro',   tail:{len:.7,r:.1,shape:'tupida'}},
-  perro:  {label:'Perro',   tail:{len:.45,r:.045,shape:'fina'}},
-  gato:   {label:'Gato',    tail:{len:.65,r:.045,shape:'fina'}},
-  conejo: {label:'Conejo',  tail:{len:.08,r:.065,shape:'pompón'}},
-  cabra:  {label:'Cabra',   tail:{len:.09,r:.04,shape:'pompón'}},
-  dragon: {label:'Dragón',  tail:{len:1.1,r:.12,shape:'reptil'}}
+  humano:   {label:'Humano'},
+  lobo:     {label:'Lobo',     fam:'can', coat:'lobo',     tail:{len:.55,r:.065,shape:'tupida', rest:[[-8,0,0],[-6,0,0],[-4,0,0]]}},
+  perro:    {label:'Perro',    fam:'can', coat:'perro',    tail:{len:.45,r:.045,shape:'fina',   rest:[[38,0,0],[22,0,0],[14,0,0]]}},
+  zorro:    {label:'Zorro',    fam:'can', coat:'zorro',    tail:{len:.7,r:.1,shape:'tupida',    rest:[[4,0,0],[-4,0,0],[4,0,0]]}},
+  coyote:   {label:'Coyote',   fam:'can', head:'lobo', coat:'coyote', tail:{len:.5,r:.07,shape:'tupida', rest:[[-14,0,0],[-6,0,0],[-2,0,0]]}},
+  hiena:    {label:'Hiena',    fam:'can', head:'perro', coat:'hiena', tail:{len:.38,r:.05,shape:'penacho', rest:[[-20,0,0],[-6,0,0],[0,0,0]]}},
+  gato:     {label:'Gato',     fam:'fel', coat:'gato',     tail:{len:.65,r:.045,shape:'fina',   rest:[[58,0,0],[18,0,0],[-26,0,0]]}},
+  tigre:    {label:'Tigre',    fam:'fel', coat:'tigre',    tail:{len:.8,r:.06,shape:'fina',     rest:[[-14,0,0],[-8,0,0],[14,0,0]]}},
+  leon:     {label:'León',     fam:'fel', coat:'leon',     tail:{len:.75,r:.045,shape:'penacho', rest:[[-16,0,0],[-6,0,0],[10,0,0]]}, mane: true},
+  leopardo: {label:'Leopardo de las nieves', fam:'fel', head:'gato', coat:'leopardo', tail:{len:.9,r:.085,shape:'gruesa', rest:[[-10,0,0],[-4,0,0],[18,0,0]]}},
+  oso:      {label:'Oso',      fam:'otro', coat:'oso',     tail:{len:.07,r:.06,shape:'pompón',  rest:[[10,0,0],[0,0,0],[0,0,0]]}},
+  mapache:  {label:'Mapache',  fam:'otro', head:'zorro', coat:'mapache', tail:{len:.5,r:.085,shape:'gruesa', rest:[[-6,0,0],[2,0,0],[6,0,0]]}},
+  panda:    {label:'Panda rojo', fam:'otro', head:'zorro', coat:'panda', tail:{len:.6,r:.09,shape:'gruesa', rest:[[-2,0,0],[4,0,0],[6,0,0]]}},
+  mofeta:   {label:'Mofeta',   fam:'otro', head:'gato', coat:'mofeta', tail:{len:.6,r:.12,shape:'tupida', rest:[[70,0,0],[30,0,0],[-30,0,0]]}},
+  conejo:   {label:'Conejo',   fam:'pre', coat:'conejo',   tail:{len:.08,r:.065,shape:'pompón', rest:[[24,0,0],[0,0,0],[0,0,0]]}},
+  ciervo:   {label:'Ciervo',   fam:'pre', coat:'ciervo',   tail:{len:.1,r:.045,shape:'pompón',  rest:[[16,0,0],[0,0,0],[0,0,0]]}, horns:{h:.62,r:.035,out:28,back:30,antler:true}},
+  cabra:    {label:'Cabra',    fam:'pre', coat:'cabra',    tail:{len:.09,r:.04,shape:'pompón',  rest:[[30,0,0],[0,0,0],[0,0,0]]}},
+  caballo:  {label:'Caballo',  fam:'pre', coat:'caballo',  tail:{len:.75,r:.075,shape:'crin',   rest:[[-10,0,0],[-12,0,0],[-6,0,0]]}},
+  dragon:   {label:'Dragón',   fam:'rep', coat:'dragon',   tail:{len:1.1,r:.12,shape:'reptil',  rest:[[-6,0,0],[4,0,0],[8,0,0]]}, horns:{h:.42,r:.05,out:18,back:55}}
 };
+// the tail a body has: its species' unless changed in the panel (shape, length and thickness as factors, or none)
+const TAIL_SHAPES = [['fina', 'Fina'], ['tupida', 'Tupida'], ['gruesa', 'Gruesa'], ['penacho', 'Con penacho'], ['pompón', 'Pompón'], ['reptil', 'De reptil'], ['crin', 'De crin'], ['no', 'Sin cola']];
+function tailOf(b) {
+  const sp = SPECIES[b && b.species], t = sp && sp.tail, o = (b && b.tail) || {};
+  if (!t || o.shape === 'no') return null;
+  return {...t, shape: o.shape || t.shape, len: t.len * (o.len ?? 1), r: t.r * (o.r ?? 1), rest: t.rest};
+}
+// the species a body's head, legs and mouth come from
+const headSp = b => (b && SPECIES[b.species] && SPECIES[b.species].head) || (b && b.species) || 'humano';
 tLabels(SPECIES);
 
 /* ---------- hands ---------- */

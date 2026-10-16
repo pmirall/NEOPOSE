@@ -10,9 +10,9 @@ function toast(msg, o = {}) {
 }
 /* anthro compatibility: what cannot be worn by this character, and why */
 function garmentBlock(m, it) {
-  if (!it || !m || !HEAD_RECIPES[m.body.species]) return null;
+  if (!it || !m || !HEAD_RECIPES[headSp(m.body)]) return null;
   const sp = SPECIES[m.body.species].label.toLowerCase(), t = it.title.toLowerCase(), an = m.anthro, snout = an && an.spec ? an.spec.snout : 0;
-  const ears = (HEAD_RECIPES[m.body.species].ears || []).length > 0;
+  const ears = (HEAD_RECIPES[headSp(m.body)].ears || []).length > 0;
   if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return tr('Las gafas no se apoyan en un hocico de {sp}.', {sp});
   if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return tr('La máscara está hecha para una cara humana, no para un hocico de {sp}.', {sp});
   if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return tr('Las patas de {sp} no entran en calzado humano.', {sp});

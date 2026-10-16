@@ -22,7 +22,7 @@ const HEAD_RECIPES = {
   leon:   {face: [['x3200f', 1]],             ears: [['x3200e', 1]], kemono: [['x3178f', 1]],                 pupil: 'redonda', mouth: 'felino'},
   oso:    {face: [['x3487f', 1]],             ears: [['x3487e', 1]], toon: [['x3486f', 1]], kemono: [['x3486f', 1]], kemonoEars: [['x3486e', 1]], pupil: 'redonda', mouth: 'canino'},
   conejo: {face: [['x3152f', 1]],             ears: [['x3152e', 1]], kemono: [['x3489f', 1]], kemonoEars: [['x3489e', 1]], pupil: 'redonda', mouth: 'roedor', side: 1},
-  caballo:{face: [['x2952f', 1]],             ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
+  caballo:{face: [['x2952f', 1.45]],             ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
   cabra:  {face: [['x2952f', .6]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
   ciervo: {face: [['x2952f', .8]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
   dragon: {face: [['x2931', 1]],              ears: [],                                                        pupil: 'rendija', mouth: 'reptil'}
@@ -32,9 +32,9 @@ const KEMO_LEVEL = {1: 'Kemonomimi (cara humana)', 2: 'Hocico muy corto', 3: 'Ho
 const HEAD_CREDITS = 'Cabezas y orejas: targets de JALdMIC (CC-BY) y titleknown (CC0), comunidad MakeHuman.';
 // morph weights for a body: species head at its style and kemo level
 function speciesMorphs(b) {
-  const r = HEAD_RECIPES[b.species]; if (!r) return {};
+  const r = HEAD_RECIPES[headSp(b)]; if (!r) return {};
   const style = b.headStyle || 'real', lvl = clamp(Math.round(b.kemo ?? (style === 'kemono' ? 3 : 5)), 1, 5);
-  const k = [0, 0, .3, .55, .8, 1][lvl];
+  const k = b.snout != null ? clamp((b.snout - .3) / .7, 0, 1) : [0, 0, .3, .55, .8, 1][lvl];
   const out = {}, add = (list, w) => { for (const [n, x] of list || []) out[n] = (out[n] || 0) + x * w; };
   const face = style === 'kemono' ? (r.kemono || r.face) : style === 'toon' ? (r.toon || r.face) : r.face;
   add(face, style === 'kemono' ? Math.min(k, .6) * (r.kemono ? 1.4 : 1) : k);
@@ -67,7 +67,7 @@ function anthroHead(m, P) {
   if (!m.geo.attributes.aLip) m.geo.setAttribute('aLip', new THREE.BufferAttribute(new Float32Array(FIG.meta.nV), 1));
   const LIP = m.geo.attributes.aLip.array; LIP.fill(1); m.geo.attributes.aLip.needsUpdate = true;
   m.geo.attributes.skinIndex.needsUpdate = m.geo.attributes.skinWeight.needsUpdate = true;
-  const r = HEAD_RECIPES[m.body.species];
+  const r = HEAD_RECIPES[headSp(m.body)];
   if (!r) { m.anthro = null; return; }
   const nV = FIG.meta.nV, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, L = headLandmarks(m, P), hh = L.hh, hw = L.hw, mY = mouthLine(m, P, L);
   let tip = null, tipZ = -Infinity;
@@ -92,7 +92,7 @@ function anthroHead(m, P) {
   // ears: the vertices the species' ear target lifts away from the skull belong to the ear bones; their base is the pivot
   const earW = new Float32Array(nV), mor = {...speciesMorphs(m.body), ...(m.body.morphs || {})};
   for (const [name, wt] of Object.entries(mor)) {
-    if (!/^x\d+e$/.test(name) && !(HEAD_RECIPES[m.body.species].ears || []).some(([n]) => n === name)) continue;
+    if (!/^x\d+e$/.test(name) && !(HEAD_RECIPES[headSp(m.body)].ears || []).some(([n]) => n === name)) continue;
     const x = FIG.xsets[name]; if (!x) continue; const q = FIG.meta.q * wt;
     for (let k = 0; k < x.iv.length; k++) { const d = Math.hypot(x.dv[k * 3], x.dv[k * 3 + 1], x.dv[k * 3 + 2]) * q; earW[x.iv[k]] = Math.max(earW[x.iv[k]], d); }
   }
@@ -197,28 +197,44 @@ function anthroTick() {
   }
 }
 
-/* expressions: jaw opening and ear pose (degrees). back = ears laid back, out = ears turned/drooping to the side */
+/* expressions: jaw opening, ear pose and tail (degrees). back = ears laid back, out = ears turned/drooping to the side;
+   tail = [lift from its natural carriage, curl of the tip]. Researched body language shared by dogs, cats and most
+   furry art: tail up and loose when content, high and stiff when alert or angry, low when sad, tucked under in fear,
+   a question-mark curl when curious; ears forward when alert, flat back in fear or anger, drooping to the side when sad. */
 const ANTHRO_EXPR = {
-  neutra:   {label: 'Neutra',     jaw: 0,  back: 0,   out: 0,   twist: 0},
-  alerta:   {label: 'Alerta',     jaw: 0,  back: -12, out: -8,  twist: -10},
-  feliz:    {label: 'Contenta',   jaw: 14, back: 8,   out: 6,   twist: 0},
-  jadeo:    {label: 'Jadeando',   jaw: 22, back: 14,  out: 12,  twist: 0},
-  enfado:   {label: 'Gruñido',    jaw: 10, back: 55,  out: 20,  twist: 25},
-  miedo:    {label: 'Miedo',      jaw: 6,  back: 70,  out: 35,  twist: 10},
-  triste:   {label: 'Triste',     jaw: 0,  back: 25,  out: 60,  twist: -10},
-  sorpresa: {label: 'Sorpresa',   jaw: 18, back: -15, out: -5,  twist: -15},
-  aullido:  {label: 'Aullido',    jaw: 30, back: 30,  out: 5,   twist: 0},
-  rugido:   {label: 'Rugido',     jaw: 38, back: 45,  out: 25,  twist: 20},
-  curiosa:  {label: 'Curiosa',    jaw: 4,  back: -8,  out: 0,   twist: -25, tilt: 1}
+  neutra:   {label: 'Neutra',     jaw: 0,  back: 0,   out: 0,   twist: 0,   tail: [0, 0]},
+  alerta:   {label: 'Alerta',     jaw: 0,  back: -12, out: -8,  twist: -10, tail: [24, -4]},
+  feliz:    {label: 'Contenta',   jaw: 14, back: 8,   out: 6,   twist: 0,   tail: [30, 12]},
+  jadeo:    {label: 'Jadeando',   jaw: 22, back: 14,  out: 12,  twist: 0,   tail: [12, 6]},
+  enfado:   {label: 'Gruñido',    jaw: 10, back: 55,  out: 20,  twist: 25,  tail: [36, -14]},
+  miedo:    {label: 'Miedo',      jaw: 6,  back: 70,  out: 35,  twist: 10,  tail: [-62, -30]},
+  triste:   {label: 'Triste',     jaw: 0,  back: 25,  out: 60,  twist: -10, tail: [-34, -6]},
+  sorpresa: {label: 'Sorpresa',   jaw: 18, back: -15, out: -5,  twist: -15, tail: [32, -10]},
+  aullido:  {label: 'Aullido',    jaw: 30, back: 30,  out: 5,   twist: 0,   tail: [-12, 0]},
+  rugido:   {label: 'Rugido',     jaw: 38, back: 45,  out: 25,  twist: 20,  tail: [20, -12]},
+  curiosa:  {label: 'Curiosa',    jaw: 4,  back: -8,  out: 0,   twist: -25, tilt: 1, tail: [22, 38]},
+  timida:   {label: 'Tímida',     jaw: 0,  back: 30,  out: 30,  twist: 5,   tail: [-30, 24]}
 };
-function applyExpression(m, id) {
-  const e = ANTHRO_EXPR[id]; if (!e || !m.joints) return;
-  m.joints.jaw.rotation.set(e.jaw * DEG, 0, 0);
-  for (const [k, sd] of [['L', 1], ['R', -1]]) {
-    const out = e.out * (e.tilt && sd < 0 ? .3 : 1);
-    m.joints['ear' + k].rotation.set(-e.back * DEG, sd * e.twist * DEG, -sd * out * DEG);
-  }
+// the joints an expression turns (Euler angles in radians), so a script can bake them into its keys
+function exprJoints(m, id) {
+  const e = ANTHRO_EXPR[id]; if (!e) return null;
+  const out = {jaw: [e.jaw * DEG, 0, 0]};
+  for (const [k, sd] of [['L', 1], ['R', -1]]) { const o = e.out * (e.tilt && sd < 0 ? .3 : 1); out['ear' + k] = [-e.back * DEG, sd * e.twist * DEG, -sd * o * DEG]; }
+  if (m.hasTail && e.tail) ['tail1', 'tail2', 'tail3'].forEach((n, i) => {
+    const r = tailRest(m, n) || [0, 0, 0], lift = e.tail[0] * [.8, .45, .2][i], curl = e.tail[1] * [0, .35, .65][i];
+    out[n] = [(r[0] + lift + curl) * DEG, r[1] * DEG, r[2] * DEG];
+  });
+  return out;
 }
+function applyExpression(m, id) {
+  const J = exprJoints(m, id); if (!J || !m.joints) return;
+  for (const [n, r] of Object.entries(J)) m.joints[n].rotation.set(r[0], r[1], r[2]);
+  // the head tilts a little with curiosity
+  if (ANTHRO_EXPR[id].tilt) m.joints.head.rotation.z = 9 * DEG;
+  m.aexpr = id;
+}
+// a human face's expression as an anthro's body language (the script and the practice use human names)
+const ANTHRO_OF = {sonrisa: 'feliz', risa: 'feliz', guino: 'feliz', triste: 'triste', enfado: 'enfado', asco: 'enfado', sorpresa: 'sorpresa', miedo: 'miedo', grito: 'rugido', concentrado: 'alerta', morros: 'curiosa', dormido: 'neutra', neutra: 'neutra'};
 // the face: humans get MakeHuman's facial expressions (stored in the body, with an intensity);
 // anthro characters keep the jaw-and-ears expressions of their sculpted heads
 let exprAmtEl = null, exprFor = null;
@@ -234,34 +250,44 @@ function syncExprUI() {
     exprFor = kind;
     if (human) chips($('#exprChips'), Object.entries(FACE_EXPR).map(([k, v]) => [k, v.label]), mq.body.expr || 'neutra', id => {
       mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); });
-    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); pushHistory(); });
+    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); syncJointSliders(); pushHistory(); });
   }
-  if (human) setPressed($('#exprChips'), mq.body.expr || 'neutra');
+  setPressed($('#exprChips'), human ? mq.body.expr || 'neutra' : mq.aexpr || '');
   $('#exprAmtBox').hidden = !human || !mq.body.expr;
   exprAmtEl.set(mq.body.exprAmt ?? 1);
   $('#exprNote').textContent = tr(human ? 'Cejas, ojos y boca de MakeHuman. Para abrir más la boca, toca la mandíbula y gírala.'
-    : 'Abre la boca y mueve las orejas de los personajes anthro. También puedes tocar la mandíbula o una oreja para girarlas a mano.');
+    : 'Boca, orejas y cola a la vez, con el lenguaje corporal de los animales. También puedes tocar la mandíbula, una oreja o la cola para girarlas a mano.');
 }
 
 // the body as the skeleton stretch sees it: kemono heads are larger, rounder craniums
 // body proportions by style: kemono bigger, rounder head and slightly shorter legs; western toony a little bigger head
 const effBody = b => {
-  if (!HEAD_RECIPES[b.species]) return b;
-  const L = legSpec(b); if (L) b = {...b, legs: (b.legs ?? 1) * (L.type === 'ungu' ? .84 : .88)};
+  if (!HEAD_RECIPES[headSp(b)]) return b;
+  const L = legSpec(b); if (L && L.type !== 'planti') b = {...b, legs: (b.legs ?? 1) * (L.type === 'ungu' ? .84 : .88)};
   if (b.headStyle === 'kemono') return {...b, head: (b.head ?? 1) * 1.12, legs: (b.legs ?? 1) * .96};
   if (b.headStyle === 'toon') return {...b, head: (b.head ?? 1) * 1.05};
   return b;
 };
-let kemoSl = null;
+const headSl = {};
 function buildHeadUI() {
   const box = $('#headStyle'); if (!box) return;
-  chips($('#feetChips'), [['animal', 'Del animal'], ['humano', 'Humanas']], mq.body.feet || 'animal', v => { mq.body.feet = v === 'animal' ? undefined : v; rebuildActive(true); pushHistory(); });
+  chips($('#feetChips'), [['animal', 'Del animal'], ['humano', 'Humanas']], mq.body.feet || 'animal', v => { mq.body.feet = v === 'animal' ? undefined : v; rebuildActive(true); syncHeadUI(); pushHistory(); });
+  // the kemo scale (獣度): from a short, soft muzzle (kemono) to the animal's full snout
+  headSl.snout = slider($('#snoutBox'), {id: 'snoutSl', label: 'Hocico', min: .45, max: 1, step: .01, value: 1, def: 1, fmt: v => v > .985 ? tr('Completo') : pctFmt(v),
+    input: v => { mq.body.snout = v > .985 ? undefined : v; rebuildActive(); }, change: pushHistory});
+  $('#padsChk').onchange = e => { mq.body.pads = e.target.checked; rebuildActive(true); pushHistory(); };
+  chips($('#tailChips'), TAIL_SHAPES, '', v => { mq.body.tail = {...(mq.body.tail || {}), shape: v === (SPECIES[mq.body.species].tail || {}).shape ? undefined : v}; rebuildActive(true); syncHeadUI(); pushHistory(); });
+  chips($('#tailMoveChips'), [['quieta', 'Quieta'], ['viva', 'Viva'], ['meneo', 'Meneo'], ['rapido', 'Meneo rápido']], 'viva', v => { mq.body.tailMove = v === 'viva' ? undefined : v; if (ANIM.open) setFrame(ANIM.f); pushHistory(); });
+  headSl.tlen = slider($('#tailLenBox'), {id: 'tailLen', label: 'Largo de la cola', min: .3, max: 2, step: .01, value: 1, def: 1, fmt: pctFmt,
+    input: v => { mq.body.tail = {...(mq.body.tail || {}), len: v}; rebuildActive(); }, change: pushHistory});
+  headSl.tr = slider($('#tailThickBox'), {id: 'tailThick', label: 'Grosor de la cola', min: .4, max: 2, step: .01, value: 1, def: 1, fmt: pctFmt,
+    input: v => { mq.body.tail = {...(mq.body.tail || {}), r: v}; rebuildActive(); }, change: pushHistory});
   syncHeadUI();
 }
 // sculpted head choices for this species (plus the MakeHuman target head)
 function renderHeadModels() {
   const box = $('#headModelChips'); if (!box) return;
-  const sp = mq.body.species, list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
+  const sp = headSp(mq.body), list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
   const id = headModelFor(mq.body), c = id && HEAD_CATALOG[id];
   chips(box, list.map(([k, c]) => [k, c.label]), id, v => {
     mq.body.headModel = v; mq.body.headStyle = HEAD_CATALOG[v].style;
@@ -274,9 +300,14 @@ function renderHeadModels() {
 }
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
-  const on = !!HEAD_RECIPES[mq.body.species]; box.hidden = !on;
+  const on = !!HEAD_RECIPES[headSp(mq.body)]; box.hidden = !on;
   setPressed($('#feetChips'), mq.body.feet || 'animal');
-  const L = ANIMAL_LEGS[mq.body.species]; $('#feetNote').textContent = L ? tr(L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
+  const L = ANIMAL_LEGS[(SPECIES[mq.body.species] || {}).legs || headSp(mq.body)];
+  $('#feetNote').textContent = L ? tr(L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : L.type === 'planti' ? 'Del animal: patas plantígradas, apoyadas en toda la planta, como las de un oso.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
+  $('#padsRow').hidden = !(L && !L.hoof); $('#padsChk').checked = padsOn(mq.body);
+  const t = SPECIES[mq.body.species] && SPECIES[mq.body.species].tail, own = mq.body.tail || {};
+  $('#tailUI').hidden = !t; if (t) { setPressed($('#tailChips'), own.shape || t.shape); headSl.tlen.set(own.len ?? 1); headSl.tr.set(own.r ?? 1); setPressed($('#tailMoveChips'), mq.body.tailMove || 'viva'); $('#tailLenBox').hidden = $('#tailThickBox').hidden = own.shape === 'no'; }
+  $('#snoutBox').hidden = !headModelFor(mq.body) && !HEAD_RECIPES[headSp(mq.body)]; headSl.snout.set(mq.body.snout ?? 1);
   renderHeadModels();
 }
 
@@ -288,7 +319,7 @@ const IRIS = {humano: .5, real: .62, toon: .78, kemono: 1.0};
 function eyeSetup(m, P) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aEye) m.geo.setAttribute('aEye', new THREE.BufferAttribute(new Float32Array(nV * 4), 4));
-  const A = m.geo.attributes.aEye.array, r = HEAD_RECIPES[m.body.species], style = r ? (m.body.headStyle || 'real') : 'humano';
+  const A = m.geo.attributes.aEye.array, r = HEAD_RECIPES[headSp(m.body)], style = r ? (m.body.headStyle || 'real') : 'humano';
   const cen = {1: [0, 0, 0, 0], [-1]: [0, 0, 0, 0]};
   for (let i = 0; i < nV; i++) if (FIG.eye[i]) { const s = P[i * 3] > 0 ? 1 : -1, c = cen[s]; c[0] += P[i * 3]; c[1] += P[i * 3 + 1]; c[2] += P[i * 3 + 2]; c[3]++; }
   const side = r && r.side ? 28 * DEG : 6 * DEG;
@@ -321,12 +352,21 @@ const ANIMAL_LEGS = {
   gato:   {type: 'digi', mt: .5, th: 28, hock: .38, knee: .14, toe: .78, claws: .012, hand: .01},
   conejo: {type: 'digi', mt: .5, th: 30, hock: .36, knee: .12, toe: 1.65, claws: 0, hand: 0},
   cabra:  {type: 'ungu', mt: .62, th: 14, hock: .32, knee: .12, toe: .32, hoof: true, claws: 0, hand: 0},
-  dragon: {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .95, claws: .034, hand: .026}
+  dragon: {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .95, claws: .034, hand: .026},
+  tigre:  {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .8, claws: .018, hand: .016},
+  leon:   {type: 'digi', mt: .48, th: 28, hock: .38, knee: .14, toe: .8, claws: .018, hand: .016},
+  // bears walk on the whole sole (plantigrade): the human leg stays, with heavy claws
+  oso:    {type: 'planti', claws: .03, hand: .024},
+  // horses stand on one toe (a single hoof), deer on two like goats; both with a long cannon bone
+  caballo:{type: 'ungu', mt: .7, th: 12, hock: .32, knee: .12, toe: .3, hoof: 'single', claws: 0, hand: 0},
+  ciervo: {type: 'ungu', mt: .68, th: 14, hock: .32, knee: .12, toe: .32, hoof: true, claws: 0, hand: 0}
 };
-const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[b.species] || null : null;
+const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[(SPECIES[b.species] || {}).legs || headSp(b)] || null : null;
 const animalFeet = m => !!legSpec(m && m.body);
+// pads: on paws with claws and on bears' soles by default; never on hooves (rabbits' feet are furred, so off for them)
+const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[headSp(b)]; return b && b.species !== 'humano' && (b.pads ?? !!(L && !L.hoof && (L.claws || L.type === 'planti'))); };
 function remodelLegs(b, P, J, H) {
-  const L = legSpec(b); if (!L) return null;
+  const L = legSpec(b); if (!L || L.type === 'planti') return null;
   const sst = (a, c, x) => { const t = clamp((x - a) / (c - a), 0, 1); return t * t * (3 - 2 * t); };
   const res = {};
   for (const s of ['L', 'R']) {
@@ -377,7 +417,10 @@ function pawGeos(m, P) {
   const L = legSpec(m.body), out = []; if (!L) return out;
   const sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
   const ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]);
-  const claw = (origin, axis, len, r, bone) => loft({origin, axis, side: new V3(1, 0, 0), secs: [[-r * .5, r * .9, r * .75], [0, r, r * .8], [len * .5, r * .65, r * .55], [len, .0015, .0015]], radial: 8, sub: 2, bend: -.35, weights: () => [[bone, 1]]});
+  const claw = (origin, axis, len, r, bone) => furAttrsLoft(loft({origin, axis, side: new V3(1, 0, 0), secs: [[-r * .5, r * .9, r * .75], [0, r, r * .8], [len * .5, r * .65, r * .55], [len, .0015, .0015]], radial: 8, sub: 2, bend: -.35, weights: () => [[bone, 1]]}), 3, 0, sz);
+  // pads (toe beans): low leather domes, a in the skin's plane and h out of it
+  const pad = (origin, axis, side, a, b, h, bone) => furAttrsLoft(loft({origin, axis, side, secs: [[-h * .6, a * .7, b * .7], [-h * .2, a, b], [h * .35, a * .85, b * .85], [h * .75, a * .45, b * .45], [h, .001, .001]], radial: 12, sub: 2, weights: () => [[bone, 1]]}), 2, 0, sz);
+  const pads = padsOn(m.body);
   for (const s of ['L', 'R']) {
     const ai = FIG.jIdx['ankle' + s], A = jp('ankle' + s);
     // paw extent from the remodelled geometry (front of the toes, width, sole)
@@ -389,11 +432,27 @@ function pawGeos(m, P) {
     const bone = ACC('ankle' + s);
     if (L.hoof) {
       // cloven hoof: two keratin wedges under the front of the foot
-      const cx = (x0 + x1) / 2, hw = clamp((x1 - x0) * .28, .01, .025 * sz), hz = zmax - hw * 1.4, hh = .045 * sz;
-      for (const k of [-1, 1]) out.push(loft({origin: new V3(cx + k * hw * .95, sole - .002, hz), axis: new V3(0, 1, -.15), side: new V3(1, 0, 0),
-        secs: [[0, hw, hw * 1.7], [hh * .55, hw * .95, hw * 1.45], [hh, hw * .8, hw * 1.1], [hh * 1.05, hw * .5, hw * .6]], radial: 12, sub: 2, n: 3, weights: () => [[bone, 1]]}));
+      const cx = (x0 + x1) / 2, hw = clamp((x1 - x0) * (L.hoof === 'single' ? .5 : .28), .01, (L.hoof === 'single' ? .045 : .025) * sz), hz = zmax - hw * 1.4, hh = .045 * sz;
+      for (const k of L.hoof === 'single' ? [0] : [-1, 1]) out.push(furAttrsLoft(loft({origin: new V3(cx + k * hw * .95, sole - .002, hz), axis: new V3(0, 1, -.15), side: new V3(1, 0, 0),
+        secs: [[0, hw, hw * 1.7], [hh * .55, hw * .95, hw * 1.45], [hh, hw * .8, hw * 1.1], [hh * 1.05, hw * .5, hw * .6]], radial: 12, sub: 2, n: 3, weights: () => [[bone, 1]]}), 3, 0, sz));
     } else if (L.claws) {
       for (const f of [.15, .38, .62, .85]) out.push(claw(new V3(x0 + (x1 - x0) * f, sole + (ytop - sole) * .45, zmax - .006 * sz), new V3(0, -.35, 1), L.claws * sz, L.claws * .28 * sz, bone));
+    }
+    if (pads && !L.hoof) {
+      // under the paw: four toe pads in an arc and the big pad behind them (plantigrade: the whole sole)
+      let zmin = Infinity; for (let i = 0, nV = FIG.meta.nV; i < nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < sole + .02 * sz) zmin = Math.min(zmin, P[i * 3 + 2]);
+      const w = x1 - x0, cx = (x0 + x1) / 2, dn = new V3(0, -1, 0), sd = new V3(1, 0, 0), y = sole + .004 * sz;
+      [[-.36, .78], [-.13, .9], [.13, .9], [.36, .78]].forEach(([fx, fz]) => out.push(pad(new V3(cx + fx * w, y, zmax - (1 - fz) * .05 * sz - .012 * sz), dn, sd, .1 * w, .12 * w, .006 * sz, bone)));
+      if (L.type === 'planti') out.push(pad(new V3(cx, y, (zmin + zmax) / 2 - .01 * sz), dn, sd, .34 * w, Math.max(.3 * w, (zmax - zmin) * .26), .007 * sz, bone));
+      else out.push(pad(new V3(cx, y, zmax - .055 * sz), dn, sd, .26 * w, .16 * w, .007 * sz, bone));
+    }
+    if (pads && m.handAxes) {
+      // palm and finger pads, on the palm side of the hand
+      const n = m.handAxes[s].n, w = jp('wrist' + s), mid = jp(`f${s}20`), side = jp(`f${s}10`).sub(jp(`f${s}40`)).normalize();
+      for (let f = 1; f < 5; f++) { const a = jp(`f${s}${f}2`), b = jp(`tip${s}${f}`), c = a.clone().lerp(b, .55).addScaledVector(n, .0075 * sz);
+        out.push(pad(c, n, side, .0058 * sz, .007 * sz, .0035 * sz, ACC(`f${s}${f}2`))); }
+      const pc = w.clone().lerp(mid, .62).addScaledVector(n, .014 * sz);
+      out.push(pad(pc, n, side, .019 * sz, .014 * sz, .005 * sz, ACC('wrist' + s)));
     }
     if (L.hand) for (let f = 1; f < 5; f++) {
       const tip = jp(`tip${s}${f}`), last = jp(`f${s}${f}2`), dir = tip.clone().sub(last).normalize();

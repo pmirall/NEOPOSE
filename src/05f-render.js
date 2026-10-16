@@ -14,7 +14,7 @@ function updateHandles() {
   const show = !practice.active && !sk.hideFig && !sk.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const n of DOT_JOINTS) {
     const d = jointDots[n], j = mq.joints[n];
-    d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
+    d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n.startsWith('ear') && !mq.hasEars) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
     if (!d.visible) continue;
     j.getWorldPosition(_hp); d.position.copy(_hp);
     d.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (state.ik ? .013 : .017) * coarse * (hoverHandle === d ? 1.35 : 1));

@@ -1,84 +1,83 @@
 {
-"wolfsaro": {
-"label": "Wolfsaro (realista)",
-"author": "mmdrawstuff",
-"url": "https://sketchfab.com/3d-models/wolfsaro-head-anthro-canine-head-reference-03aadbab477747728acbce807ba467fb",
-"species": [
-"lobo",
-"perro"
-],
-"style": "real",
-"scale": 0.78,
-"eyes": false
-},
-"foxgirl": {
-"label": "Fox Girl (kemono)",
-"author": "Sour_Cream",
-"url": "https://sketchfab.com/3d-models/fox-girl-head-eb11b55481a447d4ab9f06fb2554416d",
-"species": [
-"zorro",
-"lobo",
-"perro"
-],
-"style": "kemono",
-"scale": 0.95,
-"eyes": true
-},
-"conejo_k": {
-"label": "Base V2 (kemono)",
-"author": "取名字好难啊 (12241218)",
-"url": "https://sketchfab.com/3d-models/base-v2-cfd2f5bf90574f1f95df16fc110f3a87",
-"species": [
-"conejo"
-],
-"style": "kemono",
-"scale": 0.95,
-"eyes": true
-},
-"kobold": {
-"label": "Kobold (toony)",
-"author": "RhoBoat",
-"url": "https://sketchfab.com/3d-models/furry-kobold-base-ae17d2770b7e498db33c05675db17724",
-"species": [
-"dragon"
-],
-"style": "toon",
-"scale": 0.92,
-"eyes": true
-},
-"cabra": {
-"label": "Goat Head (realista)",
-"author": "401guy",
-"url": "https://sketchfab.com/3d-models/goat-head-402b25bca04442e0b84f259568206b60",
-"species": [
-"cabra",
-"ciervo"
-],
-"style": "real",
-"scale": 0.8,
-"eyes": true
-},
-"gato_k": {
-"label": "Kemono Cat (kemono)",
-"author": "Pluem pp the furry",
-"url": "https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491",
-"species": [
-"gato"
-],
-"style": "kemono",
-"scale": 0.95,
-"eyes": false
-},
-"husky": {
-"label": "Husky (realista)",
-"author": "sneakyraccoon",
-"url": "https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304",
-"species": [
-"perro",
-"lobo"
-],
-"style": "real",
-"scale": 0.8,
-"eyes": false
-}
+ "wolfsaro": {
+  "label": "Wolfsaro (realista)",
+  "author": "mmdrawstuff",
+  "url": "https://sketchfab.com/3d-models/wolfsaro-head-anthro-canine-head-reference-03aadbab477747728acbce807ba467fb",
+  "species": [
+   "lobo",
+   "perro"
+  ],
+  "style": "real",
+  "scale": 0.78,
+  "eyes": false
+ },
+ "foxgirl": {
+  "label": "Fox Girl (kemono)",
+  "author": "Sour_Cream",
+  "url": "https://sketchfab.com/3d-models/fox-girl-head-eb11b55481a447d4ab9f06fb2554416d",
+  "species": [
+   "zorro",
+   "lobo",
+   "perro"
+  ],
+  "style": "kemono",
+  "scale": 0.95,
+  "eyes": true
+ },
+ "conejo_k": {
+  "label": "Base V2 (kemono)",
+  "author": "取名字好难啊 (12241218)",
+  "url": "https://sketchfab.com/3d-models/base-v2-cfd2f5bf90574f1f95df16fc110f3a87",
+  "species": [
+   "conejo"
+  ],
+  "style": "kemono",
+  "scale": 0.95,
+  "eyes": true
+ },
+ "kobold": {
+  "label": "Kobold (toony)",
+  "author": "RhoBoat",
+  "url": "https://sketchfab.com/3d-models/furry-kobold-base-ae17d2770b7e498db33c05675db17724",
+  "species": [
+   "dragon"
+  ],
+  "style": "toon",
+  "scale": 0.92,
+  "eyes": true
+ },
+ "cabra": {
+  "label": "Goat Head (realista)",
+  "author": "401guy",
+  "url": "https://sketchfab.com/3d-models/goat-head-402b25bca04442e0b84f259568206b60",
+  "species": [
+   "cabra"
+  ],
+  "style": "real",
+  "scale": 0.8,
+  "eyes": true
+ },
+ "gato_k": {
+  "label": "Kemono Cat (kemono)",
+  "author": "Pluem pp the furry",
+  "url": "https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491",
+  "species": [
+   "gato"
+  ],
+  "style": "kemono",
+  "scale": 0.95,
+  "eyes": false
+ },
+ "husky": {
+  "label": "Husky (realista)",
+  "author": "sneakyraccoon",
+  "url": "https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304",
+  "species": [
+   "perro",
+   "lobo"
+  ],
+  "style": "real",
+  "scale": 0.8,
+  "eyes": false
+ }
 }

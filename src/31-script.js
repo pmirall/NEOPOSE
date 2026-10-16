@@ -89,11 +89,26 @@ function castOf(P, text) {
     if (seen.has(key)) continue; seen.add(key);
     const mine = (SAVED_CHARS || []).find(c => scNorm(c.name) === key || scNorm(c.name).split(/\s+/)[0] === key.split(/\s+/)[0]);
     if (mine) { out.push({key, name: n.name, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(mine.body)), name: n.name}, preset: mine.preset || null, outfit: mine.outfit || [], mine: true}); continue; }
-    const g = genderOf(n.name, text) || (alt++ % 2 ? 'mujer' : 'hombre'), age = ageOf(n.name);
-    const body = {...bodyOf(g), name: n.name}; if (age) body.age = age;
+    const g = genderOf(n.name, text) || (alt++ % 2 ? 'mujer' : 'hombre'), age = ageOf(n.name), sp = speciesOf(n.name, text);
+    const body = {...bodyOf(g), name: n.name}; if (age) body.age = age; if (sp) body.species = sp;
     out.push({key, name: n.name, body, preset: g, outfit: []});
   }
   return out;
+}
+
+// a furry cast: the animal in the name (ZORRO, Mr. Wolf) or said right after it (REX, un lobo gris; Mia (gata))
+function speciesOf(name, text) {
+  const words = t => scNorm(t).split(/[^a-z\u00df]+/).filter(Boolean), find = ws => { for (const w of ws) for (const [sp, list] of SC_SPECIES) if (list.includes(w)) return sp; return null; };
+  const own = find(words(name)); if (own) return own;
+  const nm = scNorm(name).split(/\s+/)[0], T = scNorm(text); let i = -1;
+  // only when the animal is said about the name: an apposition or a bracket (REX, un lobo… / Mia (gata)) or "is a"
+  const ARTS = new Set('un una unos el la es era a an the is was un une le est etait um uma o e era ein eine der die das ist war il lo e era'.split(' '));
+  while ((i = T.indexOf(nm, i + 1)) >= 0) {
+    const after = T.slice(i + nm.length, i + nm.length + 48).split(/[.\n!?;:]/)[0], ws = words(after);
+    if (!/^\s*[,(]/.test(after) && !ARTS.has(ws[0])) continue;
+    const sp = find(ws.slice(0, 4)); if (sp) return sp;
+  }
+  return null;
 }
 
 /* ---------- reading the action: who does what to whom ---------- */
@@ -526,6 +541,11 @@ function makeShot(D, B, u, ui, sample, side, cast) {
   s.scene.chars = D.present.map((ci, li) => { const m = chars[li], st = D.st[li], e = [...st.expr].filter(x => x.t <= (u.t0 + u.t1) / 2).pop(); const body = {...m.body}; if (e && e.e && body.species === 'humano') { body.expr = e.e; body.exprAmt = 1; } else delete body.expr;
     return {body, preset: m.bodyPreset, outfit: (cast[ci].outfit || []).map(x => ({...x})), pose: B.tracks[li].keys[Math.min(f0, B.n - 1)].pose}; });
   s.keys = B.tracks.map(tr2 => { const K = []; for (let f = f0; f < Math.min(f1, B.n); f++) K.push({f: f - f0, pose: tr2.keys[f].pose, lin: true}); return K; });
+  // anthros say it with their ears and tail: the moment's feeling as body language, over the baked keys (the jaw is the voice's)
+  D.present.forEach((ci, li) => { const m = chars[li]; if (!m || m.body.species === 'humano' || !s.keys[li]) return;
+    const e = [...D.st[li].expr].filter(x => x.t <= (u.t0 + u.t1) / 2).pop(), J = exprJoints(m, ANTHRO_OF[e && e.e] || 'neutra'); if (!J) return; delete J.jaw;
+    const Qs = Object.fromEntries(Object.entries(J).map(([n, r]) => [n, new Q().setFromEuler(new THREE.Euler(r[0], r[1], r[2])).toArray()]));
+    s.keys[li] = s.keys[li].map(k => ({...k, pose: {...k.pose, q: {...k.pose.q, ...Qs}}})); });
   const c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move ? camFor(u, u.t1 - .05, D, sample, side) : null;
   if (c0) { s.scene.cam = c0; s.cam = [{f: 0, c: c0}]; if (c1) s.cam.push({f: len - 1, c: c1}); }
   s.lines = D.lines.filter(l => l.t0 < u.t1 && l.t0 + l.dur > u.t0).map(l => ({c: D.present.indexOf(l.c), f: Math.round((l.t0 - u.t0) * fps), len: Math.max(2, Math.round(l.dur * fps)), text: l.text, lang: l.lang, voice: l.voice,

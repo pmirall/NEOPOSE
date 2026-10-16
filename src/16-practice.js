@@ -120,7 +120,7 @@ function randomizeBody(m, o) {
   if (id === 'chibi') b.gender = Math.random();
   if (o.anthro && Math.random() < .5) {
     b.species = pickOne(Object.keys(SPECIES).filter(k => k !== 'humano'));
-    const heads = Object.keys(HEAD_CATALOG).filter(k => HEAD_CATALOG[k].species.includes(b.species));
+    const heads = Object.keys(HEAD_CATALOG).filter(k => HEAD_CATALOG[k].species.includes(headSp(b)));
     if (heads.length) b.headModel = pickOne(heads);
   }
   // a hairstyle most of the time, grey or white on older people

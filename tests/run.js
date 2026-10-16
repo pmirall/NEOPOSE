@@ -770,6 +770,64 @@ const SUITES = {
     await page.context().close();
   },
   // the timeline: select (click, Shift, box, a whole clip), delete, move, Alt-copy, copy/paste, interpolation, menu, zoom, keys
+  // anthro characters in depth: species by family, coats and markings, tails (shape, carriage, expressions, a living
+  // tail in animation), pads, a furry cast from a script, tail and ears in the BVH
+  async furry(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(400);
+    const n = await A(() => ({chips: document.querySelectorAll('#speciesChips .chip').length, fams: document.querySelectorAll('#speciesChips .famlbl').length}));
+    ok(n.chips >= 19 && n.fams === 5, `species by family (${n.chips} species in ${n.fams} families)`);
+    await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3500);
+    const fox = await A(() => { const m = window.__cdp.mq, U = m.lib.uFur; return {on: U.uFurOn.value, base: '#' + U.uFurC0.value.getHexString(), socks: U.uFurM.value[2], tip: U.uFurM.value[5], tail: m.hasTail, ears: m.hasEars}; });
+    ok(fox.on === 1 && fox.base === '#c9652b' && fox.socks === 2 && fox.tip === 1, `a fox wears a red fox's coat: dark socks, white tail tip (${fox.base})`);
+    ok(fox.tail && fox.ears, 'it has a tail and ears to pose');
+    // marks cycle light → dark → off
+    const mark = async () => { await A(() => document.querySelector('#coatMarks .chip[data-v="stripes"]').click()); await page.waitForTimeout(150); return A(() => window.__cdp.mq.lib.uFur.uFurM.value[7]); };
+    const cyc = [await mark(), await mark(), await mark()];
+    ok(cyc.join() === '1,2,0', `a marking chip goes light, dark, off (${cyc.join()})`);
+    await A(() => { const i = document.querySelector('#coatCols input[data-k="0"]'); i.value = '#336699'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); });
+    ok(await A(() => '#' + window.__cdp.mq.lib.uFur.uFurC0.value.getHexString() === '#336699' && window.__cdp.mq.body.coat.c[0] === '#336699'), 'a colour well recolours the coat and the body keeps it');
+    await A(() => document.querySelector('#coatChips .chip[data-v=""]').click()); await page.waitForTimeout(200);
+    ok(await A(() => window.__cdp.mq.lib.uFur.uFurOn.value === 0 && window.__cdp.mq.body.coat === null), '“No colour” takes the coat off');
+    // pads (leather) and claws (keratin) are there, as their own kinds
+    const kinds = await A(() => { const out = new Set(); for (const a of window.__cdp.mq.acc) { const e = a.geometry.attributes.aEye; if (!e || a.userData.hull) continue; const w = -e.array[3]; if (w > 1.5) out.add(Math.floor(w) - 1); } return [...out].sort().join(); });
+    ok(/2/.test(kinds) && /3/.test(kinds), `paw pads and claws are there (kinds ${kinds})`);
+    // tail: shape, length, none
+    const tlen = () => A(() => window.__cdp.mq.tail[1].position.length());
+    const l0 = await tlen(); await A(() => { const i = document.querySelector('#tailLen'); i.value = 1.6; i.dispatchEvent(new Event('input')); }); await page.waitForTimeout(400);
+    const l1 = await tlen(); ok(l1 > l0 * 1.4, `"tail length" makes it longer (${l0.toFixed(3)} → ${l1.toFixed(3)} m a segment)`);
+    await A(() => document.querySelector('#tailChips .chip[data-v="no"]').click()); await page.waitForTimeout(400);
+    ok(await A(() => !window.__cdp.mq.hasTail), '“No tail” takes it away');
+    await A(() => document.querySelector('#tailChips .chip[data-v="tupida"]').click()); await page.waitForTimeout(400);
+    // expressions move the tail with the ears: fear tucks it under, happy lifts it
+    await page.click('.tab[data-tab=pose]'); await page.waitForTimeout(400);
+    const tx = () => A(() => window.__cdp.mq.joints.tail1.rotation.x);
+    await A(() => document.querySelector('#exprChips .chip[data-v="miedo"]').click()); const fear = await tx();
+    await A(() => document.querySelector('#exprChips .chip[data-v="feliz"]').click()); const happy = await tx();
+    ok(fear < -.3 && happy > .3, `fear tucks the tail, a happy one lifts it (${(fear / Math.PI * 180).toFixed(0)}°, ${(happy / Math.PI * 180).toFixed(0)}°)`);
+    ok(await A(() => document.querySelector('#exprChips .chip[data-v="feliz"]').getAttribute('aria-pressed') === 'true'), 'the expression chip stays pressed');
+    // a living tail: the pelvis turns, the tail lags; with wagging it swings in time
+    const life = await A(() => { const C = window.__cdp, m = C.mq, p = m.getPose(), q0 = p.q.hips;
+      const turned = t => ({...p, q: {...p.q, hips: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), t * .05).multiply(new THREE.Quaternion().fromArray(q0)).toArray()}});
+      const a = C.furry.tailLife(m, turned(20), turned, 20), still = C.furry.tailLife(m, p, () => p, 20);
+      m.body.tailMove = 'meneo'; const w1 = C.furry.tailLife(m, p, () => p, 3), w2 = C.furry.tailLife(m, p, () => p, 9); delete m.body.tailMove;
+      const d = (x, y) => new THREE.Quaternion().fromArray(x).angleTo(new THREE.Quaternion().fromArray(y));
+      return {lag: d(a.q.tail1, p.q.tail1), still: d(still.q.tail1, p.q.tail1), wag: d(w1.q.tail1, w2.q.tail1)}; });
+    ok(life.lag > .04 && life.still < 1e-4, `the tail lags behind a turn (${(life.lag / Math.PI * 180).toFixed(1)}°) and keeps still when the body does`);
+    ok(life.wag > .1, `wagging swings it from side to side (${(life.wag / Math.PI * 180).toFixed(0)}° between two frames)`);
+    // the BVH has the tail and the ears
+    const bvh = await A(() => window.__cdp.exportBVH(window.__cdp.mq));
+    ok(/JOINT tail3/.test(bvh) && /JOINT earL/.test(bvh) && bvh.split('MOTION')[1].trim().split('\n')[2].split(' ').length === (bvh.match(/CHANNELS 3/g).length * 3 + 6), 'the BVH carries the tail and ears, with a value for every channel');
+    // more species: plantigrade bear with a sole pad, single-hoofed horse, a lion's mane
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
+    for (const sp of ['oso', 'caballo', 'leon']) { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(1500); }
+    ok(await A(() => window.__cdp.mq.body.species === 'leon' && window.__cdp.mq.acc.some(a => a.geometry.attributes.aEye && Math.abs(a.geometry.attributes.aEye.array[2] - 2.97) < .01)), 'a lion has its mane');
+    // a furry cast read from a script
+    const sp = await A(() => { const s = window.__cdp.furry.speciesOf; return [s('REX', 'REX, un lobo gris, entra.'), s('MIA', 'Mia (gata) mira.'), s('ANA', "ANA can't bear the silence."), s('ZORRO', 'ZORRO: ¡Hola!')].join(); });
+    ok(sp === 'lobo,gato,,zorro', `a script's cast: “REX, un lobo”, “Mia (gata)”, the name ZORRO; “can't bear” is not a bear (${sp})`);
+    ok(page.errors.length === 0, 'no errors ' + page.errors.slice(0, 2).join(' | '));
+    await page.context().close();
+  },
   async timeline(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     await page.click('#animBtn'); await page.waitForTimeout(400);

@@ -28,13 +28,13 @@ const SKETCH_GLSL = `
     if (L < .2 * k) ink = max(ink, hatchL(p + 2.3, vec2(.7071, .7071), 3.0));
     return mix(uPaper, uGraphite, ink * .78);
   }`;
-function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT) {
+function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = null) {
   mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye);
+    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye;
+        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye; vFurP = position * uFurK;
         #ifdef USE_SKINNING
         vHi = dot(skinWeight, vec4(1.0 - step(.5, abs(skinIndex.x - uHi)), 1.0 - step(.5, abs(skinIndex.y - uHi)),
                                    1.0 - step(.5, abs(skinIndex.z - uHi)), 1.0 - step(.5, abs(skinIndex.w - uHi))));
@@ -43,6 +43,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT) {
       .replace('#include <common>', `#include <common>
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth;
         varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil;
+        ${FUR_GLSL}
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
           vec3 d = normalize(vEye.xyz); float ang = acos(clamp(d.z, -1.0, 1.0));
@@ -65,6 +66,8 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT) {
           float d = abs(x) / max(fwidth(x), 1e-5);
           return 1.0 - clamp(d - w * .5 + .5, 0.0, 1.0);
         }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, uFurOn);`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: triangles that join the upper snout (+1) to the jaw (-1) are cut
@@ -132,11 +135,11 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
 // one material set per character, so each can highlight its own selected joint and fade on its own
 const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}};
 function makeCharMats() {
-  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}};
-  const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye);
-  return {uHi, uMouth, uEye,
-    construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye),
-    contorno: patchLines(new THREE.MeshBasicMaterial({color: 0xf8f5ee}), uHi, uMouth, uEye),
+  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}}, uFur = makeFurU();
+  const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye, uFur);
+  return {uHi, uMouth, uEye, uFur,
+    construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),
+    contorno: patchLines(new THREE.MeshBasicMaterial({color: 0xf8f5ee}), uHi, uMouth, uEye, uFur),
     volumen: vol, lapiz: vol, valores: vol,
     silueta: patchLines(new THREE.MeshBasicMaterial({color: 0x2a2620}), uHi, uMouth, uEye),
     outline: OUTLINE_MAT,
@@ -356,9 +359,9 @@ class Mannequin {
     this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R, ...muscleBones()]);  // last: the muscles' activations (03b)
     // furry parts use their own skeleton: pelvis, head and the three tail bones
     this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R,
-      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]]))];
+      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]])), this.bones[FIG.jIdx.wristL], this.bones[FIG.jIdx.wristR]];
     this.accSkeleton = new THREE.Skeleton(this.accBones);
-    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR'];
+    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR', 'wristL', 'wristR'];
     const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
@@ -374,7 +377,7 @@ class Mannequin {
     const prev = this.posed ? this.getPose() : null, oldRoot = this.rootY;
     this.body = {...BODY_BASE, ...body}; delete this.body.label;
     if (!SPECIES[this.body.species]) this.body.species = 'humano';
-    if (this.body.species !== 'humano') { this.body.kemo = 5; const h = headModelFor(this.body); if (h) this.body.headStyle = HEAD_CATALOG[h].style; }
+    if (this.body.species !== 'humano') { const h = headModelFor(this.body); if (h) this.body.headStyle = HEAD_CATALOG[h].style; }
     const meta = FIG.meta, nV = meta.nV, nJ = meta.bones.length + meta.extra.length;
     const P = this.geo.attributes.position.array, J = new Float32Array(nJ * 3);
     P.set(FIG.base); J.set(FIG.j0);
@@ -432,8 +435,9 @@ class Mannequin {
     }
     this.headBox = hd; this.headH = hd.y1 - hd.y0; this.top = top; this.heads = top / this.headH;
     this.size = top / 1.74;
+    furAttrsBody(this, P);
     // tail rest: from the sacrum, pointing back and down
-    const sp = SPECIES[this.body.species] || SPECIES.humano, tl = sp.tail ? sp.tail.len * this.size : .3 * this.size;
+    const sp = SPECIES[this.body.species] || SPECIES.humano, tsp = tailOf(this.body), tl = tsp ? tsp.len * this.size : .3 * this.size;
     this.tailDir = new V3(0, -.55, -1).normalize();
     this.tailRoot = new V3(0, hipsY + .06 * this.size, (isFinite(backZ) ? backZ : -.12) + .02);
     this.tail.forEach((b, i) => { b.quaternion.identity(); b.position.copy(i === 0 ? this.tailRoot.clone().sub(jp('hips')) : this.tailDir.clone().multiplyScalar(tl / 3)); });
@@ -454,14 +458,14 @@ class Mannequin {
     for (const m of [this.body3, ...this.hulls.slice(0, 1)]) m.bind(this.skeleton, I);
     this.computeLines(J);
     this.computeHandAxes(jp);
-    this.buildAccessories(sp, tl);
+    this.buildAccessories(sp, tl, tsp);
     attachHeadSwap(this);
     musclesAfterBuild(this);
     garmentsAfterBuild(this);
     limbsAfterBuild(this);
     this.posed = true;
     if (prev) { prev.pos[1] += this.rootY - oldRoot; this.setPose(prev); } else this.applyHands();
-    this.setStyle(this.style);
+    this.setStyle(this.style); applyCoat(this);
     this.highlight(this.hiJoint);
     if (this.formMode !== 'figura') this.buildForms();
   }
@@ -545,7 +549,7 @@ class Mannequin {
     if (this.garments) applyGarmentVis(this);
   }
   setFormMode(mode) { this.formMode = mode; this.buildForms(); }
-  buildAccessories(sp, tl) {
+  buildAccessories(sp, tl, tsp = tailOf(this.body)) {
     for (const m of this.acc) { this.group.remove(m); if (!m.userData.hull) m.geometry.dispose(); }
     this.acc = []; this.meshes = [this.body3]; this.hulls = this.hulls.slice(0, 1);
     const hd = this.headBox, hh = this.headH, hw = (hd.x1 - hd.x0) / 2, hdep = hd.z1 - hd.z0, cz = (hd.z0 + hd.z1) / 2;
@@ -565,22 +569,38 @@ class Mannequin {
       else if (e.shape === 'larga') secs = [[-.05 * h, w * .6, d], [0, w * .7, d], [.3 * h, w, d], [.75 * h, w * .85, d * .8], [h, w * .08, d * .3]];
       else secs = [[-.06 * h, w * .9, d], [0, w, d], [.35 * h, w * .75, d * .8], [.75 * h, w * .32, d * .5], [h, .004, .004]];
       const earW = horn ? rigidHead : () => [[sd > 0 ? 6 : 7, 1]];
-      geos.push(loft({origin: horn ? origin : this.earRoot[sd > 0 ? 'L' : 'R'].clone(), axis, side: new V3(Math.cos(out), -Math.sin(out), 0), secs, radial: horn ? 14 : 16, weights: earW, bend: horn ? (e.antler ? -.15 : -.35) : 0}));
+      geos.push(furAttrsLoft(loft({origin: horn ? origin : this.earRoot[sd > 0 ? 'L' : 'R'].clone(), axis, side: new V3(Math.cos(out), -Math.sin(out), 0), secs, radial: horn ? 14 : 16, weights: earW, bend: horn ? (e.antler ? -.15 : -.35) : 0}), horn ? 4 : 1, 0, this.size));
       if (horn && e.antler) for (const k of [.4, .7]) {
         const o2 = origin.clone().addScaledVector(axis, h * k), ax2 = axis.clone().add(new V3(0, .1, .9)).normalize();
-        geos.push(loft({origin: o2, axis: ax2, side: new V3(1, 0, 0), secs: [[0, w * .5, w * .5], [h * .3, w * .3, w * .3], [h * .45, .002, .002]], radial: 10, weights: rigidHead}));
+        geos.push(furAttrsLoft(loft({origin: o2, axis: ax2, side: new V3(1, 0, 0), secs: [[0, w * .5, w * .5], [h * .3, w * .3, w * .3], [h * .45, .002, .002]], radial: 10, weights: rigidHead}), 4, 0, this.size));
       }
     };
     for (const sd of [1, -1]) { if (sp.ears) ear(sd, sp.ears, false); if (sp.horns) ear(sd, sp.horns, true); }
-    if (sp.tail) {
-      const t = sp.tail, r = t.r * this.size, L = tl;
+    if (tsp) {
+      const t = tsp, r = t.r * this.size, L = tl;
+      // profiles (radius along the tail): fine and whip-like (cats, dogs), bushy and widest past the middle (foxes,
+      // wolves), thick all along (raccoons, red pandas, snow leopards), a thin tail with a tuft (lions, hyenas),
+      // a pom (rabbits, deer), a reptile's that starts as wide as the hips, a horse's hair that widens as it falls
       let secs;
       if (t.shape === 'tupida') secs = [[-.04, r * .5, r * .5], [0, r * .6, r * .6], [L * .25, r * .95, r * .95], [L * .55, r * 1.15, r * 1.1], [L * .85, r * .8, r * .8], [L, r * .05, r * .05]];
+      else if (t.shape === 'gruesa') secs = [[-.04, r * .6, r * .6], [0, r * .75, r * .75], [L * .2, r, r], [L * .6, r * 1.05, r * 1.05], [L * .9, r * .8, r * .8], [L, r * .12, r * .12]];
+      else if (t.shape === 'penacho') secs = [[-.03, r, r], [0, r, r], [L * .5, r * .75, r * .75], [L * .8, r * .7, r * .7], [L * .88, r * 1.7, r * 1.7], [L * .96, r * 1.5, r * 1.5], [L, r * .1, r * .1]];
       else if (t.shape === 'pompón') secs = [[-.03, r * .4, r * .4], [0, r * .85, r * .85], [L * .5, r, r], [L, r * .1, r * .1]];
       else if (t.shape === 'reptil') secs = [[-.06, r * 1.1, r * .9], [0, r, r * .85], [L * .4, r * .65, r * .55], [L * .8, r * .28, r * .24], [L, .003, .003]];
+      else if (t.shape === 'crin') secs = [[-.03, r * .55, r * .55], [0, r * .6, r * .6], [L * .2, r * .8, r * .7], [L * .6, r * 1.15, r * .9], [L * .92, r * 1.3, r * .95], [L, r * .3, r * .3]];
       else secs = [[-.03, r, r], [0, r, r], [L * .5, r * .9, r * .9], [L * .9, r * .7, r * .7], [L, .004, .004]];
-      geos.push(loft({origin: this.tailRoot, axis: this.tailDir, side: new V3(1, 0, 0), secs, radial: 16, sub: 3,
-        weights: chainW([[0, -1e9], [2, .015], [3, L / 3], [4, L * 2 / 3]], Math.min(.05, L * .08))}));
+      geos.push(furAttrsLoft(loft({origin: this.tailRoot, axis: this.tailDir, side: new V3(1, 0, 0), secs, radial: 16, sub: 3,
+        weights: chainW([[0, -1e9], [2, .015], [3, L / 3], [4, L * 2 / 3]], Math.min(.05, L * .08))}), 1, L, this.size));
+    }
+    if (sp.mane) {
+      // a lion's mane: a shell round the head and neck, open in front for the face, as dark as the tail's tuft
+      const an = this.anthro, L = an && an.L, hh2 = L ? L.hh : hh, cy = L ? (L.chin + L.crown) / 2 : (hd.y0 + hd.y1) / 2, cz2 = L ? L.eyeZ - .45 * hh2 : cz;
+      const r = (L ? L.hw : hw) * 1.55, H = hh2 * 1.55, y0 = cy - H * .62;
+      const g = loft({origin: new V3(0, y0, cz2), axis: new V3(0, 1, 0), side: new V3(1, 0, 0), radial: 20, sub: 3, arc: [.75, Math.PI * 2 - .75],
+        secs: [[0, r * .75, r * .7], [H * .28, r * 1.18, r * 1.05], [H * .62, r * 1.22, r * 1.08], [H * .9, r * .95, r * .85], [H, r * .35, r * .3]],
+        mod: (ph, t) => 1 + .1 * Math.sin(ph * 11 + t * 37) + .05 * Math.sin(ph * 23 - t * 61), weights: rigidHead});
+      const n = g.attributes.position.count, A = new Float32Array(n * 4); for (let i = 0; i < n; i++) furPack(A, i * 4, 0, 0, 2.97, 1, 0);
+      g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.userData.noHull = true; geos.push(g);  // an open shell: no outline hull inside it
     }
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     const I = new THREE.Matrix4();
@@ -594,9 +614,11 @@ class Mannequin {
       const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
       m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
       this.group.add(m); m.bind(this.accSkeleton, I); this.acc.push(m); this.meshes.push(m);
-      if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.accSkeleton, I); this.acc.push(o); this.hulls.push(o); }
+      m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
+      m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
+      if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.accSkeleton, I); this.acc.push(o); this.hulls.push(o); }
     }
-    this.hasTail = !!sp.tail;
+    this.hasTail = !!tsp;
   }
   computeLines(J) {
     const meta = FIG.meta, nB = meta.bones.length, P = this.geo.attributes.position.array, L = this.geo.attributes.aLine.array;
@@ -679,8 +701,11 @@ class Mannequin {
   highlight(j) {
     this.hiJoint = j;
     if (!this.lib.uHi) return;
-    // tail parts live in the accessory skeleton; others in the body skeleton
-    this.lib.uHi.value = j ? (j.startsWith('tail') ? -1 : this.bones.indexOf(this.joints[j])) : -1;
+    // tail parts live in the accessory skeleton (their meshes swap the index in while they draw, see buildAccessories);
+    // the rest, ears included, in the body skeleton
+    const tail = !!j && j.startsWith('tail');
+    this.hiAcc = tail ? this.accBones.indexOf(this.joints[j]) : -1;
+    this.lib.uHi.value = j && !tail ? this.skeleton.bones.indexOf(this.joints[j]) : -1;
   }
   pick(hit) {
     const g = hit.object.geometry, a = g.index.getX(hit.faceIndex * 3);
@@ -762,7 +787,7 @@ function solveSpec(m, spec, target) { solveIK(m.chains[spec.e], m.joints[EFFECTO
 function applyPreset(m, p, o = {}) {
   const J = m.joints;
   for (const n of JOINTS) {
-    const e = (p.j && p.j[n]) || [0, 0, 0];
+    const e = (p.j && p.j[n]) || (n.startsWith('tail') && tailRest(m, n)) || [0, 0, 0];
     if (e.seq) { // ordered rotations in the parent frame: first, second, third…
       const q = new Q(), t = new Q(), ax = {x: new V3(1, 0, 0), y: new V3(0, 1, 0), z: new V3(0, 0, 1)};
       for (const [a, d] of e.seq) q.premultiply(t.setFromAxisAngle(ax[a], d * DEG));

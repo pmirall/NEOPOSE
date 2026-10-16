@@ -513,7 +513,7 @@ function bodyCapsules(m) {
     out.push({k, a: c.a, b: c.b, r});
   }
   // tails and dragon tails: a capsule per tail bone
-  if (m.hasTail) { const sp = SPECIES[m.body.species], r = (sp.tail ? sp.tail.r : .05) * m.size + pad, t = ['tail1', 'tail2', 'tail3'].map(wp);
+  if (m.hasTail) { const tt = tailOf(m.body), r = (tt ? tt.r : .05) * m.size + pad, t = ['tail1', 'tail2', 'tail3'].map(wp);
     out.push({k: 'tail', a: t[0], b: t[1], r}, {k: 'tail', a: t[1], b: t[2], r}, {k: 'tail', a: t[2], b: t[2].clone().add(t[2].clone().sub(t[1])), r}); }
   // sculpted heads, horns, claws, tails and ears are their own meshes: their real vertices go in a 3 cm grid
   if (m.acc && m.acc.length) {

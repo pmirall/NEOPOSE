@@ -1,0 +1,240 @@
+/* ======================= coats: fur colours and markings =======================
+   What tells a coyote from a wolf, a snow leopard from a house cat or a red panda from a fox in a drawing is mostly the
+   coat, and a 3D model is the one place where a marking can be seen from every side (where the sock ends, how the mask
+   wraps round the eyes, which way the stripes run on a leg). Researched patterns, in the order they are laid down:
+     countershading (lighter belly and throat, and muzzle and cheeks: most mammals), dorsal stripe (coyotes, wolves, skunks),
+     stripes (tigers, tabby cats), spots (hyenas, cheetahs, fawns), rosettes (leopards, snow leopards), socks and gloves
+     (foxes, red pandas, pandas, Siamese points), the mask (raccoons, pandas), ear tips (foxes, lynx-eared cats),
+     the tail's tip (foxes, wolves) and rings (raccoons, red pandas, lemurs), and leather for the nose and paw pads.
+   Every vertex of the body, the sculpted head and the tail carries where it is (belly, how far down a limb, along an
+   ear or the tail, the back line, the mask band); with its rest position the shader paints the coat from those, so the
+   markings are sharp at any zoom and follow the pose. The body has no vertex attribute left to spare (WebGL allows 16
+   and muscles, skinning and lines use them), so this rides in aEye, which only the eyes' vertices use: there w = 1;
+   elsewhere w = −(1 + kind + f), f = .5 ± .45 × (back line or mask): the middle of the fraction is “neither”, so what the
+   triangles interpolate between equal values can never slip into the next kind or turn into a mask. Three colours per coat (base, light, dark) plus leather. */
+const COAT_MARKS = [
+  ['belly', 'Vientre'], ['muzzle', 'Hocico y mejillas'], ['socks', 'Calcetines'], ['mask', 'Antifaz'], ['ears', 'Puntas de las orejas'], ['tail', 'Punta de la cola'],
+  ['dorsal', 'Raya del lomo'], ['stripes', 'Rayas'], ['spots', 'Manchas'], ['rosettes', 'Rosetas'], ['rings', 'Anillos en la cola']
+];
+const COAT_ORDER = COAT_MARKS.map(m => m[0]);
+// c: base, light, dark; m: mark → 1 light, 2 dark (absent: off); sock: how far up the socks go (0 hip … 1 toes); tip: how much of the tail is its tip
+const COATS = {
+  lobo:      {label: 'Lobo gris', for: ['lobo', 'coyote', 'perro'], c: ['#8b8680', '#ebe6dc', '#3a3632'], m: {belly: 1, dorsal: 2, ears: 2, tail: 2}, le: '#2a2422'},
+  lobo_bl:   {label: 'Lobo ártico', for: ['lobo', 'perro'], c: ['#e6e3dc', '#f8f6f1', '#b4ada2'], m: {belly: 1}, le: '#2a2422'},
+  lobo_ng:   {label: 'Lobo negro', for: ['lobo', 'perro'], c: ['#33302d', '#5a544e', '#1b1918'], m: {belly: 1}, le: '#1e1a19'},
+  coyote:    {label: 'Coyote', for: ['coyote', 'lobo'], c: ['#a8865f', '#efe4cf', '#3d3125'], m: {belly: 1, dorsal: 2, tail: 2, ears: 2}, le: '#2a2422'},
+  perro:     {label: 'Husky', for: ['perro', 'lobo'], c: ['#5e6166', '#f3f0ea', '#2a2a2d'], m: {belly: 1, socks: 1, dorsal: 2}, sock: .74, le: '#252223'},
+  pastor:    {label: 'Pastor alemán', for: ['perro'], c: ['#b57c43', '#dcb47e', '#2b2420'], m: {dorsal: 2, mask: 2, tail: 2}, le: '#221d1b'},
+  dalmata:   {label: 'Dálmata', for: ['perro'], c: ['#f4f1ea', '#f8f6f1', '#232120'], m: {spots: 2}, le: '#2a2422'},
+  labrador:  {label: 'Labrador', for: ['perro'], c: ['#d6a862', '#ecd29c', '#8a6230'], m: {belly: 1}, le: '#4a3426'},
+  zorro:     {label: 'Zorro rojo', for: ['zorro'], c: ['#c9652b', '#f5eee3', '#2a1f1a'], m: {belly: 1, socks: 2, ears: 2, tail: 1}, sock: .68, le: '#231c19'},
+  zorro_ar:  {label: 'Zorro ártico', for: ['zorro'], c: ['#ebe9e3', '#fbfaf6', '#3a3836'], m: {belly: 1}, le: '#2a2624'},
+  zorro_pl:  {label: 'Zorro plateado', for: ['zorro'], c: ['#3b3836', '#8e8a85', '#1e1c1b'], m: {belly: 2, muzzle: 0, tail: 1}, le: '#1e1a19'},
+  hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#b59b73', '#dccaa9', '#3a2e24'], m: {spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
+  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#5a3e27'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86'},
+  gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422'},
+  siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e'},
+  esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86'},
+  tigre:     {label: 'Tigre de Bengala', for: ['tigre'], c: ['#d8822c', '#f6f0e5', '#1f1a17'], m: {belly: 1, stripes: 2, ears: 2, rings: 2}, le: '#c07a72'},
+  tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86'},
+  leon:      {label: 'León', for: ['leon'], c: ['#c99b5f', '#ebd8b6', '#4a3524'], m: {belly: 1, ears: 2, tail: 2}, tip: .14, le: '#5a3a30'},
+  leopardo:  {label: 'Leopardo de las nieves', for: ['leopardo'], c: ['#d6d2ca', '#f3f1ec', '#46433f'], m: {belly: 1, rosettes: 2, tail: 2}, tip: .12, le: '#c98b86'},
+  leopardo2: {label: 'Leopardo', for: ['leopardo', 'gato'], c: ['#d9a85b', '#f4ead7', '#2a221a'], m: {belly: 1, rosettes: 2}, le: '#2a2422'},
+  guepardo:  {label: 'Guepardo', for: ['leopardo', 'gato'], c: ['#dcb36f', '#f4ead8', '#241d16'], m: {belly: 1, spots: 2, rings: 2}, le: '#2a2422'},
+  oso:       {label: 'Oso pardo', for: ['oso'], c: ['#6b4a32', '#8d674a', '#33241a'], m: {socks: 2}, sock: .7, le: '#211b18'},
+  oso_po:    {label: 'Oso polar', for: ['oso'], c: ['#efeadf', '#f8f5ee', '#cfc6b4'], m: {}, le: '#1e1b1a'},
+  panda_g:   {label: 'Panda gigante', for: ['oso'], c: ['#f3f1ec', '#f8f6f2', '#1e1c1b'], m: {socks: 2, ears: 2, mask: 2}, sock: .45, le: '#1e1c1b'},
+  mapache:   {label: 'Mapache', for: ['mapache'], c: ['#8a8784', '#e8e5e0', '#2b2928'], m: {belly: 1, mask: 2, rings: 2, socks: 2, tail: 2}, sock: .86, tip: .12, le: '#2b2524'},
+  panda:     {label: 'Panda rojo', for: ['panda'], c: ['#b4532a', '#f2e8d8', '#35201a'], m: {belly: 2, muzzle: 1, socks: 2, ears: 1, rings: 1, mask: 1}, sock: .5, le: '#251c19'},
+  mofeta:    {label: 'Mofeta', for: ['mofeta'], c: ['#1f1d1c', '#f2efea', '#141312'], m: {dorsal: 1, tail: 1}, tip: .35, le: '#2a2422'},
+  conejo:    {label: 'Conejo gris', for: ['conejo'], c: ['#9c9288', '#efe9df', '#5a524a'], m: {belly: 1, tail: 1, ears: 2}, tip: 1, le: '#c98b86'},
+  conejo_bl: {label: 'Conejo blanco', for: ['conejo'], c: ['#f5f2ec', '#fbfaf7', '#d9d2c6'], m: {}, le: '#d19a96'},
+  ciervo:    {label: 'Ciervo', for: ['ciervo', 'cabra'], c: ['#9b6b43', '#efe4d0', '#3a2a1e'], m: {belly: 1, tail: 1}, tip: 1, le: '#231d1a'},
+  cervato:   {label: 'Cervatillo', for: ['ciervo'], c: ['#a8703f', '#f1e6d3', '#3a2a1e'], m: {belly: 1, spots: 1, tail: 1}, tip: 1, le: '#231d1a'},
+  cabra:     {label: 'Cabra blanca', for: ['cabra'], c: ['#ebe5d9', '#f7f3ec', '#9d9282'], m: {}, le: '#3a302a'},
+  cabra_pa:  {label: 'Cabra parda', for: ['cabra'], c: ['#7b5b3f', '#dccbb0', '#2c2119'], m: {belly: 1, dorsal: 2, socks: 2}, sock: .72, le: '#2a221d'},
+  caballo:   {label: 'Castaño', for: ['caballo'], c: ['#7a4527', '#b3825a', '#1c1410'], m: {socks: 2, tail: 2}, sock: .7, tip: 1, le: '#2a2220'},
+  alazan:    {label: 'Alazán', for: ['caballo'], c: ['#9a5228', '#c98e5e', '#5a2e16'], m: {tail: 1}, tip: 1, le: '#3a2a24'},
+  tordo:     {label: 'Tordo', for: ['caballo'], c: ['#bdbab4', '#e9e7e2', '#4a4845'], m: {spots: 2, socks: 2, tail: 2}, sock: .8, tip: 1, le: '#2a2828'},
+  dragon:    {label: 'Dragón verde', for: ['dragon'], c: ['#4f7a4a', '#d9cf9a', '#26391f'], m: {belly: 1, dorsal: 2}, le: '#2a2620'},
+  dragon_r:  {label: 'Dragón rojo', for: ['dragon'], c: ['#a63b2a', '#e8ca90', '#4a1710'], m: {belly: 1, dorsal: 2}, le: '#2a1a16'},
+  dragon_a:  {label: 'Dragón azul', for: ['dragon'], c: ['#3e5f8f', '#cad8e7', '#1c2a40'], m: {belly: 1, dorsal: 2, spots: 2}, le: '#1c2230'},
+  dragon_n:  {label: 'Dragón negro', for: ['dragon'], c: ['#2b2a30', '#7a6a9a', '#141318'], m: {belly: 1}, le: '#141318'}
+};
+tLabels(COATS);
+const tColor = h => new THREE.Color(h);
+// the coat a body wears: its own (edited), none (null) or its species' default
+function coatOf(b) {
+  if (!b || b.species === 'humano' || b.coat === null) return null;
+  if (b.coat && b.coat.c) return b.coat;
+  const id = (b.coat && b.coat.preset) || (SPECIES[b.species] || {}).coat, p = COATS[id]; if (!p) return null;
+  const m = {...p.m}; if (m.belly && m.muzzle === undefined) m.muzzle = m.belly;  // the muzzle is as light as the belly unless the animal says otherwise
+  return {preset: id, c: p.c.slice(), m, sock: p.sock ?? .72, tip: p.tip ?? .25, le: p.le || '#2a2422'};
+}
+const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
+// the shader's uniforms (one set per character, shared by all of its materials)
+const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
+  uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25}});
+const FUR_OFF = makeFurU();
+function applyCoat(m) {
+  const U = m.lib && m.lib.uFur; if (!U) return;
+  const c = coatOf(m.body); U.uFurOn.value = c ? 1 : 0; U.uFurK.value = 1 / (m.size || 1); if (!c) return;
+  U.uFurC0.value.set(c.c[0]); U.uFurC1.value.set(c.c[1]); U.uFurC2.value.set(c.c[2]); U.uFurLe.value.set(c.le || '#2a2422');
+  U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
+}
+const FUR_GLSL = `
+  uniform float uFurOn, uSock, uTailTip; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}];
+  varying vec3 vFurP;
+  float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+  float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(fHash(i), fHash(i + vec3(1, 0, 0)), f.x), mix(fHash(i + vec3(0, 1, 0)), fHash(i + vec3(1, 1, 0)), f.x), f.y),
+               mix(mix(fHash(i + vec3(0, 0, 1)), fHash(i + vec3(1, 0, 1)), f.x), mix(fHash(i + vec3(0, 1, 1)), fHash(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+  vec2 fCell(vec3 x) { vec3 i = floor(x), f = fract(x); float d = 8.0, id = 0.0;
+    for (int a = -1; a <= 1; a++) for (int b = -1; b <= 1; b++) for (int c = -1; c <= 1; c++) {
+      vec3 g = vec3(float(a), float(b), float(c)), o = vec3(fHash(i + g), fHash(i + g + 19.1), fHash(i + g + 47.7)), r = g + o - f; float e = dot(r, r);
+      if (e < d) { d = e; id = fHash(i + g + 7.3); } }
+    return vec2(sqrt(d), id); }
+  vec3 furSlot(float k, vec3 c) { return k > 1.5 ? uFurC2 : k > .5 ? uFurC1 : c; }
+  vec3 furPaint(vec3 c0) {
+    float w = -vEye.w; if (w < 1.5) return c0;
+    float kind = floor(w) - 1.0, fr = fract(w) - .5;
+    if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
+    if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
+    if (kind > 1.5) return uFurLe;                               // nose and pads
+    vec3 p = vFurP, c = uFurC0; float m, belly = max(vEye.x, 0.0), muz = max(-vEye.x, 0.0), dist = vEye.y, tip = vEye.z, dors = clamp(fr / .45, 0.0, 1.0), mask = clamp(-fr / .45, 0.0, 1.0);
+    float onTail = step(1.5, tip), u = tip - 2.0, body = 1.0 - smoothstep(.3, .6, belly);
+    m = uFurM[0]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, belly));
+    m = uFurM[1]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, muz));
+    m = uFurM[6]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .7, dors));
+    m = uFurM[7]; if (m > .5) { float s = sin(p.y * 64.0 + fNoise(p * 7.0) * 5.0 + fNoise(p * 2.5) * 6.0); float w = smoothstep(.58, .76, s + (fNoise(p * 16.0) - .5) * .7);
+      c = mix(c, furSlot(m, c), w * body * (1.0 - onTail)); }
+    m = uFurM[8]; if (m > .5) { vec2 ce = fCell(p * 15.0); float r = .2 + .14 * ce.y; c = mix(c, furSlot(m, c), (1.0 - smoothstep(r - .05, r, ce.x)) * body); }
+    m = uFurM[9]; if (m > .5) { vec2 ce = fCell(p * 14.0); float ring = smoothstep(.16, .22, ce.x) * (1.0 - smoothstep(.34, .42, ce.x)) * step(.28, fNoise(p * 46.0));
+      float dot2 = 1.0 - smoothstep(.07, .11, fCell(p * 21.0 + 3.1).x); c = mix(c, furSlot(m, c), max(ring, dot2 * step(.6, ce.y)) * body); }
+    m = uFurM[2]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(uSock - .025, uSock + .025, dist));
+    m = uFurM[3]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.3, .6, mask));
+    m = uFurM[4]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.55, .7, tip) * (1.0 - onTail));
+    m = uFurM[10]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.12, .2, u) * smoothstep(.42, .5, fract(u * 5.0 + .25)) * (1.0 - smoothstep(.92, .98, fract(u * 5.0 + .25))));
+    m = uFurM[5]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.97 - uTailTip, 1.03 - uTailTip, u));
+    return c;
+  }`;
+
+/* ---------- where every vertex is, for the coat ----------
+   aEye of a vertex that is not an eye = (belly, how far down the limb, along an ear 0..1 or the tail 2..3, packed w).
+   kind: 1 fur, 2 leather (nose, pads), 3 claw or hoof, 4 horn. Eyes and meshes without the attribute are left alone. */
+function furPack(A, o, belly, dist, tip, kind, dm) { const f = .5 + clamp(dm, -1, 1) * .45; A[o] = belly; A[o + 1] = dist; A[o + 2] = tip; A[o + 3] = -(1 + kind + f); }
+function furAttrsBody(m, P) {
+  const nV = FIG.meta.nV, g = m.geo, A = g.attributes.aEye.array, N = g.attributes.normal.array, J = m.J, sz = m.size || 1;
+  const jy = n => J[FIG.jIdx[n] * 3 + 1], reg = FIG.region, SI = g.attributes.skinIndex.array, SW = g.attributes.skinWeight.array, EL = FIG.meta.bones.length;
+  if (m.body.species === 'humano') return;
+  // half width of the trunk by height, for the belly and the back line
+  const NB = 64, top = m.top || 1.8, hw = new Float32Array(NB);
+  const trunk = r => r === 'torso' || r === 'hips' || r === 'neck';
+  for (let i = 0; i < nV; i++) if (trunk(reg[m.dom[i]])) { const k = clamp(Math.floor(P[i * 3 + 1] / top * NB), 0, NB - 1); hw[k] = Math.max(hw[k], Math.abs(P[i * 3])); }
+  const crotch = jy('hipL') - .04 * sz, chin = m.anthro ? m.anthro.L.chin : jy('neck') + .08 * sz, an = m.anthro, L = an && an.L;
+  const tipY = s => { let y = Infinity; for (let f = 0; f < 5; f++) y = Math.min(y, jy(`tip${s}${f}`)); return y; };
+  const arm = {L: [jy('shoulderL'), tipY('L')], R: [jy('shoulderR'), tipY('R')]}, leg = {L: jy('hipL'), R: jy('hipR')};
+  // ears of a MakeHuman-target head: skinned to the ear bones; measured from their base to their top
+  const earTop = {L: -Infinity, R: -Infinity};
+  const earW = i => { let w = 0, b = -1; for (let k = 0; k < 4; k++) if (SI[i * 4 + k] >= EL) { w += SW[i * 4 + k]; b = SI[i * 4 + k] - EL; } return [w, b]; };
+  for (let i = 0; i < nV; i++) { const [w, b] = earW(i); if (w > .5) { const k = b === 0 ? 'L' : 'R'; earTop[k] = Math.max(earTop[k], P[i * 3 + 1]); } }
+  for (let i = 0; i < nV; i++) {
+    if (FIG.eye[i]) continue;
+    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], nz = N[i * 3 + 2], r = reg[m.dom[i]], o = i * 4;
+    let belly = 0, dist = 0, tip = 0, kind = 1, dm = 0;
+    if (trunk(r)) {
+      const w = hw[clamp(Math.floor(y / top * NB), 0, NB - 1)] || .1, ax = Math.abs(x) / w, span = sstep(crotch - .02 * sz, crotch + .04 * sz, y) * (1 - sstep(chin + .02 * sz, chin + .06 * sz, y));
+      belly = sstep(.15, .5, nz) * (1 - sstep(.45, .75, ax)) * span;
+      dm = sstep(.2, .55, -nz) * (1 - sstep(.12, .3, ax)) * sstep(crotch, crotch + .08 * sz, y);
+    } else if (/^(arm|hand)/.test(r)) { const s = r.slice(-1), a = arm[s]; dist = clamp((a[0] - y) / (a[0] - a[1]), 0, 1); }
+    else if (/^(leg|foot)/.test(r)) { const s = r.slice(-1); dist = clamp((leg[s] - y) / leg[s], 0, 1); }
+    else if (r === 'head' && L) {
+      // a head made from MakeHuman targets: muzzle and cheeks below the eyes are the light part, the mask is the eye band
+      const hh = L.hh, low = sstep(L.eyeY - .04 * hh, L.eyeY - .22 * hh, y), front = sstep(L.eyeZ - .32 * hh, L.eyeZ - .05 * hh, z);
+      const bridge = (1 - sstep(.08 * hh, .15 * hh, Math.abs(x))) * sstep(an.mouthY - .01 * hh, an.mouthY + .05 * hh, y);
+      const muz = low * front * (1 - bridge), thr = sstep(L.chin + .1 * hh, L.chin - .02 * hh, y) * sstep(-.1, .3, nz); belly = thr >= muz ? thr : -muz;
+      dm = -(1 - sstep(.07 * hh, .15 * hh, Math.abs(y - L.eyeY))) * sstep(L.eyeZ - .35 * hh, L.eyeZ - .1 * hh, z) * (1 - sstep(L.eyeZ + .1 * hh, L.eyeZ + .25 * hh, z));
+      const [w, b] = earW(i);
+      if (w > .3 && an.earBase) { const k = b === 0 ? 'L' : 'R', eb = an.earBase[k]; if (eb && isFinite(earTop[k])) tip = clamp((y - eb.y) / (earTop[k] - eb.y), 0, 1) * sstep(.3, .6, w); }
+      if (an.tip && Math.hypot(x - an.tip[0], y - an.tip[1], z - an.tip[2]) < .07 * hh) kind = 2;
+    }
+    furPack(A, o, belly, dist, tip, kind, dm);
+  }
+  g.attributes.aEye.needsUpdate = true;
+}
+// the sculpted head: muzzle, cheeks and throat; the eye band; the ears from base to tip; the nose leather
+function furAttrsHead(m, geo, hs) {
+  const d = hs.d, n = d.n, Q = hs.Q, E = hs.E, s = hs.s, L = d.L, A = geo.attributes.aEye.array;
+  const earTop = {L: -Infinity, R: -Infinity}, eb = hs.earBase || {};
+  for (let i = 0; i < n; i++) if (d.ear[i] > 128) { const k = Q[i * 3] > 0 ? 'L' : 'R'; earTop[k] = Math.max(earTop[k], Q[i * 3 + 1]); }
+  const tip = [E.x + s * L.tip[0], E.y + s * L.tip[1], E.z + s * L.tip[2] * (hs.kSn || 1)], chinY = E.y + s * L.chin;
+  for (let i = 0; i < n; i++) {
+    const o = i * 4; if (A[o + 3] > .5) continue;  // an eye
+    const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2];
+    const low = sstep(E.y - .02 * s, E.y - .2 * s, y), front = sstep(E.z - .34 * s, E.z - .08 * s, z);
+    const mouthY = E.y + s * L.mouthY, bridge = (1 - sstep(.07 * s, .14 * s, Math.abs(x - E.x))) * sstep(mouthY - .01 * s, mouthY + .05 * s, y);
+    const muz = low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
+    let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
+    let dm = -(1 - sstep(.06 * s, .14 * s, Math.abs(y - E.y))) * sstep(E.z - .38 * s, E.z - .12 * s, z) * (1 - sstep(E.z + .08 * s, E.z + .22 * s, z)), tp = 0, kind = 1;
+    const e = d.ear[i] / 255;
+    if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly *= 1 - e; dm *= 1 - e; }
+    if (Math.hypot(x - tip[0], y - tip[1], z - tip[2]) < .075 * s && z > tip[2] - .06 * s) kind = 2;
+    furPack(A, o, belly, 0, tp, kind, dm);
+  }
+  geo.attributes.aEye.needsUpdate = true;
+}
+// lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
+function furAttrsLoft(g, kind, len = 0) {
+  const n = g.attributes.position.count, ln = g.attributes.aLine.array, A = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) furPack(A, i * 4, len ? sstep(.4, .9, ln[i * 4]) * .6 : 0, 0, len ? 2 + clamp(ln[i * 4 + 2] / len, 0, 1) : 0, kind, len ? sstep(.3, .85, -ln[i * 4]) : 0);
+  g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); return g;
+}
+// the tail's natural carriage for a joint (what a pose without a tail of its own gets)
+function tailRest(m, n) { const t = tailOf(m && m.body); return t && t.rest ? t.rest[+n.slice(4) - 1] : null; }
+// put the tail in its natural carriage (a new species, a new shape)
+function restTail(m) { for (const n of ['tail1', 'tail2', 'tail3']) { const r = tailRest(m, n); if (r) m.joints[n].rotation.set(r[0] * DEG, r[1] * DEG, r[2] * DEG); } }
+
+/* ---------- the panel: Pelaje ---------- */
+const coatSl = {};
+function buildCoatUI() {
+  const box = $('#coatBox'); if (!box) return;
+  $('#coatCols').innerHTML = '';
+  [['0', 'Base'], ['1', 'Claro'], ['2', 'Oscuro'], ['le', 'Nariz y almohadillas']].forEach(([k, label]) => {
+    const l = document.createElement('label'); l.className = 'coatcol'; const inp = document.createElement('input'); inp.type = 'color'; inp.dataset.k = k;
+    inp.oninput = () => editCoat(c => { if (k === 'le') c.le = inp.value; else c.c[+k] = inp.value; }, false);
+    inp.onchange = () => pushHistory();
+    l.append(inp, document.createTextNode(tr(label))); $('#coatCols').append(l);
+  });
+  coatSl.sock = slider($('#coatSockBox'), {id: 'coatSock', label: 'Altura de los calcetines', min: 0, max: 1, step: .01, value: .72, fmt: pctFmt,
+    input: v => editCoat(c => { c.sock = 1 - v * .9; }, false), change: pushHistory});
+  coatSl.tip = slider($('#coatTipBox'), {id: 'coatTip', label: 'Punta de la cola', min: .05, max: 1, step: .01, value: .25, fmt: pctFmt,
+    input: v => editCoat(c => { c.tip = v; }, false), change: pushHistory});
+  syncCoatUI();
+}
+// changes to the coat are the body's own from then on (a preset is only where it starts)
+function editCoat(fn, hist = true) {
+  const c = coatOf(mq.body) || coatOf({...mq.body, coat: undefined}); if (!c) return;
+  const own = {...c, c: c.c.slice(), m: {...c.m}}; fn(own); mq.body.coat = own; applyCoat(mq); syncCoatUI(true); if (hist) pushHistory();
+}
+function syncCoatUI(light) {
+  const box = $('#coatBox'); if (!box) return;
+  const anthro = mq.body.species !== 'humano' && !mq.avatar; box.hidden = !anthro; if (!anthro) return;
+  const c = coatOf(mq.body), sp = mq.body.species;
+  if (!light) {
+    const list = coatPresetsFor(sp).concat(Object.entries(COATS).filter(([, p]) => !p.for.includes(sp) && p.for.includes(headSp(mq.body))));
+    chips($('#coatChips'), [['', 'Sin color'], ...list.map(([k, p]) => [k, p.label])], c ? c.preset || '*' : '', id => {
+      mq.body.coat = id ? {preset: id} : null; applyCoat(mq); syncCoatUI(); pushHistory(); });
+    chips($('#coatMarks'), COAT_MARKS.map(([k, l]) => [k, l]), null, k => editCoat(cc => { const v = cc.m[k] || 0; cc.m[k] = (v + 1) % 3; if (!cc.m[k]) delete cc.m[k]; }));
+  }
+  setPressed($('#coatChips'), c ? (mq.body.coat && mq.body.coat.c ? '' : c.preset) : '');
+  if (c && mq.body.coat && mq.body.coat.c) $('#coatChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  $('#coatEdit').hidden = !c;
+  if (!c) return;
+  $('#coatCols').querySelectorAll('input').forEach(inp => { inp.value = inp.dataset.k === 'le' ? c.le : c.c[+inp.dataset.k]; });
+  $('#coatMarks').querySelectorAll('.chip').forEach(b => {
+    const v = c.m[b.dataset.v] || 0; b.setAttribute('aria-pressed', v ? 'true' : 'false'); b.style.setProperty('--mk', v ? c.c[v] : 'transparent');
+    b.title = v ? tr(v === 1 ? 'Color claro · toca para oscuro' : 'Color oscuro · toca para quitar') : tr('Toca para añadir (claro, oscuro, sin)');
+  });
+  $('#coatSockBox').hidden = !c.m.socks; $('#coatTipBox').hidden = !c.m.tail;
+  if (coatSl.sock) coatSl.sock.set((1 - (c.sock ?? .72)) / .9); if (coatSl.tip) coatSl.tip.set(c.tip ?? .25);
+}
