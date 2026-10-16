@@ -266,7 +266,8 @@ function makeProp(type, pos) {
     g.userData.box = new THREE.Box3(new V3(-.3, 0, -.3), new V3(.3, .6, .3));
     g.userData.ready = loadAsset(ap[1]).then(() => { const pos0 = g.position.clone(), q0 = g.quaternion.clone(), s0 = g.scale.clone(); g.position.set(0, 0, 0); g.quaternion.identity(); g.scale.set(1, 1, 1); g.updateMatrixWorld(true);
       A(g, ap[1], 0, 0, 0, ap[2] || {}); fin(); g.position.copy(pos0); g.quaternion.copy(q0); g.scale.copy(s0); }, err => console.error(err));
-  } else { (PROP_BUILD[type] || PROP_BUILD.cubo)(g); fin(); g.userData.ready = Promise.resolve(); }
+  } else if (type.startsWith('ph:')) g.userData.ready = fillPolyHavenProp(g, type.slice(3)).then(fin);  // a Poly Haven model (30-refs)
+  else { (PROP_BUILD[type] || PROP_BUILD.cubo)(g); fin(); g.userData.ready = Promise.resolve(); }
   return g;
 }
 function addOutlines(root) {

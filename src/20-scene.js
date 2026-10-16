@@ -15,9 +15,9 @@ for (const [k, [label, file, amb]] of Object.entries(PANOS)) SCENES[k] = {label:
 }};
 const panoSphere = new THREE.Mesh(new THREE.SphereGeometry(150, 64, 32), new THREE.MeshBasicMaterial({side: THREE.BackSide, fog: false, depthWrite: false}));
 panoSphere.renderOrder = -10; panoSphere.visible = false; panoSphere.raycast = () => {}; scene.add(panoSphere);
-const PANO = {tex: {}, col: {}};
+const PANO = {tex: {}, col: {}, sun: {}};
 function panoTexture(file) {
-  if (!PANO.tex[file]) PANO.tex[file] = new Promise((res, rej) => new THREE.TextureLoader().load(`envs/hdri/${file}.webp`, t => {
+  if (!PANO.tex[file]) PANO.tex[file] = new Promise((res, rej) => new THREE.TextureLoader().load(/^(https?:|blob:|data:)/.test(file) ? file : `envs/hdri/${file}.webp`, t => {
     // the light's colours: the average of the sky and of the ground in the photo
     const im = t.image, c = document.createElement('canvas'); c.width = 64; c.height = 32; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 64, 32);
     const d = x.getImageData(0, 0, 64, 32).data, avg = (y0, y1) => { const s = [0, 0, 0]; let n = 0; for (let y = y0; y < y1; y++) for (let i = 0; i < 64; i++) { const o = (y * 64 + i) * 4; s[0] += d[o]; s[1] += d[o + 1]; s[2] += d[o + 2]; n++; } return new THREE.Color(s[0] / n / 255, s[1] / n / 255, s[2] / n / 255); };
@@ -26,7 +26,7 @@ function panoTexture(file) {
   }, undefined, rej));
   return PANO.tex[file];
 }
-const panoOf = id => SCENES[id] && SCENES[id].pano;
+const panoOf = id => SCENES[id] && (SCENES[id].pano || SCENES[id].backplate);
 // after applyAmbient: the photo instead of the sky and the fog, and its colours in the fill light
 function panoAmbient() {
   const file = panoOf(state.env);
@@ -34,14 +34,19 @@ function panoAmbient() {
   if (!file) { panoSphere.visible = false; return; }
   sky.visible = false; scene.fog = null;
   const paper = LU.uRender.value > 0;
-  panoSphere.visible = !paper; if (!paper) scene.background = null;
+  const S = SCENES[state.env], flat = !!S.backplate; $('#panoBox') && ($('#panoBox').hidden = flat);  // a flat photo (30-refs) stays behind the scene instead of wrapping it
+  panoSphere.visible = !paper && !flat; if (!paper) scene.background = null;
   panoTexture(file).then(t => {
     if (panoOf(state.env) !== file) return;
-    panoSphere.material.map = t; panoSphere.material.needsUpdate = true;
+    if (flat) { t.encoding = THREE.sRGBEncoding; if (!paper) scene.background = t; } else { panoSphere.material.map = t; panoSphere.material.needsUpdate = true; }
+    if (S.group === 'ref' && PANO.aimed !== state.env) { PANO.aimed = state.env; if (!flat) { PANO.sun[file] = PANO.sun[file] || sunFromImage(t.image); aimSun(PANO.sun[file], state.panoRot); } }
     const c = PANO.col[file]; hemi.color.copy(c.sky).lerp(new THREE.Color(0xffffff), .35); hemi.groundColor.copy(c.ground).multiplyScalar(.8);
   }, e => console.warn('pano', e));
 }
 function sceneTick() {
+  // a flat backdrop covers the canvas without stretching (like background-size: cover)
+  const bg = scene.background; if (bg && bg.isTexture && bg.image && bg.image.width) { const ca = W / Hh, ia = bg.image.width / bg.image.height, k = ca / ia;
+    if (k > 1) { bg.repeat.set(1, 1 / k); bg.offset.set(0, (1 - 1 / k) / 2); } else { bg.repeat.set(k, 1); bg.offset.set((1 - k) / 2, 0); } }
   if (panoSphere.visible) { panoSphere.position.copy(camera.position); panoSphere.rotation.y = (state.panoRot || 0) * DEG; }
 }
 
@@ -93,7 +98,7 @@ function setMulti(on) {
   resize();
 }
 function buildSceneExtrasUI() {
-  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => state.panoRot = v});
+  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }});  // the sun turns with a found panorama
   chips($('#perspChips'), Object.entries(PERSP_SHOTS).map(([k, v]) => [k, v[0]]), null, id => { perspShot(id); setPressed($('#perspChips'), ''); });
   $('#multiBtn').onclick = () => setMulti(!MV.on);
 }

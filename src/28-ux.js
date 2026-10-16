@@ -331,7 +331,7 @@ function paletteIndex() {
     ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Pose inicial', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
     ['Añadir personaje', () => $('#addChar').click()], ['Encuadrar a todos', frameAll, 'F'], ['Animar', () => $('#animBtn').click()], ['Exportar', () => $('#exportBtn').click()],
     ['Abrir en…', () => $('#openIn').click()], ['Boceto', () => $('#sketchBtn').click()], ['Práctica de gesto', () => $('#practiceBtn').click()], ['Cómo se usa', openHelp, '?'],
-    ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar este personaje', () => saveCharacter(mq)], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
+    ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar este personaje', () => saveCharacter(mq)], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
     add('cmd', tr(label), fn, key || '');
   for (const t of tabs) add('tab', tr('Ir a {x}', {x: tabName(t.dataset.tab)}), () => { showTab(t.dataset.tab); setPanel(true); }, '');
   for (const p of POSES) add('pose', p.label, () => withGlide(() => usePreset(p)), p.find || '');

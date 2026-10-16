@@ -163,9 +163,10 @@ const natural = (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true
 async function readBoard(files) {
   const tok = ++BD.token, live = () => tok === BD.token && !$('#sbModal').hidden;
   BD.items = []; BD.clip = null; BD.busy = true; renderBoard();
-  const vid = files.find(f => /^video\//.test(f.type));
+  const vid = files.find(f => /^video\//.test(f.type)), gif = files.length === 1 && await isAnimatedGif(files[0]) ? files[0] : null;
   try {
-    if (vid) { sbMsg(tr('Preparando el detector (solo tarda la primera vez)…')); await poseDetector(); await readVideo(vid, live); }
+    if (gif) { sbMsg(tr('Preparando el detector (solo tarda la primera vez)…')); await poseDetector(); await readGif(gif, live); }
+    else if (vid) { sbMsg(tr('Preparando el detector (solo tarda la primera vez)…')); await poseDetector(); await readVideo(vid, live); }
     else {
       BD.kind = 'board'; const pics = files.filter(f => /^image\//.test(f.type)).sort(natural);
       BD.name = pics.length === 1 ? pics[0].name.replace(/\.[^.]+$/, '') : tr('Storyboard');
@@ -187,6 +188,44 @@ async function readBoard(files) {
   if (!live()) return;
   BD.busy = false; sbProgress(1); buildBoardClip(); renderBoard();
   if (BD.kind === 'video') { BD.trim[0].set(BD.from); BD.trim[1].set(BD.to); }  // now in seconds
+}
+// an animated GIF: its frames composed the way a browser plays them (WebCodecs where it exists, omggif elsewhere: iOS)
+async function gifReader(buf) { if (typeof GifReader === 'undefined') await loadScript('vendor/omggif.js'); return new GifReader(buf); }
+async function isAnimatedGif(file) { if (file.type !== 'image/gif' && !/\.gif$/i.test(file.name)) return false; try { return (await gifReader(new Uint8Array(await file.arrayBuffer()))).numFrames() > 1; } catch (_) { return false; } }
+async function gifFrames(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if ('ImageDecoder' in window) {
+    try {
+      const dec = new ImageDecoder({data: buf, type: 'image/gif'}); await dec.tracks.ready;
+      const n = dec.tracks.selectedTrack.frameCount, out = [];
+      for (let i = 0; i < n; i++) { const {image} = await dec.decode({frameIndex: i}); const c = document.createElement('canvas'); c.width = image.displayWidth; c.height = image.displayHeight; c.getContext('2d').drawImage(image, 0, 0); out.push({cv: c, delay: (image.duration || 1e5) / 1000}); image.close(); }
+      dec.close(); return out;
+    } catch (e) { console.warn('ImageDecoder', e); }
+  }
+  const r = await gifReader(buf), W = r.width, H = r.height, out = [], acc = document.createElement('canvas'); acc.width = W; acc.height = H;
+  const ax = acc.getContext('2d'), fc = document.createElement('canvas'); fc.width = W; fc.height = H; const fx = fc.getContext('2d');
+  for (let i = 0; i < r.numFrames(); i++) {
+    const info = r.frameInfo(i), prev = info.disposal === 3 ? ax.getImageData(0, 0, W, H) : null;
+    const px = new Uint8ClampedArray(W * H * 4); r.decodeAndBlitFrameRGBA(i, px); fx.putImageData(new ImageData(px, W, H), 0, 0); ax.drawImage(fc, 0, 0);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(acc, 0, 0); out.push({cv: c, delay: (info.delay || 10) * 10});
+    if (info.disposal === 2) ax.clearRect(info.x, info.y, info.width, info.height); else if (prev) ax.putImageData(prev, 0, 0);
+  }
+  return out;
+}
+async function readGif(file, live) {
+  BD.kind = 'video'; BD.name = file.name.replace(/\.[^.]+$/, '');
+  const fr = await gifFrames(file), dur = f => Math.max(20, f.delay) / 1000, total = fr.reduce((a, f) => a + dur(f), 0);
+  const fps = Math.min(24, ANIM.fps), n = Math.max(2, Math.min(Math.round(total * fps), 60 * fps)), every = Math.max(1, Math.round(n / 12));
+  const at = t => { let acc = 0; for (const f of fr) { acc += dur(f); if (t < acc) return f; } return fr[fr.length - 1]; };  // the GIF's frame on screen at time t
+  BD.frames = []; BD.fps = fps; BD.from = 0; BD.to = 1; const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    if (!live()) return;
+    const f = at(i / fps); if (!seen.has(f)) seen.set(f, await detectIn(cropOf(f.cv, null, 512), true));
+    const pose = seen.get(f); BD.frames.push({pose});
+    if (i % every === 0) { BD.items.push({cv: cropOf(f.cv, null, 512), pose, status: pose ? 'ok' : 'none', on: true, t: i / fps}); renderBoard(); }
+    sbMsg(tr('Leyendo el GIF: fotograma {i} de {n}…', {i: i + 1, n})); sbProgress((i + 1) / n);
+  }
+  if (!BD.frames.some(f => f.pose)) throw new Error(tr('no se ve a ninguna persona en el GIF'));  // the pose gate: only people moving become animations
 }
 async function readVideo(file, live) {
   BD.kind = 'video'; BD.name = file.name.replace(/\.[^.]+$/, '');

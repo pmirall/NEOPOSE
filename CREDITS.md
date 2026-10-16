@@ -41,7 +41,12 @@ Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/license
 - [meshoptimizer](https://github.com/zeux/meshoptimizer) (decodificador y gltfpack): MIT.
 - [fflate](https://github.com/101arrowz/fflate) (ZIP y compresión): MIT.
 - [gifenc](https://github.com/mattdesl/gifenc) 1.0.3 (GIF animado): MIT (`app/vendor/LICENSE-gifenc.txt`).
+- [NSFWJS](https://github.com/infinitered/nsfwjs) 4.4.0 (filtro de contenido de las referencias, modelo MobileNetV2): MIT (`app/vendor/nsfw/LICENSE-nsfwjs.txt`). TensorFlow.js Layers 4.22: Apache 2.0.
+- [omggif](https://github.com/deanm/omggif) 1.0.10 (lectura de GIF animados donde no hay WebCodecs, como en iOS): MIT (aviso en `app/vendor/omggif.js`).
 - [Electron](https://www.electronjs.org) y [electron-builder](https://www.electron.build): MIT.
 
 ## Fuentes tipográficas (SIL Open Font License 1.1)
 Kalam, Karla y Courier Prime, incluidas en `app/fonts/` con sus licencias `OFL-*.txt`.
+
+## Referencias libres (búsqueda en línea)
+Las búsquedas se hacen desde el dispositivo, sin cuenta ni clave, en [Openverse](https://openverse.org) (imágenes CC y de dominio público de Flickr, Wikimedia, el Smithsonian y otros museos), [Wikimedia Commons](https://commons.wikimedia.org) y la API de [Poly Haven](https://polyhaven.com) (panoramas y modelos CC0; «Powered by Poly Haven»). Solo se muestran licencias que permiten adaptar (CC0, dominio público, CC BY, CC BY-SA, GFDL), con título, autoría, fuente y licencia junto a cada imagen y a lo que se hace con ella.

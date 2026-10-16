@@ -129,7 +129,7 @@ async function usePhoto(file) {
 // one photo: its pose; several pictures, a video or a storyboard sheet: an animation (see 27-board.js)
 async function photoOrBoard(files) {
   if (!files.length) return;
-  if (files.length > 1 || /^video\//.test(files[0].type) || await isStoryboard(files[0])) return openBoard(files);
+  if (files.length > 1 || /^video\//.test(files[0].type) || await isAnimatedGif(files[0]) || await isStoryboard(files[0])) return openBoard(files);
   showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true; usePhoto(files[0]);
 }
 function buildPhotoUI() {

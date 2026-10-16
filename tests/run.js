@@ -689,6 +689,52 @@ const SUITES = {
       await c.close();
     }
   },
+  // free references, with the sources answered from fixtures (no network): the filters, a photo to a pose, a GIF to an
+  // animation, a panorama to a set with the light from its sun
+  async refs(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a), FX = n => fs.readFileSync(path.join(__dirname, 'fixtures', n));
+    const cors = {'access-control-allow-origin': '*'}, json = (route, o) => route.fulfill({status: 200, headers: {...cors, 'content-type': 'application/json'}, body: JSON.stringify(o)});
+    const ov = (id, title) => ({id, title, url: `https://img.example.org/${id}.jpg`, creator: 'Eadweard Muybridge', creator_url: '', license: 'pdm', license_version: '1.0', license_url: 'https://creativecommons.org/publicdomain/mark/1.0/', provider: 'wikimedia', source: 'wikimedia', foreign_landing_url: 'https://commons.wikimedia.org/wiki/File:x.jpg', tags: [], width: 200, height: 400, mature: false});
+    await page.route('https://api.openverse.org/v1/images/?**', r => json(r, /extension=gif|aspect_ratio/.test(r.request().url()) ? {result_count: 0, results: []} : {result_count: 2, results: [ov('man1', 'Man standing and jumping'), ov('bad1', 'Nude study')]}));
+    await page.route('https://api.openverse.org/v1/images/*/thumb/**', r => r.fulfill({status: 200, headers: {...cors, 'content-type': 'image/jpeg'}, body: FX('muybridge-161-05.jpg')}));
+    await page.route('https://commons.wikimedia.org/w/api.php?**', r => { const gif = /filemime%3Aimage%2Fgif|filemime:image\/gif/.test(r.request().url());
+      json(r, {query: {pages: gif ? [{pageid: 77, title: 'File:Jump.gif', imageinfo: [{url: 'https://upload.wikimedia.org/jump.gif', thumburl: 'https://upload.wikimedia.org/320px-jump.gif', width: 200, height: 400, descriptionurl: 'https://commons.wikimedia.org/wiki/File:Jump.gif',
+        metadata: [{name: 'frameCount', value: 4}], extmetadata: {LicenseShortName: {value: 'Public domain'}, Artist: {value: 'Muybridge'}, ObjectName: {value: 'Jumping'}}}]}] : []}}); });
+    await page.route('https://upload.wikimedia.org/**', r => r.fulfill({status: 200, headers: {...cors, 'content-type': 'image/gif'}, body: FX('muybridge-161.gif')}));
+    await page.route('https://api.polyhaven.com/assets?t=hdris', r => json(r, {test_sunrise: {name: 'Test sunrise', tags: ['sunrise', 'field'], categories: ['outdoor'], authors: {'Someone': 'All'}}}));
+    await page.route('https://cdn.polyhaven.com/**', r => r.fulfill({status: 200, headers: {...cors, 'content-type': 'image/jpeg'}, body: FX('pano-sun.jpg')}));
+    // words that are not for all ages never reach a source
+    await A(() => document.querySelector('#refOpenPose').click()); await page.waitForTimeout(300); await page.fill('#refQ', 'naked'); await page.click('#refForm .btn'); await page.waitForTimeout(500);
+    ok(await A(() => !document.querySelector('#refGrid .refcard') && /isn’t available/.test(document.querySelector('#refGrid').textContent)), 'a blocked search is refused before asking any source');
+    await page.fill('#refQ', 'jump'); await page.click('#refForm .btn');
+    await page.waitForFunction(() => document.querySelector('#refGrid .refcard:not(.pending)'), null, {timeout: 120000});
+    const cards = await A(() => [...document.querySelectorAll('#refGrid .refcard')].map(c => c.title));
+    ok(cards.includes('Man standing and jumping') && !cards.some(t => /Nude/.test(t)), `results: what the titles say is not for all ages is left out (${cards.join(', ')})`);
+    ok(await A(() => window.__cdp.refs.REF.res.find(r => r.title === 'Man standing and jumping').checked === true), 'the on-device filter looked at the thumbnail before showing it');
+    const q0 = await A(() => JSON.stringify(window.__cdp.mq.getPose().q));
+    await page.click('#refGrid .refcard[title="Man standing and jumping"]'); await page.waitForTimeout(300);
+    ok(await A(() => /Eadweard Muybridge|Public domain/.test(document.querySelector('#refDet .refcred').textContent)), 'the detail shows author and licence');
+    await page.click('#refDet .refacts .btn.primary');
+    await page.waitForFunction(() => /\S/.test(document.querySelector('#photoCredit').textContent), null, {timeout: 120000}); await page.waitForTimeout(500);
+    ok(await A(q => JSON.stringify(window.__cdp.mq.getPose().q) !== q && document.querySelector('#refModal').hidden, q0), 'a reference becomes the pose of the active character, and its credit stays with it');
+    // a GIF: into the drawings-to-animation window, frame by frame
+    await A(() => window.__cdp.refs.openRefs('anim')); await page.waitForTimeout(300); await page.fill('#refQ', 'jump'); await page.click('#refForm .btn');
+    await page.waitForFunction(() => document.querySelector('#refGrid .refcard:not(.pending)'), null, {timeout: 120000});
+    await page.click('#refGrid .refcard:not(.pending)'); await page.waitForTimeout(300); await page.click('#refDet .refacts .btn.primary');
+    await page.waitForFunction(() => !document.querySelector('#sbModal').hidden && window.__cdp.board.BD.clip && !window.__cdp.board.BD.busy, null, {timeout: 180000}).catch(() => {});
+    const bd = await A(() => ({kind: window.__cdp.board.BD.kind, n: (window.__cdp.board.BD.frames || []).length, poses: (window.__cdp.board.BD.frames || []).filter(f => f.pose).length, clip: !!window.__cdp.board.BD.clip}));
+    ok(bd.kind === 'video' && bd.n >= 4 && bd.poses >= bd.n / 2 && bd.clip, `a GIF is read like a video: ${bd.n} frames, ${bd.poses} with a pose, ready to animate`);
+    await A(() => { document.querySelector('#sbModal').hidden = true; });
+    // a panorama: the set, and the key light from its sun (u = .25, 36° up in the fixture)
+    await A(() => window.__cdp.refs.openRefs('scene')); await page.waitForTimeout(300); await page.fill('#refQ', 'sunrise'); await page.click('#refSrc .chip[data-v="polyhaven"]');
+    await page.waitForFunction(() => document.querySelector('#refGrid .refcard[data-id^="ph:"]:not(.pending)'), null, {timeout: 60000});
+    await page.click('#refGrid .refcard[data-id^="ph:"]'); await page.waitForTimeout(300); await page.click('#refDet .refacts .btn.primary');
+    await page.waitForFunction(() => /^ref_/.test(window.__cdp.state.env) && window.__cdp.panoReady(), null, {timeout: 60000}); await page.waitForTimeout(500);
+    const L = await A(() => window.__cdp.state.light);
+    ok(Math.abs(((L.az + 540) % 360) - 180) < 6 && Math.abs(L.el - 36) < 6, `the key light comes from the panorama's sun (az ${L.az}°, el ${L.el}°)`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

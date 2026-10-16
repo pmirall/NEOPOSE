@@ -183,9 +183,11 @@
           <details class="sec" data-sec="foto">
             <summary><h3>Desde una foto <span>sin conexión</span></h3></summary>
             <div class="row"><button class="btn small" id="photoPick">Elegir foto…</button><button class="btn small" id="photoBoard" title="Storyboard, varias fotos o un vídeo: se convierten en una animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Storyboard o vídeo → animación</button></div>
+            <button class="btn small magic refbtn" id="refOpenPose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Buscar referencias libres</button>
             <input type="file" id="photoFile" accept="image/*,video/*" multiple hidden>
             <div class="photoprev" id="photoPrev" hidden><canvas id="photoCv"></canvas></div>
             <p class="msg" id="photoMsg" role="status"></p>
+            <p class="note" id="photoCredit"></p>
             <label class="check"><input type="checkbox" id="photoRef" checked> Ver la foto sobre el lienzo</label>
             <div id="photoAlphaBox"></div>
             <p class="note">La foto se analiza en este dispositivo (BlazePose de MediaPipe con TensorFlow.js) y no sale de él. Funciona mejor con una persona entera y bien iluminada. También puedes soltar la foto sobre el lienzo.</p>
@@ -369,6 +371,7 @@
           </details>
           <details class="sec" data-sec="lugar" open>
             <summary><h3>Escenario</h3></summary>
+            <button class="btn small magic refbtn" id="refOpenScene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Escenario desde una referencia</button>
             <div id="envChips"></div>
             <p class="lbl">Momento del día</p>
             <div class="chips" id="ambChips"></div>
@@ -612,6 +615,7 @@
         <li><b>Movilidad</b> (Pose → Movilidad y en Animaciones): poses y animaciones con muletas, bastón, andador y silla de ruedas; la ayuda técnica va con el personaje.</li>
         <li><b>Abrir en…</b> (arriba): lleva la imagen como PSD con capas a Krita, Clip Studio, Photoshop… Al exportar una animación, «Fotogramas por capas» da una secuencia por capa.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li>
+        <li><b>Referencias libres</b> (Pose → Desde una foto, Escena → Escenario o la galería de animaciones): busca imágenes, GIF y panoramas con licencia libre. Una foto pasa a pose, un GIF a animación y un panorama a escenario con su luz. La autoría queda a la vista.</li>
         <li><b>Arrastrar al lienzo</b>: lleva una pose a un personaje, un gesto a una mano, un color a una prenda o al pelo, y un objeto o un personaje guardado al punto del suelo donde lo sueltes. Antes de soltar ya ves cómo queda. En pantalla táctil, mantén pulsado o desliza hacia un lado.</li>
         <li><b>Con los dedos</b>: dos dedos a la vez deshacen y tres rehacen; mantén pulsado un personaje o el fondo para ver qué puedes hacer ahí. En el móvil, el panel sube y baja arrastrando su asa.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">
@@ -672,6 +676,17 @@
     <p class="palfoot"><kbd>↑</kbd> <kbd>↓</kbd> elegir · <kbd>Intro</kbd> usar · <kbd>Esc</kbd> cerrar</p>
   </div>
 </div>
+<div class="modal refmodal" id="refModal" hidden>
+  <div class="sheet refsheet" role="dialog" aria-labelledby="refT">
+    <div class="refhead"><h2 id="refT">Referencias libres</h2><div class="chips seg" id="refMode"></div><button class="gx" id="refClose" aria-label="Cerrar">×</button></div>
+    <form id="refForm" class="refform"><input class="search" type="search" id="refQ" placeholder="Busca: correr, bailarina, bosque…" autocomplete="off" aria-label="Buscar referencias"><button class="btn primary">Buscar</button></form>
+    <div class="chips" id="refQuick"></div>
+    <div class="filter"><span>Fuentes</span><div class="chips" id="refSrc"></div></div>
+    <div class="refbody"><div class="refgrid" id="refGrid"></div><aside class="refdet" id="refDet" hidden></aside></div>
+    <p class="msg" id="refMsg" role="status"></p>
+    <p class="note reffoot">Solo imágenes con licencia libre (CC0, dominio público, CC BY y CC BY-SA), con su autoría a la vista. Un filtro de contenido en este dispositivo revisa cada miniatura antes de mostrarla. <span id="refPH" hidden>Panoramas y objetos: Powered by <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> (CC0).</span></p>
+  </div>
+</div>
 <div class="modal" id="openInModal" hidden>
   <div class="sheet openinsheet" role="dialog" aria-labelledby="oiT">
     <h2 id="oiT">Abrir en…</h2>
@@ -722,6 +737,7 @@
   <div class="sheet agsheet" role="dialog" aria-labelledby="agT">
     <div class="aghead">
       <h2 id="agT">Galería de animaciones <span id="agCount" class="note"></span></h2>
+      <button class="btn small magic" id="refOpenAnim">Buscar GIFs libres</button>
       <button class="btn icon" id="agClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="agbody">
