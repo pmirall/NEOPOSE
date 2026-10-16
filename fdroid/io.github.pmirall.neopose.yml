@@ -58,6 +58,11 @@ Builds:
     prebuild: cd ../.. && python3 build.py && python3 tools/android_sync.py
     scandelete:
       - node_modules
+    scanignore:
+      - app/vendor/pose
+      - app/vendor/nsfw
+      - android/app/src/main/assets/public/vendor/pose
+      - android/app/src/main/assets/public/vendor/nsfw
 
 AllowedAPKSigningKeys: 119baa49a503498ecff0de520c273797ec54c6617fc7af0620f0d3fb5416a7f6
 
