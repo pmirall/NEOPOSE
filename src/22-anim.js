@@ -295,7 +295,7 @@ function renderStrip() {
   const add = document.createElement('button'); add.type = 'button'; add.className = 'mvadd'; add.innerHTML = `${MV_ICONS.plus}<span>${tr('Plano')}</span>`; add.title = tr('Plano nuevo a partir de lo que se ve ahora');
   add.onclick = addShot; box.appendChild(add);
   const cur = box.querySelector('.mvshot.on'); if (cur) cur.scrollIntoView({block: 'nearest', inline: 'nearest'});
-  const tot = ANIM.shots.reduce((a, s) => a + s.len, 0); $('#mvTotal').textContent = tr('{n} planos · {s} s', {n: ANIM.shots.length, s: dec(sec(tot))});
+  const tot = ANIM.shots.reduce((a, s) => a + s.len, 0); $('#mvTotal').textContent = trn(ANIM.shots.length, '1 plano · {s} s', '{n} planos · {s} s', {s: dec(sec(tot))});
 }
 const MV_ICONS = {
   dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
@@ -385,9 +385,10 @@ function drawTimeline() {
   if (TL.box) { const b = TL.box; c.fillStyle = css('--blue-wash'); c.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); c.strokeStyle = blue; c.lineWidth = 1; c.setLineDash([4, 3]); c.strokeRect(b.x0 + .5, b.y0 + .5, b.x1 - b.x0, b.y1 - b.y0); c.setLineDash([]); }
   if (s.view) { const v = s.view, bw = w * (v.b - v.a) / (s.len - 1), bx = w * v.a / (s.len - 1); c.fillStyle = soft; c.globalAlpha = .35; c.fillRect(bx, h - 3, bw, 3); c.globalAlpha = 1; }  // where the zoomed view is in the shot
   // readout and the key button
-  const fr = ANIM.playing ? Math.floor(ANIM.t) : ANIM.f, tc = t => { const m = Math.floor(t / 60), ss = t - m * 60; return `${m}:${(ss < 10 ? '0' : '') + ss.toFixed(1)}`; };
-  $('#tlFrame').textContent = TL.frames ? `F ${fr + 1} / ${s.len}` : matchMedia('(max-width: 600px)').matches ? tc(sec(fr)) : `${tc(sec(fr))} / ${tc(sec(s.len - 1))}`;
-  $('#tlFrame').title = tr('Fotograma {f} de {n}', {f: fr + 1, n: s.len});
+  // the time and the shot's length (as the strip shows it), in the language's decimals; a click counts in frames
+  const fr = ANIM.playing ? Math.floor(ANIM.t) : ANIM.f, tc = t => { const m = Math.floor(t / 60), ss = Math.round((t - m * 60) * 10) / 10; return `${m}:${ss < 10 ? '0' : ''}${dec(ss)}`; };
+  $('#tlFrame').textContent = TL.frames ? `F ${fr + 1} / ${s.len}` : matchMedia('(max-width: 600px)').matches ? tc(sec(fr)) : `${tc(sec(fr))} / ${tc(sec(s.len))}`;
+  $('#tlFrame').title = tr('Fotograma {f} de {n}', {f: fr + 1, n: s.len}) + ' · ' + tr(TL.frames ? 'Clic: contar en segundos' : 'Clic: contar en fotogramas');
   $('#tlShot').textContent = `${ANIM.cur + 1}/${ANIM.shots.length} · ${s.name}`;
   const k = hasKey(ANIM.track, ANIM.f), who = ANIM.track === 'cam' ? tr('la cámara') : speaker(ANIM.track);
   $('#tlKey').setAttribute('aria-pressed', String(k)); $('#tlKey').title = tr(k ? 'Quitar la clave de {w} en este fotograma (K)' : 'Guardar una clave de {w} en este fotograma (K)', {w: who});
@@ -399,6 +400,7 @@ function openTimeline(on) {
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();
     chars.forEach(m => { m._prevPose = basePose(m); }); pushHistory();  // undo can take the first keys back off
   } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); }
+  reframeSoon();  // the dock takes the bottom of the canvas (or gives it back)
 }
 
 /* ---------- dialogue lines ---------- */
@@ -468,7 +470,22 @@ function buildAnimUI() {
   { const v = $('#tlVoice'); v.checked = VOICE.on; v.onchange = () => { VOICE.on = v.checked; store.set('cdp.tts', VOICE.on); if (!VOICE.on) voiceStop(); }; }
   $('#tlMotion').onclick = () => { const p = $('#mvMotion'); p.hidden = !p.hidden; $('#tlMotion').setAttribute('aria-expanded', String(!p.hidden)); $('#tlOpts').hidden = true; if (!p.hidden) syncMotionUI(); };
   buildMotionUI();
-  $('#tlMore').onclick = () => { $('#mvMotion').hidden = true; const p = $('#tlOpts'); p.hidden = !p.hidden; $('#tlMore').setAttribute('aria-expanded', String(!p.hidden)); if (!p.hidden) { ANIM.lenEl.set(sec(shot().len)); setPressed($('#tlFps'), String(ANIM.fps)); } };
+  // phones: the row keeps play, the keys and close; the other tools wait in the "…" panel, with their names
+  const ph = document.createElement('div'); ph.className = 'tlphone';
+  for (const id of ['tlScript', 'tlClips', 'tlBoard', 'tlLine', 'tlCamRec', 'tlExport', 'tlMotion', 'tlMin']) {
+    const o = $('#' + id), b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.dataset.for = id;
+    b.innerHTML = o.querySelector('svg').outerHTML + '<span></span>'; b.querySelector('span').textContent = o.getAttribute('aria-label');
+    b.onclick = () => { $('#tlOpts').hidden = true; $('#tlMore').setAttribute('aria-expanded', 'false'); o.click(); }; ph.appendChild(b);
+  }
+  $('#tlOpts').prepend(ph);
+  // on a phone these panels sit over the canvas, with a way to close them at the top
+  for (const [box, btn, title] of [['#tlOpts', '#tlMore', 'Opciones de animación'], ['#mvMotion', '#tlMotion', 'Interpretación']]) {
+    const h = document.createElement('div'); h.className = 'tlphead'; h.innerHTML = '<strong></strong><button type="button" class="gx">×</button>';
+    h.firstChild.textContent = tr(title); h.lastChild.setAttribute('aria-label', tr('Cerrar'));
+    h.lastChild.onclick = () => { $(box).hidden = true; $(btn).setAttribute('aria-expanded', 'false'); }; $(box).prepend(h);
+  }
+  $('#tlMore').onclick = () => { $('#mvMotion').hidden = true; const p = $('#tlOpts'); p.hidden = !p.hidden; $('#tlMore').setAttribute('aria-expanded', String(!p.hidden));
+    if (!p.hidden) { ANIM.lenEl.set(sec(shot().len)); setPressed($('#tlFps'), String(ANIM.fps)); ph.querySelectorAll('[data-for]').forEach(b => { const v = $('#' + b.dataset.for).getAttribute('aria-pressed'); if (v) b.setAttribute('aria-pressed', v); }); } };
   $('#tlSaveFilm').onclick = () => { storeShot(); saveFile(`pelicula-${stamp()}.neopose.json`, new TextEncoder().encode(JSON.stringify({cdp: 1, ...snapshot(), ...sceneExtras(true)})), 'application/json'); };
   $('#tlOpenFilm').onclick = () => $('#tlFilmFile').click();
   $('#tlFilmFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -476,7 +493,7 @@ function buildAnimUI() {
   controls.addEventListener('end', camAutoKey);
   $('#focal').addEventListener('change', camAutoKey);
   addEventListener('keydown', e => {
-    if (!ANIM.open || e.target.matches('input,textarea,[contenteditable]')) return;
+    if (!ANIM.open || e.target.matches('input,textarea,[contenteditable]') || topModal()) return;
     const k = e.key.toLowerCase();
     if (e.key === ' ') { e.preventDefault(); play(!ANIM.playing); }
     else if (k === 'k' && !e.ctrlKey && !e.metaKey) $('#tlKey').click();

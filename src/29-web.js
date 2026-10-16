@@ -34,14 +34,14 @@ function initServiceWorker() {
   navigator.serviceWorker.register('sw.js').then(reg => {
     WEB.reg = reg;
     const offer = w => { if (!w || !navigator.serviceWorker.controller) return;
-      toastAction(tr('Hay una versión nueva de NEOPOSE.'), tr('Actualizar'), () => w.postMessage('skipWaiting')); };
+      toastAction(tr('Hay una versión nueva de NEOPOSE.'), tr('Actualizar'), () => { autosaveNow(true); carryScene(); w.postMessage('skipWaiting'); }); };
     if (reg.waiting) offer(reg.waiting);
     reg.addEventListener('updatefound', () => { const w = reg.installing; w && w.addEventListener('statechange', () => { if (w.state === 'installed') offer(w); }); });
     // installed apps are resumed rather than relaunched: look for a new version when they come back
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
   }).catch(e => console.warn('sw', e));
   let reloading = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; autosaveNow(true); carryScene(); location.reload(); } });
   if (WEB.standalone && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 }
 

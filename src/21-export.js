@@ -339,8 +339,18 @@ function exportKindUI() {
   $('#exBg .chip[data-v=paper]').textContent = tr(k === 'turn' ? 'Papel' : 'Con escenario');
   $('#exSave').textContent = k === 'anim' ? tr('Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
 }
+// the choices of the last export come back next time
+const EX_KEEP = ['kind', 'map', 'views', 'fmt3d', 'animWhat', 'animRange', 'animStep'];
+function saveExportPrefs() { store.set('cdp.export', {...Object.fromEntries(EX_KEEP.map(k => [k, EXK[k]])), bg: ex.bg, size: ex.size}); }
+function loadExportPrefs() {
+  const p = store.get('cdp.export', null); if (!p) return;
+  const ok = {kind: EX_KINDS, map: EX_MAPS, fmt3d: {glb: 1, bvh: 1}, animWhat: EX_ANIM, animRange: {shot: 1, movie: 1}, animStep: {1: 1, 2: 1, 4: 1, keys: 1}, views: {4: 1, 8: 1}};
+  for (const k of EX_KEEP) if (p[k] != null && ok[k][p[k]]) EXK[k] = p[k];
+  if (['paper', 'alpha', 'lines'].includes(p.bg)) ex.bg = p.bg;
+  if ([1, 2, 3, 'a5', 'a4', 'a3'].includes(p.size)) ex.size = p.size;
+}
 function renderExportKind() {
-  exportKindUI();
+  exportKindUI(); saveExportPrefs();
   if (EXK.kind === 'img') return renderExport();
   if (EXK.kind === 'anim') return animExportPreview();
   if (EXK.kind === 'm3d') {
@@ -363,6 +373,7 @@ function saveExport() {
   saveFile(name, bytes, 'image/png');
 }
 function buildExportUI() {
+  loadExportPrefs();
   chips($('#exKind'), Object.entries(EX_KINDS), EXK.kind, v => { EXK.kind = v; setPressed($('#exKind'), v); renderExportKind(); });
   chips($('#exMap'), Object.entries(EX_MAPS), EXK.map, v => { EXK.map = v; setPressed($('#exMap'), v); renderExportKind(); });
   chips($('#exViews'), [['4', '4 vistas'], ['8', '8 vistas']], String(EXK.views), v => { EXK.views = +v; setPressed($('#exViews'), v); renderExportKind(); });
@@ -377,6 +388,7 @@ function buildExportUI() {
   bindChipGroup('#exSize', v => { ex.size = isNaN(+v) ? v : +v; renderExportKind(); });
   $('#exGuides').onchange = renderExportKind; $('#exSketch').onchange = renderExportKind;
   $('#exSave').onclick = saveExport;
+  setPressed($('#exBg'), ex.bg); setPressed($('#exSize'), String(ex.size));
   exportKindUI();
 }
 
@@ -388,7 +400,12 @@ function countFrames() {
 }
 function animExportPreview() {
   exportKindUI();
-  if (!ANIM.shots.length) { $('#exAnimNote').textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.'); $('#exSave').disabled = true; $('#exImgWrap').hidden = true; return; }
+  if (!ANIM.shots.length) {  // nothing to export yet: say so, and the way there
+    const n = $('#exAnimNote'), b = document.createElement('button'); n.textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.') + ' ';
+    b.type = 'button'; b.className = 'btn small'; b.textContent = tr('Abrir Animar'); b.onclick = () => { closeExport(); openTimeline(true); }; n.appendChild(b);
+    $('#exMsg').textContent = ''; $('#exSave').disabled = true; $('#exImgWrap').hidden = $('#exBgRow').hidden = $('#exSizeRow').hidden = true; $('#exOptAnim').classList.add('empty'); return;
+  }
+  $('#exOptAnim').classList.remove('empty');
   $('#exSave').disabled = false;
   const w = EXK.animWhat, list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], secs = list.reduce((a, s) => a + s.len, 0) / ANIM.fps;
   $('#exAnimNote').textContent = w === 'frames' ? tr('{n} fotogramas en PNG, en carpetas por plano dentro de un archivo ZIP.', {n: countFrames()})
@@ -465,7 +482,7 @@ async function storyboardPages() {
     const c = cv.getContext('2d'); c.fillStyle = '#fbf8f1'; c.fillRect(0, 0, cv.width, cv.height);
     c.fillStyle = ink; c.font = `700 34px ${hand}`; c.fillText(tr('Guion gráfico'), gap, 52);
     c.font = `14px ${font}`; c.fillStyle = soft; const tot = ANIM.shots.reduce((a, s) => a + s.len, 0) / ANIM.fps;
-    c.fillText(`NEOPOSE · ${new Date().toLocaleDateString(LANG)} · ${tr('{n} planos · {s} s', {n: ANIM.shots.length, s: dec(tot)})}${pages.length || panels.length > per ? ' · ' + tr('página {n}', {n: pages.length + 1}) : ''}`, gap, 74);
+    c.fillText(`NEOPOSE · ${new Date().toLocaleDateString(LANG)} · ${trn(ANIM.shots.length, '1 plano · {s} s', '{n} planos · {s} s', {s: dec(tot)})}${pages.length || panels.length > per ? ' · ' + tr('página {n}', {n: pages.length + 1}) : ''}`, gap, 74);
     P.forEach(({img, s, i}, k) => {
       const x = gap + (k % cols) * (PW + gap), y = head + Math.floor(k / cols) * (ph + cap + gap);
       c.drawImage(img, x, y, PW, ph); c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(x, y, PW, ph);

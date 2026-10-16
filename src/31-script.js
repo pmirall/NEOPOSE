@@ -484,8 +484,7 @@ async function scriptToFilm(text, o = {}) {
     if (!ANIM.open) { $('#animBtn').click(); await new Promise(r => setTimeout(r, 50)); }
     await loadClipLibrary(); clipRig();
     if (VOICE.on) { msg(tr('Preparando las voces…')); await espeak().catch(() => {}); }
-    SC.last = JSON.stringify({shots: ANIM.shots, cur: ANIM.cur});  // for "Undo"
-    storeShot();
+    storeShot(); SC.last = JSON.stringify({shots: ANIM.shots, cur: ANIM.cur});  // for "Undo" (the shot being edited included)
     const film = [];
     for (const [idx, sc] of P.scenes.entries()) {
       if (!sc.beats.length) continue;
@@ -512,7 +511,7 @@ async function scriptToFilm(text, o = {}) {
     }
     ANIM.shots = film; ANIM.cur = -1; report.shots = film.length;
     await enterShot(0, 0); renderStrip(); renderLabels();
-    msg(tr('Película lista: {s} escenas, {n} planos.', {s: report.scenes, n: report.shots}));
+    msg(filmReady(report));
     return report;
   } finally { SC.busy = false; }
 }
@@ -554,35 +553,50 @@ function makeShot(D, B, u, ui, sample, side, cast) {
 }
 
 /* ---------- the window ---------- */
+const filmReady = r => tr('Película lista: {s}, {n}.', {s: trn(r.scenes, '1 escena', '{n} escenas'), n: trn(r.shots, '1 plano', '{n} planos')});
+// a film with keys of its own is replaced only on a second, deliberate click (and it can still be recovered)
+const filmUsed = () => ANIM.shots.some(s => s.keys.some(K => K.length) || s.cam.length || s.lines.some(l => l.text.trim()));
+function scriptState() {
+  const go = $('#scGo'); $('#scUndo').disabled = !SC.last || SC.busy;
+  if (!SC.busy) go.disabled = !$('#scText').value.trim();
+  go.textContent = tr(SC.armed ? 'Sustituir la película actual' : 'Crear la película');
+}
 function openScript() {
   const m = $('#scModal'); m.hidden = false; const ta = $('#scText');
   if (!ta.value.trim()) ta.value = store.get('cdp.script', '') || '';
+  SC.armed = false; scriptState();
   $('#scVoice').checked = VOICE.on; $('#scSubs').checked = ANIM.subs; setTimeout(() => ta.focus(), 50);
 }
 function closeScript() { $('#scModal').hidden = true; }
 async function runScript() {
-  const text = $('#scText').value; store.set('cdp.script', text); voiceCtx();  // the sound is allowed now, on this click
+  const text = $('#scText').value; if (!text.trim() || SC.busy) return;
+  if (filmUsed() && !SC.armed) { SC.armed = true; scriptState(); $('#scMsg').textContent = tr('Ya hay una película con claves: el guion la sustituirá. Podrás recuperarla con «Recuperar la película anterior».'); return; }
+  SC.armed = false; store.set('cdp.script', text); voiceCtx();  // the sound is allowed now, on this click
   VOICE.on = $('#scVoice').checked; store.set('cdp.tts', VOICE.on); ANIM.subs = $('#scSubs').checked; const sb = $('#tlSubs'); if (sb) sb.checked = ANIM.subs; const tv = $('#tlVoice'); if (tv) tv.checked = VOICE.on;
-  const go = $('#scGo'); go.disabled = true; $('#scWarn').innerHTML = '';
+  const go = $('#scGo'); go.disabled = $('#scUndo').disabled = true; $('#scWarn').innerHTML = '';
   try {
     const r = await scriptToFilm(text, {cams: $('#scCams').checked, online: $('#scOnline').checked});
     if (r) {
       if (r.warn.length) { const ul = $('#scWarn'); for (const w of r.warn.slice(0, 30)) { const li = document.createElement('li'); li.textContent = w; ul.appendChild(li); } }
       else setTimeout(closeScript, 900);
-      toast(tr('Película lista: {s} escenas, {n} planos.', {s: r.scenes, n: r.shots}), {undo: false});
+      toast(filmReady(r), {undo: undoScript});
       setTimeout(() => { if ($('#scModal').hidden || !r.warn.length) play(true); }, 1000);
     }
   } catch (e) { console.warn('script', e); $('#scMsg').textContent = tr('No se ha podido: {e}', {e: e && e.message || e}); }
-  go.disabled = false;
+  go.disabled = false; scriptState();
 }
-async function undoScript() { if (!SC.last) return; const o = JSON.parse(SC.last); ANIM.shots = o.shots; ANIM.cur = -1; await enterShot(Math.max(0, o.cur), 0); renderStrip(); SC.last = null; $('#scMsg').textContent = tr('Película anterior recuperada.'); }
+async function undoScript() {
+  if (!SC.last || SC.busy) return; const o = JSON.parse(SC.last); if (ANIM.playing) play(false);
+  ANIM.shots = o.shots; ANIM.cur = -1; await enterShot(Math.max(0, o.cur), 0); renderStrip();
+  SC.last = null; scriptState(); $('#scMsg').textContent = tr('Película anterior recuperada.'); if ($('#scModal').hidden) toast(tr('Película anterior recuperada.'));
+}
 function buildScriptUI() {
   $('#tlScript').onclick = openScript; $('#scClose').onclick = closeScript; $('#scModal').onclick = e => { if (e.target.id === 'scModal') closeScript(); };
   $('#scGo').onclick = runScript; $('#scUndo').onclick = undoScript;
-  $('#scSample').onclick = () => { $('#scText').value = SC_SAMPLE[LANG.startsWith('es') ? 'es' : 'en']; };
+  $('#scSample').onclick = () => { $('#scText').value = SC_SAMPLE[LANG.startsWith('es') ? 'es' : 'en']; scriptState(); };
+  $('#scText').addEventListener('input', () => { SC.armed = false; scriptState(); });
   $('#scOpen').onclick = () => $('#scFile').click();
-  $('#scFile').onchange = async e => { const f = e.target.files[0]; if (f) $('#scText').value = await f.text(); e.target.value = ''; };
-  $('#scText').addEventListener('drop', async e => { const f = [...e.dataTransfer.files].find(f => /\.(fountain|txt|spmd|md)$/i.test(f.name)); if (f) { e.preventDefault(); $('#scText').value = await f.text(); } });
+  $('#scFile').onchange = async e => { const f = e.target.files[0]; if (f) $('#scText').value = await f.text(); e.target.value = ''; scriptState(); };
+  $('#scText').addEventListener('drop', async e => { const f = [...e.dataTransfer.files].find(f => /\.(fountain|txt|spmd|md)$/i.test(f.name)); if (f) { e.preventDefault(); $('#scText').value = await f.text(); scriptState(); } });
   $('#scText').addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runScript(); } });
-  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#scModal').hidden) closeScript(); });
 }

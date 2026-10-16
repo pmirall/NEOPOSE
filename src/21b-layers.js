@@ -87,20 +87,22 @@ async function savePSD() {
 
 /* ---------- open in… ---------- */
 const nativeShell = () => window.neoposeNative || null;
+// from the top bar the export window is closed: the news goes to a note on the canvas
+const oiMsg = t => { $('#exMsg').textContent = t; if ($('#exportModal').hidden) toast(t); };
 async function openIn() {
   const N = nativeShell(), cap = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   if (N) {
     const apps = await N.apps().catch(() => []);
     return showOpenIn(apps);
   }
-  $('#exMsg').textContent = tr('Preparando las capas…'); await new Promise(r => setTimeout(r, 30));
+  oiMsg(tr('Preparando las capas…')); await new Promise(r => setTimeout(r, 30));
   const bytes = await layeredPSD();
   if (cap) return saveFile(`neopose-${stamp()}.psd`, bytes, 'image/vnd.adobe.photoshop');  // the share sheet: Krita, ibisPaint, Clip Studio…
   // a browser cannot start programs: the picture to the clipboard (paste it anywhere) and the PSD downloaded
   let copied = false;
   try { const flat = renderExportCanvas(), blob = await new Promise(r => flat.toBlob(r, 'image/png')); await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); copied = true; } catch (_) {}
   saveFile(`neopose-${stamp()}.psd`, bytes, 'image/vnd.adobe.photoshop');
-  $('#exMsg').textContent = copied ? tr('Imagen copiada: pégala (Ctrl+V) en tu programa. También se ha descargado el PSD con capas para abrirlo allí.') : tr('Se ha descargado el PSD con capas: ábrelo en tu programa de dibujo.');
+  oiMsg(copied ? tr('Imagen copiada: pégala (Ctrl+V) en tu programa. También se ha descargado el PSD con capas para abrirlo allí.') : tr('Se ha descargado el PSD con capas: ábrelo en tu programa de dibujo.'));
 }
 function showOpenIn(apps) {
   const box = $('#openInList'); box.innerHTML = '';

@@ -187,7 +187,7 @@ function tlFit() { const s = shot(); if (s && s.view) { s.view = null; drawTimel
 /* ---------- the keyboard ---------- */
 function initTimelineKeys() {
   addEventListener('keydown', e => {
-    if (!ANIM.open || e.target.matches('input:not([type=range]):not([type=checkbox]),textarea,select,[contenteditable]') || !$('#scModal').hidden || !$('#palModal').hidden) return;
+    if (!ANIM.open || e.target.matches('input:not([type=range]):not([type=checkbox]),textarea,select,[contenteditable],[role=tab]') || topModal()) return;
     const c = e.code, mod = e.ctrlKey || e.metaKey, done = () => { e.preventDefault(); e.stopImmediatePropagation(); };
     if ((c === 'Delete' || c === 'Backspace') && !mod) { if (tlDelete()) return done(); if (ANIM.sel && ANIM.sel.line !== undefined) return; if (hasKey(ANIM.track, ANIM.f)) { deleteKey(ANIM.track, ANIM.f); pushHistory(); toast(tr('Clave borrada'), {undo: true}); return done(); } return; }
     if (mod && c === 'KeyC' && !e.shiftKey && TL.sel.size) { tlCopy(); return done(); }

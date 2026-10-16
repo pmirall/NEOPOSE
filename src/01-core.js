@@ -149,7 +149,7 @@ const LIGHTS = {
   noir:     {label:'Cine negro', az:-70, el:20, key:1.3, fill:.06, rim:.5,  soft:1.5}
 };
 tLabels(LIGHTS);
-const STYLES = {construccion:'Construcción', contorno:'Solo línea', volumen:'Volumen', lapiz:'Lápiz', valores:'Valores', silueta:'Silueta'};
+const STYLES = {construccion:'Construcción sombreada', contorno:'Solo línea', volumen:'Volumen', lapiz:'Lápiz', valores:'Valores', silueta:'Silueta'};
 const LINE_MODES = {anillos:'Anillos', malla:'Anillos y meridianos', ninguna:'Sin líneas'};
 tValues(STYLES); tValues(LINE_MODES);
 const ENVS = {estudio:'Estudio', habitacion:'Habitación', calle:'Calle', bosque:'Bosque', ring:'Ring', cafeteria:'Cafetería',

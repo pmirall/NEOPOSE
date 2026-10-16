@@ -18,6 +18,8 @@ function tr(s, vars) {
   if (vars) r = r.replace(/\{(\w+)\}/g, (m, k) => k in vars ? vars[k] : m);
   return r;
 }
+// one or many: trn(n, '1 plano', '{n} planos')
+const trn = (n, one, many, vars) => tr(n === 1 ? one : many, {n, ...vars});
 // translate data tables in place: {id: {label}} or {id: 'label'}
 const tLabels = (o, k = 'label') => { for (const v of Object.values(o)) if (v && typeof v[k] === 'string') v[k] = tr(v[k]); return o; };
 const tValues = o => { for (const k in o) if (typeof o[k] === 'string') o[k] = tr(o[k]); return o; };
