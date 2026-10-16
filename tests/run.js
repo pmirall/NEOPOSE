@@ -378,6 +378,30 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // muscles that answer to the pose: shapes made for each body, driven by the joints, on clothes too
+  async muscles(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    const info = await A(() => { const m = window.__cdp.mq, g = m.body3.geometry, D = m.musc && m.musc.D, mx = k => { let x = 0; for (let i = 0; i < D[k].length; i += 3) x = Math.max(x, Math.hypot(D[k][i], D[k][i + 1], D[k][i + 2])); return x; };
+      return {n: D ? D.length : 0, morphs: (g.morphAttributes.position || []).length, normals: (g.morphAttributes.normal || []).length, biceps: D ? mx(0) : 0}; });
+    ok(info.n >= 25 && info.morphs === info.n + 7 && info.normals === info.morphs, `${info.n} muscle shapes after the 7 mouth shapes, with their normals`);
+    ok(info.biceps > .008 && info.biceps < .04, `the biceps rises ${(info.biceps * 100).toFixed(1)} cm at most on this body`);
+    const drive = id => A(id => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === id)); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(Array.from(C.mq.body3.morphTargetInfluences).slice(7))))); }, id);
+    const stand = await drive('pie'), guard = await drive('guardia'), toes = await drive('puntillas');
+    ok(Math.max(...stand) < .2, `standing, the muscles rest (max ${Math.max(...stand).toFixed(2)})`);
+    ok(guard[0] > .8 && guard[1] > .8, `a boxing guard flexes both biceps (${guard[0].toFixed(2)}, ${guard[1].toFixed(2)})`);
+    ok(toes[22] > .8 && toes[23] > .8 && toes[0] < .2, `on tiptoe the calves work and the biceps do not (${toes[22].toFixed(2)}, ${toes[0].toFixed(2)})`);
+    await A(() => { const s = document.querySelector('#b_flex'); s.value = 0; s.dispatchEvent(new Event('input')); });
+    const off = await drive('puntillas');
+    ok(Math.max(...off) === 0, 'the “muscle reaction” slider at 0 switches them off');
+    const amt = await A(() => { const m = window.__cdp.mq, b = {...m.body, flex: 1}; m.musc = null; m.build({...b, muscle: 1, weight: .2}); const a = m.musc.D[0].reduce((x, v) => Math.max(x, Math.abs(v)), 0);
+      m.musc = null; m.build({...b, muscle: 0, weight: .8}); const c = m.musc.D[0].reduce((x, v) => Math.max(x, Math.abs(v)), 0); return [a, c]; });
+    ok(amt[0] > amt[1] * 2, `a muscular body shows more than a soft one (${(amt[0] * 100).toFixed(1)} vs ${(amt[1] * 100).toFixed(1)} cm)`);
+    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
+    const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => (g.geo.morphAttributes.position || []).length));
+    ok(worn.length && worn.every(n => n === info.n), `clothes follow the same shapes (${worn.join(', ')})`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

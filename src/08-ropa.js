@@ -112,6 +112,7 @@ function garmentHullMat(U) {
     uniforms: {...U, uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol}, side: THREE.BackSide,
     vertexShader: `#include <common>
       #include <skinning_pars_vertex>
+      #include <morphtarget_pars_vertex>
       uniform float uW; uniform vec2 uPx; varying vec2 vTUv; attribute float aHide; varying float vGHide;
       void main() {
         vTUv = uv; vGHide = aHide;
@@ -119,6 +120,7 @@ function garmentHullMat(U) {
         #include <skinbase_vertex>
         #include <skinnormal_vertex>
         #include <begin_vertex>
+        #include <morphtarget_vertex>
         #include <skinning_vertex>
         #include <project_vertex>
         vec3 nv = normalize(normalMatrix * objectNormal); vec2 d = nv.xy; float l = length(d); d = l > 1e-4 ? d / l : vec2(0.0);
@@ -193,7 +195,7 @@ function createGarment(m, spec) {
     if (!m.garments.includes(g)) return;
     g.d = d;
     g.mat = style => { if (!g.mats[style]) { g.mats[style] = garmentMat(style, g.U); setLayerOffset(g); } return g.mats[style]; };
-    g.geo = buildGeometry(m, d);
+    g.geo = buildGeometry(m, d); garmentMuscles(m, g);
     const s = new THREE.SkinnedMesh(g.geo, g.mat(m.style)); s.frustumCulled = false; s.castShadow = s.receiveShadow = true; s.userData.garment = g;
     s.customDepthMaterial = hiddenAwareShadow(new THREE.MeshDepthMaterial({depthPacking: THREE.RGBADepthPacking}));
     s.customDistanceMaterial = hiddenAwareShadow(new THREE.MeshDistanceMaterial());

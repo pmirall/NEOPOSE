@@ -18,6 +18,7 @@ function applyQuality(q, save = true) {
     applyAmbient();
   }
   $$('.qualChips').forEach(c => setPressed(c, q));
+  if ((was === 'baja') !== (q === 'baja') && was) for (const m of chars) if (m.musc) computeMuscles(m);  // muscle normals on or off
 }
 function buildQualityUI() {
   $$('.qualChips').forEach(c => chips(c, Object.entries(QUALITY).map(([k, v]) => [k, v[0]]), null, applyQuality));

@@ -25,7 +25,7 @@ const JOINT_PARENT = {waist:'hips', chest:'waist', neck:'chest', head:'neck', sh
 const DOT_JOINTS = ['hips','waist','chest','neck','head','shoulderL','elbowL','wristL','shoulderR','elbowR','wristR','hipL','kneeL','ankleL','hipR','kneeR','ankleR','tail1','tail2','tail3'];
 
 /* ---------- bodies ---------- */
-const BODY_BASE = {gender:1, age:1, muscle:.5, weight:.5, height:.5, ideal:.5, head:1, legs:1, arms:1, torso:1, species:'humano', hair:'', hairCol:'#3a2a20'};
+const BODY_BASE = {flex:1, gender:1, age:1, muscle:.5, weight:.5, height:.5, ideal:.5, head:1, legs:1, arms:1, torso:1, species:'humano', hair:'', hairCol:'#3a2a20'};
 const BODY_PRESETS = {
   hombre:     {label:'Hombre', gender:1},
   mujer:      {label:'Mujer', gender:0},

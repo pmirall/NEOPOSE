@@ -187,13 +187,13 @@ function applyMouths(f) {
   chars.forEach((m, i) => {
     let mo = null; for (const l of s.lines) if (l.c === i) { mo = mouthAt(l, f); if (mo) break; }
     const human = m.body.species === 'humano' && !m.headSwap && !m.avatar, inf = m.body3.morphTargetInfluences;
-    if (inf) for (let k = 0; k < inf.length; k++) { const v = mo && human ? mo.w[k] : 0; inf[k] = v; for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences[k] = v; }
+    if (inf) for (let k = 0; k < muscleBase() && k < inf.length; k++) { const v = mo && human ? mo.w[k] : 0; inf[k] = v; for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences[k] = v; }
     const jaw = mo ? mo.jaw * (human ? .55 : 1.4) * DEG : 0, q = m.joints.jaw.quaternion;  // take the last shape off, put this one on
     if (m._visJaw) q.multiply(new Q().setFromAxisAngle(JAW_AXIS, -m._visJaw));
     if (jaw) q.multiply(new Q().setFromAxisAngle(JAW_AXIS, jaw)); m._visJaw = jaw;
   });
 }
-function clearMouths() { for (const m of chars) { const inf = m.body3.morphTargetInfluences; if (inf) inf.fill(0); for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences.fill(0); if (m._visJaw) m.joints.jaw.quaternion.multiply(new Q().setFromAxisAngle(JAW_AXIS, -m._visJaw)); m._visJaw = 0; } }
+function clearMouths() { for (const m of chars) { const inf = m.body3.morphTargetInfluences, nv = muscleBase(); if (inf) inf.fill(0, 0, nv); for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences.fill(0, 0, nv); if (m._visJaw) m.joints.jaw.quaternion.multiply(new Q().setFromAxisAngle(JAW_AXIS, -m._visJaw)); m._visJaw = 0; } }
 const speaker = i => `${i + 1} · ${chars[i] ? charLabel(chars[i]) : '?'}`;
 function subsAt(f) { const s = shot(); return s ? s.lines.filter(l => f >= l.f && f < l.f + l.len && l.text.trim()) : []; }
 function showSubs(f) {

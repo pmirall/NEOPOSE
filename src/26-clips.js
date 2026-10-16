@@ -61,7 +61,7 @@ function clipPose(m, smp, at, yaw, inPlace, k, keep) {
 /* ---------- retargeting: source joint positions to our poses ---------- */
 // a hidden NEOPOSE figure (default body) on which the poses are worked out; poses are rotations, valid for any body
 function clipRig() {
-  if (!CLIPS.rig) { CLIPS.rig = new Mannequin(makeCharMats(), 'volumen'); CLIPS.rig.build(bodyOf('hombre')); }
+  if (!CLIPS.rig) { CLIPS.rig = new Mannequin(makeCharMats(), 'volumen'); CLIPS.rig.noMuscles = true; CLIPS.rig.build(bodyOf('hombre')); }
   return CLIPS.rig;
 }
 // K: world positions in our frame (x left, y up, z forward): hipL/R kneeL/R ankleL/R toeL/R shL/R elL/R wrL/R tipL/R idxL/R pkyL/R neck head;
@@ -368,7 +368,7 @@ function miniStage(cv, alive, pose) {
   r.setPixelRatio(Math.min(devicePixelRatio, 2));
   const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .05, 60), dl = new THREE.DirectionalLight(0xffffff, .55);
   sc.add(new THREE.HemisphereLight(0xffffff, 0x8a8273, 1.05)); dl.position.set(2, 4, 3); sc.add(dl, new THREE.GridHelper(8, 16, 0xb9ad94, 0xd8cfba));
-  const fig = new Mannequin(makeCharMats(), 'volumen'); fig.build(bodyOf('hombre')); sc.add(fig.group);
+  const fig = new Mannequin(makeCharMats(), 'volumen'); fig.noMuscles = true; fig.build(bodyOf('hombre')); sc.add(fig.group);
   let last = 0, running = false;
   const loop = now => {
     if (!alive()) { running = false; return; }

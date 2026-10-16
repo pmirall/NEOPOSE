@@ -193,6 +193,9 @@ function buildBodyUI() {
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
       input: v => { mq.body[k] = v; mq.bodyPreset = null; setPressed($('#bodyChips'), ''); rebuildActive(); }, change: pushHistory}); };
   mk2($('#bodySliders'), BODY_SLIDERS); mk2($('#styleSliders'), STYLE_SLIDERS);
+  // how much the muscles answer to the pose (no rebuild: it scales the shapes as they are drawn)
+  bodyEls.flex = slider($('#bodySliders'), {id: 'b_flex', label: 'Reacción muscular', min: 0, max: 1.5, step: .05, value: mq.body.flex ?? 1, fmt: pctFmt, input: v => { mq.body.flex = v; }, change: pushHistory});
+  bodyEls.flex.inp.title = tr('Los músculos se hinchan, se acortan y mantienen el volumen al doblar las articulaciones');
 }
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);

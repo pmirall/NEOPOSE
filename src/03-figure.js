@@ -454,6 +454,7 @@ class Mannequin {
     this.computeHandAxes(jp);
     this.buildAccessories(sp, tl);
     attachHeadSwap(this);
+    musclesAfterBuild(this);
     garmentsAfterBuild(this);
     this.posed = true;
     if (prev) { prev.pos[1] += this.rootY - oldRoot; this.setPose(prev); } else this.applyHands();
