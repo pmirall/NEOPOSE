@@ -37,7 +37,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   animTick(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }

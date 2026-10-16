@@ -623,7 +623,7 @@ function dragSun(ray) {
 function serializeProp(g) {
   const h = g.userData.held;
   return {t: g.userData.prop, p: g.position.toArray().map(v => +v.toFixed(4)), q: g.quaternion.toArray().map(v => +v.toFixed(4)), s: g.scale.toArray().map(v => +v.toFixed(3)),
-    h: h ? {c: chars.indexOf(h.m), side: h.side} : null};
+    h: h ? {c: chars.indexOf(h.m), side: h.side} : null, r: g.userData.ride ? {c: chars.indexOf(g.userData.ride.m), kind: g.userData.ride.kind, side: g.userData.ride.side, L: g.userData.ride.L} : null};
 }
 function serializeLight(g) { const l = g.userData.ref.light; return {t: g.userData.light, p: g.position.toArray().map(v => +v.toFixed(3)), c: g.userData.color, i: +l.intensity.toFixed(2), d: +l.distance.toFixed(1)}; }
 function sceneExtras(withCam) {
@@ -646,6 +646,7 @@ function applySceneExtras(o) {
       g.scale.fromArray(d.s);
       if (d.h && chars[d.h.c]) { chars[d.h.c].joints['wrist' + d.h.side].add(g); g.userData.held = {m: chars[d.h.c], side: d.h.side}; }
       g.position.fromArray(d.p); g.quaternion.fromArray(d.q);
+      if (d.r && chars[d.r.c]) g.userData.ride = {m: chars[d.r.c], kind: d.r.kind, side: d.r.side, L: d.r.L};
     }
   }
   if (o.lights && JSON.stringify(extraLights.map(serializeLight)) !== JSON.stringify(o.lights)) {

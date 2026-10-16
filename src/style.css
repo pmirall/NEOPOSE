@@ -656,3 +656,12 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 .mvmotion{width:300px}
 .mvmotion .advh{margin-bottom:6px}
 .mvmotion .chips{margin-bottom:6px}
+/* ---------- saved characters ---------- */
+.chargrid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))}
+.charcard{position:relative}
+.charcard .th.img{aspect-ratio:3/4;object-fit:contain;background:var(--blue-wash)}
+.characts{display:flex;gap:2px;justify-content:center;margin-top:2px}
+.charact{width:24px;height:22px;border:1px solid var(--line);border-radius:5px;background:var(--page);display:grid;place-items:center;padding:0;cursor:pointer;color:var(--ink-soft)}
+.charact:hover{color:var(--ink);border-color:var(--ink)}
+.charact svg{width:13px;height:13px}
+.castpop{position:fixed;z-index:30;width:290px;max-height:60vh;overflow:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px;display:flex;flex-direction:column;gap:8px}

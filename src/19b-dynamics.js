@@ -106,7 +106,7 @@ function buildDynamicsUI() {
   $('#loaChk').onchange = e => { DYN.loa = e.target.checked; DYN.sig = ''; };
   $('#balChk').onchange = e => { DYN.bal = e.target.checked; DYN.sig = ''; };
   exagEl = slider($('#exagBox'), {id: 'dynExag', label: 'Exagerar la pose', min: -.5, max: 1, step: .05, value: 0, fmt: v => (v > 0 ? '+' : '') + Math.round(v * 100) + '%',
-    input: v => { if (!exagBase || exagBase.m !== mq) exagBase = {m: mq, pose: mq.getPose()}; mq.setPose(exaggerate(exagBase.pose, v)); syncJointSliders(); },
+    input: v => { if (!exagBase || exagBase.m !== mq) exagBase = {m: mq, pose: mq.getPose()}; mq.setPose(exaggerate(exagBase.pose, v)); if (!mq.stool) mq.ground(); syncJointSliders(); },  // feet stay on the floor
     change: () => { exagBase = null; exagEl.set(0); refreshPins(mq); pushHistory(); }});
   stretchEl = slider($('#stretchBox'), {id: 'dynStretch', label: 'Estirar y encoger (cartoon)', min: .6, max: 1.4, step: .02, value: 1, fmt: v => Math.round(v * 100) + '%',
     input: v => { mq.body.stretch = v; setFigureStretch(mq, v); }, change: pushHistory});

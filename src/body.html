@@ -216,6 +216,13 @@
         </section>
 
         <section data-tab="cuerpo" hidden>
+          <details class="sec" data-sec="personajes" open>
+            <summary><h3>Mis personajes</h3></summary>
+            <div class="pose-grid chargrid" id="charGrid"></div>
+            <div class="row"><button class="btn small" id="charSave">Guardar este personaje</button><button class="btn small" id="charImport">Importar…</button></div>
+            <input type="file" id="charFile" accept=".json,application/json" multiple hidden>
+            <p class="note">Guarda cuerpo, proporciones, complexión, ropa, pelo, cabeza, expresión, extremidades y avatar. Tócalo para ponerlo en la escena; con los botones de cada tarjeta lo aplicas al personaje activo, lo exportas o lo borras.</p>
+          </details>
           <details class="sec" data-sec="tipo" open>
             <summary><h3>Tipo de cuerpo <span id="bodyWho"></span></h3></summary>
             <div class="chips" id="bodyChips"></div>

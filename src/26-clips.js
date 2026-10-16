@@ -9,7 +9,7 @@
    the film's when it goes into a track. */
 const CLIP_J = ['hips', 'waist', 'chest', 'neck', 'head', 'shoulderL', 'elbowL', 'wristL', 'shoulderR', 'elbowR', 'wristR', 'hipL', 'kneeL', 'ankleL', 'hipR', 'kneeR', 'ankleR'];
 const CLIPS = {lib: null, mine: [], rig: null, thumbs: new Map()};
-const CLIP_CATS = {todas: 'Todas', mov: 'Andar y correr', salto: 'Saltos y acrobacias', combate: 'Combate', gestos: 'Gestos y charla', reposo: 'Reposo y sentado', trabajo: 'Tareas', baile: 'Baile', mias: 'Mis animaciones'};
+const CLIP_CATS = {todas: 'Todas', movilidad: 'Movilidad', mov: 'Andar y correr', salto: 'Saltos y acrobacias', combate: 'Combate', gestos: 'Gestos y charla', reposo: 'Reposo y sentado', trabajo: 'Tareas', baile: 'Baile', mias: 'Mis animaciones'};
 
 /* ---------- clip data ---------- */
 // frames: [{q: {joint: [x,y,z,w]}, p: [x,y,z] (hips, metres from the start, y from the standing height), h: [10 curls 0..1]}]
@@ -210,21 +210,21 @@ const OWN_CLIPS = [
 ];
 function buildOwnClip(def) {
   const m = clipRig(), fps = 24, n = Math.round(def.dur * fps) + 1, Ks = [];
-  for (const [t, p, hands, dy] of def.keys) {
+  for (const [t, p, hands, dy, dz] of def.keys) {
     const pose = typeof p === 'string' ? POSE[p] : {j: p, hands: hands ? {L: hands, R: hands} : undefined};
     m.joints.hips.position.set(0, m.rootY, 0); applyPreset(m, hands === true ? {j: Object.fromEntries(Object.entries(pose.j).map(([k, e]) => [swapSide(k), mirrorRot(e)])), hands: pose.hands} : pose, {ground: false});
     const g = m.getPose(), q = {}; for (const j of CLIP_J) q[j] = g.q[j];
-    Ks.push({t, q, dy: dy || 0, h: [...m.hands.L.c, ...m.hands.R.c]});
+    Ks.push({t, q, dy: dy || 0, dz: dz || 0, h: [...m.hands.L.c, ...m.hands.R.c]});
   }
   const frames = [];
   for (let i = 0; i < n; i++) {
     const t = i / fps; let a = 0; while (a < Ks.length - 2 && Ks[a + 1].t <= t) a++;
     const A = Ks[a], B = Ks[Math.min(a + 1, Ks.length - 1)], u0 = B.t > A.t ? clamp((t - A.t) / (B.t - A.t), 0, 1) : 0, u = u0 * u0 * (3 - 2 * u0), q = {}, qa = new Q(), qb = new Q();
     for (const j of CLIP_J) { qa.fromArray(A.q[j]); qb.fromArray(B.q[j]); q[j] = qa.slerp(qb, u).toArray(); }
-    frames.push({q, p: [0, A.dy + (B.dy - A.dy) * u, 0], h: A.h.map((v, k) => v + (B.h[k] - v) * u)});
+    frames.push({q, p: [0, A.dy + (B.dy - A.dy) * u, A.dz + (B.dz - A.dz) * u0], h: A.h.map((v, k) => v + (B.h[k] - v) * u)});
   }
   if (def.loop) frames.pop();  // the last key repeats the first
-  return {id: def.id, name: tr(def.name), cat: def.cat, src: 'neopose', fps, loop: !!def.loop, frames, len: (def.loop ? frames.length : n - 1) / fps};
+  return {id: def.id, name: tr(def.name), cat: def.cat, src: 'neopose', fps, loop: !!def.loop, frames, len: (def.loop ? frames.length : n - 1) / fps, kit: def.kit};
 }
 
 /* ---------- the library: own clips, Quaternius (bundled), yours (this browser) ---------- */
@@ -236,7 +236,7 @@ const clipDB = {
 };
 async function loadClipLibrary() {
   if (CLIPS.lib) return CLIPS.lib;
-  const own = OWN_CLIPS.map(buildOwnClip);
+  const own = [...OWN_CLIPS, ...ACCESS_CLIPS].map(buildOwnClip);
   let ual = [];
   try {
     const txt = await (await fetch('anims/ual.txt')).text(), buf = await gunzip(Uint8Array.from(atob(txt.trim()), c => c.charCodeAt(0)).buffer);
@@ -257,6 +257,9 @@ function insertClip(c, ci, f0, o = {}) {
   const speed = o.speed || 1, loops = Math.max(1, o.loops || 1), len = c.len / speed, n = Math.max(2, Math.round(len * loops * ANIM.fps) + 1);
   if (f0 + n > s.len) { setShotLen(f0 + n); toast(tr('El plano se alarga a {s} s para que quepa la animación.', {s: dec(sec(s.len))})); }
   // a clip is made facing +Z: turned to where the character faces now
+  // a clip with a mobility aid brings it (in a wheelchair, the whole clip sits on its seat)
+  let seatOff = 0;
+  if (c.kit) { if (c.kit === 'silla') { const keep = m.getPose(); m.setPose(clipPose(m, c.frames[0], new V3().fromArray(keep.pos), facingOf(keep.q), true, m.rootY / clipRig().rootY, keep.q)); accessKit(m, c.kit); seatOff = m.joints.hips.position.y - m.rootY; m.joints.hips.position.y = keep.pos[1]; } else accessKit(m, c.kit); }
   const p0 = m.getPose(), at = new V3().fromArray(p0.pos), yaw = facingOf(p0.q), k = m.rootY / clipRig().rootY;
   const last = c.frames[c.frames.length - 1].p, first = c.frames[0].p, span = c.len / Math.max(1e-6, (c.frames.length - 1) / c.fps), stride = new V3(last[0] - first[0], 0, last[2] - first[2]).multiplyScalar(span);
   const K = s.keys[ci].filter(x => x.f < f0 || x.f > f0 + n - 1);
@@ -264,7 +267,7 @@ function insertClip(c, ci, f0, o = {}) {
     const tt = i / ANIM.fps * speed, loop = Math.min(loops - 1, Math.floor(tt / c.len + 1e-6)), t = tt - loop * c.len;
     const smp = sampleClip(c, Math.min(t, c.len)), base = at.clone();
     if (!o.inPlace && loop) base.add(stride.clone().multiplyScalar(loop * k).applyQuaternion(new Q().setFromAxisAngle(new V3(0, 1, 0), yaw)));
-    const pose = clipPose(m, smp, base, yaw, o.inPlace, k, p0.q);
+    const pose = clipPose(m, smp, base, yaw, o.inPlace, k, p0.q); pose.pos[1] += seatOff;
     K.push(i ? {f: f0 + i, pose, lin: i < n - 1} : {f: f0, pose, lin: true, clip: c.name});
   }
   K.sort((a, b) => a.f - b.f); s.keys[ci] = K;

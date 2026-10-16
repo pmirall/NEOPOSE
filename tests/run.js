@@ -472,6 +472,65 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // the principles of animation as sliders, motion trails, and dynamics for still drawings
+  async motion(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    await A(() => { const C = window.__cdp, s = C.ANIM.shots[0], m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'pie')); const a = m.getPose(); C.usePreset(C.POSES.find(p => p.id === 'victoria')); const b = m.getPose(); s.keys[0] = [{f: 0, pose: a}, {f: 12, pose: b}, {f: 36, pose: b}]; });
+    const wrist = preset => A(preset => { const C = window.__cdp, m = C.mq, s = C.ANIM.shots[0]; s.motion = {}; if (preset) document.querySelector(`#mvmPresets .chip[data-v="${preset}"]`).click();
+      const ys = []; for (let f = 0; f <= 24; f++) { m.setPose(C.motionPoseAt(0, f)); m.group.updateMatrixWorld(true); ys.push(m.joints.wristL.getWorldPosition(new THREE.Vector3()).y); } return ys; }, preset);
+    const plain = await wrist(null), cartoon = await wrist('cartoon'), natural = await wrist('natural');
+    ok(Math.max(...cartoon.slice(6, 13)) > cartoon[20] + .005, `overshoot: the cartoon arm goes past its pose and settles (${Math.max(...cartoon.slice(6, 13)).toFixed(2)} → ${cartoon[20].toFixed(2)} m)`);
+    ok(natural[6] < plain[6] - .05, `drag and easing: the natural arm arrives later (${natural[6].toFixed(2)} vs ${plain[6].toFixed(2)} m at frame 6)`);
+    const stepped = await A(() => { const C = window.__cdp, s = C.ANIM.shots[0]; s.motion = {0: {step: 2}}; return JSON.stringify(C.motionPoseAt(0, 5).q) === JSON.stringify(C.motionPoseAt(0, 4).q); });
+    ok(stepped, 'on twos: frame 5 holds frame 4');
+    await page.click('#tlMotion'); await A(() => { document.querySelector('#mvmTrails').click(); window.__cdp.setFrameAnim(3); });
+    await page.waitForTimeout(300);
+    ok(await A(() => { const T = window.__cdp.TRAIL; return T.group && T.group.visible && T.group.children.length >= 10; }), 'motion trails show the arcs of the head, hands and feet');
+    await page.click('#tlClose'); await page.waitForTimeout(200);
+    // a still pose: line of action, balance, in-betweens from the ghost
+    await A(() => { document.querySelector('[data-sec=dinamismo]').open = true; document.querySelector('[data-sec=ayudas]').open = true; const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); document.querySelector('#ghostBtn').click(); C.usePreset(C.POSES.find(p => p.id === 'correr')); });
+    await page.click('#loaChk'); await page.click('#balChk'); await page.click('#inbChips .chip:nth-child(3)'); await page.waitForTimeout(700);
+    const dyn = await A(() => { const D = window.__cdp.DYN, b = window.__cdp.balanceOf(window.__cdp.mq); return {loa: !!(D.loaObj && D.loaObj.visible), bal: !!(D.balObj && D.balObj.visible), inb: D.inbMeshes.length, inside: b.inside}; });
+    ok(dyn.loa && dyn.bal && dyn.inb === 2, `line of action, balance and two in-betweens from the ghost (${JSON.stringify(dyn)})`);
+    const still = await A(() => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); return new Promise(r => requestAnimationFrame(() => r(C.balanceOf(C.mq).inside))); });
+    ok(still && !dyn.inside, 'standing is balanced; running on one foot is not');
+    const ex = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'correr')); const k0 = new THREE.Quaternion().fromArray(m.getPose().q.kneeR).angleTo(new THREE.Quaternion());
+      const s = document.querySelector('#dynExag'); s.value = .5; s.dispatchEvent(new Event('input')); s.dispatchEvent(new Event('change')); return [k0, new THREE.Quaternion().fromArray(m.getPose().q.kneeR).angleTo(new THREE.Quaternion())]; });
+    ok(ex[1] > ex[0] * 1.2, `“exaggerate” bends the knee further (${(ex[0] * 57.3).toFixed(0)}° → ${(ex[1] * 57.3).toFixed(0)}°)`);
+    await A(() => { const s = document.querySelector('#dynStretch'); s.value = 1.3; s.dispatchEvent(new Event('input')); });
+    const st = await A(() => { const g = window.__cdp.mq.group, b = window.__cdp.mq.box(6); return {sy: g.scale.y, sx: g.scale.x, y0: b.min.y}; });
+    ok(Math.abs(st.sy - 1.3) < .01 && st.sx < 1 && Math.abs(st.y0) < .02, `squash and stretch keeps the volume and the feet on the floor (${st.sx.toFixed(2)} × ${st.sy.toFixed(2)})`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // saved characters, and poses and animations with mobility aids
+  async people(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(3500);
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
+    await A(() => document.querySelector('#buildGrid .pose[data-id="robusta"]').click()); await page.waitForTimeout(400);
+    page.once('dialog', d => d.accept('Marta'));
+    await page.click('#charSave'); await page.waitForTimeout(2500);
+    const saved = await A(() => window.__cdp.SAVED_CHARS().map(c => ({n: c.name, o: c.outfit.length, b: c.body.build, t: !!c.thumb})));
+    ok(saved.length === 1 && saved[0].n === 'Marta' && saved[0].o > 0 && saved[0].b === 'robusta' && saved[0].t, `a character is saved with build, clothes and a portrait (${JSON.stringify(saved)})`);
+    await page.click('#cast .chip.add'); await page.click('#castPop .charcard'); await page.waitForTimeout(3500);
+    const placed = await A(() => window.__cdp.chars.map(m => [m.body.name, (m.outfit || []).length, m.body.build]));
+    ok(placed.length === 2 && placed[1][0] === 'Marta' && placed[1][1] === placed[0][1] && placed[1][2] === 'robusta', 'the cast\'s “+” puts a saved character in the scene, dressed');
+    const rt = await A(async () => { const C = window.__cdp, c = C.SAVED_CHARS()[0], {thumb, ...d} = c; await C.importCharacters([new File([JSON.stringify({neopose: 'character', ...d, name: 'Marta 2'})], 'marta.neopose-personaje.json')]); return C.SAVED_CHARS().map(x => x.name); });
+    ok(rt.includes('Marta 2'), 'a character file can be imported');
+    // mobility: crutches in the hands with their tips on the floor, sitting in a wheelchair, pushing it along
+    const cr = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'muletas_pie')); C.accessTick(); return C.props.filter(p => p.userData.ride).map(p => ({t: p.userData.prop, y: p.position.y})); });
+    ok(cr.length === 2 && cr.every(c => c.t === 'muleta' && c.y < .05), `standing on crutches: two crutches, tips on the floor (${cr.map(c => c.y.toFixed(3))})`);
+    const ch = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'silla_reposo')); C.accessTick(); const g = C.props.find(p => p.userData.ride); return {t: g && g.userData.prop, hy: m.joints.hips.position.y, n: C.props.filter(p => p.userData.ride).length}; });
+    ok(ch.t === 'sillaRuedas' && ch.n === 1 && ch.hy > .5 && ch.hy < .7, `in a wheelchair: the crutches go, the chair comes, seated on it (pelvis ${ch.hy.toFixed(2)} m)`);
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    const push = await A(async () => { const C = window.__cdp, K = C.clips; await K.loadClipLibrary(); const c = K.allClips().find(x => x.id === 'acc-silla'); C.ANIM.shots[0].keys[C.chars.indexOf(C.mq)] = []; K.insertClip(c, C.chars.indexOf(C.mq), 0, {loops: 2});
+      const g = C.props.find(p => p.userData.ride && p.userData.prop === 'sillaRuedas'); C.setFrameAnim(0); C.accessTick(); const z0 = g.position.z; C.setFrameAnim(24); C.accessTick(); return {dz: g.position.z - z0, hy: C.mq.joints.hips.position.y}; });
+    ok(push.dz > .5 && push.hy > .5 && push.hy < .7, `pushing the wheelchair: chair and person travel together (${push.dz.toFixed(2)} m), still seated`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

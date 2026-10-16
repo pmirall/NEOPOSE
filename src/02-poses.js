@@ -20,7 +20,8 @@ const SIT = sym({hipL:[-90,0,7], kneeL:[92], ankleL:[-2]});
 const both = s => s + ' ' + Object.values(I18N).map(D => D[s] || '').join(' ');
 const CAT_WORDS = {pie: 'de pie parado erguido standing stand upright', mov: 'movimiento moverse dinámico movement motion moving dynamic',
   accion: 'acción pelea lucha combate action fight fighting combat', suelo: 'suelo sentado sentarse tumbado floor ground sit sitting lying',
-  deporte: 'deporte baile gimnasio yoga sport dance gym exercise', grupo: 'grupo pareja group couple'};
+  deporte: 'deporte baile gimnasio yoga sport dance gym exercise', grupo: 'grupo pareja group couple',
+  movilidad: 'movilidad muletas silla de ruedas bastón andador discapacidad mobility crutches wheelchair cane walker disability'};
 const P = (id, label, cat, j, extra = {}) => ({id, label: tr(label), find: both(label) + ' ' + CAT_WORDS[cat], cat, j, ...extra});
 const POSES = [
   // De pie
@@ -177,7 +178,7 @@ const POSES = [
     {lift:.06, hands:{L:'relajada', R:'relajada'}, ik: [{e:'footR', t:'kneeL', o:[-.05,-.02,.02]}]})
 ];
 const POSE = Object.fromEntries(POSES.map(p => [p.id, p]));
-const POSE_CATS = tValues({todas:'Todas', pie:'De pie', mov:'Movimiento', accion:'Acción', suelo:'Sentado y suelo', deporte:'Deporte y baile'});
+const POSE_CATS = tValues({todas:'Todas', pie:'De pie', mov:'Movimiento', accion:'Acción', suelo:'Sentado y suelo', deporte:'Deporte y baile', movilidad:'Movilidad'});
 
 /* ---------- group poses ----------
    chars: [{p: pose id, x, z, yaw (deg)}]; ik: [{c, e, tc, t, o}] → hand of char c to joint t of char tc (offset in tc's frame),

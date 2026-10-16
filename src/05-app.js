@@ -53,6 +53,7 @@ function ensureCount(n) {
   while (chars.length > n) removeChar(chars.length - 1);
 }
 const charLabel = m => {
+  if (m.body.name) return m.body.name;  // saved characters keep their name
   const base = m.bodyPreset ? BODY_PRESETS[m.bodyPreset].label : tr('Personalizado');
   return m.body.species !== 'humano' ? `${base} · ${SPECIES[m.body.species].label}` : base;
 };
@@ -65,7 +66,7 @@ function renderCast() {
   });
   if (chars.length < MAX_CHARS) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip add'; b.textContent = tr('+ Personaje');
-    b.onclick = () => { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); buildPoseGrid(); } }; bar.appendChild(b);
+    b.onclick = () => castAddMenu(b); bar.appendChild(b);
   }
   const list = $('#castList'); list.innerHTML = '';
   const c2 = bar.cloneNode(true); c2.className = 'chips';
@@ -82,6 +83,7 @@ function usePreset(p) {
   mq.joints.hips.position.set(pos.x, mq.rootY, pos.z);
   applyPreset(mq, p, {yaw});
   mq.joints.hips.position.x = pos.x; mq.joints.hips.position.z = pos.z;
+  if (typeof accessKit === 'function' && (p.kit || props.some(g => g.userData.ride && g.userData.ride.m === mq))) accessKit(mq, p.kit);  // crutches, stick, frame or wheelchair
   state.posePreset = p.id; $('#stoolChk').checked = mq.stool;
   markPose(); syncAll(); offerBlend(prev); pushHistory();
 }

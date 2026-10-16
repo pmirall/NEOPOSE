@@ -3,7 +3,7 @@
 import json, os
 H = os.path.dirname(os.path.abspath(__file__))
 rd = lambda p: open(os.path.join(H, p), encoding='utf-8').read()
-MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '21-export', '22-anim', '22b-motion', '23-photo', '24-perf', '25-share', '26-clips', '27-board', '07-start']
+MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '20c-characters', '20d-access', '21-export', '22-anim', '22b-motion', '23-photo', '24-perf', '25-share', '26-clips', '27-board', '07-start']
 I18D = os.path.join(H, 'src', 'i18n')
 I18N = {f[:-5]: json.load(open(os.path.join(I18D, f), encoding='utf-8')) for f in sorted(os.listdir(I18D)) if f.endswith('.json') and f != 'es.json'}
 GD = os.path.join(I18D, 'garments')
