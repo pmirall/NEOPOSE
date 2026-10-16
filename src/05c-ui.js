@@ -203,6 +203,7 @@ function syncBodyUI() {
   $('#headsOut').textContent = dec(mq.heads);
   if (typeof syncAdvancedUI === 'function') { syncAdvancedUI(); renderBuilds(); }
   if (typeof syncLimbsUI === 'function') syncLimbsUI();
+  if (typeof syncDynamicsUI === 'function') syncDynamicsUI();
 }
 const STYLE_NOTE = {
   construccion: 'Sombreado en tres tonos con anillos que rodean cada volumen: lo más útil para entender la forma.',

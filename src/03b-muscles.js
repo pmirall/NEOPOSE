@@ -72,7 +72,8 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
 #ifdef USE_SKINNING
   mat4 boneMatX = getBoneMatrix( skinIndex.x ); mat4 boneMatY = getBoneMatrix( skinIndex.y ); mat4 boneMatZ = getBoneMatrix( skinIndex.z ); mat4 boneMatW = getBoneMatrix( skinIndex.w );
   vec4 dqr0, dqd0, dqr1, dqd1, dqr2, dqd2, dqr3, dqd3; float dqs0, dqs1, dqs2, dqs3;
-  m2dq( boneMatX, dqr0, dqd0, dqs0 ); m2dq( boneMatY, dqr1, dqd1, dqs1 ); m2dq( boneMatZ, dqr2, dqd2, dqs2 ); m2dq( boneMatW, dqr3, dqd3, dqs3 );
+  // each bone's move in the mesh's own space (where a squash or stretch of the whole figure cancels out and the move is rigid)
+  m2dq( bindMatrixInverse * boneMatX * bindMatrix, dqr0, dqd0, dqs0 ); m2dq( bindMatrixInverse * boneMatY * bindMatrix, dqr1, dqd1, dqs1 ); m2dq( bindMatrixInverse * boneMatZ * bindMatrix, dqr2, dqd2, dqs2 ); m2dq( bindMatrixInverse * boneMatW * bindMatrix, dqr3, dqd3, dqs3 );
   if ( dot( dqr0, dqr1 ) < 0.0 ) { dqr1 = - dqr1; dqd1 = - dqd1; } if ( dot( dqr0, dqr2 ) < 0.0 ) { dqr2 = - dqr2; dqd2 = - dqd2; } if ( dot( dqr0, dqr3 ) < 0.0 ) { dqr3 = - dqr3; dqd3 = - dqd3; }
   vec4 dqR = dqr0 * skinWeight.x + dqr1 * skinWeight.y + dqr2 * skinWeight.z + dqr3 * skinWeight.w;
   vec4 dqD = dqd0 * skinWeight.x + dqd1 * skinWeight.y + dqd2 * skinWeight.z + dqd3 * skinWeight.w;
@@ -88,7 +89,7 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   objectNormal += muscNorm;
   mat4 skinMatrix = mat4( 0.0 ); skinMatrix += skinWeight.x * boneMatX; skinMatrix += skinWeight.y * boneMatY; skinMatrix += skinWeight.z * boneMatZ; skinMatrix += skinWeight.w * boneMatW;
   skinMatrix = bindMatrixInverse * skinMatrix * bindMatrix;
-  vec3 nLB = vec4( skinMatrix * vec4( objectNormal, 0.0 ) ).xyz, nDQ = mat3( bindMatrixInverse ) * qrot( dqR, mat3( bindMatrix ) * objectNormal );
+  vec3 nLB = vec4( skinMatrix * vec4( objectNormal, 0.0 ) ).xyz, nDQ = qrot( dqR, objectNormal );
   objectNormal = mix( nLB, nDQ, DQ_MIX );
   #ifdef USE_TANGENT
     objectTangent = vec4( skinMatrix * vec4( objectTangent, 0.0 ) ).xyz;
@@ -100,7 +101,7 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   transformed += muscDisp;
   vec4 skinVertex = bindMatrix * vec4( transformed, 1.0 );
   vec4 skinned = vec4( 0.0 ); skinned += boneMatX * skinVertex * skinWeight.x; skinned += boneMatY * skinVertex * skinWeight.y; skinned += boneMatZ * skinVertex * skinWeight.z; skinned += boneMatW * skinVertex * skinWeight.w;
-  vec3 pDQ = ( bindMatrixInverse * vec4( qrot( dqR, skinVertex.xyz * dqS ) + dqT, 1.0 ) ).xyz;
+  vec3 pDQ = qrot( dqR, transformed * dqS ) + dqT;
   transformed = mix( ( bindMatrixInverse * skinned ).xyz, pDQ, DQ_MIX );
 #endif
 `;
@@ -108,16 +109,17 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   const upd = THREE.Skeleton.prototype.update;
   THREE.Skeleton.prototype.update = function () { upd.call(this); this._ver = (this._ver || 0) + 1; };
   const mat = new THREE.Matrix4(), q = new Q(), r = new Q(), v = new V3();
-  function boneDQ(sk) {
-    if (sk._dqVer === sk._ver && sk._dq) return sk._dq;
-    const e = sk.boneMatrices, n = e.length / 16, out = sk._dq && sk._dq.length === n * 9 ? sk._dq : new Float64Array(n * 9);
+  const L = new THREE.Matrix4(), Bm = new THREE.Matrix4();
+  function boneDQ(mesh) {  // per mesh: each bone's move in the mesh's own space, as in the shader
+    const sk = mesh.skeleton; if (mesh._dqVer === sk._ver && mesh._dq) return mesh._dq;
+    const E = sk.boneMatrices, n = E.length / 16, out = mesh._dq && mesh._dq.length === n * 9 ? mesh._dq : new Float64Array(n * 9);
     for (let b = 0; b < n; b++) {
-      const o = b * 16, sc = Math.hypot(e[o], e[o + 1], e[o + 2]) || 1;
+      L.multiplyMatrices(mesh.bindMatrixInverse, Bm.fromArray(E, b * 16)).multiply(mesh.bindMatrix); const e = L.elements, o = 0, sc = Math.hypot(e[o], e[o + 1], e[o + 2]) || 1;
       mat.set(e[o] / sc, e[o + 4] / sc, e[o + 8] / sc, 0, e[o + 1] / sc, e[o + 5] / sc, e[o + 9] / sc, 0, e[o + 2] / sc, e[o + 6] / sc, e[o + 10] / sc, 0, 0, 0, 0, 1);
       q.setFromRotationMatrix(mat).normalize(); const tx = e[o + 12], ty = e[o + 13], tz = e[o + 14];
       out.set([q.x, q.y, q.z, q.w, .5 * (tx * q.w + ty * q.z - tz * q.y), .5 * (-tx * q.z + ty * q.w + tz * q.x), .5 * (tx * q.y - ty * q.x + tz * q.w), .5 * (-tx * q.x - ty * q.y - tz * q.z), sc], b * 9);
     }
-    sk._dq = out; sk._dqVer = sk._ver; return out;
+    mesh._dq = out; mesh._dqVer = sk._ver; return out;
   }
   THREE.SkinnedMesh.prototype.boneTransform = function (index, target) {
     const sk = this.skeleton, g = this.geometry, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, M = sk.boneMatrices;
@@ -132,8 +134,7 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
         target.z += a[0] * f(0, 2) + a[1] * f(2, 0) + a[2] * f(3, 2) + a[3] * f(5, 0);
       }
     }
-    target.applyMatrix4(this.bindMatrix);
-    const D = boneDQ(sk), w = [SW.getX(index), SW.getY(index), SW.getZ(index), SW.getW(index)], b = [SI.getX(index), SI.getY(index), SI.getZ(index), SI.getW(index)];
+    const D = boneDQ(this), w = [SW.getX(index), SW.getY(index), SW.getZ(index), SW.getW(index)], b = [SI.getX(index), SI.getY(index), SI.getZ(index), SI.getW(index)];
     let rx = 0, ry = 0, rz = 0, rw = 0, dx = 0, dy = 0, dz = 0, dw = 0, sc = 0, ws = 0; const b0 = b[0] * 9;
     for (let k = 0; k < 4; k++) {
       if (!w[k]) continue; const o = b[k] * 9, s = (D[o] * D[b0] + D[o + 1] * D[b0 + 1] + D[o + 2] * D[b0 + 2] + D[o + 3] * D[b0 + 3]) < 0 ? -w[k] : w[k];
@@ -142,7 +143,7 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
     const L = Math.hypot(rx, ry, rz, rw) || 1; rx /= L; ry /= L; rz /= L; rw /= L; dx /= L; dy /= L; dz /= L; dw /= L; sc = ws ? sc / ws : 1;
     const tx = 2 * (rw * dx - dw * rx + (ry * dz - rz * dy)), ty = 2 * (rw * dy - dw * ry + (rz * dx - rx * dz)), tz = 2 * (rw * dz - dw * rz + (rx * dy - ry * dx));
     v.copy(target).multiplyScalar(sc).applyQuaternion(r.set(rx, ry, rz, rw));
-    target.set(v.x + tx, v.y + ty, v.z + tz).applyMatrix4(this.bindMatrixInverse);
+    target.set(v.x + tx, v.y + ty, v.z + tz);
     return target;
   };
 })();

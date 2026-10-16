@@ -412,7 +412,7 @@ function selfClip(m) {
 
 /* ---------- ghost: freeze the current pose to compare ---------- */
 let ghostMesh = null;
-function clearGhost() { if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; } }
+function clearGhost() { if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geometry.dispose(); ghostMesh = null; } ghostPose = null; }
 function makeGhost() {
   clearGhost();
   const m = mq.body3, p = m.geometry.attributes.position, arr = new Float32Array(p.count * 3), v = new V3();
@@ -420,7 +420,7 @@ function makeGhost() {
   for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); m.boneTransform(i, v); v.applyMatrix4(m.matrixWorld); arr[i * 3] = v.x; arr[i * 3 + 1] = v.y; arr[i * 3 + 2] = v.z; }
   const g = new THREE.BufferGeometry(); g.setIndex(m.geometry.index); g.setAttribute('position', new THREE.BufferAttribute(arr, 3)); g.computeVertexNormals();
   ghostMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: 0x2b5a9e, transparent: true, opacity: .22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4}));
-  ghostMesh.renderOrder = 5; scene.add(ghostMesh);
+  ghostMesh.renderOrder = 5; scene.add(ghostMesh); rememberGhost();
 }
 
 /* ---------- gaze ---------- */

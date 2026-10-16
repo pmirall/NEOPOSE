@@ -36,7 +36,7 @@ function around(K, f) {
   let i = 0; while (K[i + 1].f < f) i++;
   const t = (f - K[i].f) / (K[i + 1].f - K[i].f); return [K[i], K[i + 1], K[i].lin ? t : ease(t)];  // keys from a gallery clip: straight on, frame to frame
 }
-function poseAt(ci, f) { const s = shot(), r = s && s.keys[ci] && around(s.keys[ci], f); return r ? (r[2] ? mixPose(r[0].pose, r[1].pose, r[2]) : r[0].pose) : null; }
+function poseAt(ci, f) { return motionPoseAt(ci, f); }  // in-betweens with the character's way of moving (22b-motion)
 function camAt(f) {
   const r = around(shot().cam, f); if (!r) return null; const [a, b, t] = r, L = (x, y) => x.map((v, i) => v + (y[i] - v) * t);
   return {p: L(a.c.p, b.c.p), t: L(a.c.t, b.c.t), f: a.c.f + (b.c.f - a.c.f) * t, r: a.c.r + (b.c.r - a.c.r) * t};
@@ -44,7 +44,7 @@ function camAt(f) {
 // everything at frame f: poses, camera, mouths, subtitles
 function applyFrame(f) {
   const s = shot(); if (!s) return; padKeys(s);
-  chars.forEach((m, i) => { const p = poseAt(i, f); if (p) m.setPose(p); });
+  chars.forEach((m, i) => { const p = poseAt(i, f); if (p) m.setPose(p); applySquash(m, i, f); });
   const c = camAt(f); if (c) applyCam(c);
   applyMouths(f); showSubs(f);
 }
@@ -309,7 +309,7 @@ function renderLabels() {
       b.innerHTML = `${MV_ICONS.talk}<span>${tr('Diálogo')}</span>`; b.title = tr('Guion: toca para añadir una línea'); b.onclick = () => addLine();
     } else {
       const sw = document.createElement('i'); sw.style.background = MV_COLS[ln % 4]; const t = document.createElement('span'); t.textContent = speaker(ln);
-      b.append(sw, t); b.title = t.textContent; b.onclick = () => { ANIM.track = ln; if (chars[ln] && chars[ln] !== mq) setActive(ln); renderLabels(); drawTimeline(); updateOnion(); };
+      b.append(sw, t); b.title = t.textContent; b.onclick = () => { ANIM.track = ln; if (chars[ln] && chars[ln] !== mq) setActive(ln); renderLabels(); drawTimeline(); updateOnion(); syncMotionUI(); };
     }
     if (ANIM.track === ln) b.classList.add('on');
     box.appendChild(b);
@@ -318,7 +318,7 @@ function renderLabels() {
 function toggleCamRec() { ANIM.camRec = !ANIM.camRec; if (ANIM.camRec) { ANIM.track = 'cam'; toast(tr('Mueve la cámara: cada encuadre se guarda en este fotograma.')); } $('#tlCamRec').setAttribute('aria-pressed', String(ANIM.camRec)); renderLabels(); drawTimeline(); }
 let labelSig = '';
 function drawTimeline() {
-  const cv = $('#tlTrack'), s = shot(); if (!cv || !ANIM.open || !s) return;
+  const cv = $('#tlTrack'), s = shot(); updateTrails(); if (!cv || !ANIM.open || !s) return;
   const sig = lanes().map(l => typeof l === 'number' ? speaker(l) : l).join('|') + '#' + ANIM.track + ANIM.camRec; if (sig !== labelSig) { labelSig = sig; renderLabels(); }
   const L = lanes(), H = RULER + L.length * LANE() + 4; if (cv.style.height !== H + 'px') { cv.style.height = H + 'px'; $('#tlLabels').style.height = H + 'px'; }
   const pr = Math.min(devicePixelRatio, 2), w = cv.clientWidth, h = H;
@@ -380,7 +380,7 @@ function openTimeline(on) {
     if (!ANIM.shots.length) { ANIM.shots.push(newShot()); ANIM.cur = 0; ANIM.camBase = camState(); chars.forEach(m => { m._prevPose = m.getPose(); }); }
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();
     chars.forEach(m => { m._prevPose = basePose(m); }); pushHistory();  // undo can take the first keys back off
-  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); }
+  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); }
 }
 
 /* ---------- dialogue lines ---------- */
@@ -468,7 +468,9 @@ function buildAnimUI() {
   ANIM.lenEl = slider($('#tlLenBox'), {id: 'tlLen', label: 'Duración de este plano', min: .5, max: 30, step: .5, value: 4, fmt: v => dec(v) + ' s', input: v => setShotLen(v * ANIM.fps)});
   const chk = (id, key, after) => { const el = $(id); el.checked = ANIM[key]; el.onchange = () => { ANIM[key] = el.checked; after && after(); }; };
   chk('#tlAuto', 'auto'); chk('#tlOnion', 'onion', updateOnion); chk('#tlEase', 'ease', () => setFrame(ANIM.f)); chk('#tlLoop', 'loop'); chk('#tlAll', 'all'); chk('#tlSubs', 'subs', () => showSubs(ANIM.f));
-  $('#tlMore').onclick = () => { const p = $('#tlOpts'); p.hidden = !p.hidden; $('#tlMore').setAttribute('aria-expanded', String(!p.hidden)); if (!p.hidden) { ANIM.lenEl.set(sec(shot().len)); setPressed($('#tlFps'), String(ANIM.fps)); } };
+  $('#tlMotion').onclick = () => { const p = $('#mvMotion'); p.hidden = !p.hidden; $('#tlMotion').setAttribute('aria-expanded', String(!p.hidden)); $('#tlOpts').hidden = true; if (!p.hidden) syncMotionUI(); };
+  buildMotionUI();
+  $('#tlMore').onclick = () => { $('#mvMotion').hidden = true; const p = $('#tlOpts'); p.hidden = !p.hidden; $('#tlMore').setAttribute('aria-expanded', String(!p.hidden)); if (!p.hidden) { ANIM.lenEl.set(sec(shot().len)); setPressed($('#tlFps'), String(ANIM.fps)); } };
   $('#tlSaveFilm').onclick = () => { storeShot(); saveFile(`pelicula-${stamp()}.neopose.json`, new TextEncoder().encode(JSON.stringify({cdp: 1, ...snapshot(), ...sceneExtras(true)})), 'application/json'); };
   $('#tlOpenFilm').onclick = () => $('#tlFilmFile').click();
   $('#tlFilmFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;

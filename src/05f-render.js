@@ -37,7 +37,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); muscleTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   animTick(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
@@ -54,7 +54,7 @@ function renderExport() {
 function renderExportCanvas(subsFrame) {
   const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines;
   const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value};
-  const hidden = [...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];
+  const hidden = [...(typeof TRAIL !== 'undefined' && TRAIL.group ? [TRAIL.group] : []), ...(typeof DYN !== 'undefined' ? [DYN.loaObj, DYN.balObj, ...DYN.inbMeshes].filter(Boolean) : []), ...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];
   const hv = hidden.map(h => h.visible);
   tc.visible = false; hidden.forEach(h => h.visible = false);
   const panoV = panoSphere.visible;

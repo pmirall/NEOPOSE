@@ -81,6 +81,7 @@
             <button class="btn icon" id="tlBoard" title="De dibujos o vídeo a animación: suelta un storyboard, fotos o un vídeo" aria-label="De dibujos o vídeo a animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg></button>
             <button class="btn tlclips" id="tlClips" title="Galería de animaciones: andar, correr, saltar, luchar… o importa las tuyas" aria-label="Galería de animaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg><span>Animaciones</span></button>
             <button class="btn icon" id="tlExport" title="Exportar la animación" aria-label="Exportar la animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
+            <button class="btn icon" id="tlMotion" aria-expanded="false" title="Interpretación: suavidad, anticipación, rebote, arrastre, arcos, estirar y encoger, exageración y ritmo" aria-label="Interpretación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17c3 0 4-10 7-10s3 10 6 10 3-6 5-6"/><circle cx="3" cy="17" r="1.2" fill="currentColor"/></svg></button>
             <button class="btn icon" id="tlMore" aria-expanded="false" title="Opciones de animación" aria-label="Opciones de animación"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
             <button class="btn icon" id="tlMin" aria-expanded="true" title="Plegar o desplegar" aria-label="Plegar o desplegar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
             <button class="btn icon" id="tlClose" title="Cerrar la línea de tiempo" aria-label="Cerrar la línea de tiempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
@@ -89,6 +90,7 @@
             <div class="tllabels" id="tlLabels"></div>
             <canvas id="tlTrack" aria-label="Pistas de la animación"></canvas>
           </div>
+          <div class="tlopts mvmotion" id="mvMotion" hidden></div>
           <div class="tlopts" id="tlOpts" hidden>
             <div class="filter"><span>Fotogramas por segundo</span><div class="chips seg" id="tlFps"></div></div>
             <div id="tlLenBox"></div>
@@ -189,6 +191,17 @@
             <div class="chips" id="pinChips"></div>
             <p class="note">Lo clavado no se mueve mientras posas el resto: arrastra la pelvis o gira la espalda y la mano o el pie se quedan donde estaban.</p>
             <label class="check"><input type="checkbox" id="stoolChk"> Taburete bajo la pelvis</label>
+          </details>
+          <details class="sec" data-sec="dinamismo">
+            <summary><h3>Dinamismo <span>para dibujar</span></h3></summary>
+            <label class="check"><input type="checkbox" id="loaChk"> Línea de acción</label>
+            <label class="check"><input type="checkbox" id="balChk"> Equilibrio (centro de gravedad)</label>
+            <div id="exagBox"></div>
+            <div id="stretchBox"></div>
+            <p class="lbl">Intermedios desde el fantasma</p>
+            <div class="chips seg" id="inbChips"></div>
+            <div class="chips" id="spacingChips"></div>
+            <p class="note">Fija un fantasma en Ayudas de posado, cambia la pose y aparecen los dibujos intermedios con el espaciado elegido. El equilibrio se pone rojo si el centro de gravedad cae fuera de los pies.</p>
           </details>
           <details class="sec" data-sec="lib" open>
             <summary><h3>Biblioteca <span id="poseCount"></span></h3></summary>
