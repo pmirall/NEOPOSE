@@ -73,7 +73,7 @@ function renderCast() {
   [...c2.children].forEach((b, i) => b.onclick = bar.children[i].onclick);
   list.appendChild(c2);
   $('#bodyWho').textContent = tr('personaje {n}', {n: active + 1});
-  $('#delChar').disabled = chars.length <= 1;
+  $('#delChar').disabled = chars.length <= 1; $('#delChar').textContent = tr('Quitar a {x}', {x: charLabel(mq)});
 }
 
 /* ---------- applying poses to the cast ---------- */
@@ -243,15 +243,57 @@ function setView(az, el) {
   camera.position.copy(p); controls.update();
 }
 function castBox(step = 10) { const b = new THREE.Box3(); for (const m of chars) b.union(m.box(step)); return b; }
-function frameAll() {
+// what covers the top and the bottom of the canvas (the cast chips and IK/FK, the hint): the cast is framed in the rest
+function framePads() {
+  const vr = vp.getBoundingClientRect(); let top = 14, bot = 12;
+  for (const el of [$('#cast'), $('.modebar')]) { const r = el && el.getBoundingClientRect(); if (r && r.height) top = Math.max(top, r.bottom - vr.top + 10); }
+  const h = $('#hint'); if (h && h.offsetParent && !h.classList.contains('quiet') && !document.body.classList.contains('anim')) bot = Math.max(bot, vr.bottom - h.getBoundingClientRect().top + 8);
+  return {top, bot, H: camera.view && camera.view.enabled ? camera.view.fullHeight : vr.height};
+}
+function frameView() {
   const box = castBox(), c = box.getCenter(new V3()), size = box.getSize(new V3());
-  const dir = camera.position.clone().sub(controls.target).normalize();
-  // fit the bounding sphere in whichever field of view is narrower (portrait screens)
-  const r = size.length() * .5, vf = camera.fov * DEG, hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
-  const d = r / Math.sin(Math.min(vf, hf) / 2) * .92;
-  controls.target.copy(c); camera.position.copy(c).addScaledVector(dir, d);
-  if (camera.position.y < .06) camera.position.y = .06;
-  controls.update();
+  const dir = camera.position.clone().sub(controls.target).normalize(), {top, bot, H} = framePads(), tf = Math.tan(camera.fov * DEG / 2);
+  // fit the bounding sphere in whichever field of view is narrower (portrait screens), inside the uncovered band
+  const free = clamp((H - top - bot) / H, .4, 1), r = size.length() * .5, vf = 2 * Math.atan(tf * free), hf = 2 * Math.atan(tf * camera.aspect);
+  const d = r / Math.sin(Math.min(vf, hf) / 2) * 1.04;
+  // the band's middle sits lower than the canvas centre when the top is more covered: aim a little above the cast
+  const up = new V3(0, 1, 0).addScaledVector(dir, -dir.y), t = c.clone();
+  if (up.lengthSq() > .01) t.addScaledVector(up.normalize(), (top - bot) / H * d * tf);
+  const p = t.clone().addScaledVector(dir, d); if (p.y < .06) p.y = .06;
+  return {p, t};
+}
+// smooth: the camera travels there (a third of a second) instead of jumping
+const CAMG = {go: null};
+function frameAll(smooth) {
+  const {p, t} = frameView();
+  if (smooth === true && !matchMedia('(prefers-reduced-motion: reduce)').matches) { CAMG.go = {p0: camera.position.clone(), t0: controls.target.clone(), p, t, s: performance.now()}; return; }
+  CAMG.go = null; controls.target.copy(t); camera.position.copy(p); controls.update(); viewOK = true;
+}
+function camGlideTick() {
+  const g = CAMG.go; if (!g) return;
+  const k = Math.min(1, (performance.now() - g.s) / 340), e = 1 - Math.pow(1 - k, 3);
+  controls.target.lerpVectors(g.t0, g.t, e); camera.position.lerpVectors(g.p0, g.p, e);
+  if (k >= 1) { CAMG.go = null; viewOK = true; }
+}
+// is the whole cast inside the uncovered part of the canvas?
+function castInView() {
+  const {top, bot} = framePads(), r = canvas.getBoundingClientRect(), vr = vp.getBoundingClientRect(), b = castBox(), H = camera.view && camera.view.enabled ? camera.view.fullHeight : r.height;
+  for (let i = 0; i < 8; i++) {
+    const v = new V3(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).project(camera);
+    const x = (v.x + 1) / 2 * r.width, y = (1 - v.y) / 2 * r.height + r.top - vr.top;
+    if (v.z > 1 || x < 2 || x > r.width - 2 || y < top - 6 || y > Math.min(H, r.height) - bot + 6) return false;
+  }
+  return true;
+}
+/* when the cast grows, a body changes (a wolf's ears, a taller build) or the film dock opens, the framing is checked
+   once things have settled: if everyone was in view before and someone no longer is, the camera makes room. A camera
+   the user has moved in close (viewOK false) is left alone. */
+let viewOK = true, reframeT = [];
+controls.addEventListener('start', () => { CAMG.go = null; });
+controls.addEventListener('end', () => { viewOK = castInView(); });
+function reframeSoon() {
+  if (!viewOK) return; reframeT.forEach(clearTimeout);
+  reframeT = [400, 1600].map(ms => setTimeout(() => { if (viewOK && !practice.active && !ANIM.playing && !castInView()) frameAll(true); }, ms));
 }
 function setFocal(mm, dolly) {
   const old = state.focal;

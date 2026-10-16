@@ -74,10 +74,14 @@ function aimParent(m, jn, target) {
 function setIK(on) {
   state.ik = on; store.set('cdp.ik', on);
   $$('#ikMode .chip').forEach(c => c.setAttribute('aria-pressed', String((c.dataset.v === 'ik') === on)));
-  if (!toastKeep) $('#hint').innerHTML = on ? HINT_IK : HINT_FK;
+  if (toastKeep !== null) toastKeep = on ? HINT_IK : HINT_FK; else $('#hint').innerHTML = on ? HINT_IK : HINT_FK;  // under a note: once it goes
 }
-const HINT_IK = tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla');
-const HINT_FK = tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro');
+// one wording from the start, "tap" for fingers and "click" for a mouse
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const HINT_IK = TOUCH ? tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla')
+  : tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · haz clic en una pieza o un punto para girarla');
+const HINT_FK = TOUCH ? tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro')
+  : tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · haz clic en una para girarla con el aro');
 function endDrag() {
   if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');
   if (drag && drag.id !== 'fk' && drag.id !== 'sun') tourEvent(drag.id === 'hips' ? 'hips' : 'ik');
@@ -123,16 +127,20 @@ tc.addEventListener('objectChange', () => {
 });
 tc.addEventListener('mouseUp', () => { if (state.sel) pushHistory(); });
 addEventListener('keydown', e => {
-  if (e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select')) return;
+  if (e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select') || topModal()) return;
   const k = e.key.toLowerCase();
   if (sk.on && (e.ctrlKey || e.metaKey) && (k === 'z' || k === 'y')) { e.preventDefault(); (k === 'y' || e.shiftKey ? $('#skRedo') : $('#skUndo')).click(); }
-  else if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); withGlide(undo); }
-  else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); withGlide(redo); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); if (withGlide(undo)) toast(tr('Deshecho')); }
+  else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); if (withGlide(redo)) toast(tr('Rehecho')); }
   else if (k === 'delete' || k === 'backspace') { if (state.sel && state.sel.kind !== 'joint') { e.preventDefault(); deleteSel(); } }
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
-  else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
+  // the windows close themselves on Esc (see initModals); here: the tour, the practice, the sketch, the selection
+  else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (practice.active) stopPractice(); else if (sk.on) setSketch(false); else select(null); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'e' && !e.shiftKey && !practice.active) { e.preventDefault(); openExport(); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { turnTo(tabs[+k - 1].dataset.tab); setPanel(true); }
+  else if (k === 'b' && !practice.active) setSketch(true);
+  else if (k === 'a' && !practice.active) $('#animBtn').click();
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
   else if (e.key === '?') openHelp();
 });

@@ -5,8 +5,10 @@ function toast(msg, o = {}) {
   const done = () => { clearTimeout(toastT); if (toastKeep !== null) h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); };
   h.textContent = tr(msg); h.classList.remove('toast'); void h.offsetWidth; h.classList.add('toast'); clearTimeout(toastT);
   // a reversible change says so, with the way back right there (instead of asking first)
-  if (o.undo) { const b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = tr('Deshacer'); b.onclick = () => { withGlide(undo); done(); }; h.append(' ', b); }
-  toastT = setTimeout(done, o.undo ? 6000 : 5000);
+  // o.undo: true (the history) or a function of its own; o.act: [label, function] for any other way out
+  const act = o.act || (o.undo ? ['Deshacer', typeof o.undo === 'function' ? o.undo : () => withGlide(undo)] : null);
+  if (act) { const b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = tr(act[0]); b.onclick = () => { act[1](); done(); }; h.append(' ', b); }
+  toastT = setTimeout(done, o.ms || (act ? 6000 : 5000));
 }
 /* anthro compatibility: what cannot be worn by this character, and why */
 function garmentBlock(m, it) {
@@ -169,7 +171,7 @@ function buildClothesUI() {
   $('#outfitRandom').onclick = async () => { setPressed($('#outfitChips'), ''); wearOutfit(mq, await randomOutfit()); renderGarmentList(); renderLibrary(); pushHistory(); };
   $('#outfitAll').onclick = () => { for (const m of chars) if (m !== mq) wearOutfit(m, mq.outfit); pushHistory(); };
   $('#outfitEachRandom').onclick = async () => { for (const m of chars) wearOutfit(m, await randomOutfit()); renderGarmentList(); renderLibrary(); pushHistory(); };
-  $('#outfitNone').onclick = () => { setPressed($('#outfitChips'), ''); wearOutfit(mq, []); renderGarmentList(); renderLibrary(); pushHistory(); };
+  $('#outfitNone').onclick = () => { if (!mq.outfit.length) return; setPressed($('#outfitChips'), ''); wearOutfit(mq, []); renderGarmentList(); renderLibrary(); pushHistory(); toast(tr('Ropa quitada'), {undo: true}); };
   const s = $('#ropaSearch'); s.oninput = () => { ropaSearch = s.value; renderLibrary(); };
   renderGarmentList(); renderLibrary();
 }

@@ -18,4 +18,11 @@ function turnTo(id) {
 }
 function buildPaper() {
   tabs.forEach(t => t.onclick = () => { turnTo(t.dataset.tab); setPanel(true); });
+  // a tab list as screen readers and keyboards expect it: one stop for Tab, the arrows (and Home, End) to move along
+  for (const t of tabs) { const sec = $(`.page section[data-tab="${t.dataset.tab}"]`); t.id = 'tab-' + t.dataset.tab; sec.id = 'panel-' + t.dataset.tab; sec.setAttribute('role', 'tabpanel'); sec.setAttribute('aria-labelledby', t.id); t.setAttribute('aria-controls', sec.id); }
+  $('.tabs').addEventListener('keydown', e => {
+    const i = tabs.indexOf(document.activeElement); if (i < 0) return;
+    const j = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1}[e.key]; if (j === undefined) return;
+    e.preventDefault(); const t = tabs[(j + tabs.length) % tabs.length]; t.focus(); turnTo(t.dataset.tab); setPanel(true);
+  });
 }

@@ -1,3 +1,4 @@
+<script>try{var t=JSON.parse(localStorage.getItem("cdp.theme"));if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <div class="app">
   <header class="top">
     <h1 class="brand">NEOPOSE
@@ -13,11 +14,12 @@
       <button class="btn" id="practiceBtn" title="Práctica de gesto con temporizador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span>Práctica</span></button>
       <button class="btn" id="animBtn" aria-pressed="false" title="Animar: línea de tiempo con claves"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/></svg><span>Animar</span></button>
       <button class="btn magic" id="openIn" title="Abrir en tu programa de dibujo, con capas (Krita, Clip Studio, Photoshop…)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg><span>Abrir en…</span></button>
-      <button class="btn primary" id="exportBtn" title="Exportar PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg><span>Exportar</span></button>
+      <button class="btn primary" id="exportBtn" title="Exportar imagen, 3D o animación (Ctrl+E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg><span>Exportar</span></button>
     </div>
     <div class="tb">
       <button class="btn icon" id="findBtn" title="Buscar poses, ropa, escenarios y acciones (Ctrl+K)" aria-label="Buscar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
       <button class="btn icon" id="panelBtn" title="Ocultar el panel (\)" aria-label="Ocultar o mostrar el panel" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+      <button class="btn icon" id="setBtn" title="Ajustes: idioma, tema, calidad gráfica" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       <button class="btn icon" id="helpBtn" title="Ayuda y atajos (?)" aria-label="Ayuda y atajos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
     </div>
   </header>
@@ -73,9 +75,9 @@
           </div>
           <div class="tlrow">
             <button class="btn icon" id="tlPlay" aria-pressed="false" title="Reproducir (espacio)" aria-label="Reproducir"></button>
-            <button class="btn icon" id="tlPrev" title="Clave anterior (Mayús+,)" aria-label="Clave anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg></button>
+            <button class="btn icon" id="tlPrev" title="Clave anterior (↓)" aria-label="Clave anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg></button>
             <button class="btn icon tlkey" id="tlKey" aria-pressed="false" aria-label="Clave"><svg viewBox="0 0 24 24"><path d="M12 3 21 12 12 21 3 12z" fill="currentColor"/></svg></button>
-            <button class="btn icon" id="tlNext" title="Clave siguiente (Mayús+.)" aria-label="Clave siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+            <button class="btn icon" id="tlNext" title="Clave siguiente (↑)" aria-label="Clave siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
             <div class="tltime"><output id="tlFrame">0:00.0 / 0:04.0</output><span id="tlShot"></span></div>
             <div class="tlgap"></div>
             <span class="mvtotal" id="mvTotal"></span>
@@ -131,7 +133,7 @@
           <button class="btn small primary" id="ihInstall" hidden>Instalar</button>
           <button class="gx" id="ihClose" aria-label="Cerrar">×</button>
         </div>
-        <div class="hint" id="hint" role="status">Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza para girarla</div>
+        <div class="hint" id="hint" role="status">Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla</div>
       </div>
     </div>
 
@@ -153,8 +155,8 @@
           </div>
           <details class="sec" data-sec="lib" open>
             <summary><h3>Biblioteca <span id="poseCount"></span></h3></summary>
-            <input class="search" id="poseSearch" type="search" placeholder="Buscar pose… (salto, sentado, abrazo)" autocomplete="off" aria-label="Buscar pose">
-            <div class="filter"><span>Personas</span><div class="chips seg" id="castChips" aria-label="Número de personajes"></div></div>
+            <div class="librow"><input class="search" id="poseSearch" type="search" placeholder="Buscar pose… (salto, sentado, abrazo)" autocomplete="off" aria-label="Buscar pose">
+            <div class="filter"><span>Personas</span><div class="chips seg" id="castChips" aria-label="Número de personajes"></div></div></div>
             <div class="chips" id="catChips" style="margin-bottom:8px"></div>
             <div class="blendbar" id="blendBar" hidden></div>
             <div class="pose-grid" id="poseGrid"></div>
@@ -367,7 +369,6 @@
             <summary><h3>Reparto <span>hasta 4</span></h3></summary>
             <div id="castList"></div>
             <div class="row" style="margin-top:8px">
-              <button class="btn small" id="addChar">Añadir</button>
               <button class="btn small" id="delChar">Quitar el activo</button>
               <button class="btn small" id="rowChars">Colocar en fila</button>
             </div>
@@ -477,7 +478,7 @@
     <div class="preview" id="exImgWrap"><img id="exImg" alt="Vista previa de la exportación"></div>
     <p class="msg" id="exMsg">Haz clic derecho sobre la imagen (o mantén pulsado en el móvil) y elige «Guardar imagen».</p>
     <div class="foot">
-      <button class="btn" id="exClose">Cerrar</button>
+      <button class="btn" data-close id="exClose">Cerrar</button>
       <button class="btn" id="exCopy">Copiar imagen</button>
       <button class="btn" id="exPsd" title="Escenario, cada personaje, líneas, boceto y una capa vacía para dibujar">PSD con capas</button>
       <button class="btn magic" id="exOpenIn" title="Abre la imagen con capas en tu programa de dibujo (Krita, Clip Studio, Photoshop…)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Abrir en…</button>
@@ -565,7 +566,7 @@
     </div>
     <div class="foot">
       <span class="prtotal" id="prTotal"></span>
-      <button class="btn" id="prCancel">Cancelar</button>
+      <button class="btn" data-close id="prCancel">Cancelar</button>
       <button class="btn primary" id="prStart">Empezar</button>
     </div>
   </div>
@@ -581,7 +582,7 @@
     </div>
     <div class="foot">
       <button class="btn" id="psAgain">Otra ronda</button>
-      <button class="btn primary" id="psClose">Volver al editor</button>
+      <button class="btn primary" data-close id="psClose">Volver al editor</button>
     </div>
   </div>
 </div>
@@ -592,7 +593,7 @@
     <p class="msg" id="jsonMsg"></p>
     <textarea id="jsonText" spellcheck="false" aria-label="Texto de la escena"></textarea>
     <div class="foot">
-      <button class="btn" id="jsonClose">Cerrar</button>
+      <button class="btn" data-close id="jsonClose">Cerrar</button>
       <button class="btn" id="jsonCopy">Copiar</button>
       <button class="btn primary" id="jsonLoad">Cargar</button>
     </div>
@@ -628,23 +629,37 @@
         <dt><kbd>I</kbd></dt><dd>Cambiar entre IK y FK</dd>
         <dt><kbd>\</kbd></dt><dd>Ocultar o mostrar el panel</dd>
         <dt><kbd>Supr</kbd></dt><dd>Borrar el objeto o luz seleccionada</dd>
-        <dt><kbd>Esc</kbd></dt><dd>Quitar selección · salir de la práctica</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Cerrar la ventana · salir del boceto o de la práctica · quitar la selección</dd>
+        <dt><kbd>B</kbd> · <kbd>A</kbd> · <kbd>Ctrl</kbd> <kbd>E</kbd></dt><dd>Boceto · Animar · Exportar</dd>
         <dt><kbd>?</kbd></dt><dd>Esta ayuda</dd>
         <dt><kbd>Ctrl</kbd> <kbd>K</kbd> · <kbd>/</kbd></dt><dd>Buscar poses, ropa, escenarios y acciones</dd>
         <dt><kbd>M</kbd> · <kbd>F</kbd></dt><dd>Espejar la pose · encuadrar a todos</dd>
         <dt><kbd>Ctrl</kbd> <kbd>C</kbd> / <kbd>Ctrl</kbd> <kbd>V</kbd></dt><dd>Copiar la pose y pegarla en otro personaje</dd>
         <dt>Clic derecho</dt><dd>Lo que se puede hacer ahí (en un personaje, un objeto o el fondo)</dd>
         <dt><kbd>Espacio</kbd> · <kbd>←</kbd> <kbd>→</kbd> · <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Animar: reproducir · fotograma a fotograma · de clave en clave</dd>
+        <dt><kbd>Inicio</kbd> <kbd>Fin</kbd> · <kbd>[</kbd> <kbd>]</kbd></dt><dd>Animar: primer y último fotograma · plano anterior y siguiente (también <kbd>RePág</kbd> <kbd>AvPág</kbd>)</dd>
         <dt><kbd>K</kbd> · <kbd>Supr</kbd> · <kbd>Mayús</kbd> <kbd>D</kbd></dt><dd>Clave aquí · borrar las claves seleccionadas · duplicarlas</dd>
+        <dt><kbd>Mayús</kbd> <kbd>K</kbd> · <kbd>Ctrl</kbd> <kbd>A</kbd> · <kbd>O</kbd></dt><dd>Quitar la clave de aquí · seleccionar todas las claves · papel cebolla</dd>
         <dt><kbd>T</kbd> · <kbd>Alt</kbd> <kbd>,</kbd> <kbd>.</kbd> · <kbd>F</kbd></dt><dd>Interpolación · mover las claves un fotograma · ver todo el plano (Ctrl+rueda acerca)</dd>
-        <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd></dl></section>
+        <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd>
+        <dt><kbd>Ctrl</kbd> <kbd>Intro</kbd></dt><dd>Guion: crear la película</dd></dl></section>
     </div>
-    <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>
-    <p class="note mtnote" hidden>Traducción automática, pendiente de revisión por personas.</p>
-    <div class="langrow"><span>Calidad gráfica</span><div class="chips seg qualChips"></div></div>
-    <div class="langrow" id="offlineRow" hidden><span>Sin conexión</span><button class="btn small" id="offlineBtn">Descargar todo para usarla sin conexión</button><span class="note" id="offlineMsg"></span></div>
-    <p class="note">Ahorro: menos resolución y sin sombras proyectadas, para móviles modestos o para gastar menos batería.</p>
-    <div class="foot"><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose">Entendido</button></div>
+    <div class="foot"><button class="btn" id="helpSet">Ajustes</button><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose" data-close>Entendido</button></div>
+  </div>
+</div>
+
+<div class="modal" id="setModal" hidden>
+  <div class="sheet setsheet" role="dialog" aria-labelledby="stT">
+    <h2 id="stT">Ajustes</h2>
+    <div class="setrows">
+      <section><p class="lbl">Language · Idioma</p><div class="chips langChips"></div>
+        <p class="note mtnote" hidden>Traducción automática, pendiente de revisión por personas.</p></section>
+      <section><p class="lbl">Tema</p><div class="chips seg" id="themeChips"></div></section>
+      <section><p class="lbl">Calidad gráfica</p><div class="chips seg qualChips"></div>
+        <p class="note">Ahorro: menos resolución y sin sombras proyectadas, para móviles modestos o para gastar menos batería.</p></section>
+      <section id="offlineRow" hidden><p class="lbl">Sin conexión</p><button class="btn small" id="offlineBtn">Descargar todo para usarla sin conexión</button><p class="note" id="offlineMsg"></p></section>
+    </div>
+    <div class="foot"><button class="btn" id="setHelp">Ayuda y atajos</button><button class="btn primary" id="setClose" data-close>Hecho</button></div>
   </div>
 </div>
 
@@ -659,11 +674,11 @@
       <li><b>Ilumina</b> en 24 escenarios y exporta a PNG.</li>
     </ul>
     <div class="foot">
-      <button class="btn" id="wSkip">Explorar por mi cuenta</button>
+      <button class="btn" data-close id="wSkip">Explorar por mi cuenta</button>
       <button class="btn primary" id="wStart">Tutorial interactivo · 2 min</button>
     </div>
     <p class="note">Puedes volver a verlo cuando quieras desde el botón <b>?</b> de arriba a la derecha.</p>
-    <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>
+    <div class="langrow"><span>Language · Idioma</span><div class="chips langChips"></div></div>
   </div>
 </div>
 <div id="tour" hidden>
@@ -685,10 +700,10 @@
 </div>
 <div class="modal scmodal" id="scModal" hidden>
   <div class="sheet scsheet" role="dialog" aria-labelledby="scT">
-    <div class="refhead"><h2 id="scT">Del guion a la película</h2><button class="gx" id="scClose" aria-label="Cerrar">×</button></div>
+    <div class="refhead"><h2 id="scT">Del guion a la película</h2><button class="gx" data-close id="scClose" aria-label="Cerrar">×</button></div>
     <div class="scbody">
       <div class="sced">
-        <textarea id="scText" spellcheck="true" placeholder="INT. COCINA - NOCHE&#10;&#10;ANA está junto a la mesa. LUIS entra.&#10;&#10;LUIS&#10;(sonriendo)&#10;¡Hola!" aria-label="Guion"></textarea>
+        <textarea id="scText" spellcheck="true" placeholder="Ejemplo:&#10;&#10;INT. COCINA - NOCHE&#10;&#10;ANA está junto a la mesa. LUIS entra.&#10;&#10;LUIS&#10;(sonriendo)&#10;¡Hola!" aria-label="Guion"></textarea>
         <div class="row"><button class="btn small" id="scSample">Cargar un ejemplo</button><button class="btn small" id="scOpen">Abrir un archivo…</button><input type="file" id="scFile" accept=".fountain,.txt,.md,text/plain" hidden><button class="btn small" id="scUndo">Recuperar la película anterior</button></div>
       </div>
       <aside class="schelp">
@@ -713,7 +728,7 @@
 </div>
 <div class="modal refmodal" id="refModal" hidden>
   <div class="sheet refsheet" role="dialog" aria-labelledby="refT">
-    <div class="refhead"><h2 id="refT">Referencias libres</h2><div class="chips seg" id="refMode"></div><button class="gx" id="refClose" aria-label="Cerrar">×</button></div>
+    <div class="refhead"><h2 id="refT">Referencias libres</h2><div class="chips seg" id="refMode"></div><button class="gx" data-close id="refClose" aria-label="Cerrar">×</button></div>
     <form id="refForm" class="refform"><input class="search" type="search" id="refQ" placeholder="Busca: correr, bailarina, bosque…" autocomplete="off" aria-label="Buscar referencias"><button class="btn primary">Buscar</button></form>
     <div class="chips" id="refQuick"></div>
     <div class="filter"><span>Fuentes</span><div class="chips" id="refSrc"></div></div>
@@ -728,14 +743,14 @@
     <p class="note">Se abre un PSD con capas: escenario, cada personaje, líneas, tu boceto y una capa vacía encima para dibujar.</p>
     <div class="openinlist" id="openInList"></div>
     <p class="msg" id="openInMsg" role="status"></p>
-    <div class="foot"><button class="btn" id="openInClose">Cerrar</button></div>
+    <div class="foot"><button class="btn" data-close id="openInClose">Cerrar</button></div>
   </div>
 </div>
 <div class="modal" id="sbModal" hidden>
   <div class="sheet sbsheet" role="dialog" aria-labelledby="sbT">
     <div class="aghead">
       <h2 id="sbT">De dibujos a animación</h2>
-      <button class="btn icon" id="sbClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <button class="btn icon" data-close id="sbClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="sbdrop" id="sbDrop">
       <div class="sbart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg></div>
@@ -773,7 +788,7 @@
     <div class="aghead">
       <h2 id="agT">Galería de animaciones <span id="agCount" class="note"></span></h2>
       <button class="btn small magic" id="refOpenAnim">Buscar GIFs libres</button>
-      <button class="btn icon" id="agClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <button class="btn icon" data-close id="agClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="agbody">
       <div class="agleft">
@@ -813,6 +828,6 @@
     <div class="chips" id="avFilter"></div>
     <p class="msg" id="avMsg"></p>
     <div class="lib avgrid" id="avGrid"></div>
-    <div class="foot"><button class="btn" id="avClose">Cerrar</button></div>
+    <div class="foot"><button class="btn" data-close id="avClose">Cerrar</button></div>
   </div>
 </div>

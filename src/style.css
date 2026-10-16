@@ -88,8 +88,6 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pose .th{width:100%;aspect-ratio:4/5;max-width:100%;background:var(--ink);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .pose .th.pending{background:var(--rule);-webkit-mask:none;mask:none;border-radius:4px}
 .pose span{font-size:12px;font-weight:600;line-height:1.15;text-align:center}
-.pose .del{position:absolute;top:2px;right:2px;width:20px;height:20px;border:0;border-radius:50%;background:var(--page);color:var(--ink-soft);cursor:pointer;font-size:14px;line-height:1;display:none}
-.pose:hover .del,.pose:focus-within .del{display:block}
 .empty{font-size:12.5px;color:var(--ink-soft);border:1.5px dashed var(--line);border-radius:6px;padding:10px 12px;margin:0}
 
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -400,8 +398,6 @@ body.practicing .modebar{display:none}
   .prrow{flex-direction:column;align-items:flex-start;gap:6px}
   .prrow .chips.seg{flex-wrap:wrap;gap:6px}
   .prrow .chips.seg .chip{border-radius:8px;margin-left:0}
-  /* start without scrolling to the bottom */
-  .prsheet .foot{position:sticky;bottom:-20px;background:var(--page);margin:14px -20px -20px;padding:10px 20px 14px;border-top:1px solid var(--rule);z-index:1}
 }
 /* hair */
 .hairgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:5px;padding:2px 0 6px}
@@ -515,7 +511,7 @@ body.anim .hint:not(.toast){display:none}
   .tllabels{width:92px}
   .tllab{font-size:10.5px;padding:0 4px;gap:4px}
   #tlShot{max-width:84px}
-  .tlopts{bottom:0;top:auto;right:0;width:100%;max-height:100%;z-index:2}
+  .tlopts{position:fixed;left:8px;right:8px;top:calc(max(10px,env(safe-area-inset-top)) + 48px);bottom:auto;width:auto;max-height:calc(100dvh - 70px);z-index:30}
 }
 /* pose from a photo */
 .photoprev{margin:8px 0 4px;border:1.5px solid var(--line);border-radius:6px;overflow:hidden;background:var(--stage)}
@@ -756,7 +752,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .app{grid-template-columns:minmax(0,1fr)}
   .book,.page,.stage-wrap{min-width:0;max-width:100vw}
   .stage-wrap{flex:1;height:auto;min-height:120px}
-  .book{flex:none;height:var(--sheetH,46vh);display:flex;flex-direction:column;margin:0 -16px -14px;background:var(--paper);border-top:1.5px solid var(--ink);border-radius:16px 16px 0 0;box-shadow:0 -10px 26px -18px rgba(40,30,10,.5);position:relative;z-index:6;transition:height var(--dur-2) var(--ease)}
+  .book{flex:none;height:var(--sheetH,48vh);display:flex;flex-direction:column;margin:0 -16px -14px;background:var(--paper);border-top:1.5px solid var(--ink);border-radius:16px 16px 0 0;box-shadow:0 -10px 26px -18px rgba(40,30,10,.5);position:relative;z-index:6;transition:height var(--dur-2) var(--ease)}
   .book.live{transition:none}
   .sheetgrip{display:block;flex:none;height:22px;width:100%;border:0;background:none;cursor:grab;touch-action:none;position:relative}
   .sheetgrip::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:var(--line)}
@@ -936,4 +932,117 @@ body{background:var(--tex),var(--paper)}
 @media (prefers-reduced-motion:reduce){
   #viewport::before,#viewport::after,.modal:not([hidden]),.modal:not([hidden]) > .sheet,.hint.toast,.joint-card:not([hidden]),.lineedit:not([hidden]),.timeline:not([hidden]),.ctxmenu,.tlselbar,.installhint{animation:none!important}
   .pose:hover,.libItem:hover,.hairItem:hover,.refcard:hover,.tab:hover{transform:none!important}
+}
+
+/* ======================= usability pass ======================= */
+a{color:var(--blue);text-underline-offset:2px}
+/* windows: the actions at the foot stay in sight however long the sheet is (the flex sheets lay out their own foot) */
+.sheet:not(.agsheet,.sbsheet,.scsheet,.palsheet,.refsheet,.welcome) > .foot{position:sticky;bottom:-20px;z-index:1;margin:14px -20px -20px;padding:10px 20px 16px;background:var(--tex),var(--page);border-top:1px solid var(--rule)}
+#exImgWrap img{max-height:40vh}
+.exkind{overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;margin-inline:-2px}
+.exkind::-webkit-scrollbar{display:none}
+.exkind .chip{flex:none;white-space:nowrap}
+.sheet [role=dialog]:focus,.sheet:focus{outline:none}
+/* settings */
+.setsheet{width:min(520px,100%)}
+.setrows{display:grid;gap:4px;margin:6px 0 4px}
+.setrows .lbl{margin:10px 0 6px}
+.setrows .note{margin:6px 0 0}
+.welcome .langChips{justify-content:center}
+/* the script's call to action, readable on its blue */
+.btn.primary.magic{color:var(--page);background:var(--blue);border-color:var(--blue)}
+.btn.primary.magic:hover{background:var(--ink);border-color:var(--ink)}
+#scText::placeholder{color:var(--ink-soft);opacity:.6;font-style:italic}
+/* an empty list says so across the whole grid */
+.pose-grid > .empty{grid-column:1/-1}
+/* the tab index shows there is more to the side */
+.secnav{-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000);mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000)}
+.secnav.end{-webkit-mask:none;mask:none}
+/* saved scenes: the × is a button of its own, always there for a finger */
+.pose-wrap{position:relative;display:grid}
+.pose-wrap > .del{position:absolute;top:2px;right:2px;width:24px;height:24px;border:0;border-radius:50%;background:var(--page);color:var(--ink-soft);cursor:pointer;font-size:15px;line-height:1;display:none;padding:0;z-index:1}
+.pose-wrap:hover > .del,.pose-wrap:focus-within > .del{display:block}
+.pose-wrap > .del:hover{color:var(--red)}
+@media (pointer:coarse){ .pose-wrap > .del{display:block;width:34px;height:34px;top:-4px;right:-4px;box-shadow:var(--lift)} }
+/* free references: cards to come while a search runs */
+.refskel{border-radius:8px;border:1.5px solid var(--line);background:linear-gradient(100deg,var(--rule) 30%,var(--page) 50%,var(--rule) 70%) 0 0/300% 100%;animation:skel 1.4s ease-in-out infinite}
+@keyframes skel{from{background-position:100% 0}to{background-position:0 0}}
+#refMsg{text-align:center}
+@media (prefers-reduced-motion:reduce){.refskel{animation:none}}
+/* phones: notes wrap instead of being cut, their buttons always whole */
+@media (max-width:600px){
+  .hint{white-space:normal;border-radius:12px;max-width:calc(100% - 80px);text-align:center;line-height:1.3}
+  .hint .undo{white-space:nowrap}
+}
+/* fingers: everything at least 40 px */
+@media (pointer:coarse){
+  .cast .chip,.modebar .chip{min-height:40px}
+  .modebar .chip{min-width:44px}
+  .chips.seg .chip{min-width:40px}
+  .secnav .chip{min-height:40px}
+  #tourCard .tq{min-width:40px;min-height:40px}
+  #skColor,.hairsw input[type=color]{width:44px;height:40px}
+  .tlrow .btn.icon{width:40px;height:40px}
+  .tlrow .tlclips{height:40px}
+  .joint-card h4 button{min-width:40px;min-height:40px;margin:-8px -8px -8px 0}
+}
+@media (max-width:860px){
+  .sheetgrip{height:32px}
+  .sheetgrip::before{top:12px}
+}
+/* phones: no room for the gear in the top bar; Help opens Settings */
+@media (max-width:480px){ #setBtn{display:none} }
+#exOptAnim.empty > :not(#exAnimNote){display:none}
+/* the timeline's readout is never cut */
+.tltime{flex:none;overflow:visible}
+/* phones: the timeline row keeps play, the keys and close; the other tools are in the "…" panel */
+.tlphone{display:none}
+@media (max-width:600px){
+  #tlCamRec,#tlLine,#tlBoard,#tlScript,#tlClips,#tlExport,#tlMotion,#tlMin{display:none}
+  #tlPrev,#tlNext{display:inline-flex}
+  .tlphone{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
+  .tlphone .btn{justify-content:flex-start;white-space:normal;text-align:left;line-height:1.15}
+  .tlphone .btn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
+  .mvshot.on{width:140px}
+  .mvact{height:32px;min-width:32px}
+}
+/* phones: the joint card is a strip along the bottom of the canvas, clear of what it turns, with no thumb buttons over it */
+@media (max-width:480px){
+  .joint-card{left:6px;right:6px;top:auto;bottom:6px;width:auto;padding:6px 10px 8px;border-radius:12px}
+  body.anim .joint-card{bottom:calc(var(--dockH,0px) + 12px)}
+  .joint-card h4{font-size:16px;margin:0}
+  #jointSliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:0 12px}
+  #jointSliders .sl{margin:0}
+  #jointSliders .sl label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px}
+  .joint-card .check{margin:2px 0 0}
+  .joint-card .tip{display:none}
+  .joint-card:not([hidden]) ~ .thumbbar,.joint-card:not([hidden]) ~ .hint:not(.toast){display:none}
+  .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:64px}
+}
+/* phones: the pose library starts higher, so the sheet at half height already shows poses */
+@media (max-width:860px){
+  #catChips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px!important;padding-bottom:2px}
+  #catChips::-webkit-scrollbar{display:none}
+  #catChips .chip{flex:none}
+  .quick{padding:4px 0 6px}
+  #poseSearch{margin-bottom:4px}
+  details.sec[data-sec=lib] > summary{padding:6px 0 4px}
+  details.sec[data-sec=lib] .filter{margin:0 0 6px}
+}
+.tlphead{display:none}
+@media (max-width:600px){
+  .tlphead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--f-hand);font-size:18px}
+  .tlphead .gx{border:0;background:none;font-size:24px;line-height:1;min-width:40px;min-height:40px;color:var(--ink-soft);cursor:pointer}
+  .mvmotion{width:auto}
+}
+@media (max-width:480px){
+  /* with the dock open, undo, redo and search line up above it instead of climbing over the cast chips */
+  body.anim .thumbbar{flex-direction:row}
+}
+@media (max-width:860px){
+  /* the search and the number of people share a line */
+  .librow{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+  .librow #poseSearch{flex:1;min-width:0;margin:0}
+  .librow .filter{margin:0!important}
+  .librow .filter > span{display:none}
 }

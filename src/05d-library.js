@@ -42,8 +42,11 @@ function poseCard(label, onClick, thumb, onDel, img) {
   if (img) { th.src = img; th.alt = ''; } else if (thumb) th.style.setProperty('--m', `url(${thumb})`);
   const sp = document.createElement('span'); sp.textContent = label;
   b.append(th, sp); b.onclick = onClick;
-  if (onDel) { const x = document.createElement('span'); x.className = 'del'; x.textContent = '×'; x.title = tr('Borrar'); x.setAttribute('role', 'button'); x.setAttribute('aria-label', tr('Borrar {x}', {x: label})); x.onclick = ev => { ev.stopPropagation(); onDel(); }; b.appendChild(x); }
-  return b;
+  if (!onDel) return b;
+  // the × beside the card, not inside it: a button in a button is neither valid nor reachable by keyboard
+  const w = document.createElement('div'); w.className = 'pose-wrap';
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'del'; x.textContent = '×'; x.title = tr('Borrar'); x.setAttribute('aria-label', tr('Borrar {x}', {x: label})); x.onclick = onDel;
+  w.append(b, x); return w;
 }
 function markPose() { $$('#poseGrid .pose').forEach(el => el.classList.toggle('on', el.dataset.id === state.posePreset)); }
 function buildPoseGrid() {
@@ -69,7 +72,8 @@ function buildMyPoses() {
   const g = $('#myPoses'); g.innerHTML = '';
   $('#myEmpty').hidden = myPoses.length > 0;
   myPoses.forEach((p, i) => g.appendChild(poseCard(p.name, () => { restore(p.snap); frameAll(); pushHistory(); }, null,
-    () => { myPoses.splice(i, 1); store.set('cdp.scenes', myPoses); buildMyPoses(); }, p.img)));
+    () => { myPoses.splice(i, 1); store.set('cdp.scenes', myPoses); buildMyPoses(); $('#myPoses .del')?.focus();
+      toast(tr('Escena «{x}» borrada', {x: p.name}), {undo: () => { myPoses.splice(i, 0, p); store.set('cdp.scenes', myPoses); buildMyPoses(); }}); }, p.img)));
 }
 function viewSnapshot() {
   frame();

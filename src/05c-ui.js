@@ -7,7 +7,11 @@ function pushHistory() {
   if (hist.stack[hist.i] === s) return;
   hist.stack = hist.stack.slice(0, hist.i + 1); hist.stack.push(s);
   if (hist.stack.length > 80) hist.stack.shift();
-  hist.i = hist.stack.length - 1; updateUndo();
+  hist.i = hist.stack.length - 1; updateUndo(); autosaveSoon();
+  // someone joined (or left) the cast or a body changed shape: make room in the frame if needed
+  const sig = chars.length + JSON.stringify(chars.map(m => [m.body.species, m.body.headStyle, m.heads, m.size]));
+  if (hist.castSig && sig !== hist.castSig) reframeSoon();
+  hist.castSig = sig;
 }
 function restore(s) {
   const o = typeof s === 'string' ? JSON.parse(s) : s;
@@ -27,9 +31,52 @@ function restore(s) {
   setActive(Math.min(o.active || 0, chars.length - 1));
   if (o.mv && typeof animHistRestore === 'function') animHistRestore(o.mv);
 }
-function undo() { if (hist.i > 0) { restore(hist.stack[--hist.i]); updateUndo(); } }
-function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++hist.i]); updateUndo(); } }
+function undo() { if (hist.i > 0) { restore(hist.stack[--hist.i]); updateUndo(); autosaveSoon(); return true; } return false; }
+function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++hist.i]); updateUndo(); autosaveSoon(); return true; } return false; }
 function updateUndo() { $('#undo').disabled = $('#undoF').disabled = hist.i <= 0; $('#redo').disabled = $('#redoF').disabled = hist.i >= hist.stack.length - 1; }
+/* ---------- the scene survives a reload, a closed tab or an update ----------
+   A moment after each change (and whenever the page is hidden) the whole scene (cast, set, camera, look and film)
+   goes to IndexedDB, or to localStorage where there is none; the next start brings it back, with a way to begin
+   afresh. Nothing is kept while the scene is still the one the app starts with. */
+const AUTO = {key: 'cdp.autosave', t: 0, base: null};
+const histStr = () => JSON.stringify({...snapshot(), ...sceneExtras(false), mv: typeof animHist === 'function' ? animHist() : undefined});
+const idb = (() => {
+  let db = null;
+  const open = () => db || (db = new Promise((ok, ko) => { const r = indexedDB.open('neopose', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }));
+  const run = (mode, fn) => open().then(d => new Promise((ok, ko) => { const t = d.transaction('kv', mode), q = fn(t.objectStore('kv')); t.oncomplete = () => ok(q.result); t.onerror = t.onabort = () => ko(t.error); }));
+  return {get: k => run('readonly', s => s.get(k)), set: (k, v) => run('readwrite', s => s.put(v, k)), del: k => run('readwrite', s => s.delete(k))};
+})();
+function autosaveSoon(ms = 1200) { if (AUTO.base === null) return; clearTimeout(AUTO.t); AUTO.t = setTimeout(autosaveNow, ms); }
+// leaving: the page may go before IndexedDB has written, so a copy goes to localStorage at once too (if it fits);
+// the newer of the two is read back
+function autosaveNow(e) {
+  if (AUTO.base === null) return; clearTimeout(AUTO.t);
+  // not in the middle of a practice session (random scenes), a playing film or a script being staged
+  if (practice.active || ANIM.playing || ANIM.busy || (typeof SC !== 'undefined' && SC.busy)) return e ? undefined : autosaveSoon(3000);
+  const an = animState(), data = histStr() !== AUTO.base || an ? JSON.stringify({v: 1, t: Date.now(), ...snapshot(), ...sceneExtras(true)}) : null;
+  const ls = () => { try { if (data) localStorage.setItem(AUTO.key, data); else localStorage.removeItem(AUTO.key); } catch (_) {} };
+  if (e) ls();
+  try { (data ? idb.set(AUTO.key, data) : idb.del(AUTO.key)).then(() => { if (!e) try { localStorage.removeItem(AUTO.key); } catch (_) {} }, ls); } catch (_) { ls(); }
+}
+function readAutosave() {
+  if (/^#s=/.test(location.hash)) return Promise.resolve(null);  // a shared scene is what this start is for
+  const parse = v => { try { return v ? JSON.parse(v) : null; } catch (_) { return null; } };
+  let p; try { p = idb.get(AUTO.key).catch(() => null); } catch (_) { p = Promise.resolve(null); }
+  return p.then(v => { let l = null; try { l = localStorage.getItem(AUTO.key); } catch (_) {} const a = parse(v), b = parse(l); return a && b ? ((b.t || 0) > (a.t || 0) ? b : a) : a || b; });
+}
+// "Start afresh": the scene the app starts with (kept before the saved one came back); undo still has the other
+function startFresh() {
+  if (!AUTO.fresh) return;
+  if (ANIM.open) openTimeline(false);
+  ANIM.shots = []; ANIM.cur = 0; restore(AUTO.fresh); setView(30, 8); frameAll(); pushHistory();
+}
+function initAutosave(restored, recovered) {
+  if (!restored) AUTO.base = hist.stack[hist.i];
+  addEventListener('pagehide', autosaveNow);
+  document.addEventListener('visibilitychange', e => { if (document.visibilityState === 'hidden') autosaveNow(e); });
+  controls.addEventListener('end', () => autosaveSoon(2500));  // the camera is part of it
+  if (recovered) toast(tr('Escena recuperada'), {act: ['Empezar de cero', startFresh], ms: 9000});
+}
 let rebuildPending = false;
 function rebuildActive(now) {
   const run = () => { rebuildPending = false; mq.build(mq.body); mq.ground(); _boxT = 0; $('#headsOut').textContent = dec(mq.heads); renderCast(); };
@@ -143,7 +190,7 @@ const tabs = $$('.tab');
 const TAB_ALIAS = {manos: 'pose', luz: 'escena'};
 function showTab(id) {
   id = TAB_ALIAS[id] || id; if (!tabs.some(t => t.dataset.tab === id)) id = 'pose';
-  tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+  tabs.forEach(t => { t.setAttribute('aria-selected', String(t.dataset.tab === id)); t.tabIndex = t.dataset.tab === id ? 0 : -1; });
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
   store.set('cdp.tab', id);
@@ -162,18 +209,35 @@ function setPanel(on) {
 }
 $('#panelBtn').onclick = () => setPanel(document.body.classList.contains('nopanel'));
 setPanel(store.get('cdp.panel', true));
-/* help */
-const openHelp = () => { $('#helpModal').hidden = false; $('#helpClose').focus(); };
+/* help: opens at the top (focusing the button at its foot must not scroll the sheet down) */
+const openHelp = () => { $('#setModal').hidden = true; $('#helpModal').hidden = false; $('#helpModal .sheet').scrollTop = 0; $('#helpClose').focus({preventScroll: true}); };
 const closeHelp = () => { $('#helpModal').hidden = true; };
 $('#helpBtn').onclick = openHelp; $('#helpClose').onclick = closeHelp;
 $('#helpModal').onclick = e => { if (e.target === e.currentTarget) closeHelp(); };
+/* settings: language, theme, graphics quality, offline (the phone's top bar has no room for the gear: Help leads here) */
+const openSettings = () => { closeHelp(); $('#setModal').hidden = false; $('#setModal .sheet').scrollTop = 0; };
+const closeSettings = () => { $('#setModal').hidden = true; };
+$('#setBtn').onclick = openSettings; $('#helpSet').onclick = openSettings; $('#setClose').onclick = closeSettings; $('#setHelp').onclick = openHelp;
+$('#setModal').onclick = e => { if (e.target === e.currentTarget) closeSettings(); };
+// light, dark or as the system says; the choice is applied before the first paint (a line at the top of the body)
+const UI_THEMES = {system: 'Sistema', light: 'Claro', dark: 'Oscuro'};
+function setTheme(t) {
+  if (!UI_THEMES[t]) t = 'system'; store.set('cdp.theme', t);
+  if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  // the browser's bar follows too
+  for (const m of $$('meta[name=theme-color]')) { m.dataset.c = m.dataset.c || m.content; m.content = t === 'system' ? m.dataset.c : t === 'dark' ? '#171614' : '#e4ddcb'; }
+  setPressed($('#themeChips'), t);
+}
+chips($('#themeChips'), Object.entries(UI_THEMES), store.get('cdp.theme', 'system'), setTheme);
+setTheme(store.get('cdp.theme', 'system'));
 /* language: switching reloads the page and carries the current scene over */
 function setLang(l) {
   if (l === LANG) return;
   store.set('cdp.lang', l);
-  try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true)})); } catch (e) {}
-  location.reload();
+  carryScene(); location.reload();
 }
+// the scene goes over a reload (a language switch, an update) in this tab at once
+function carryScene() { if (!chars.length) return; try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true)})); } catch (e) {} }
 $$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
 $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 /* the canvas hint steps back once the user has tried posing */
@@ -266,7 +330,7 @@ function buildLightUI() {
   $('#shadowChk').onchange = e => state.shadows = e.target.checked;
   const addL = type => { if (extraLights.length >= 4) return; const g = makeLight(type, spotNear().setY(2.2)); selectObj(g); pushHistory(); };
   $('#addPoint').onclick = () => addL('punto'); $('#addSpot').onclick = () => addL('foco');
-  $('#clearLights').onclick = () => { tc.detach(); $('#objCard').hidden = true; state.sel = null; for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; pushHistory(); };
+  $('#clearLights').onclick = () => { if (!extraLights.length) return; tc.detach(); $('#objCard').hidden = true; state.sel = null; for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; pushHistory(); toast(tr('Luces quitadas'), {undo: true}); };
 }
 function syncLightUI() { for (const k in lightEls) lightEls[k].set(state.light[k]); setPressed($('#lightChips'), state.lightPreset || ''); }
 
@@ -292,9 +356,8 @@ function buildSceneUI() {
     else { const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); pb.append(h, c); }
     chips(c, items, null, id => { setPressed(c, ''); const g = makeProp(id, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   }
-  $('#clearProps').onclick = () => { if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; } clearProps(); pushHistory(); };
-  $('#addChar').onclick = () => { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); } };
-  $('#delChar').onclick = () => { removeChar(active); pushHistory(); };
+  $('#clearProps').onclick = () => { if (!props.length) return; if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; } clearProps(); pushHistory(); toast(tr('Objetos quitados'), {undo: true}); };
+  $('#delChar').onclick = () => { if (chars.length < 2) return; const n = charLabel(mq); removeChar(active); pushHistory(); toast(tr('{x}: fuera de la escena', {x: n}), {undo: true}); };
   $('#rowChars').onclick = () => { chars.forEach((m, i) => { const yaw = m.yaw(); m.joints.hips.quaternion.premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), -yaw)); m.joints.hips.position.x = (i - (chars.length - 1) / 2) * .9; m.joints.hips.position.z = 0; }); frameAll(); pushHistory(); };
 }
 

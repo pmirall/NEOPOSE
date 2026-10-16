@@ -136,8 +136,9 @@ function refCard(r) {
 function renderRefGrid() {
   const g = $('#refGrid'); if (!REF.res.length && !REF.busy) { if (!g.querySelector('.empty')) g.innerHTML = ''; return; }
   const have = new Set([...g.querySelectorAll('.refcard')].map(c => c.dataset.id));
-  g.querySelector('.empty')?.remove(); g.querySelector('.refmore')?.remove();
+  g.querySelector('.empty')?.remove(); g.querySelector('.refmore')?.remove(); g.querySelectorAll('.refskel').forEach(e => e.remove());
   for (const r of REF.res) if (!have.has(r.id)) g.appendChild(refCard(r));
+  if (REF.busy) for (let i = 0; i < 8; i++) { const s = document.createElement('div'); s.className = 'refskel'; s.setAttribute('aria-hidden', 'true'); g.appendChild(s); }  // cards to come
   if (REF.more && !REF.busy) { const m = document.createElement('button'); m.type = 'button'; m.className = 'btn small refmore'; m.textContent = tr('Más resultados'); m.onclick = () => { REF.page++; refSearch(true); }; g.appendChild(m); }
 }
 function creditOf(r) { return r.attribution || [r.title && `“${r.title}”`, r.author && tr('de {a}', {a: r.author}), r.src, r.license].filter(Boolean).join(' · '); }
@@ -281,5 +282,4 @@ function buildRefsUI() {
   $('#refClose').onclick = closeRefs; $('#refModal').onclick = e => { if (e.target.id === 'refModal') closeRefs(); };
   $('#refOpenPose').onclick = () => openRefs('pose'); $('#refOpenScene').onclick = () => openRefs('scene');
   const ga = $('#refOpenAnim'); if (ga) ga.onclick = () => openRefs('anim');
-  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#refModal').hidden) closeRefs(); });
 }

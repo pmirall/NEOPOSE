@@ -330,7 +330,7 @@ function paletteIndex() {
   const tabName = id => tabs.find(t => t.dataset.tab === id)?.querySelector('span')?.textContent || id;
   for (const [label, fn, key] of [['Deshacer', () => withGlide(undo), 'Ctrl Z'], ['Rehacer', () => withGlide(redo), 'Ctrl Y'], ['Espejar la pose', () => withGlide(mirrorPose), 'M'],
     ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Pose inicial', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
-    ['Añadir personaje', () => $('#addChar').click()], ['Encuadrar a todos', frameAll, 'F'], ['Animar', () => $('#animBtn').click()], ['Exportar', () => $('#exportBtn').click()],
+    ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', frameAll, 'F'], ['Animar', () => $('#animBtn').click()], ['Exportar', () => $('#exportBtn').click()],
     ['Abrir en…', () => $('#openIn').click()], ['Boceto', () => $('#sketchBtn').click()], ['Práctica de gesto', () => $('#practiceBtn').click()], ['Cómo se usa', openHelp, '?'],
     ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
     add('cmd', tr(label), fn, key || '');
@@ -343,11 +343,29 @@ function paletteIndex() {
   for (const b of $$('#exprChips .chip[data-v]')) add('expr', b.textContent, () => b.click());
   for (const c of SAVED_CHARS) add('char', c.name, () => placeCharacter(c));
   if (ROPA.catalog) for (const c of ROPA.catalog) add('garment', gTitle(c), () => { if (!mq.outfit.some(s => s.id === c.id)) toggleGarment(c.id); }, c.title + ' ' + tr(c.cat));
+  // the chips of the panels, read as they are now (the list of species keeps growing): pressing one is using it
+  const chipsOf = (type, sel, tab, extra = () => '') => { for (const b of $$(sel)) if (!b.disabled) add(type, b.textContent.trim(), () => { showTab(tab); b.click(); }, extra(b), type + ':' + b.dataset.v); };
+  chipsOf('species', '#speciesChips .chip', 'cuerpo', b => I18N_EN[SPECIES[b.dataset.v]?.label] || b.dataset.v);
+  chipsOf('body', '#bodyChips .chip', 'cuerpo');
+  for (const b of $$('#hairGrid .hairItem:not([disabled])')) add('hair', b.querySelector('.lt')?.textContent || b.title, () => { showTab('cuerpo'); b.click(); }, tr('Pelo'), 'hair:' + b.dataset.v);
+  chipsOf('style', '#styleChips .chip', 'dibujo');
+  chipsOf('view', '#viewChips .chip', 'camara', () => tr('Ángulo'));
+  chipsOf('view', '#perspChips .chip', 'camara', () => tr('Perspectiva'));
+  chipsOf('light', '#lightChips .chip', 'escena', () => tr('Luz'));
+  for (const inp of $$('section[data-tab=dibujo] .checks input')) add('guide', inp.parentElement.textContent.trim(), () => { showTab('dibujo'); inp.click(); }, tr('Guías'), 'guide:' + inp.id);
+  for (const c of typeof allClips === 'function' ? allClips() : []) add('anim', c.name, () => { if (!ANIM.open) openTimeline(true); AG.sel = c; AG.cat = 'todas'; AG.q = ''; $('#agSearch').value = ''; openAnimGallery(); }, `${I18N_EN[c.name] || ''} ${c.id} ${c.cat || ''}`, 'anim:' + c.id);
+  // settings: language, theme, quality
+  add('setting', tr('Ajustes'), openSettings, 'settings preferences', 'setting:all');
+  for (const [k, v] of Object.entries(LANGS)) add('setting', `${tr('Idioma')}: ${v}`, () => setLang(k), 'language idioma', 'lang:' + k);
+  for (const [k, v] of Object.entries(UI_THEMES)) add('setting', `${tr('Tema')}: ${tr(v)}`, () => setTheme(k), 'theme ' + k, 'theme:' + k);
+  for (const [k, v] of Object.entries(QUALITY)) add('setting', `${tr('Calidad gráfica')}: ${tr(v[0])}`, () => applyQuality(k), 'quality', 'quality:' + k);
   return out;
 }
-const PAL_TYPE = {cmd: 'Acción', tab: 'Pestaña', pose: 'Pose', outfit: 'Conjunto', set: 'Escenario', prop: 'Objeto', expr: 'Expresión', char: 'Personaje', garment: 'Prenda'};
+const PAL_TYPE = {cmd: 'Acción', tab: 'Pestaña', pose: 'Pose', outfit: 'Conjunto', set: 'Escenario', prop: 'Objeto', expr: 'Expresión', char: 'Personaje', garment: 'Prenda',
+  species: 'Especie', body: 'Cuerpo', hair: 'Peinado', style: 'Acabado', view: 'Cámara', light: 'Luz', guide: 'Guía', anim: 'Animación', setting: 'Ajuste'};
 function openPalette() {
   if (!ROPA.catalog) loadCatalog().catch(() => {});
+  if (!CLIPS.lib) loadClipLibrary().then(() => { if (!$('#palModal').hidden) { UX.pal.idx = paletteIndex(); renderPalette(); } }).catch(() => {});
   closeMenu(); const m = $('#palModal'); m.hidden = false; const inp = $('#palInput'); inp.value = ''; UX.pal = {idx: paletteIndex(), sel: 0};
   renderPalette(); inp.focus();
 }
@@ -411,7 +429,7 @@ function initPalette() {
 /* ---------- phones: the panel is a sheet over the bottom of the canvas ---------- */
 const SHEET = {snap: 'half'};
 const sheetOn = () => matchMedia('(max-width: 860px)').matches;
-function sheetHeights() { const top = $('header.top').getBoundingClientRect().bottom, H = innerHeight; return {peek: 118, half: Math.round(H * .46), full: Math.round(H - top - 96)}; }
+function sheetHeights() { const top = $('header.top').getBoundingClientRect().bottom, H = innerHeight; return {peek: 118, half: Math.round(H * .48), full: Math.round(H - top - 96)}; }
 function setSheet(snap, live) {
   SHEET.snap = snap; const h = typeof snap === 'number' ? snap : sheetHeights()[snap];
   document.body.style.setProperty('--sheetH', h + 'px'); $('#book').classList.toggle('live', !!live);
@@ -476,6 +494,45 @@ function nearHandle(x, y) {
   return best ? {object: best} : null;
 }
 
+/* ---------- windows: Esc closes the top one, Tab stays inside it, focus goes back to what opened it ----------
+   One place for every .modal, however it is opened: a watcher on their [hidden] attribute. Esc presses the
+   window's own close button ([data-close]) so its clean-up runs (and a busy export, whose button is disabled, stays). */
+const MODAL = {stack: [], recent: []};
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+const focusablesIn = el => [...el.querySelectorAll(FOCUSABLE)].filter(e => e.getClientRects().length && !e.closest('[hidden]'));
+function modalShown(m) {
+  MODAL.stack = MODAL.stack.filter(x => x.m !== m);
+  const opener = [...MODAL.recent].reverse().find(e => e.isConnected && !m.contains(e)) || null;
+  MODAL.stack.push({m, opener});
+  const sheet = m.querySelector('[role=dialog]') || m;
+  if (!m.contains(document.activeElement)) (focusablesIn(sheet)[0] || sheet).focus({preventScroll: true});
+}
+function modalHidden(m) {
+  const i = MODAL.stack.findIndex(x => x.m === m); if (i < 0) return;
+  const {opener} = MODAL.stack.splice(i, 1)[0], a = document.activeElement;
+  if ((!a || a === document.body || m.contains(a)) && opener && opener.isConnected && opener.getClientRects().length) opener.focus({preventScroll: true});
+}
+const topModal = () => { for (let i = MODAL.stack.length - 1; i >= 0; i--) if (!MODAL.stack[i].m.hidden) return MODAL.stack[i].m; return null; };
+function closeModal(m) { const b = m.querySelector('[data-close]'); if (!b) m.hidden = true; else if (!b.disabled) b.click(); }
+function initModals() {
+  const mods = $$('.modal');
+  for (const m of mods) { const d = m.querySelector('[role=dialog]'); if (d) { d.setAttribute('aria-modal', 'true'); if (!d.hasAttribute('tabindex')) d.tabIndex = -1; } if (!m.hidden) modalShown(m); }
+  const obs = new MutationObserver(recs => { for (const r of recs) (r.target.hidden ? modalHidden : modalShown)(r.target); });
+  for (const m of mods) obs.observe(m, {attributes: true, attributeFilter: ['hidden']});
+  // what had the focus (or the finger) outside the windows: where the focus goes back
+  const remember = e => { const el = e.target.closest && e.target.closest(FOCUSABLE); if (el && !el.closest('.modal')) { MODAL.recent.push(el); if (MODAL.recent.length > 8) MODAL.recent.shift(); } };
+  addEventListener('focusin', remember, true); addEventListener('pointerdown', remember, true);
+  addEventListener('keydown', e => {
+    const m = topModal(); if (!m) return;
+    if (e.key === 'Escape' && !e.target.matches('input.slnum')) { e.preventDefault(); e.stopImmediatePropagation(); closeModal(m); }
+    else if (e.key === 'Tab') {
+      const f = focusablesIn(m.querySelector('[role=dialog]') || m); if (!f.length) return;
+      const i = f.indexOf(document.activeElement);
+      if (i < 0 || (e.shiftKey && i === 0) || (!e.shiftKey && i === f.length - 1)) { e.preventDefault(); f[e.shiftKey ? f.length - 1 : 0].focus(); }
+    }
+  }, true);
+}
+
 // a long tab gets an index at the top: one tap opens a section and takes you there
 function buildSectionNav() {
   for (const sec of $$('.page section[data-tab]')) {
@@ -485,10 +542,13 @@ function buildSectionNav() {
       const h = d.querySelector('summary h3'); if (!h) continue;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
       // only the panel scrolls, never the page
-      b.onclick = () => { d.open = true; const pg = sec.closest('.page'); pg.scrollTo({top: d.getBoundingClientRect().top - pg.getBoundingClientRect().top + pg.scrollTop - nav.offsetHeight - 4, behavior: UX.reduce ? 'auto' : 'smooth'}); d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 900); };
+      b.onclick = () => { d.open = true; const pg = sec.closest('.page'); nav.scrollTo({left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: UX.reduce ? 'auto' : 'smooth'}); pg.scrollTo({top: d.getBoundingClientRect().top - pg.getBoundingClientRect().top + pg.scrollTop - nav.offsetHeight - 4, behavior: UX.reduce ? 'auto' : 'smooth'}); d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 900); };
       nav.appendChild(b);
     }
     sec.prepend(nav);
+    // the fade at the right edge says there is more; it goes once the end is in sight
+    const fade = () => nav.classList.toggle('end', nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 4);
+    nav.addEventListener('scroll', fade, {passive: true}); new ResizeObserver(fade).observe(nav);
   }
 }
 function buildUX() {
@@ -496,7 +556,7 @@ function buildUX() {
   const dc = $('#dropColors');
   for (const c of PALETTE) { const b = document.createElement('button'); b.type = 'button'; b.dataset.c = c; b.style.background = c; b.title = c; b.setAttribute('aria-label', tr('Color {c}: arrástralo a una prenda', {c}));
     b.onclick = () => toast(tr('Arrastra el color hasta una prenda o el pelo de un personaje.')); dc.appendChild(b); }
-  initDrag(); initGestures(); initMenus(); initPalette(); initSheet();
+  initDrag(); initGestures(); initMenus(); initPalette(); initSheet(); initModals();
   // the handlers that change a pose from the panel glide too
-  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => usePreset(POSE.pie)], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) { const b = $(sel); if (b) b.onclick = () => withGlide(fn); }
+  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => { usePreset(POSE.pie); toast(tr('Pose inicial'), {undo: true}); }], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) { const b = $(sel); if (b) b.onclick = () => withGlide(fn); }
 }

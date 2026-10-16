@@ -29,17 +29,18 @@ function handleRect(id) {
 function tourRect(st) {
   if (typeof st.target === 'function') return st.target();
   const els = $$(st.target).filter(e => e.offsetParent); if (!els.length) return null;
-  const rs = els.map(e => e.getBoundingClientRect());
-  const l = Math.min(...rs.map(r => r.left)), t = Math.min(...rs.map(r => r.top)), rr = Math.max(...rs.map(r => r.right)), b = Math.max(...rs.map(r => r.bottom));
-  return {left: l, top: t, width: rr - l, height: Math.min(b - t, innerHeight - t - 8)};
+  const rs = els.map(e => e.getBoundingClientRect()), pg = els[0].closest('.page');
+  let l = Math.min(...rs.map(r => r.left)), t = Math.min(...rs.map(r => r.top)), rr = Math.max(...rs.map(r => r.right)), b = Math.max(...rs.map(r => r.bottom));
+  if (pg) { const p = pg.getBoundingClientRect(); t = Math.max(t, p.top); b = Math.min(b, p.bottom); }  // only the part of the panel in sight
+  return {left: l, top: t, width: rr - l, height: Math.max(20, Math.min(b - t, innerHeight - t - 8))};
 }
 function tourPlace() {
   if (!TOUR.on) return;
   const st = TOUR_STEPS[TOUR.i], r = tourRect(st), hole = $('#tourHole'), card = TOUR.el;
   if (r) { const pad = 6; Object.assign(hole.style, {left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px'}); hole.hidden = false; } else hole.hidden = true;
-  // card: next to the target where it fits, else at the bottom
-  const cw = Math.min(340, innerWidth - 24), ch = card.offsetHeight || 180;
-  let x = 12, y = innerHeight - ch - 12;
+  // card: next to the target where it fits, else at the bottom (at the top on a phone when the target is in the sheet)
+  const cw = Math.min(340, innerWidth - 24), ch = card.offsetHeight || 180, inSheet = r && innerWidth <= 760 && typeof st.target === 'string' && $(st.target.split(',')[0].trim())?.closest('#book');
+  let x = 12, y = inSheet ? 8 : innerHeight - ch - 12;
   if (r && innerWidth > 760) {
     const big = r.width > innerWidth * .5 && r.height > innerHeight * .5;
     if (big) { x = r.left + 16; y = r.top + 16; }
@@ -53,7 +54,13 @@ function tourGo(i) {
   TOUR.i = i; TOUR.busy = false;
   if (i >= TOUR_STEPS.length) return tourEnd(true);
   const st = TOUR_STEPS[i];
-  if (st.tab) { showTab(st.tab); setPanel(true); const d = document.querySelector(st.target.split(',')[0].trim()); const sec = d && d.closest('details.sec'); if (sec) sec.open = true; }
+  if (st.tab) {
+    showTab(st.tab); setPanel(true); const d = document.querySelector(st.target.split(',')[0].trim()); const sec = d && d.closest('details.sec'); if (sec) sec.open = true;
+    if (typeof sheetOn === 'function' && sheetOn()) setSheet('full');
+    // the target into view, in the panel only: the first of several at the top, a single one in the middle
+    if (d) requestAnimationFrame(() => { const pg = d.closest('.page'); if (!pg) return; const several = st.target.includes(','), rd = d.getBoundingClientRect(), rp = pg.getBoundingClientRect();
+      pg.scrollTop += several ? rd.top - rp.top - 52 : rd.top + rd.height / 2 - (rp.top + rp.height / 2); setTimeout(tourPlace, 300); });
+  }
   if (st.before) st.before();
   const c = TOUR.el; c.classList.remove('ok');
   c.querySelector('.tt').textContent = st.title; c.querySelector('.tx').textContent = st.text;

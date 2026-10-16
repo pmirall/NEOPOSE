@@ -300,7 +300,7 @@ function buildSketchUI() {
   $('#skMouse').checked = sk.mouseSim; $('#skMouse').onchange = e => sk.mouseSim = e.target.checked;
   $('#skUndo').onclick = () => { const s = sk.strokes.pop(); if (s) { sk.redo.push(s); redrawSketch(); } };
   $('#skRedo').onclick = () => { const s = sk.redo.pop(); if (s) { sk.strokes.push(s); redrawSketch(); } };
-  $('#skClear').onclick = () => { if (!sk.strokes.length) return; sk.redo = sk.strokes.slice().reverse(); sk.strokes = []; redrawSketch(); };
+  $('#skClear').onclick = () => { if (!sk.strokes.length) return; const was = sk.strokes; sk.redo = sk.strokes.slice().reverse(); sk.strokes = []; redrawSketch(); toast(tr('Boceto borrado'), {undo: () => { sk.strokes = was; sk.redo = []; redrawSketch(); }}); };
   $$('.hideFigBtn').forEach(b => b.onclick = () => setHideFig(!sk.hideFig));
   $('#skDim').onclick = () => { sk.dim = !sk.dim; canvas.style.opacity = sk.dim ? .35 : 1; $('#skDim').textContent = tr(sk.dim ? 'Escena normal' : 'Atenuar escena'); };
   $('#skClose').onclick = () => setSketch(false);
