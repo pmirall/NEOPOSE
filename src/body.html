@@ -78,6 +78,7 @@
             <span class="mvtotal" id="mvTotal"></span>
             <button class="btn icon tlrec" id="tlCamRec" aria-pressed="false" title="Grabar la cámara: cada encuadre se guarda como clave" aria-label="Grabar la cámara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3z"/></svg><i></i></button>
             <button class="btn icon" id="tlLine" title="Añadir una línea de diálogo" aria-label="Añadir una línea de diálogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v10H9l-5 4z"/><path d="M12 8v4M10 10h4"/></svg></button>
+            <button class="btn icon" id="tlBoard" title="De dibujos o vídeo a animación: suelta un storyboard, fotos o un vídeo" aria-label="De dibujos o vídeo a animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg></button>
             <button class="btn tlclips" id="tlClips" title="Galería de animaciones: andar, correr, saltar, luchar… o importa las tuyas" aria-label="Galería de animaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg><span>Animaciones</span></button>
             <button class="btn icon" id="tlExport" title="Exportar la animación" aria-label="Exportar la animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
             <button class="btn icon" id="tlMore" aria-expanded="false" title="Opciones de animación" aria-label="Opciones de animación"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
@@ -156,8 +157,8 @@
           </details>
           <details class="sec" data-sec="foto">
             <summary><h3>Desde una foto <span>sin conexión</span></h3></summary>
-            <div class="row"><button class="btn small" id="photoPick">Elegir foto…</button></div>
-            <input type="file" id="photoFile" accept="image/*" hidden>
+            <div class="row"><button class="btn small" id="photoPick">Elegir foto…</button><button class="btn small" id="photoBoard" title="Storyboard, varias fotos o un vídeo: se convierten en una animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Storyboard o vídeo → animación</button></div>
+            <input type="file" id="photoFile" accept="image/*,video/*" multiple hidden>
             <div class="photoprev" id="photoPrev" hidden><canvas id="photoCv"></canvas></div>
             <p class="msg" id="photoMsg" role="status"></p>
             <label class="check"><input type="checkbox" id="photoRef" checked> Ver la foto sobre el lienzo</label>
@@ -552,6 +553,7 @@
         <li>Toca cualquier pieza del cuerpo para girarla con el aro o con los deslizadores.</li>
         <li>Toca la mandíbula o una oreja de un anthro para moverlas a mano.</li>
         <li><b>Animaciones</b> (Animar → Animaciones): andar, correr, saltar, luchar, gestos… listas para añadir a un plano o usar como pose. También importa BVH, GLB o FBX con animaciones, o guarda la pista de un personaje.</li>
+        <li><b>De dibujos a animación</b> (botón de la varita en Animar, o suelta los archivos sobre el lienzo): una hoja de storyboard se corta en viñetas, varias fotos se ordenan y un vídeo se convierte en captura de movimiento. Un clic en «Animar» y se mueve.</li>
         <li><b>Avatares</b> (Cuerpo → Avatar importado): suelta un VRM, GLB o FBX humanoide sobre el lienzo, o elige uno libre de la galería. Se posa igual que el maniquí.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">
@@ -600,6 +602,43 @@
   </div>
 </div>
 
+<div class="modal" id="sbModal" hidden>
+  <div class="sheet sbsheet" role="dialog" aria-labelledby="sbT">
+    <div class="aghead">
+      <h2 id="sbT">De dibujos a animación</h2>
+      <button class="btn icon" id="sbClose" title="Cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="sbdrop" id="sbDrop">
+      <div class="sbart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg></div>
+      <p class="sbbig">Suelta aquí un storyboard, unas fotos o un vídeo</p>
+      <p class="note">Cada figura dibujada o fotografiada se convierte en una pose clave y NEOPOSE anima lo que pasa entre ellas. Un vídeo se convierte en captura de movimiento. Todo se analiza en este dispositivo.</p>
+      <button class="btn primary" id="sbPick">Elegir archivos…</button>
+    </div>
+    <div class="sbwork" id="sbWork" hidden>
+      <div class="sbleft">
+        <div class="sbbar" id="sbBar"></div>
+        <div class="sbstrip" id="sbStrip"></div>
+      </div>
+      <div class="sbright">
+        <canvas id="sbView" aria-label="Vista previa de la animación"></canvas>
+        <div class="filter"><span>Para</span><div class="chips" id="sbWho"></div></div>
+        <div id="sbGapBox"></div>
+        <div id="sbVideoOpts" hidden>
+          <div class="sbtrim"><div id="sbFromBox"></div><div id="sbToBox"></div></div>
+          <div id="sbSmoothBox"></div>
+          <label class="check"><input type="checkbox" id="sbRoot" checked> Seguir el desplazamiento y los saltos</label>
+        </div>
+      </div>
+    </div>
+    <p class="msg" id="sbMsg" role="status"></p>
+    <div class="foot sbfoot">
+      <button class="btn" id="sbAgain">Otros archivos</button>
+      <button class="btn" id="sbSave" hidden>Guardar en Mis animaciones</button>
+      <button class="btn primary sbgo" id="sbGo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Animar</button>
+      <input type="file" id="sbFile" accept="image/*,video/*" multiple hidden>
+    </div>
+  </div>
+</div>
 <div class="modal" id="animGallery" hidden>
   <div class="sheet agsheet" role="dialog" aria-labelledby="agT">
     <div class="aghead">

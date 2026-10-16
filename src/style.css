@@ -591,3 +591,54 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 }
 #agMsg:empty{display:none}
 .libclips{width:100%;justify-content:center;margin-top:10px}
+
+/* ---------- drawings and video to animation ---------- */
+.sbsheet{width:min(980px,100%);display:flex;flex-direction:column;max-height:calc(100% - 20px);overflow:hidden;padding-bottom:14px}
+.sbdrop{border:2px dashed var(--line);border-radius:10px;padding:34px 24px;margin-top:10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,background .15s}
+.sbdrop.over{border-color:var(--blue);background:var(--blue-wash)}
+.sbart{width:64px;height:64px;border-radius:50%;background:var(--blue-wash);color:var(--blue);display:grid;place-items:center;margin-bottom:4px}
+.sbart svg{width:32px;height:32px}
+.sbbig{font-family:var(--f-hand);font-size:22px;margin:0}
+.sbdrop .note{max-width:520px;margin:0 0 8px}
+.sbwork{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px;min-height:0;flex:1;margin-top:8px}
+.sbleft{display:flex;flex-direction:column;min-height:0}
+.sbbar{height:3px;border-radius:2px;background:var(--rule);margin:0 0 8px;position:relative;overflow:hidden;flex:none}
+.sbbar::after{content:'';position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:var(--blue);transition:width .25s}
+.sbstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;overflow:auto;align-content:start;padding:2px}
+.sbcard{position:relative;border:1.5px solid var(--line);border-radius:6px;padding:0;background:var(--page);cursor:pointer;overflow:hidden;display:block;aspect-ratio:4/3;font:inherit;color:var(--ink)}
+.sbcard canvas{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+.sbcard .sbn{position:absolute;top:4px;left:4px;min-width:20px;height:20px;border-radius:10px;background:var(--ink);color:var(--page);font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 5px}
+.sbcard .sbst{position:absolute;left:0;right:0;bottom:0;padding:3px 6px;font-size:11px;font-weight:600;background:color-mix(in srgb,var(--page) 88%,transparent);text-align:left}
+.sbcard.wait canvas{opacity:.55}
+.sbcard.wait .sbst{animation:sbpulse 1s ease-in-out infinite alternate}
+@keyframes sbpulse{from{opacity:.4}to{opacity:1}}
+.sbcard.ok.on{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.sbcard.ok:not(.on) canvas,.sbcard.none canvas{opacity:.35;filter:grayscale(1)}
+.sbcard.none{cursor:default}
+.sbcard.none .sbst{color:var(--ink-soft)}
+.sbright{display:flex;flex-direction:column;gap:4px;min-height:0;overflow:auto;border-left:1.5px solid var(--line);padding-left:18px}
+#sbView{width:100%;aspect-ratio:4/5;max-height:320px;border-radius:6px;background:var(--blue-wash);display:block;flex:none;margin-bottom:6px}
+.sbright .filter{flex-wrap:wrap}
+.sbtrim{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sbfoot{align-items:center;border-top:1.5px solid var(--line);padding-top:12px;margin-top:6px}
+.sbfoot #sbAgain{margin-right:auto}
+.sbgo{padding:8px 18px;font-size:14px}
+.sbgo:disabled{opacity:.45;cursor:not-allowed}
+.sbsheet #sbMsg:empty{display:none}
+@media (prefers-reduced-motion:reduce){.sbcard.wait .sbst{animation:none}}
+@media (max-width:760px){
+  .modal#sbModal{padding:0}
+  .sbsheet{padding:12px 12px 8px;width:100%;height:100%;max-height:100%;border-radius:0;border:0}
+  .sbwork{display:flex;flex-direction:column;gap:8px}
+  .sbright{order:-1;border-left:0;padding-left:0;display:grid;grid-template-columns:110px minmax(0,1fr);column-gap:12px;align-items:start;overflow:visible;flex:none}
+  #sbView{grid-row:1 / span 4;aspect-ratio:3/4;max-height:none;margin:0}
+  .sbright > *:not(#sbView){grid-column:2}
+  .sbleft{flex:1}
+  .sbstrip{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+  .sbfoot .btn{flex:1;justify-content:center;font-size:12px;padding:6px 8px}
+  .sbfoot #sbAgain{margin-right:0}
+  .sbdrop{padding:24px 14px}
+}
+.sbgo.ready{animation:sbglow 1.6s ease-in-out 2}
+@keyframes sbglow{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--blue) 30%,transparent)}}
+@media (prefers-reduced-motion:reduce){.sbgo.ready{animation:none}}

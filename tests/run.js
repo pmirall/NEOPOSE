@@ -17,7 +17,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 
 const server = http.createServer((q, r) => {
   let u = decodeURIComponent(q.url.split('?')[0]); if (u === '/') u = '/index.html';
-  fs.readFile(path.join(APP, u), (e, d) => { if (e) { r.statusCode = 404; return r.end(); } if (u.endsWith('.html')) r.setHeader('content-type', 'text/html'); r.end(d); });
+  fs.readFile(u.startsWith('/fixtures/') ? path.join(__dirname, u) : path.join(APP, u), (e, d) => { if (e) { r.statusCode = 404; return r.end(); } if (u.endsWith('.html')) r.setHeader('content-type', 'text/html'); r.end(d); });
 });
 
 async function open(browser, {lang = 'en', viewport = {width: 1400, height: 900}, mobile = false} = {}) {
@@ -337,6 +337,44 @@ const SUITES = {
     const arms = await A(() => { const m = window.__cdp.mq, w = m.joints.wristL.getWorldPosition(new THREE.Vector3()), c = m.joints.chest.getWorldPosition(new THREE.Vector3()); return w.distanceTo(c); });
     ok(arms < .35, `“use as pose” folds the arms (left wrist ${arms.toFixed(2)} m from the chest)`);
     await page.screenshot({path: path.join(OUT, 'clips.png')});
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // drawings to animation: a storyboard sheet (made here from three renders in drawn frames) cut into panels, posed, animated
+  async board(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await A(async () => {
+      const C = window.__cdp; C.ex.size = 1; C.ex.bg = 'paper'; C.state.dots = false;
+      const sheet = document.createElement('canvas'); sheet.width = 1800; sheet.height = 760; const x = sheet.getContext('2d');
+      x.fillStyle = '#fbfaf6'; x.fillRect(0, 0, 1800, 760); x.fillStyle = '#555'; x.font = '40px sans-serif'; x.fillText('SECUENCIA 1', 60, 60);
+      for (const [i, id] of ['pie', 'caminar', 'salto'].entries()) {
+        C.usePreset(C.POSES.find(p => p.id === id)); C.camera.position.set(0, 1, 3.4); C.controls.target.set(0, .9, 0); C.controls.update(); await new Promise(r => setTimeout(r, 300));
+        const r = C.renderExportCanvas(), bx = 60 + i * 580, k = Math.min(520 / r.width, 560 / r.height);
+        x.drawImage(r, bx + (520 - r.width * k) / 2, 110 + (560 - r.height * k) / 2, r.width * k, r.height * k);
+        x.strokeStyle = '#333'; x.lineWidth = 4; x.strokeRect(bx, 110, 520, 560); x.fillStyle = '#555'; x.font = '28px sans-serif'; x.fillText('PLANO ' + (i + 1), bx, 720);
+      }
+      C.usePreset(C.POSES.find(p => p.id === 'pie'));
+      const blob = await new Promise(r => sheet.toBlob(r, 'image/png'));
+      window.__sheet = new File([blob], 'storyboard.png', {type: 'image/png'});
+      const img = new Image(); img.src = URL.createObjectURL(blob); await img.decode(); window.__panels = C.board.splitPanels(img).length;
+    });
+    ok(await A(() => window.__panels) === 3, `a storyboard sheet is cut into its 3 panels (${await A(() => window.__panels)})`);
+    await A(() => window.__cdp.board.photoOrBoard([window.__sheet]));
+    await page.waitForFunction(() => !document.querySelector('#sbModal').hidden && window.__cdp.board.BD.items.length === 3, null, {timeout: 20000});
+    ok(true, 'dropping a sheet opens “drawings to animation” with its panels, instead of the single-photo pose');
+    await page.waitForFunction(() => !window.__cdp.board.BD.busy, null, {timeout: 300000});
+    // several photos (four frames of a Muybridge jump, out of order on purpose): sorted by name, each one a key pose
+    await A(async () => { const F = []; for (const n of ['09', '01', '07', '05']) { const b = await (await fetch('/fixtures/muybridge-161-' + n + '.jpg')).blob(); F.push(new File([b], 'salto-' + n + '.jpg', {type: 'image/jpeg'})); } window.__cdp.board.readBoard(F); });
+    await page.waitForFunction(() => !window.__cdp.board.BD.busy && window.__cdp.board.BD.items.length === 4, null, {timeout: 300000});
+    const r = await A(() => { const B = window.__cdp.board.BD; return {st: B.items.map(i => i.status), go: !document.querySelector('#sbGo').disabled, cards: document.querySelectorAll('#sbStrip .sbcard.ok').length, name: B.name}; });
+    const found = r.st.filter(s => s === 'ok').length;
+    ok(found >= 3 && r.go && r.cards === found, `the person is found in the photos (${r.st.join(', ')}) and Animate is ready`);
+    await page.screenshot({path: path.join(OUT, 'board.png')});
+    await page.click('#sbGo'); await page.waitForTimeout(800);
+    const k = await A(() => { const A2 = window.__cdp.ANIM, K = A2.shots[A2.cur].keys[0]; return {n: K.length, fs: K.map(k => k.f), playing: A2.playing, closed: document.querySelector('#sbModal').hidden,
+      diff: Math.max(...K.slice(1).map(k => new THREE.Quaternion().fromArray(K[0].pose.q.hipL).angleTo(new THREE.Quaternion().fromArray(k.pose.q.hipL)))) * 180 / Math.PI}; });
+    ok(k.closed && k.playing && k.n === found && k.fs[1] - k.fs[0] === 12, `one click: ${k.n} key poses a second apart (${k.fs}) and it plays`);
+    ok(k.diff > 20, `the poses follow the photos (the hip bends up to ${k.diff.toFixed(0)}° during the jump)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

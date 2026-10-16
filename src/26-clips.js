@@ -315,7 +315,7 @@ async function openAnimGallery() {
   if (!AG.sel) AG.sel = CLIPS.lib[0];
   renderAnimGallery(); startPreview();
 }
-function closeAnimGallery() { $('#animGallery').hidden = true; AG.playing = false; }
+function closeAnimGallery() { $('#animGallery').hidden = true; }
 function clipThumb(c) {
   if (CLIPS.thumbs.has(c.id)) return CLIPS.thumbs.get(c.id);
   if (!thumbR) return null;
@@ -362,32 +362,32 @@ function renderAgDetail() {
   $('#agDel').hidden = c.src !== 'user';
   $('#agWhen').textContent = ANIM.shots.length ? tr('Empieza en el fotograma actual del plano «{n}» ({s} s).', {n: shot().name, s: dec(sec(ANIM.f))}) : tr('Se abrirá la línea de tiempo y empezará al principio.');
 }
-// live preview: a little figure playing the selected clip
-let agR = null, agScene = null, agCam = null, agFig = null;
-function startPreview() {
-  if (!agR) {
-    try {
-      agR = new THREE.WebGLRenderer({canvas: $('#agView'), antialias: true, alpha: true}); agR.setPixelRatio(Math.min(devicePixelRatio, 2));
-      agScene = new THREE.Scene(); agCam = new THREE.PerspectiveCamera(30, 1, .05, 60);
-      agScene.add(new THREE.HemisphereLight(0xffffff, 0x8a8273, 1.05)); const dl = new THREE.DirectionalLight(0xffffff, .55); dl.position.set(2, 4, 3); agScene.add(dl);
-      const g = new THREE.GridHelper(8, 16, 0xb9ad94, 0xd8cfba); agScene.add(g);
-      agFig = new Mannequin(makeCharMats(), 'volumen'); agFig.build(bodyOf('hombre')); agScene.add(agFig.group);
-    } catch (e) { agR = null; return; }
-  }
-  AG.playing = true; let last = performance.now();
+// a little stage with one figure, for previews: pose(dt, fig) gives the pose to show each frame, alive() keeps it running
+function miniStage(cv, alive, pose) {
+  let r; try { r = new THREE.WebGLRenderer({canvas: cv, antialias: true, alpha: true}); } catch (e) { return {start() {}}; }
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .05, 60), dl = new THREE.DirectionalLight(0xffffff, .55);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x8a8273, 1.05)); dl.position.set(2, 4, 3); sc.add(dl, new THREE.GridHelper(8, 16, 0xb9ad94, 0xd8cfba));
+  const fig = new Mannequin(makeCharMats(), 'volumen'); fig.build(bodyOf('hombre')); sc.add(fig.group);
+  let last = 0, running = false;
   const loop = now => {
-    if (!AG.playing || $('#animGallery').hidden) return;
-    const c = AG.sel, cv = $('#agView'), w = cv.clientWidth, h = cv.clientHeight;
-    if (cv.width !== Math.round(w * agR.getPixelRatio())) { agR.setSize(w, h, false); agCam.aspect = w / h; agCam.updateProjectionMatrix(); }
-    if (c) {
-      AG.t += (now - last) / 1000 * AG.opts.speed; if (AG.t > c.len + (c.loop ? 0 : .6)) AG.t = 0;
-      const smp = sampleClip(c, Math.min(AG.t, c.len)), k = agFig.rootY / clipRig().rootY;
-      agFig.setPose(clipPose(agFig, smp, new V3(0, 0, 0), 0, AG.opts.inPlace, k)); agFig.group.updateMatrixWorld(true);
-      const hp = agFig.joints.hips.getWorldPosition(new V3()); agCam.position.set(hp.x + 1.5, 1.25, hp.z + 3.1); agCam.lookAt(hp.x, .88, hp.z);
-    }
-    last = now; agR.render(agScene, agCam); requestAnimationFrame(loop);
+    if (!alive()) { running = false; return; }
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (w && cv.width !== Math.round(w * r.getPixelRatio())) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    const p = pose(Math.min(.1, (now - last) / 1000), fig); last = now;
+    if (p) { fig.setPose(p); fig.group.updateMatrixWorld(true); const hp = fig.joints.hips.getWorldPosition(new V3()); cam.position.set(hp.x + 1.5, 1.25, hp.z + 3.1); cam.lookAt(hp.x, .88, hp.z); }
+    r.render(sc, cam); requestAnimationFrame(loop);
   };
-  requestAnimationFrame(loop);
+  return {fig, start() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(loop); } }};
+}
+// the gallery's preview: the selected clip, at the chosen speed
+function startPreview() {
+  if (!AG.stage) AG.stage = miniStage($('#agView'), () => !$('#animGallery').hidden, (dt, fig) => {
+    const c = AG.sel; if (!c) return null;
+    AG.t += dt * AG.opts.speed; if (AG.t > c.len + (c.loop ? 0 : .6)) AG.t = 0;
+    return clipPose(fig, sampleClip(c, Math.min(AG.t, c.len)), new V3(0, 0, 0), 0, AG.opts.inPlace, fig.rootY / clipRig().rootY);
+  });
+  AG.stage.start();
 }
 async function addSelectedClip() {
   const c = AG.sel; if (!c) return;

@@ -126,10 +126,16 @@ async function usePhoto(file) {
   } catch (e) { console.warn('photo', e); photoMsg(tr('El detector no ha podido funcionar aquí ({e}).', {e: e && e.message || e})); }
   $('#photoPick').disabled = false;
 }
+// one photo: its pose; several pictures, a video or a storyboard sheet: an animation (see 27-board.js)
+async function photoOrBoard(files) {
+  if (!files.length) return;
+  if (files.length > 1 || /^video\//.test(files[0].type) || await isStoryboard(files[0])) return openBoard(files);
+  showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true; usePhoto(files[0]);
+}
 function buildPhotoUI() {
   $('#photoPick').onclick = () => $('#photoFile').click();
-  $('#photoFile').onchange = e => { usePhoto(e.target.files[0]); e.target.value = ''; };
+  $('#photoFile').onchange = e => { photoOrBoard([...e.target.files]); e.target.value = ''; };
   $('#photoRef').onchange = showPhotoRef;
   slider($('#photoAlphaBox'), {id: 'photoAlpha', label: 'Transparencia de la foto', min: .1, max: .9, step: .05, value: .4, fmt: pctFmt, input: v => { PHOTO.alpha = v; $('#photoOverlay').style.opacity = v; }});
-  vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(f => /^image\//.test(f.type)); if (f) { e.preventDefault(); showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true; usePhoto(f); } });
+  vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].filter(f => /^(image|video)\//.test(f.type)); if (f.length) { e.preventDefault(); photoOrBoard(f); } });
 }
