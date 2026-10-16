@@ -306,7 +306,7 @@ function buildSketchUI() {
   $('#skClose').onclick = () => setSketch(false);
   $('#sketchBtn').onclick = () => setSketch(!sk.on);
   addEventListener('keydown', e => {
-    if (!sk.on || e.target.matches('input[type=text],input[type=search],textarea')) return;
+    if (!sk.on || e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select')) return;
     const k = e.key.toLowerCase();
     if (k === 'e') setErase(!sk.erase);
     else if (k === 'b') setErase(false);

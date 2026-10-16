@@ -22,7 +22,7 @@ const server = http.createServer((q, r) => {
 
 async function open(browser, {lang = 'en', viewport = {width: 1400, height: 900}, mobile = false} = {}) {
   const ctx = await browser.newContext({viewport, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile});
-  await ctx.addInitScript(l => { if (!localStorage.getItem('cdp.lang')) localStorage.setItem('cdp.lang', JSON.stringify(l)); localStorage.setItem('cdp.welcomed', 'true'); }, lang);
+  await ctx.addInitScript(l => { if (!localStorage.getItem('cdp.lang')) localStorage.setItem('cdp.lang', JSON.stringify(l)); localStorage.setItem('cdp.welcomed', 'true'); localStorage.setItem('cdp.tipDrag', 'true'); }, lang);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', e => page.errors.push(String(e.stack || e).slice(0, 300)));
@@ -573,6 +573,86 @@ const SUITES = {
     ok(/\.gif$/.test(g.suggestedFilename()) && gb.toString('latin1', 0, 6) === 'GIF89a' && gw <= 720 && gfr === names.length / 2 / 3, `an animated GIF (${gw} px wide, ${gfr} frames, ${Math.round(gb.length / 1024)} kB)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
+  },
+  // feel: drag from the panel to the canvas, glides, undo toasts, menus, search, sliders, the phone sheet and finger gestures
+  async feel(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    const at = (ci, j) => A(([ci, j]) => { const C = window.__cdp, r = document.querySelector('#gl').getBoundingClientRect(), p = C.chars[ci].joints[j].getWorldPosition(new THREE.Vector3()).project(C.camera); return {x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height}; }, [ci, j]);
+    const drag = async (sel, to, wait = 300) => { const el = await page.$(sel); await el.evaluate(e => e.scrollIntoView({block: 'center', behavior: 'instant'})); await page.waitForTimeout(300); const b = await el.boundingBox(), x0 = b.x + b.width / 2, y0 = b.y + b.height / 2;
+      await page.mouse.move(x0, y0); await page.mouse.down(); for (let i = 1; i <= 12; i++) { await page.mouse.move(x0 + (to.x - x0) * i / 12, y0 + (to.y - y0) * i / 12); await page.waitForTimeout(16); } await page.waitForTimeout(wait); };
+    await page.click('#cast .chip.add'); await page.waitForTimeout(1500);
+    await A(() => document.querySelectorAll('#book details.sec').forEach(d => { if (!d.querySelector('#poseGrid')) d.open = false; })); await page.waitForTimeout(300);
+    // a pose dragged onto the other character: previewed while hovering, applied on release, with a way back
+    const q0 = await A(() => JSON.stringify(window.__cdp.chars[0].getPose().q));
+    await drag('#poseGrid .pose[data-id="victoria"]', await at(0, 'chest'));
+    const hov = await A(() => ({label: document.querySelector('.dndtarget.hot span')?.textContent, preview: JSON.stringify(window.__cdp.chars[0].getPose().q)}));
+    ok(/1 · Man/.test(hov.label || '') && hov.preview !== q0, `while hovering, the target says whose it is and shows the pose (“${hov.label}”)`);
+    await page.mouse.up(); await page.waitForTimeout(600);
+    const dr = await A(() => ({active: window.__cdp.chars.indexOf(window.__cdp.mq), preset: window.__cdp.state.posePreset, toast: document.querySelector('#hint .undo')?.textContent}));
+    ok(dr.active === 0 && dr.preset === 'victoria' && dr.toast === 'Undo', 'dropped: that character takes the pose and becomes active, the toast offers Undo');
+    await page.click('#hint .undo'); await page.waitForTimeout(500);
+    ok(await A(q => JSON.stringify(window.__cdp.chars[0].getPose().q) === q, q0), 'Undo in the toast puts the old pose back');
+    // dropped outside: nothing changes
+    const q1 = await A(() => JSON.stringify(window.__cdp.chars.map(m => m.getPose().q)));
+    await drag('#poseGrid .pose[data-id="victoria"]', {x: 300, y: 12}); await page.mouse.up(); await page.waitForTimeout(400);
+    ok(await A(q => JSON.stringify(window.__cdp.chars.map(m => m.getPose().q)) === q, q1), 'dropped outside the canvas: nothing changes');
+    // poses glide into place
+    const mid = await A(() => { document.querySelector('#poseGrid .pose[data-id="salto"]').click(); return JSON.stringify(window.__cdp.mq.getPose().q); }); await page.waitForTimeout(900);
+    const end = await A(() => JSON.stringify(window.__cdp.mq.getPose().q)); await page.waitForTimeout(300);
+    ok(mid !== end && end === await A(() => JSON.stringify(window.__cdp.mq.getPose().q)), 'a pose picked in the panel glides into place and settles');
+    // an object onto the floor where it is dropped
+    await page.click('.tab[data-tab=escena]'); await A(() => { document.querySelector('#propChips').closest('details').open = true; }); await page.waitForTimeout(300);
+    const n0 = await A(() => window.__cdp.props.length), spot = await A(() => { const r = document.querySelector('#gl').getBoundingClientRect(); return {x: r.left + r.width * .2, y: r.top + r.height * .85}; });
+    await drag('#propChips > .chips .chip[data-v]', spot); await page.mouse.up(); await page.waitForTimeout(500);
+    const pr = await A(s => { const C = window.__cdp, g = C.props[C.props.length - 1], r = document.querySelector('#gl').getBoundingClientRect(), p = g.position.clone().project(C.camera); return {n: C.props.length, dx: Math.abs(r.left + (p.x + 1) / 2 * r.width - s.x), y: g.position.y}; }, spot);
+    ok(pr.n === n0 + 1 && pr.dx < 40 && pr.y < .01, `an object lands on the floor where it is dropped (${Math.round(pr.dx)} px off)`);
+    // a colour onto a garment
+    await page.click('.tab[data-tab=ropa]'); await A(() => ['#outfitChips', '#dropColors'].forEach(s => { document.querySelector(s).closest('details').open = true; })); await page.click('#outfitChips .chip:nth-child(3)'); await page.waitForTimeout(3500);
+    await drag('#dropColors button:nth-child(9)', await at(1, 'chest'));
+    const hovC = await A(() => document.querySelector('.dndtarget.hot span')?.textContent); await page.mouse.up(); await page.waitForTimeout(500);
+    const tint = await A(() => { const m = window.__cdp.chars[1], g = m.garments.find(g => g.spec.mode === 'tint'); return g && g.spec.colA; });
+    ok(/Dye/.test(hovC || '') && tint === await A(() => document.querySelector('#dropColors button:nth-child(9)').dataset.c), `a colour dropped on a garment dyes it (${hovC} → ${tint})`);
+    // right click: what can be done there
+    const c2 = await at(1, 'hipL'); await page.mouse.click(c2.x, c2.y, {button: 'right'}); await page.waitForTimeout(300);
+    const menu = await A(() => [...document.querySelectorAll('#ctxMenu button span')].map(s => s.textContent));
+    ok(menu.includes('Mirror the pose') && menu.includes('Duplicate'), `right click on a character: its menu (${menu.length} items)`);
+    const nC = await A(() => window.__cdp.chars.length); await page.click('#ctxMenu button:has-text("Duplicate")'); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.chars.length) === nC + 1, 'Duplicate from the menu adds a copy');
+    // Ctrl+K finds anything
+    await page.keyboard.press('Control+k'); await page.waitForTimeout(200); await page.keyboard.type('forest'); await page.waitForTimeout(200);
+    const found = await A(() => [...document.querySelectorAll('#palList li .pl')].map(l => l.textContent));
+    await page.keyboard.press('Enter'); await page.waitForTimeout(2500);
+    ok(found[0] === 'Forest' && await A(() => window.__cdp.state.env) === 'bosque', `search: “forest” → ${found.slice(0, 3).join(', ')}; Enter opens it`);
+    // sliders: type a value, double click resets
+    await page.click('.tab[data-tab=camara]'); await A(() => document.querySelectorAll('.page section[data-tab=camara] details.sec').forEach(d => d.open = true)); await page.waitForTimeout(300);
+    const sl = await A(() => { document.querySelector('#roll').parentElement.querySelector('output').click(); return document.activeElement && document.activeElement.classList.contains('slnum'); });
+    await page.keyboard.type('20'); await page.keyboard.press('Enter'); await page.waitForTimeout(200);
+    const typed = await A(() => ({out: document.querySelector('#roll').parentElement.querySelector('output').textContent, v: +document.querySelector('#roll').value}));
+    await A(() => document.querySelector('#roll').dispatchEvent(new MouseEvent('dblclick', {bubbles: true}))); await page.waitForTimeout(100);
+    const reset = await A(() => document.querySelector('#roll').parentElement.querySelector('output').textContent);
+    ok(sl && typed.v === 20 && reset === '0°', `a slider takes a typed value (${typed.out}) and double click resets it (${reset})`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+    // the phone: a sheet, a finger lifting a pose onto the character, two fingers to undo
+    const ph = await open(browser, {viewport: {width: 390, height: 844}, mobile: true}), P = (f, a) => ph.evaluate(f, a), cdp = await ph.context().newCDPSession(ph);
+    const T = (type, pts) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints: pts.map(([x, y], i) => ({x, y, id: i}))});
+    const sh = await P(() => ({snap: document.querySelector('#book').dataset.snap, canvas: document.querySelector('#gl').getBoundingClientRect().height, scroll: document.documentElement.scrollWidth - innerWidth, top: document.querySelector('header.top').getBoundingClientRect().height}));
+    ok(sh.snap === 'half' && sh.canvas > 300 && sh.scroll <= 0 && sh.top < 60, `phone: the panel is a sheet and the canvas keeps ${Math.round(sh.canvas)} px`);
+    await P(() => document.querySelectorAll('#book details.sec').forEach(d => { if (!d.querySelector('#poseGrid')) d.open = false; }));
+    const card = await ph.$('#poseGrid .pose[data-id="victoria"]'); await card.evaluate(e => e.scrollIntoView({block: 'center', behavior: 'instant'})); await ph.waitForTimeout(400); const cb = await card.boundingBox();
+    const tg = await P(() => { const C = window.__cdp, r = document.querySelector('#gl').getBoundingClientRect(), p = C.chars[0].joints.chest.getWorldPosition(new THREE.Vector3()).project(C.camera); return {x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height}; });
+    const sx = cb.x + cb.width / 2, sy = cb.y + cb.height / 2, before = await P(() => JSON.stringify(window.__cdp.chars[0].getPose().q));
+    await T('touchStart', [[sx, sy]]); await ph.waitForTimeout(450); for (let i = 1; i <= 12; i++) { await T('touchMove', [[sx + (tg.x - sx) * i / 12, sy + (tg.y - sy) * i / 12]]); await ph.waitForTimeout(20); }
+    await ph.waitForTimeout(300); await T('touchEnd', []); await ph.waitForTimeout(700);
+    ok(await P(() => window.__cdp.state.posePreset) === 'victoria', 'phone: press and hold a pose, slide it onto the character, let go');
+    const r2 = await P(() => { const b = document.querySelector('#gl').getBoundingClientRect(); return {x: b.left + b.width * .6, y: b.top + b.height * .25}; });
+    // software rendering can hold the second event back past the tap window: try again (it only undoes once it counts)
+    for (let k = 0; k < 3 && !(await P(b => JSON.stringify(window.__cdp.chars[0].getPose().q) === b, before)); k++) { await T('touchStart', [[r2.x, r2.y], [r2.x + 50, r2.y + 20]]); await ph.waitForTimeout(40); await T('touchEnd', []); await ph.waitForTimeout(900); }
+    ok(await P(b => JSON.stringify(window.__cdp.chars[0].getPose().q) === b, before), 'phone: a two-finger tap undoes');
+    await ph.tap('.sheetgrip'); await ph.waitForTimeout(400);
+    ok(await P(() => document.querySelector('#book').dataset.snap) === 'full', 'phone: tapping the grip raises the sheet');
+    ok(!ph.errors.length, 'phone: no errors' + (ph.errors.length ? ': ' + ph.errors.join(' | ') : ''));
+    await ph.context().close();
   },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {

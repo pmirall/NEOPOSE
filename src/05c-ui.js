@@ -29,7 +29,7 @@ function restore(s) {
 }
 function undo() { if (hist.i > 0) { restore(hist.stack[--hist.i]); updateUndo(); } }
 function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++hist.i]); updateUndo(); } }
-function updateUndo() { $('#undo').disabled = hist.i <= 0; $('#redo').disabled = hist.i >= hist.stack.length - 1; }
+function updateUndo() { $('#undo').disabled = $('#undoF').disabled = hist.i <= 0; $('#redo').disabled = $('#redoF').disabled = hist.i >= hist.stack.length - 1; }
 let rebuildPending = false;
 function rebuildActive(now) {
   const run = () => { rebuildPending = false; mq.build(mq.body); mq.ground(); _boxT = 0; $('#headsOut').textContent = dec(mq.heads); renderCast(); };
@@ -124,7 +124,7 @@ function slider(parent, o) {
   const set = v => { inp.value = v; out.textContent = o.fmt(+inp.value); };
   inp.addEventListener('input', () => { out.textContent = o.fmt(+inp.value); o.input(+inp.value); });
   if (o.change) inp.addEventListener('change', () => o.change(+inp.value));
-  set(o.value); parent.appendChild(wrap);
+  set(o.value); parent.appendChild(wrap); sliderExtras(wrap, inp, out, o);
   return {set, inp};
 }
 function chips(parent, items, cur, onPick) {

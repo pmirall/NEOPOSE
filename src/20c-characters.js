@@ -70,7 +70,7 @@ const CH_ICONS = {use: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
   del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'};
 function characterCard(c, onClick) {
-  const b = document.createElement('div'); b.className = 'pose charcard'; b.tabIndex = 0; b.setAttribute('role', 'button'); b.title = tr('Poner a «{x}» en la escena', {x: c.name});
+  const b = document.createElement('div'); b.className = 'pose charcard'; b.dataset.id = c.id; b.tabIndex = 0; b.setAttribute('role', 'button'); b.title = tr('Poner a «{x}» en la escena', {x: c.name});
   const img = document.createElement('img'); img.className = 'th img'; img.alt = ''; if (c.thumb) img.src = c.thumb;
   const nm = document.createElement('span'); nm.textContent = c.name;
   b.append(img, nm); b.onclick = onClick; b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } };

@@ -57,7 +57,7 @@ function buildPoseGrid() {
   if (!list.length) g.innerHTML = `<p class="empty">${tr('Ninguna pose coincide con la búsqueda.')}</p>`;
   thumbQueue = [];
   for (const p of list) {
-    const el = poseCard(p.label, () => state.castN === 1 ? usePreset(p) : useGroup(p), thumbs.get(p.id));
+    const el = poseCard(p.label, () => withGlide(() => state.castN === 1 ? usePreset(p) : useGroup(p)), thumbs.get(p.id));
     el.dataset.id = p.id; g.appendChild(el);
     if (!thumbs.has(p.id)) thumbQueue.push([p, el.querySelector('.th')]);
   }

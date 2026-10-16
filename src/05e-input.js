@@ -1,14 +1,16 @@
 /* ---------- pointer interaction ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-let down = null, drag = null, gizmoDragged = false;
+let down = null, drag = null, gizmoDragged = false, hoverHandle = null;
 function setNdc(e) { const r = canvas.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
 vp.addEventListener('pointerdown', e => {
   if (e.target !== canvas) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) { down = null; return; }  // right button: the camera pans, or the menu opens
   down = {x: e.clientX, y: e.clientY}; gizmoDragged = false;
   if (tc.axis || practice.active) return;
   setNdc(e);
+  finishGlides();
   const hit = ray.intersectObjects([...Object.values(handles), sunHandle].filter(h => h.visible))[0]
-    || ray.intersectObjects(Object.values(jointDots).filter(d => d.visible))[0];
+    || ray.intersectObjects(Object.values(jointDots).filter(d => d.visible))[0] || nearHandle(e.clientX, e.clientY);
   if (!hit) return;
   e.stopPropagation(); e.preventDefault();
   if (hit.object.userData.joint) {
@@ -30,7 +32,7 @@ vp.addEventListener('pointerdown', e => {
 }, true);
 vp.addEventListener('pointermove', e => {
   if (!drag) {
-    if (e.target === canvas && !tc.dragging && !practice.active) { setNdc(e); vp.style.cursor = ray.intersectObjects([...Object.values(handles), ...Object.values(jointDots)].filter(h => h.visible)).length ? 'grab' : ''; }
+    if (e.target === canvas && !tc.dragging && !practice.active) { setNdc(e); const hv = e.pointerType === 'mouse' ? (ray.intersectObjects([...Object.values(handles), ...Object.values(jointDots)].filter(h => h.visible))[0] || nearHandle(e.clientX, e.clientY)) : null; hoverHandle = hv ? hv.object : null; vp.style.cursor = hv ? 'grab' : ''; }
     return;
   }
   setNdc(e);
@@ -121,11 +123,11 @@ tc.addEventListener('objectChange', () => {
 });
 tc.addEventListener('mouseUp', () => { if (state.sel) pushHistory(); });
 addEventListener('keydown', e => {
-  if (e.target.matches('input[type=text],input[type=search],input:not([type]),textarea')) return;
+  if (e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select')) return;
   const k = e.key.toLowerCase();
   if (sk.on && (e.ctrlKey || e.metaKey) && (k === 'z' || k === 'y')) { e.preventDefault(); (k === 'y' || e.shiftKey ? $('#skRedo') : $('#skUndo')).click(); }
-  else if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-  else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); withGlide(undo); }
+  else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); withGlide(redo); }
   else if (k === 'delete' || k === 'backspace') { if (state.sel && state.sel.kind !== 'joint') { e.preventDefault(); deleteSel(); } }
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
   else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }

@@ -673,3 +673,118 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 .openinapp{justify-content:space-between;padding:10px 14px}
 .openinapp.found{border-color:var(--ink)}
 .openinapp .note{margin:0;font-size:11.5px}
+
+/* ======================= feel: motion, drag to the canvas, menus, search, sheet ======================= */
+:root{--dur-1:150ms;--dur-2:250ms;--ease:cubic-bezier(.2,0,0,1);--spring:cubic-bezier(.34,1.56,.64,1)}
+.chip,.btn,.pose,.libItem,.hairItem{transition:border-color var(--dur-1),background var(--dur-1),color var(--dur-1),transform var(--dur-1) var(--ease)}
+.chip:active,.btn:active,.pose:active,.libItem:active,.hairItem:active{transform:scale(.96)}
+details.sec[open] > :not(summary){animation:secIn var(--dur-2) var(--ease)}
+@keyframes secIn{from{opacity:0;transform:translateY(-4px)}}
+.page section:not([hidden]){animation:pageIn var(--dur-2) var(--ease)}
+@keyframes pageIn{from{opacity:.4}}
+/* what can be dragged */
+:is(#poseGrid .pose,#gestureChips .chip,#exprChips .chip,#outfitChips .chip,#garmentAdd .libItem,.swatches button,.dropcolor button,#propChips .chip,#charGrid .charcard,#castPop .charcard,#envChips .chip,#hairGrid .hairItem,#buildGrid .pose,#myPoses .pose,#addPoint,#addSpot){touch-action:pan-y;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.lifted{opacity:.35}
+body.dragging,body.dragging *{cursor:grabbing!important}
+.dndghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;background:var(--page);border:1.5px solid var(--ink);border-radius:8px;box-shadow:0 14px 30px -10px rgba(40,30,10,.55);max-width:120px;font-size:11.5px;font-weight:700;text-align:center;animation:lift var(--dur-2) var(--spring);transition:transform 60ms linear,border-color var(--dur-1)}
+.dndghost img,.dndghost .gth{width:62px;height:76px;object-fit:cover;border-radius:4px}
+.dndghost .gth{background:var(--ink);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.dndghost.swatch{width:44px;height:44px;border-radius:50%;padding:0;border:3px solid var(--page);outline:1.5px solid var(--ink)}
+.dndghost.ok{border-color:var(--blue)}
+.dndghost.home{transition:transform var(--dur-2) var(--ease),opacity var(--dur-2);opacity:0}
+.dndghost.drop{transition:opacity var(--dur-2),scale var(--dur-2) var(--ease);opacity:0;scale:.4}
+@keyframes lift{from{scale:.7;opacity:.4}}
+.dndtarget{position:fixed;z-index:55;pointer-events:none;border:2px dashed color-mix(in srgb,var(--blue) 45%,transparent);border-radius:14px;transition:all 90ms var(--ease)}
+.dndtarget.hot{border:2.5px solid var(--blue);background:var(--blue-wash);box-shadow:0 0 0 4px var(--blue-wash)}
+.dndtarget.hot.floor{border-radius:50%}
+.dndtarget span{position:absolute;left:50%;top:-14px;transform:translate(-50%,-100%);background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;box-shadow:var(--lift)}
+.dndtarget.hot.floor span{top:-6px}
+.dndpop{position:fixed;z-index:56;width:20px;height:20px;margin:-10px 0 0 -10px;border:2.5px solid var(--blue);border-radius:50%;pointer-events:none;animation:pop .5s var(--ease) forwards}
+@keyframes pop{to{transform:scale(5);opacity:0}}
+.dropcolor{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
+.dropcolor button{width:26px;height:26px;border-radius:50%;border:2px solid var(--page);outline:1.5px solid var(--line);cursor:grab;padding:0}
+.dropcolor button:hover{outline-color:var(--ink);transform:scale(1.12)}
+.dropnote{margin:0 0 10px}
+/* the toast's way back */
+.hint .undo{border:0;background:none;color:var(--blue);font-weight:700;cursor:pointer;padding:0 0 0 6px;text-decoration:underline;text-underline-offset:2px}
+.hint.toast{pointer-events:auto}
+/* sliders: the value is a button that turns into a field */
+.sl output[role=button]{cursor:text;border-radius:3px}
+.sl output[role=button]:hover{background:var(--blue-wash)}
+.sl input.slnum{grid-column:2;justify-self:end;width:72px;font-size:12px;padding:1px 4px;border:1.5px solid var(--blue);border-radius:3px;background:var(--page);text-align:right}
+/* right click / long press menu */
+.ctxmenu{position:fixed;z-index:70;min-width:200px;background:var(--page);border:1.5px solid var(--ink);border-radius:8px;box-shadow:0 18px 40px -16px rgba(40,30,10,.6);padding:5px;animation:menuIn var(--dur-1) var(--ease);transform-origin:top left}
+@keyframes menuIn{from{opacity:0;scale:.94}}
+.ctxmenu .ctxtitle{margin:2px 8px 4px;font-family:var(--f-hand);font-weight:700;font-size:16px}
+.ctxmenu button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;border:0;background:none;text-align:left;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:13.5px}
+.ctxmenu button:hover,.ctxmenu button:focus-visible{background:var(--blue-wash);outline:none}
+.ctxmenu button.danger{color:var(--red)}
+.ctxmenu kbd{font-size:10.5px;color:var(--ink-soft)}
+/* find anything */
+.palmodal{place-items:start center;padding-top:12vh}
+.palsheet{width:min(600px,100%);padding:0;overflow:hidden;animation:menuIn var(--dur-2) var(--ease)}
+#palInput{width:100%;border:0;border-bottom:1.5px solid var(--line);background:transparent;padding:14px 16px;font-size:16px;outline:none}
+.pallist{list-style:none;margin:0;padding:6px;max-height:min(52vh,420px);overflow:auto}
+.pallist li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer}
+.pallist li[aria-selected="true"]{background:var(--blue-wash)}
+.pallist li.empty{color:var(--ink-soft);cursor:default}
+.pallist .pt{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);width:78px;flex:none}
+.pallist .pl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palfoot{margin:0;padding:8px 14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-soft)}
+/* fingers: targets of at least 40-44 px (Apple HIG 44 pt, Material 48 dp) */
+@media (pointer:coarse){
+  .chip{min-height:40px;padding:8px 13px;font-size:13.5px}
+  .btn{min-height:44px}
+  .btn.small{min-height:40px}
+  .chips{gap:6px}
+  .sl input[type=range]{height:34px}
+  .sl input[type=range]::-webkit-slider-thumb{width:24px;height:24px}
+  .sl input[type=range]::-moz-range-thumb{width:24px;height:24px}
+  input[type=checkbox],input[type=radio]{width:20px;height:20px}
+  .dropcolor button{width:34px;height:34px}
+  .ctxmenu button{min-height:44px;font-size:15px}
+  .pallist li{min-height:44px}
+  .cast .chip,.modebar .chip{min-height:36px}
+  .hint .undo{padding:6px 0 6px 8px}
+}
+/* phones: the panel is a sheet over the bottom of the canvas (peek, half, full), the canvas keeps the rest */
+.sheetgrip{display:none}
+@media (max-width:860px){
+  html,body{height:100%;overflow:hidden;overflow:clip}
+  .app{height:100%;height:100dvh;min-height:0;grid-template-rows:auto minmax(0,1fr);overflow:clip}
+  .main{display:flex;flex-direction:column;gap:0;min-height:0;min-width:0}
+  .app{grid-template-columns:minmax(0,1fr)}
+  .book,.page,.stage-wrap{min-width:0;max-width:100vw}
+  .stage-wrap{flex:1;height:auto;min-height:120px}
+  .book{flex:none;height:var(--sheetH,46vh);display:flex;flex-direction:column;margin:0 -16px -14px;background:var(--paper);border-top:1.5px solid var(--ink);border-radius:16px 16px 0 0;box-shadow:0 -10px 26px -18px rgba(40,30,10,.5);position:relative;z-index:6;transition:height var(--dur-2) var(--ease)}
+  .book.live{transition:none}
+  .sheetgrip{display:block;flex:none;height:22px;width:100%;border:0;background:none;cursor:grab;touch-action:none;position:relative}
+  .sheetgrip::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:var(--line)}
+  .tabs{position:static;background:none;padding-top:0;touch-action:none}
+  .page{flex:1;min-height:0;overflow:auto;max-height:none;margin:0 10px;overscroll-behavior:contain}
+  .book[data-snap="peek"] .page{overflow:hidden}
+  body.practicing .book{display:none}
+  body.practicing .stage-wrap{height:auto}
+}
+.dndtarget.inside span{top:10px;transform:translate(-50%,0)}
+/* phones: undo, redo and search where the thumb is (bottom left of the canvas); the top bar keeps one line */
+.thumbbar{display:none}
+@media (max-width:480px){
+  .tb.edit,#findBtn{display:none}
+  .top .btn{min-height:40px;min-width:40px;padding:6px 8px}
+  .thumbbar{display:flex;flex-direction:column;gap:6px;position:absolute;left:10px;bottom:52px;z-index:3}
+  .thumbbar .btn{width:44px;height:44px;border-radius:50%;background:var(--page);box-shadow:var(--lift);display:grid;place-items:center;padding:0}
+  .thumbbar .btn:disabled{opacity:.45}
+  body.practicing .thumbbar,#sketchBar:not([hidden]) ~ .thumbbar{display:none}
+  body.anim .thumbbar{bottom:calc(var(--dockH,0px) + 12px)}
+}
+/* the index of a long tab */
+.secnav{position:sticky;top:-6px;z-index:4;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin:-6px -14px 8px -30px;padding:8px 14px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule)}
+.secnav::-webkit-scrollbar{display:none}
+.secnav .chip{flex:none;font-size:11.5px;padding:3px 9px;border-radius:999px;border-width:1px}
+details.sec{scroll-margin-top:52px}
+.secnav ~ .quick{position:static}
+details.sec.flash > summary h3{animation:flash .9s var(--ease)}
+@keyframes flash{30%{color:var(--blue)}}
+
+@media (pointer:coarse){ .secnav .chip{min-height:34px;font-size:12.5px} }

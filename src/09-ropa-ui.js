@@ -1,9 +1,12 @@
 // short message in the hint bar under the viewport
 let toastT = 0, toastKeep = null;
-function toast(msg) {
+function toast(msg, o = {}) {
   const h = $('#hint'); if (!h) return; if (toastKeep === null) toastKeep = h.innerHTML;
+  const done = () => { clearTimeout(toastT); if (toastKeep !== null) h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); };
   h.textContent = tr(msg); h.classList.add('toast'); clearTimeout(toastT);
-  toastT = setTimeout(() => { h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); }, 5000);
+  // a reversible change says so, with the way back right there (instead of asking first)
+  if (o.undo) { const b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = tr('Deshacer'); b.onclick = () => { withGlide(undo); done(); }; h.append(' ', b); }
+  toastT = setTimeout(done, o.undo ? 6000 : 5000);
 }
 /* anthro compatibility: what cannot be worn by this character, and why */
 function garmentBlock(m, it) {
@@ -145,7 +148,7 @@ function renderLibrary() {
     const fill = () => {
       if (grid.childElementCount) return;
       for (const c of items) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem' + (worn.has(c.id) ? ' on' : ''); b.title = gTitle(c) === c.title ? c.title : `${gTitle(c)} · ${c.title}`; b.setAttribute('aria-pressed', worn.has(c.id));
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem' + (worn.has(c.id) ? ' on' : ''); b.dataset.id = c.id; b.title = gTitle(c) === c.title ? c.title : `${gTitle(c)} · ${c.title}`; b.setAttribute('aria-pressed', worn.has(c.id));
         b.innerHTML = c.thumb ? `<img loading="lazy" alt="" src="${c.thumb}">` : `<span class="noimg">${tr('sin imagen')}</span>`;
         const t = document.createElement('span'); t.className = 'lt'; t.textContent = gTitle(c); b.appendChild(t);
         const why = !worn.has(c.id) && garmentBlock(mq, c);
