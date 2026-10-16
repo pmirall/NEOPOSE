@@ -312,6 +312,11 @@ function saveFile(name, bytes, mime) {
     return call('Filesystem', 'writeFile', {path: name, data: b64, directory: 'CACHE'}).then(r => call('Share', 'share', {title: 'NEOPOSE', files: [r.uri]}))
       .catch(e => { if (!/cancel/i.test(String(e && e.message))) $('#exMsg').textContent = tr('No se ha podido guardar la imagen: ') + (e && e.message || e); });
   }
+  // an installed iOS web app has no way back from a download link: the share sheet instead
+  if (WEB.ios && WEB.standalone && navigator.canShare) return shareFile(name, bytes, mime).then(ok => { if (!ok) downloadLink(name, bytes, mime); });
+  downloadLink(name, bytes, mime);
+}
+function downloadLink(name, bytes, mime) {
   const a = document.createElement('a'), url = URL.createObjectURL(new Blob([bytes], {type: mime}));
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
 }

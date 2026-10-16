@@ -788,3 +788,20 @@ details.sec.flash > summary h3{animation:flash .9s var(--ease)}
 @keyframes flash{30%{color:var(--blue)}}
 
 @media (pointer:coarse){ .secnav .chip{min-height:34px;font-size:12.5px} }
+
+/* ======================= web app: iPhone, iPad, installed ======================= */
+html,body{overscroll-behavior:none}
+button,.chip,.btn,.pose,.tab,summary{touch-action:manipulation}
+#gl{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));padding-top:max(10px,env(safe-area-inset-top))}
+.ios input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),.ios select,.ios textarea{font-size:16px}
+.ios .btn,.ios .chip,.ios .tab{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (max-width:860px){
+  .app{padding-bottom:0}
+  .book{margin-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+}
+.installhint{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:10px;width:min(440px,calc(100% - 24px));background:var(--page);border:1.5px solid var(--ink);border-radius:12px;box-shadow:var(--lift);padding:10px 12px;animation:menuIn var(--dur-2) var(--ease)}
+.installhint img{border-radius:9px;flex:none}
+.installhint p{margin:0;font-size:13px;flex:1}
+.installhint .ihshare{display:inline-block;width:14px;height:16px;vertical-align:-2px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 1v9M4 4l3-3 3 3M3 7H1.5v8h11V7H11'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 1v9M4 4l3-3 3 3M3 7H1.5v8h11V7H11'/%3E%3C/svg%3E") center/contain no-repeat}
+#offlineRow .note{flex-basis:100%}

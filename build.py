@@ -3,7 +3,7 @@
 import json, os
 H = os.path.dirname(os.path.abspath(__file__))
 rd = lambda p: open(os.path.join(H, p), encoding='utf-8').read()
-MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '20c-characters', '20d-access', '21-export', '21b-layers', '22-anim', '22b-motion', '23-photo', '24-perf', '25-share', '26-clips', '27-board', '28-ux', '07-start']
+MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '20c-characters', '20d-access', '21-export', '21b-layers', '22-anim', '22b-motion', '23-photo', '24-perf', '25-share', '26-clips', '27-board', '28-ux', '29-web', '07-start']
 I18D = os.path.join(H, 'src', 'i18n')
 I18N = {f[:-5]: json.load(open(os.path.join(I18D, f), encoding='utf-8')) for f in sorted(os.listdir(I18D)) if f.endswith('.json') and f != 'es.json'}
 GD = os.path.join(I18D, 'garments')
@@ -17,9 +17,18 @@ html = f'''<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>NEOPOSE</title>
+<meta name="description" content="3D mannequin for artists: pose, dress, light and animate characters as drawing references. Free software.">
 <link rel="icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#e4ddcb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NEOPOSE">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>{rd('src/style.css')}</style>
 </head>
@@ -34,4 +43,23 @@ html = f'''<!doctype html>
 </html>
 '''
 open(os.path.join(H, 'app/index.html'), 'w', encoding='utf-8').write(html)
+
+# the installable web app (GitHub Pages): manifest, service worker and the list of files for offline use
+import hashlib
+VERSION = json.load(open(os.path.join(H, 'package.json')))['version']
+BUILD = hashlib.sha1(html.encode('utf-8')).hexdigest()[:10]
+manifest = {'id': './', 'name': 'NEOPOSE', 'short_name': 'NEOPOSE', 'description': '3D mannequin for artists: pose, dress, light and animate characters as drawing references.',
+  'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'any', 'background_color': '#e4ddcb', 'theme_color': '#e4ddcb', 'lang': 'en', 'categories': ['graphics', 'design', 'education'],
+  'icons': [{'src': 'icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'}, {'src': 'icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+            {'src': 'icons/maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}
+open(os.path.join(H, 'app/manifest.webmanifest'), 'w', encoding='utf-8').write(json.dumps(manifest, ensure_ascii=False, indent=1))
+APPD = os.path.join(H, 'app')
+files = sorted(os.path.relpath(os.path.join(d, f), APPD).replace(os.sep, '/') for d, _, fs in os.walk(APPD) for f in fs
+               if not f.startswith('.') and f not in ('sw.js', 'offline.json') and not f.endswith(('.txt.map', '.md')))
+open(os.path.join(APPD, 'offline.json'), 'w').write(json.dumps({'version': VERSION, 'files': [[f, os.path.getsize(os.path.join(APPD, f))] for f in files]}, separators=(',', ':')))
+CORE = ['./', 'index.html', 'manifest.webmanifest', 'icon.png', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'fonts/fonts.css'] + [f'vendor/{v}' for v in VENDOR] + [f for f in files if f.startswith('fonts/') and f.endswith('.woff2')] + ['figure.txt', 'figure-ext.txt', 'figure-body.txt', 'skeleton.txt']
+CORE = [c for c in dict.fromkeys(CORE) if c == './' or os.path.exists(os.path.join(APPD, c))]
+sw = open(os.path.join(H, 'src/sw.js'), encoding='utf-8').read().replace('__VERSION__', VERSION).replace('__BUILD__', BUILD).replace('__CORE__', json.dumps(CORE))
+open(os.path.join(APPD, 'sw.js'), 'w', encoding='utf-8').write(sw)
+print('web app', VERSION, BUILD, len(files), 'files', sum(os.path.getsize(os.path.join(APPD, f)) for f in files) // 2**20, 'MB')
 print('app/index.html', len(html) // 1024, 'kB')

@@ -122,6 +122,12 @@
           <button class="btn icon" id="redoF" aria-label="Rehacer" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
           <button class="btn icon" id="findF" aria-label="Buscar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
         </div>
+        <div class="installhint" id="installHint" hidden role="note">
+          <img src="icons/apple-touch-icon.png" alt="" width="40" height="40">
+          <p id="ihText"></p>
+          <button class="btn small primary" id="ihInstall" hidden>Instalar</button>
+          <button class="gx" id="ihClose" aria-label="Cerrar">×</button>
+        </div>
         <div class="hint" id="hint" role="status">Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza para girarla</div>
       </div>
     </div>
@@ -625,6 +631,7 @@
     <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>
     <p class="note mtnote" hidden>Traducción automática, pendiente de revisión por personas.</p>
     <div class="langrow"><span>Calidad gráfica</span><div class="chips seg qualChips"></div></div>
+    <div class="langrow" id="offlineRow" hidden><span>Sin conexión</span><button class="btn small" id="offlineBtn">Descargar todo para usarla sin conexión</button><span class="note" id="offlineMsg"></span></div>
     <p class="note">Ahorro: menos resolución y sin sombras proyectadas, para móviles modestos o para gastar menos batería.</p>
     <div class="foot"><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose">Entendido</button></div>
   </div>

@@ -17,7 +17,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 
 const server = http.createServer((q, r) => {
   let u = decodeURIComponent(q.url.split('?')[0]); if (u === '/') u = '/index.html';
-  fs.readFile(u.startsWith('/fixtures/') ? path.join(__dirname, u) : path.join(APP, u), (e, d) => { if (e) { r.statusCode = 404; return r.end(); } if (u.endsWith('.html')) r.setHeader('content-type', 'text/html'); r.end(d); });
+  fs.readFile(u.startsWith('/fixtures/') ? path.join(__dirname, u) : path.join(APP, u), (e, d) => { if (e) { r.statusCode = 404; return r.end(); } if (u.endsWith('.html')) r.setHeader('content-type', 'text/html'); if (u.endsWith('.js')) r.setHeader('content-type', 'text/javascript'); if (u.endsWith('.webmanifest')) r.setHeader('content-type', 'application/manifest+json'); r.end(d); });
 });
 
 async function open(browser, {lang = 'en', viewport = {width: 1400, height: 900}, mobile = false} = {}) {
@@ -653,6 +653,41 @@ const SUITES = {
     ok(await P(() => document.querySelector('#book').dataset.snap) === 'full', 'phone: tapping the grip raises the sheet');
     ok(!ph.errors.length, 'phone: no errors' + (ph.errors.length ? ': ' + ph.errors.join(' | ') : ''));
     await ph.context().close();
+  },
+  // the web app: manifest and icons, offline after the first visit, the iOS install hint and saving through the share sheet
+  async web(browser) {
+    const man = JSON.parse(fs.readFileSync(path.join(APP, 'manifest.webmanifest'), 'utf8'));
+    const icons = man.icons.every(i => fs.existsSync(path.join(APP, i.src))) && fs.existsSync(path.join(APP, 'icons/apple-touch-icon.png'));
+    ok(man.display === 'standalone' && man.start_url === './' && man.scope === './' && icons && man.icons.some(i => i.purpose === 'maskable'), 'manifest: standalone, relative scope, icons (maskable too) present');
+    const off = JSON.parse(fs.readFileSync(path.join(APP, 'offline.json'), 'utf8'));
+    ok(off.files.length > 400 && off.files.some(f => f[0] === 'index.html') && off.files.every(f => fs.existsSync(path.join(APP, f[0]))), `offline list: ${off.files.length} files, all there`);
+    const ctx = await browser.newContext({viewport: {width: 1200, height: 800}});
+    await ctx.addInitScript(() => { localStorage.setItem('cdp.welcomed', 'true'); localStorage.setItem('cdp.tipDrag', 'true'); });
+    const page = await ctx.newPage(), url = `http://localhost:${server.address().port}/?pwa`; page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
+    await page.goto(url); await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+    const head = await page.evaluate(() => ({man: !!document.querySelector('link[rel=manifest]'), apple: !!document.querySelector('link[rel=apple-touch-icon]'), vp: document.querySelector('meta[name=viewport]').content}));
+    ok(head.man && head.apple && /viewport-fit=cover/.test(head.vp), 'the page links the manifest and the iOS icon, and uses the whole screen');
+    await page.waitForFunction(() => navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true), null, {timeout: 60000});
+    await page.waitForTimeout(3000);
+    const cached = await page.evaluate(async () => { const ks = await caches.keys(), shell = ks.find(k => k.startsWith('neopose-shell-')); return shell ? (await (await caches.open(shell)).keys()).length : 0; });
+    ok(cached >= 10, `the service worker keeps the shell (${cached} files)`);
+    await page.reload(); await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000}); await page.waitForTimeout(2500);
+    await ctx.setOffline(true); await page.reload();
+    const offline = await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000}).then(() => true, () => false);
+    ok(offline, 'without a connection, the installed page still opens and builds the figure');
+    await ctx.setOffline(false); await ctx.close();
+    // an iPhone in Safari: the install hint; installed: files go to the share sheet
+    const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+    for (const standalone of [false, true]) {
+      const c = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, userAgent: ua});
+      await c.addInitScript(sa => { localStorage.setItem('cdp.welcomed', 'true'); localStorage.setItem('cdp.tipDrag', 'true'); if (sa) Object.defineProperty(navigator, 'standalone', {get: () => true});
+        window.__shared = []; navigator.canShare = () => true; navigator.share = async d => { window.__shared.push(d.files[0].name); }; }, standalone);
+      const p = await c.newPage(); await p.goto(url); await p.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+      if (!standalone) { await p.waitForTimeout(7000); ok(await p.evaluate(() => !document.querySelector('#installHint').hidden && /Share/.test(document.querySelector('#ihText').textContent)), 'iPhone in Safari: a hint explains how to add it to the home screen'); }
+      else { await p.click('#exportBtn'); await p.waitForTimeout(1500); await p.click('#exSave'); await p.waitForTimeout(2500);
+        const sh = await p.evaluate(() => window.__shared); ok(sh.length === 1 && /\.png$/.test(sh[0]) && await p.evaluate(() => document.querySelector('#installHint').hidden), `installed on iPhone: saving opens the share sheet (${sh[0]}) and there is no install hint`); }
+      await c.close();
+    }
   },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
