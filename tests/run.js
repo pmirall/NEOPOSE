@@ -531,6 +531,44 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // layers for drawing programs: a real layered PSD, “Open in…” on the desktop and in the browser, one sequence per layer
+  async layers(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(2500);
+    const psd = await A(async () => {
+      const C = window.__cdp; const b = await C.layers.layeredPSD(), d = new DataView(b.buffer, b.byteOffset, b.byteLength);
+      const sig = String.fromCharCode(...b.slice(0, 4)), ch = d.getUint16(12), h = d.getUint32(14), w = d.getUint32(18), depth = d.getUint16(22), mode = d.getUint16(24);
+      let o = 26; o += 4 + d.getUint32(o); o += 4 + d.getUint32(o); const lmi = d.getUint32(o); o += 4; const li = d.getUint32(o); o += 4; const n = Math.abs(d.getInt16(o)); o += 2;
+      const names = []; for (let i = 0; i < n; i++) { o += 16; const nc = d.getUint16(o); o += 2 + nc * 6 + 12; const ex = d.getUint32(o); o += 4; const end = o + ex; o += 4 + d.getUint32(o); o += 4 + d.getUint32(o); const ln = b[o]; names.push(String.fromCharCode(...b.slice(o + 1, o + 1 + ln))); o = end; }
+      return {sig, ch, w, h, depth, mode, n, names, size: b.length, fits: 26 + 8 + lmi <= b.length && li < lmi, cw: C.renderExportCanvas().width};
+    });
+    ok(psd.sig === '8BPS' && psd.ch === 4 && psd.depth === 8 && psd.mode === 3 && psd.w === psd.cw, `a valid RGBA PSD at the export size (${psd.w}×${psd.h}, ${Math.round(psd.size / 1024)} kB)`);
+    ok(psd.fits && psd.n === 4 && psd.names[0] === 'Set' && /^Character 1 - Man/.test(psd.names[1]) && psd.names[2] === 'Lines' && psd.names[3] === 'Draw here', `layers: ${psd.names.join(' / ')}`);
+    // the desktop app: the programs it found, the PSD handed to the one you pick
+    await A(() => { window.__opened = []; window.neoposeNative = {apps: async () => [{id: 'krita', name: 'Krita', fmt: 'psd'}, {id: 'default', name: '', fmt: 'psd'}], openIn: async (id, name, bytes) => { window.__opened.push({id, name, sig: String.fromCharCode(...bytes.slice(0, 4))}); return {ok: true}; }}; });
+    await page.click('#openIn'); await page.waitForTimeout(400);
+    const list = await A(() => [...document.querySelectorAll('#openInList .openinapp strong')].map(s => s.textContent));
+    ok(!(await page.isHidden('#openInModal')) && list[0] === 'Krita' && list.length === 2, `“Open in…” lists the programs found (${list.join(', ')})`);
+    await page.screenshot({path: path.join(OUT, 'open-in.png')});
+    await page.click('#openInList .openinapp.found'); await page.waitForFunction(() => window.__opened.length, null, {timeout: 30000});
+    const op = await A(() => window.__opened[0]);
+    ok(op.id === 'krita' && /\.psd$/.test(op.name) && op.sig === '8BPS', `the layered PSD goes to Krita (${op.name})`);
+    await page.waitForTimeout(1200); ok(await page.isHidden('#openInModal'), 'the window closes once it opens');
+    // the browser: a download of the PSD
+    await A(() => { delete window.neoposeNative; });
+    const [dl] = await Promise.all([page.waitForEvent('download', {timeout: 60000}), page.click('#openIn')]);
+    ok(/\.psd$/.test(dl.suggestedFilename()), `in a browser the PSD is downloaded (${dl.suggestedFilename()})`);
+    // animation: one folder of frames per layer
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    await A(async () => { const C = window.__cdp, K = C.clips; await K.loadClipLibrary(); const ci = C.chars.indexOf(C.mq); C.ANIM.shots[0].keys[ci] = []; K.insertClip(K.allClips().find(x => x.loop), ci, 0, {loops: 1}); });
+    await page.click('#exportBtn'); await page.waitForTimeout(800);
+    await page.click('#exKind .chip[data-v="anim"]'); await page.click('#exAnimWhat .chip[data-v="layers"]'); await page.click('#exAnimRange .chip[data-v="shot"]'); await page.click('#exAnimStep .chip[data-v="keys"]');
+    const [z] = await Promise.all([page.waitForEvent('download', {timeout: 300000}), page.click('#exSave')]);
+    const zp = await z.path(), names = [...fs.readFileSync(zp).toString('latin1').matchAll(/(\d\d-[\w-]+\/\d\d-[\w-]+\/\d{4}\.png)/g)].map(m => m[1]), dirs = new Set(names.map(n => n.split('/')[1]));
+    ok(/\.zip$/.test(z.suggestedFilename()) && dirs.size === 3 && names.length >= dirs.size * 2, `layered frames: ${dirs.size} layer folders (${[...dirs].join(', ')}), ${names.length / 2} files`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

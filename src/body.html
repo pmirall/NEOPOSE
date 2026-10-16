@@ -12,6 +12,7 @@
       <button class="btn" id="sketchBtn" aria-pressed="false" title="Dibujar encima de la figura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l3.5-1 12-12-2.5-2.5-12 12z"/><path d="m14.5 6.5 3 3"/></svg><span>Boceto</span></button>
       <button class="btn" id="practiceBtn" title="Práctica de gesto con temporizador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span>Práctica</span></button>
       <button class="btn" id="animBtn" aria-pressed="false" title="Animar: línea de tiempo con claves"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/></svg><span>Animar</span></button>
+      <button class="btn magic" id="openIn" title="Abrir en tu programa de dibujo, con capas (Krita, Clip Studio, Photoshop…)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg><span>Abrir en…</span></button>
       <button class="btn primary" id="exportBtn" title="Exportar PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg><span>Exportar</span></button>
     </div>
     <div class="tb">
@@ -458,6 +459,8 @@
     <div class="foot">
       <button class="btn" id="exClose">Cerrar</button>
       <button class="btn" id="exCopy">Copiar imagen</button>
+      <button class="btn" id="exPsd" title="Escenario, cada personaje, líneas, boceto y una capa vacía para dibujar">PSD con capas</button>
+      <button class="btn magic" id="exOpenIn" title="Abre la imagen con capas en tu programa de dibujo (Krita, Clip Studio, Photoshop…)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Abrir en…</button>
       <button class="btn primary" id="exSave">Guardar PNG</button>
     </div>
   </div>
@@ -636,6 +639,15 @@
   </div>
 </div>
 
+<div class="modal" id="openInModal" hidden>
+  <div class="sheet openinsheet" role="dialog" aria-labelledby="oiT">
+    <h2 id="oiT">Abrir en…</h2>
+    <p class="note">Se abre un PSD con capas: escenario, cada personaje, líneas, tu boceto y una capa vacía encima para dibujar.</p>
+    <div class="openinlist" id="openInList"></div>
+    <p class="msg" id="openInMsg" role="status"></p>
+    <div class="foot"><button class="btn" id="openInClose">Cerrar</button></div>
+  </div>
+</div>
 <div class="modal" id="sbModal" hidden>
   <div class="sheet sbsheet" role="dialog" aria-labelledby="sbT">
     <div class="aghead">

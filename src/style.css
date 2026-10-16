@@ -665,3 +665,11 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 .charact:hover{color:var(--ink);border-color:var(--ink)}
 .charact svg{width:13px;height:13px}
 .castpop{position:fixed;z-index:30;width:290px;max-height:60vh;overflow:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px;display:flex;flex-direction:column;gap:8px}
+/* ---------- open in ---------- */
+.btn.magic{border-color:var(--blue);color:var(--blue)}
+.btn.magic:hover{background:var(--blue-wash)}
+.openinsheet{width:min(460px,100%)}
+.openinlist{display:grid;gap:8px;margin:12px 0}
+.openinapp{justify-content:space-between;padding:10px 14px}
+.openinapp.found{border-color:var(--ink)}
+.openinapp .note{margin:0;font-size:11.5px}

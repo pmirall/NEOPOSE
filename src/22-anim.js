@@ -518,14 +518,15 @@ function burnSubs(cv, f) {
 // WebM of the shot or the film, recorded from the canvas while it plays
 function recordVideo(range, onDone) {
   if (!canvas.captureStream || !window.MediaRecorder) { toast(tr('Este navegador no puede grabar vídeo.')); return onDone && onDone(); }
-  const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+  // MP4 where the browser can make it (Photoshop and Clip Studio import it as a video layer), WebM otherwise
+  const type = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)), mp4 = /mp4/.test(type || '');
   const start = async () => {
     if (range === 'movie' && ANIM.cur !== 0) await enterShot(0, 0); else setFrame(0);
     const stream = canvas.captureStream(30), rec = new MediaRecorder(stream, type ? {mimeType: type, videoBitsPerSecond: 8e6} : {}), parts = [], hide = exportHide(), all = ANIM.all, loop = ANIM.loop;
     ANIM.all = range === 'movie'; ANIM.loop = false;
     rec.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
     rec.onstop = () => { hide(); ANIM.rec = null; ANIM.all = all; ANIM.loop = loop; stream.getTracks().forEach(t => t.stop());
-      new Blob(parts, {type: 'video/webm'}).arrayBuffer().then(b => { saveFile(`animacion-${stamp()}.webm`, new Uint8Array(b), 'video/webm'); onDone && onDone(); }); };
+      new Blob(parts, {type: mp4 ? 'video/mp4' : 'video/webm'}).arrayBuffer().then(b => { saveFile(`animacion-${stamp()}.${mp4 ? 'mp4' : 'webm'}`, new Uint8Array(b), mp4 ? 'video/mp4' : 'video/webm'); onDone && onDone(); }); };
     ANIM.rec = {pause: () => rec.state === 'recording' && rec.pause(), resume: () => rec.state === 'paused' && rec.resume(), done: () => rec.stop()};
     clearOnion(); rec.start(); play(true);
   };

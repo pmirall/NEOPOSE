@@ -1,5 +1,6 @@
 // NEOPOSE desktop shell: serves app/ through a private app:// scheme (fetch, localStorage and clipboard need a secure origin)
-const { app, BrowserWindow, protocol, net, shell, Menu } = require('electron');
+const { app, BrowserWindow, protocol, net, shell, Menu, ipcMain } = require('electron');
+const fs = require('node:fs'), os = require('node:os'), { spawn, execFileSync } = require('node:child_process');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
@@ -26,7 +27,7 @@ function createWindow() {
     title: 'NEOPOSE', backgroundColor: '#e4ddcb', show: false,
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false }
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, preload: path.join(__dirname, 'preload.js') }
   });
   win.once('ready-to-show', () => win.show());
   // links (credits, Sketchfab, Poly Haven) open in the system browser
@@ -38,6 +39,67 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => win.webContents.executeJavaScript('document.documentElement.lang').then(l => { lang = UI[l] ? l : 'en'; setMenu(); }, () => {}));
   win.loadURL('app://neopose/index.html');
 }
+
+
+// "Open in…": the drawing programs installed on this computer, and opening a file in one of them
+const PROGRAMS = [
+  { id: 'krita', name: 'Krita', fmt: 'psd', exe: ['krita.exe'], win: ['Krita (x64)/bin/krita.exe', 'Krita/bin/krita.exe'], bin: ['krita'], flatpak: 'org.kde.krita', mac: 'krita' },
+  { id: 'csp', name: 'Clip Studio Paint', fmt: 'psd', exe: ['CLIPStudioPaint.exe'], win: ['CELSYS/CLIP STUDIO */CLIP STUDIO PAINT/CLIPStudioPaint.exe', 'CELSYS/CLIP STUDIO/CLIP STUDIO PAINT/CLIPStudioPaint.exe'], mac: 'CLIP STUDIO PAINT' },
+  { id: 'photoshop', name: 'Photoshop', fmt: 'psd', exe: ['Photoshop.exe'], win: ['Adobe/Adobe Photoshop */Photoshop.exe'], mac: 'Adobe Photoshop *' },
+  { id: 'affinity', name: 'Affinity Photo', fmt: 'psd', win: ['Affinity/Photo 2/Photo.exe', 'Affinity/Photo/Photo.exe'], mac: 'Affinity Photo *' },
+  { id: 'gimp', name: 'GIMP', fmt: 'psd', exe: ['gimp-3.0.exe', 'gimp-2.10.exe'], win: ['GIMP 3/bin/gimp-3.0.exe', 'GIMP 2/bin/gimp-2.10.exe'], bin: ['gimp'], flatpak: 'org.gimp.GIMP', mac: 'GIMP*' },
+  { id: 'medibang', name: 'MediBang Paint', fmt: 'psd', win: ['Medibang/MediBang Paint Pro/MediBangPaintPro.exe'], mac: 'MediBang Paint Pro' },
+  { id: 'paintnet', name: 'Paint.NET', fmt: 'png', exe: ['paintdotnet.exe'], win: ['paint.net/paintdotnet.exe'] },
+  { id: 'pureref', name: 'PureRef', fmt: 'png', win: ['PureRef/PureRef.exe'], bin: ['PureRef', 'pureref'], mac: 'PureRef' }
+];
+const inFlatpak = !!process.env.FLATPAK_ID || fs.existsSync('/.flatpak-info');
+// a path with one * segment matched against what is there
+function globOne(base, rel) {
+  const segs = rel.split('/'); let cur = [base];
+  for (const sg of segs) {
+    const next = [];
+    for (const d of cur) {
+      if (!sg.includes('*')) { const p = path.join(d, sg); if (fs.existsSync(p)) next.push(p); continue; }
+      const re = new RegExp('^' + sg.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$', 'i');
+      try { for (const e of fs.readdirSync(d)) if (re.test(e)) next.push(path.join(d, e)); } catch (_) {}
+    }
+    cur = next.sort().reverse();
+  }
+  return cur[0] || null;
+}
+function findProgram(p) {
+  if (process.platform === 'win32') {
+    for (const e of p.exe || []) {  // registered with Windows ("App Paths")
+      for (const hive of ['HKLM', 'HKCU']) try {
+        const out = execFileSync('reg', ['query', `${hive}\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${e}`, '/ve'], { encoding: 'utf8', windowsHide: true });
+        const m = /REG_SZ\s+(.+)/.exec(out); if (m && fs.existsSync(m[1].trim().replace(/"/g, ''))) return { cmd: m[1].trim().replace(/"/g, '') };
+      } catch (_) {}
+    }
+    for (const base of [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')].filter(Boolean))
+      for (const rel of p.win || []) { const f = globOne(base, rel); if (f) return { cmd: f }; }
+  } else if (process.platform === 'darwin') {
+    if (p.mac) { const f = globOne('/Applications', p.mac + '.app'); if (f) return { cmd: 'open', args: ['-a', f] }; }
+  } else {
+    for (const b of p.bin || []) for (const d of (process.env.PATH || '').split(':')) { const f = path.join(d, b); try { fs.accessSync(f, fs.constants.X_OK); return { cmd: f }; } catch (_) {} }
+    if (p.flatpak) for (const d of ['/var/lib/flatpak/app', path.join(os.homedir(), '.local/share/flatpak/app')]) if (fs.existsSync(path.join(d, p.flatpak))) return { cmd: 'flatpak', args: ['run', p.flatpak] };
+  }
+  return null;
+}
+ipcMain.handle('neopose:apps', () => {
+  if (inFlatpak) return [];  // sandboxed: the system's "open with" chooses
+  return PROGRAMS.map(p => { const f = findProgram(p); return f ? { id: p.id, name: p.name, fmt: p.fmt } : null; }).filter(Boolean);
+});
+ipcMain.handle('neopose:openIn', async (e, id, name, bytes) => {
+  try {
+    const dir = path.join(os.tmpdir(), 'NEOPOSE'); fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, path.basename(String(name)).replace(/[^\w.\-]+/g, '_'));
+    fs.writeFileSync(file, Buffer.from(bytes));
+    const p = PROGRAMS.find(x => x.id === id), f = p && !inFlatpak ? findProgram(p) : null;
+    if (!f) { const err = await shell.openPath(file); return err ? { ok: false, error: err } : { ok: true }; }
+    const child = spawn(f.cmd, [...(f.args || []), file], { detached: true, stdio: 'ignore', windowsHide: false }); child.unref();
+    return { ok: true };
+  } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+});
 
 app.whenReady().then(() => {
   protocol.handle('app', req => {
