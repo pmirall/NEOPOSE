@@ -132,7 +132,7 @@ addEventListener('keydown', e => {
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
   else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
-  else if (/^[1-6]$/.test(k) && !practice.active) { showTab(tabs[+k - 1].dataset.tab); setPanel(true); }
+  else if (/^[1-6]$/.test(k) && !practice.active) { turnTo(tabs[+k - 1].dataset.tab); setPanel(true); }
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
   else if (e.key === '?') openHelp();
 });

@@ -512,7 +512,7 @@ body.anim .hint:not(.toast){display:none}
 .subs b::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sw);margin-right:5px;vertical-align:1px}
 .subs b::after{content:":"}
 .subs p+p{display:block;width:max-content;margin:3px auto 0}
-.lineedit{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--dockH, 220px));width:min(420px,calc(100% - 24px));background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.lineedit{position:absolute;z-index:6;left:50%;translate:-50% 0;bottom:calc(16px + var(--dockH, 220px));width:min(420px,calc(100% - 24px));background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px 12px;display:flex;flex-direction:column;gap:7px}
 .lineedit .lbl{margin:0}
 .lineedit textarea{width:100%;resize:vertical;min-height:52px;font:14px var(--f-body);border:1.5px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--paper);color:var(--ink);box-sizing:border-box}
 .lineedit textarea:focus{outline:none;border-color:var(--ink)}
@@ -817,7 +817,7 @@ button,.chip,.btn,.pose,.tab,summary{touch-action:manipulation}
   .app{padding-bottom:0}
   .book{margin-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
 }
-.installhint{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:8;display:flex;align-items:center;gap:10px;width:min(440px,calc(100% - 24px));background:var(--page);border:1.5px solid var(--ink);border-radius:12px;box-shadow:var(--lift);padding:10px 12px;animation:menuIn var(--dur-2) var(--ease)}
+.installhint{position:absolute;left:50%;top:60px;translate:-50% 0;z-index:8;display:flex;align-items:center;gap:10px;width:min(440px,calc(100% - 24px));background:var(--page);border:1.5px solid var(--ink);border-radius:12px;box-shadow:var(--lift);padding:10px 12px;animation:menuIn var(--dur-2) var(--ease)}
 .installhint img{border-radius:9px;flex:none}
 .installhint p{margin:0;font-size:13px;flex:1}
 .installhint .ihshare{display:inline-block;width:14px;height:16px;vertical-align:-2px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 1v9M4 4l3-3 3 3M3 7H1.5v8h11V7H11'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 1v9M4 4l3-3 3 3M3 7H1.5v8h11V7H11'/%3E%3C/svg%3E") center/contain no-repeat}
@@ -886,6 +886,74 @@ button,.chip,.btn,.pose,.tab,summary{touch-action:manipulation}
 @media (pointer:coarse){ .tlselbar .btn.icon.small{width:38px;height:38px} .tlselbar .btn.small{min-height:38px} }
 body.anim .hint{bottom:calc(var(--dockH,0px) + 14px)}
 body.anim .timeline.min ~ .hint{bottom:12px}
+
+/* ======================= paper you can see, motion you can feel =======================
+   Textures: seamless tiles made by tools/paper/make_textures.py (grain with tooth lit from the top left, long
+   fibres and a soft mottling); light paper gets dark specks, dark card stock faint warm light ones. Static
+   backgrounds only: nothing animates a texture. Motion: transform and opacity only, one restrained spring. */
+:root{
+  --tex:url("textures/paper-grain.webp") 0 0/256px 256px,url("textures/paper-clouds.webp") 0 0/600px 600px;
+  --ease-paper:cubic-bezier(.2,.7,.2,1);
+  --spring:linear(0,.009,.035 2.1%,.141 4.4%,.723 12.9%,.938 16.7%,1.017 20.5%,1.043 24.5%,1.035 28.4%,1.007 36%,.997 41.3%,1.001 53.4%,1);
+  --lift:0 1px 1px hsl(35 30% 25%/.10),0 3px 6px -2px hsl(35 30% 25%/.12),0 14px 26px -14px hsl(35 30% 20%/.40);
+  --lift-hi:0 2px 2px hsl(35 30% 25%/.10),0 8px 14px -6px hsl(35 30% 25%/.18),0 22px 34px -16px hsl(35 30% 20%/.45);
+}
+@supports not (animation-timing-function:linear(0,1)){:root{--spring:cubic-bezier(.34,1.3,.64,1)}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--tex:url("textures/paper-grain-dark.webp") 0 0/256px 256px,url("textures/paper-clouds-dark.webp") 0 0/600px 600px;
+  --lift:0 1px 1px rgb(0 0 0/.3),0 4px 8px -3px rgb(0 0 0/.35),0 14px 26px -14px rgb(0 0 0/.7);--lift-hi:0 2px 3px rgb(0 0 0/.3),0 10px 16px -6px rgb(0 0 0/.4),0 24px 36px -16px rgb(0 0 0/.75)}}
+:root[data-theme="dark"]{--tex:url("textures/paper-grain-dark.webp") 0 0/256px 256px,url("textures/paper-clouds-dark.webp") 0 0/600px 600px;
+  --lift:0 1px 1px rgb(0 0 0/.3),0 4px 8px -3px rgb(0 0 0/.35),0 14px 26px -14px rgb(0 0 0/.7);--lift-hi:0 2px 3px rgb(0 0 0/.3),0 10px 16px -6px rgb(0 0 0/.4),0 24px 36px -16px rgb(0 0 0/.75)}
+/* the desk and every sheet on it */
+body{background:var(--tex),var(--paper)}
+.page{background:radial-gradient(circle at 11px 50%,var(--paper) 0 4px,var(--line) 4.5px 5.5px,transparent 6px) 0 6px/22px 26px repeat-y,var(--tex),var(--page)}
+.sheet,.joint-card,.timeline,.ctxmenu,.installhint,.tlselbar,.dndghost:not(.swatch),.tlopts,.castpop,.hint,.libItem,.hairItem,.lineedit{background:var(--tex),var(--page)}
+.tab{background:var(--tex),var(--rule)}
+.tab[aria-selected="true"]{background:var(--tex),var(--page)}
+.tab[aria-selected="true"]::after{background:var(--tex),var(--page);background-position:0 100%}
+@media (max-width:860px){ .book{background:var(--tex),var(--paper)} }
+/* washi tape: translucent, with torn ends, pressed on when the page opens */
+#viewport::before,#viewport::after{background:url("textures/paper-grain.webp") 0 0/256px 256px,var(--tape);opacity:.92;
+  -webkit-mask:conic-gradient(from -45deg at left,#0000 25%,#000 0) left/6px 6px repeat-y,conic-gradient(from 135deg at right,#0000 25%,#000 0) right/6px 6px repeat-y,linear-gradient(#000 0 0) center/calc(100% - 10px) 100% no-repeat;
+  mask:conic-gradient(from -45deg at left,#0000 25%,#000 0) left/6px 6px repeat-y,conic-gradient(from 135deg at right,#0000 25%,#000 0) right/6px 6px repeat-y,linear-gradient(#000 0 0) center/calc(100% - 10px) 100% no-repeat}
+#viewport::before{transform-origin:0 50%;animation:tapeL .42s var(--spring) .25s both}
+#viewport::after{transform-origin:100% 50%;animation:tapeR .42s var(--spring) .4s both}
+@keyframes tapeL{from{transform:rotate(-4deg) scaleX(0);opacity:.5}to{transform:rotate(-4deg)}}
+@keyframes tapeR{from{transform:rotate(3deg) scaleX(0);opacity:.5}to{transform:rotate(3deg)}}
+/* sheets arrive like paper dropped on the desk; the room behind dims */
+.modal:not([hidden]){animation:dim .22s ease-out both}
+.modal:not([hidden]) > .sheet{animation:sheetIn .44s var(--spring) both}
+@keyframes dim{from{background-color:rgb(30 25 15/0)}}
+@keyframes sheetIn{from{transform:translateY(-22px) rotate(-1.4deg);opacity:0}}
+/* notes and cards: a little tilt that settles */
+.hint.toast{animation:noteIn .38s var(--spring) both}
+@keyframes noteIn{from{transform:translate(-50%,14px) rotate(2deg);opacity:0}}
+.joint-card:not([hidden]),.lineedit:not([hidden]){animation:cardIn .34s var(--spring) both}
+@keyframes cardIn{from{transform:translateY(-8px) rotate(-1.2deg);opacity:0}}
+.timeline:not([hidden]){animation:dockIn .4s var(--spring) both}
+@keyframes dockIn{from{transform:translateY(26px);opacity:0}}
+.ctxmenu,.tlselbar,.installhint{animation:cardIn .26s var(--spring) both}
+/* cards lift off the page under the mouse (the shadow fades in on a layer of its own) */
+.pose,.libItem,.hairItem,.refcard,.mvshot{transition:transform .22s var(--ease-paper),border-color .15s,background-color .15s}
+.pose::after,.libItem::after,.hairItem::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:var(--lift-hi);opacity:0;transition:opacity .22s var(--ease-paper);pointer-events:none;z-index:-1}
+.libItem,.hairItem{position:relative}
+.pose-grid,.lib,#hairGrid{isolation:isolate}
+@media (hover:hover){
+  .pose:hover,.libItem:hover,.hairItem:hover,.refcard:hover{transform:translateY(-2px) rotate(-.4deg)}
+  .pose:hover::after,.libItem:hover::after,.hairItem:hover::after{opacity:1}
+  .tab:not([aria-selected="true"]):hover{transform:translateY(-2px)}
+}
+.tab{transition:transform .18s var(--ease-paper),color .15s}
+.pose:active,.libItem:active,.hairItem:active{transform:translateY(0) scale(.98);transition-duration:.09s}
+/* the notebook's page turns on a change of tab: a leaf from the rings (see 33-paper) */
+.leaf{position:absolute;z-index:6;pointer-events:none;transform-origin:0 50%;border:1.5px solid var(--ink);border-radius:2px 4px 4px 2px;box-shadow:var(--lift);
+  background:radial-gradient(circle at 11px 50%,var(--paper) 0 4px,var(--line) 4.5px 5.5px,transparent 6px) 0 6px/22px 26px repeat-y,var(--tex),var(--page)}
+.leaf::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgb(40 30 15/0) 30%,rgb(40 30 15/.3));opacity:0;animation:leafShade .44s var(--ease-paper) both}
+.leaf.back::after{animation-direction:reverse}
+@keyframes leafShade{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  #viewport::before,#viewport::after,.modal:not([hidden]),.modal:not([hidden]) > .sheet,.hint.toast,.joint-card:not([hidden]),.lineedit:not([hidden]),.timeline:not([hidden]),.ctxmenu,.tlselbar,.installhint{animation:none!important}
+  .pose:hover,.libItem:hover,.hairItem:hover,.refcard:hover,.tab:hover{transform:none!important}
+}
 </style>
 </head>
 <body>
@@ -4524,7 +4592,7 @@ addEventListener('keydown', e => {
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
   else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (!$('#welcome').hidden) closeWelcome(); else if (!$('#helpModal').hidden) closeHelp(); else if (practice.active) stopPractice(); else if (!$('#exportModal').hidden) closeExport(); else select(null); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
-  else if (/^[1-6]$/.test(k) && !practice.active) { showTab(tabs[+k - 1].dataset.tab); setPanel(true); }
+  else if (/^[1-6]$/.test(k) && !practice.active) { turnTo(tabs[+k - 1].dataset.tab); setPanel(true); }
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
   else if (e.key === '?') openHelp();
 });
@@ -4669,7 +4737,7 @@ function boot(data) {
   initTour(); initAvatars();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
-  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI();
+  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper();
   resize(); setView(30, 8); frameAll();
   if (data && data.snap && data.snap.cam) applySceneExtras({cam: data.snap.cam});
   pushHistory();
@@ -5742,7 +5810,7 @@ let toastT = 0, toastKeep = null;
 function toast(msg, o = {}) {
   const h = $('#hint'); if (!h) return; if (toastKeep === null) toastKeep = h.innerHTML;
   const done = () => { clearTimeout(toastT); if (toastKeep !== null) h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); };
-  h.textContent = tr(msg); h.classList.add('toast'); clearTimeout(toastT);
+  h.textContent = tr(msg); h.classList.remove('toast'); void h.offsetWidth; h.classList.add('toast'); clearTimeout(toastT);
   // a reversible change says so, with the way back right there (instead of asking first)
   if (o.undo) { const b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = tr('Deshacer'); b.onclick = () => { withGlide(undo); done(); }; h.append(' ', b); }
   toastT = setTimeout(done, o.undo ? 6000 : 5000);
@@ -13466,6 +13534,28 @@ async function dialogueWav() {
 async function previewVoice(m, i, text) {
   const vo = voiceOf(m, i), r = await sayLine(text || tr('Hola, así suena mi voz.'), LANG.slice(0, 2) in VOICE_LANGS ? LANG.slice(0, 2) : 'en', vo), ctx = voiceCtx(); if (!ctx) return;
   const buf = ctx.createBuffer(1, r.pcm.length, SR_TTS); buf.copyToChannel(r.pcm, 0); const s = ctx.createBufferSource(); s.buffer = buf; s.connect(ctx.destination); s.start();
+}
+
+/* ======================= the notebook's page turns =======================
+   A change of tab turns a leaf of the notebook from the rings: forward, the leaf lifts off the new page and turns
+   away; back, it turns in from the rings and melts into the page. The panel changes at once underneath and the leaf
+   lets every click through, so a quick hand never waits for it. (View Transitions were tried: they take the whole
+   page's clicks while they run and are slow to start next to a WebGL canvas.) Only for a tab picked by hand. */
+let leafNow = null;
+function turnTo(id) {
+  const from = state.tab; if (!id || id === from || UX.reduce || !$('#book') || document.body.classList.contains('nopanel')) return showTab(id);
+  const order = tabs.map(t => t.dataset.tab), fwd = order.indexOf(id) > order.indexOf(from);
+  if (leafNow) leafNow.remove();
+  const page = $('.page'), r = page.getBoundingClientRect(), b = $('#book').getBoundingClientRect(), leaf = leafNow = document.createElement('div');
+  leaf.className = 'leaf' + (fwd ? '' : ' back'); Object.assign(leaf.style, {left: r.left - b.left + 'px', top: r.top - b.top + 'px', width: r.width + 'px', height: r.height + 'px'});
+  $('#book').appendChild(leaf); showTab(id);
+  const P = 'perspective(1600px) ', kf = fwd
+    ? [{transform: P + 'rotateY(0)', opacity: 1}, {transform: P + 'rotateY(-40deg) skewY(-1deg)', opacity: 1, offset: .45}, {transform: P + 'rotateY(-100deg) skewY(-2deg)', opacity: 0}]
+    : [{transform: P + 'rotateY(-100deg) skewY(-2deg)', opacity: 0}, {transform: P + 'rotateY(-30deg) skewY(-1deg)', opacity: 1, offset: .55}, {transform: P + 'rotateY(0)', opacity: 0}];
+  leaf.animate(kf, {duration: 440, easing: 'cubic-bezier(.2,.7,.2,1)'}).finished.catch(() => {}).then(() => { leaf.remove(); if (leafNow === leaf) leafNow = null; });
+}
+function buildPaper() {
+  tabs.forEach(t => t.onclick = () => { turnTo(t.dataset.tab); setPanel(true); });
 }
 
 const HINT = $('#hint').innerHTML;

@@ -3,7 +3,7 @@ let toastT = 0, toastKeep = null;
 function toast(msg, o = {}) {
   const h = $('#hint'); if (!h) return; if (toastKeep === null) toastKeep = h.innerHTML;
   const done = () => { clearTimeout(toastT); if (toastKeep !== null) h.innerHTML = toastKeep; toastKeep = null; h.classList.remove('toast'); };
-  h.textContent = tr(msg); h.classList.add('toast'); clearTimeout(toastT);
+  h.textContent = tr(msg); h.classList.remove('toast'); void h.offsetWidth; h.classList.add('toast'); clearTimeout(toastT);
   // a reversible change says so, with the way back right there (instead of asking first)
   if (o.undo) { const b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = tr('Deshacer'); b.onclick = () => { withGlide(undo); done(); }; h.append(' ', b); }
   toastT = setTimeout(done, o.undo ? 6000 : 5000);
