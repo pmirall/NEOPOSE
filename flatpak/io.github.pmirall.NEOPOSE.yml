@@ -48,8 +48,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/pmirall/NEOPOSE.git
-        tag: v1.2.0
-        commit: 7b0591d800fb421498fa2edab5637a83447d3e94
+        tag: v1.3.0
+        commit: 7b428f11bec47f49128d035420acec4bb881e423
       - generated-sources.json
       - type: script
         dest-filename: neopose.sh

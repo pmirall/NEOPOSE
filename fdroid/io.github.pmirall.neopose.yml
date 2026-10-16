@@ -31,9 +31,23 @@ Builds:
     scandelete:
       - node_modules
 
+  - versionName: 1.3.0
+    versionCode: 10300
+    commit: 7b428f11bec47f49128d035420acec4bb881e423
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y nodejs npm
+    init: cd ../.. && npm ci --ignore-scripts
+    gradle:
+      - yes
+    prebuild: cd ../.. && python3 build.py && python3 tools/android_sync.py
+    scandelete:
+      - node_modules
+
 AllowedAPKSigningKeys: 119baa49a503498ecff0de520c273797ec54c6617fc7af0620f0d3fb5416a7f6
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.2.0
-CurrentVersionCode: 10200
+CurrentVersion: 1.3.0
+CurrentVersionCode: 10300
