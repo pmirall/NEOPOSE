@@ -827,6 +827,11 @@ const SUITES = {
     await A(() => document.querySelector('#headModelChips .chip[data-v="foxgirl"]').click()); await page.waitForTimeout(3500);
     const hy = await A(() => { const m = window.__cdp.mq; return {sp: m.body.species, head: !!m.headMesh, coat: window.__cdp.furry.coatOf(m.body).preset}; });
     ok(hy.sp === 'tigre' && hy.head && hy.coat === 'tigre', `a hybrid: another species' head on a tiger, still a tiger's coat (${JSON.stringify(hy)})`);
+    // paw-hands: shorter, thicker fingers than a human's; "Human" hands give them back
+    const finger = () => A(() => { const m = window.__cdp.mq, J = m.J, F = window.__cdp.FIG.jIdx, p = n => new THREE.Vector3(J[F[n] * 3], J[F[n] * 3 + 1], J[F[n] * 3 + 2]); return p('fR20').distanceTo(p('tipR2')); });
+    await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(2500); const paw = await finger();
+    await A(() => document.querySelector('#handsChips .chip[data-v="humanas"]').click()); await page.waitForTimeout(800); const hum = await finger();
+    ok(paw < hum * .8 && await A(() => document.querySelector('#handsChips .chip[data-v="animal"]').textContent) === 'Paws', `a fox has paws: fingers ${(paw * 100).toFixed(1)} cm against ${(hum * 100).toFixed(1)} cm with human hands`);
     // a furry cast read from a script
     const sp = await A(() => { const s = window.__cdp.furry.speciesOf; return [s('REX', 'REX, un lobo gris, entra.'), s('MIA', 'Mia (gata) mira.'), s('ANA', "ANA can't bear the silence."), s('ZORRO', 'ZORRO: ¡Hola!')].join(); });
     ok(sp === 'lobo,gato,,zorro', `a script's cast: “REX, un lobo”, “Mia (gata)”, the name ZORRO; “can't bear” is not a bear (${sp})`);

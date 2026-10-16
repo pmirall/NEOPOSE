@@ -82,8 +82,10 @@ function computeHeadSwap(m, P, J) {
     Q[i * 3] = cx + dx * sc; Q[i * 3 + 2] = cz + dz * sc;
   }
   // keep only triangles above the cut
-  const keep = [];
+  // (a species borrowing this sculpt may leave out its ears or horns, unless the head was picked by hand)
+  const keep = [], hide = new Set(!m.body.headModel && SPECIES[m.body.species] && SPECIES[m.body.species].hide || []);
   for (let t = 0; t < d.idx.length; t += 3) { const a = d.idx[t], b = d.idx[t + 1], c = d.idx[t + 2];
+    if (hide.size && (hide.has(d.K[a]) || hide.has(d.K[b]) || hide.has(d.K[c]))) continue;
     if (src[a * 3 + 1] * s + E.y >= yc - .002 || src[b * 3 + 1] * s + E.y >= yc - .002 || src[c * 3 + 1] * s + E.y >= yc - .002) keep.push(a, b, c); }
   // ear bases: where the ear meets the skull
   const earBase = {};

@@ -275,6 +275,7 @@ function buildHeadUI() {
   // the kemo scale (獣度): from a short, soft muzzle (kemono) to the animal's full snout
   headSl.snout = slider($('#snoutBox'), {id: 'snoutSl', label: 'Hocico', min: .45, max: 1, step: .01, value: 1, def: 1, fmt: v => v > .985 ? tr('Completo') : pctFmt(v),
     input: v => { mq.body.snout = v > .985 ? undefined : v; rebuildActive(); }, change: pushHistory});
+  chips($('#handsChips'), [['animal', 'Zarpas'], ['humanas', 'Humanas']], 'animal', v => { mq.body.paws = v === 'animal' ? undefined : v; rebuildActive(true); syncHeadUI(); pushHistory(); });
   $('#padsChk').onchange = e => { mq.body.pads = e.target.checked; rebuildActive(true); pushHistory(); };
   chips($('#tailChips'), TAIL_SHAPES, '', v => { mq.body.tail = {...(mq.body.tail || {}), shape: v === (SPECIES[mq.body.species].tail || {}).shape ? undefined : v}; rebuildActive(true); syncHeadUI(); pushHistory(); });
   chips($('#tailMoveChips'), [['quieta', 'Quieta'], ['viva', 'Viva'], ['meneo', 'Meneo'], ['rapido', 'Meneo rápido']], 'viva', v => { mq.body.tailMove = v === 'viva' ? undefined : v; if (ANIM.open) setFrame(ANIM.f); pushHistory(); });
@@ -309,6 +310,9 @@ function syncHeadUI() {
   const L = ANIMAL_LEGS[legSp(mq.body)];
   $('#feetNote').textContent = L ? tr(L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : L.type === 'planti' ? 'Del animal: patas plantígradas, apoyadas en toda la planta, como las de un oso.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
   $('#padsRow').hidden = !(L && !L.hoof); $('#padsChk').checked = padsOn(mq.body);
+  // the hands' name follows the animal: paws, hoof-hands or claws
+  const hk = L ? (L.type === 'ungu' ? 'Pezuñas' : legSp(mq.body) === 'dragon' ? 'Garras' : 'Zarpas') : 'Zarpas';
+  $('#handsRow').hidden = !L; const hb = $('#handsChips .chip[data-v="animal"]'); if (hb) hb.textContent = tr(hk); setPressed($('#handsChips'), mq.body.paws || 'animal');
   const t = SPECIES[mq.body.species] && SPECIES[mq.body.species].tail, own = mq.body.tail || {};
   $('#tailUI').hidden = !t; if (t) { setPressed($('#tailChips'), own.shape || t.shape); headSl.tlen.set(own.len ?? 1); headSl.tr.set(own.r ?? 1); setPressed($('#tailMoveChips'), mq.body.tailMove || 'viva'); $('#tailLenBox').hidden = $('#tailThickBox').hidden = own.shape === 'no'; }
   $('#snoutBox').hidden = !headModelFor(mq.body) && !HEAD_RECIPES[headSp(mq.body)]; headSl.snout.set(mq.body.snout ?? 1);
@@ -416,6 +420,47 @@ function remodelLegs(b, P, J, H) {
   }
   return res;
 }
+/* ---------- paw-hands (researched) ----------
+   Anthro hands in furry art are paws that can still hold things: fingers shorter and much thicker than a human's,
+   ending in rounded tips with pads and claws (canids, felids, bears, rabbits); ungulates get "hoof-hands", the
+   fingers pressed together, short, capped with keratin; dragons keep long fingers with heavy claws. The rest hand is
+   reshaped like the legs: every finger's joints move to their new place and each vertex follows the bones it is
+   skinned to (shorter along the bone, fatter around it), so the hand still curls, spreads and holds as before. */
+const HAND_SHAPES = {zarpa: {len: .72, thumb: .8, r: 1.3, sq: 1}, pezuna: {len: .58, thumb: .5, r: 1.34, sq: .5}, garra: {len: 1.04, thumb: 1, r: .94, sq: 1}};
+function handShape(b) {
+  if (!b || b.species === 'humano' || b.paws === 'humanas') return null;
+  const k = legSp(b), L = ANIMAL_LEGS[k]; if (!L) return null;
+  return HAND_SHAPES[L.type === 'ungu' ? 'pezuna' : k === 'dragon' ? 'garra' : 'zarpa'];
+}
+function remodelHands(b, P, J, H) {
+  const S = handShape(b); if (!S) return;
+  const jv = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
+  for (const s of ['L', 'R']) {
+    const seg = new Map(), mid = jv(`f${s}20`);
+    for (let f = 0; f < 5; f++) {
+      const names = [`f${s}${f}0`, `f${s}${f}1`, `f${s}${f}2`, `tip${s}${f}`], p = names.map(jv), k = f === 0 ? S.thumb : S.len;
+      const dlt = f > 0 && S.sq < 1 ? mid.clone().sub(p[0]).multiplyScalar(1 - S.sq) : new V3(), n = [p[0].clone().add(dlt)];
+      for (let i = 1; i < 4; i++) n.push(n[i - 1].clone().add(p[i].clone().sub(p[i - 1]).multiplyScalar(k)));
+      for (let i = 0; i < 3; i++) seg.set(FIG.jIdx[names[i]], {o: p[i], n: n[i], d: p[i + 1].clone().sub(p[i]).normalize(), k, r: S.r * (f === 0 ? .92 : 1)});
+      names.forEach((nm, i) => { const j = FIG.jIdx[nm] * 3; J[j] = n[i].x; J[j + 1] = n[i].y; J[j + 2] = n[i].z; });
+    }
+    const v = new V3(), out = new V3(), loc = new V3(), rad = new V3();
+    const apply = (Q, cnt, si, sw) => {
+      for (let i = 0; i < cnt; i++) {
+        let wf = 0; for (let k = 0; k < 4; k++) if (seg.has(si[i * 4 + k])) wf += sw[i * 4 + k] / 255; if (wf < .01) continue;
+        v.set(Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]); out.set(0, 0, 0); let wt = 0;
+        for (let k = 0; k < 4; k++) {
+          const w = sw[i * 4 + k] / 255; if (!w) continue; const g = seg.get(si[i * 4 + k]);
+          if (!g) { out.addScaledVector(v, w); wt += w; continue; }
+          loc.subVectors(v, g.o); const al = loc.dot(g.d); rad.copy(loc).addScaledVector(g.d, -al);
+          out.addScaledVector(g.n.clone().addScaledVector(g.d, al * g.k).addScaledVector(rad, g.r), w); wt += w;
+        }
+        if (wt > 0) { out.multiplyScalar(1 / wt); Q[i * 3] = out.x; Q[i * 3 + 1] = out.y; Q[i * 3 + 2] = out.z; }
+      }
+    };
+    apply(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
+  }
+}
 // claws on fingers and paws, hooves on goats: rigid on the finger tips and the ankles (accessory skeleton)
 function pawGeos(m, P) {
   const L = legSpec(m.body), out = []; if (!L) return out;
@@ -457,6 +502,15 @@ function pawGeos(m, P) {
         out.push(pad(c, n, side, .0058 * sz, .007 * sz, .0035 * sz, ACC(`f${s}${f}2`))); }
       const pc = w.clone().lerp(mid, .62).addScaledVector(n, .014 * sz);
       out.push(pad(pc, n, side, .019 * sz, .014 * sz, .005 * sz, ACC('wrist' + s)));
+    }
+    if (handShape(m.body) === HAND_SHAPES.pezuna) {
+      // hoof-hands: two keratin caps over the fingers pressed together (one for a horse)
+      const n = m.handAxes ? m.handAxes[s].n : new V3(0, 0, 1), groups = L.hoof === 'single' ? [[1, 2, 3, 4]] : [[1, 2], [3, 4]];
+      for (const gr of groups) {
+        const tip = gr.reduce((a, f) => a.add(jp(`tip${s}${f}`)), new V3()).multiplyScalar(1 / gr.length), base = gr.reduce((a, f) => a.add(jp(`f${s}${f}2`)), new V3()).multiplyScalar(1 / gr.length);
+        const ax = tip.clone().sub(base).normalize(), w = .009 * sz * (gr.length > 2 ? 1.7 : 1.05), len = tip.distanceTo(base) * 1.05;
+        out.push(furAttrsLoft(loft({origin: base.clone().addScaledVector(ax, len * .25), axis: ax, side: n.clone(), secs: [[0, w, w * .9], [len * .45, w * 1.08, w], [len * .8, w * .95, w * .85], [len * .95, w * .55, w * .45], [len, .001, .001]], radial: 12, sub: 2, weights: () => [[ACC(`f${s}${gr[0]}2`), 1]]}), 3));
+      }
     }
     if (L.hand) for (let f = 1; f < 5; f++) {
       const tip = jp(`tip${s}${f}`), last = jp(`f${s}${f}2`), dir = tip.clone().sub(last).normalize();

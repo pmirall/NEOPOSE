@@ -184,9 +184,13 @@ function furAttrsHead(m, geo, hs) {
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
+// (len > 0: a tail that long; len < 0: an ear that tall, measured from its base to its tip)
 function furAttrsLoft(g, kind, len = 0) {
   const n = g.attributes.position.count, ln = g.attributes.aLine.array, A = new Float32Array(n * 4);
-  for (let i = 0; i < n; i++) furPack(A, i * 4, len ? sstep(.4, .9, ln[i * 4]) * .6 : 0, 0, len ? 2 + clamp(ln[i * 4 + 2] / len, 0, 1) : 0, kind, len ? sstep(.3, .85, -ln[i * 4]) : 0);
+  for (let i = 0; i < n; i++) {
+    if (len < 0) { furPack(A, i * 4, 0, 0, clamp(ln[i * 4 + 2] / -len, 0, 1), kind, 0); continue; }
+    furPack(A, i * 4, len ? sstep(.4, .9, ln[i * 4]) * .6 : 0, 0, len ? 2 + clamp(ln[i * 4 + 2] / len, 0, 1) : 0, kind, len ? sstep(.3, .85, -ln[i * 4]) : 0);
+  }
   g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); return g;
 }
 // the tail's natural carriage for a joint (what a pose without a tail of its own gets)

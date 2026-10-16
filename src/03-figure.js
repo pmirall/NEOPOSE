@@ -402,7 +402,7 @@ class Mannequin {
     }
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
-    remodelLegs(this.body, P, J, H);
+    remodelLegs(this.body, P, J, H); remodelHands(this.body, P, J, H);
     anthroHead(this, P); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
@@ -446,8 +446,8 @@ class Mannequin {
       const hd = this.headBox, hh = this.headH, hw = (hd.x1 - hd.x0) / 2, hdep = hd.z1 - hd.z0, cz = (hd.z0 + hd.z1) / 2, LL = this.anthro ? this.anthro.L : null;
       this.earRoot = {};
       for (const [k, sd] of [['L', 1], ['R', -1]]) {
-        const eb = this.anthro && this.anthro.earBase && this.anthro.earBase[k];
-        this.earRoot[k] = eb ? eb.clone() : LL ? new V3(sd * LL.hw * .58, LL.crown - LL.hh * .17, LL.eyeZ - LL.hh * .42) : new V3(sd * hw * .62, hd.y1 - hh * .2, cz - hdep * .05);
+        const hidden = !this.body.headModel && (sp.hide || []).includes(1), eb = !hidden && this.anthro && this.anthro.earBase && this.anthro.earBase[k];
+        this.earRoot[k] = eb ? eb.clone() : LL ? new V3(sd * LL.hw * (hidden ? 1.05 : .58), LL.crown - LL.hh * (hidden ? .12 : .17), LL.eyeZ - LL.hh * (hidden ? .5 : .42)) : new V3(sd * hw * .62, hd.y1 - hh * .2, cz - hdep * .05);
         this.ears[k].quaternion.identity(); this.ears[k].position.copy(this.earRoot[k]).sub(jp('head'));
       }
       this.hasEars = !!sp.ears || !!(this.anthro && this.anthro.earBase);
@@ -569,10 +569,10 @@ class Mannequin {
       else if (e.shape === 'larga') secs = [[-.05 * h, w * .6, d], [0, w * .7, d], [.3 * h, w, d], [.75 * h, w * .85, d * .8], [h, w * .08, d * .3]];
       else secs = [[-.06 * h, w * .9, d], [0, w, d], [.35 * h, w * .75, d * .8], [.75 * h, w * .32, d * .5], [h, .004, .004]];
       const earW = horn ? rigidHead : () => [[sd > 0 ? 6 : 7, 1]];
-      geos.push(furAttrsLoft(loft({origin: horn ? origin : this.earRoot[sd > 0 ? 'L' : 'R'].clone(), axis, side: new V3(Math.cos(out), -Math.sin(out), 0), secs, radial: horn ? 14 : 16, weights: earW, bend: horn ? (e.antler ? -.15 : -.35) : 0}), horn ? 4 : 1, 0, this.size));
+      geos.push(furAttrsLoft(loft({origin: horn ? origin : this.earRoot[sd > 0 ? 'L' : 'R'].clone(), axis, side: new V3(Math.cos(out), -Math.sin(out), 0), secs, radial: horn ? 14 : 16, weights: earW, bend: horn ? (e.antler ? -.15 : -.35) : 0}), horn ? 4 : 1, horn ? 0 : -h));
       if (horn && e.antler) for (const k of [.4, .7]) {
         const o2 = origin.clone().addScaledVector(axis, h * k), ax2 = axis.clone().add(new V3(0, .1, .9)).normalize();
-        geos.push(furAttrsLoft(loft({origin: o2, axis: ax2, side: new V3(1, 0, 0), secs: [[0, w * .5, w * .5], [h * .3, w * .3, w * .3], [h * .45, .002, .002]], radial: 10, weights: rigidHead}), 4, 0, this.size));
+        geos.push(furAttrsLoft(loft({origin: o2, axis: ax2, side: new V3(1, 0, 0), secs: [[0, w * .5, w * .5], [h * .3, w * .3, w * .3], [h * .45, .002, .002]], radial: 10, weights: rigidHead}), 4));
       }
     };
     for (const sd of [1, -1]) { if (sp.ears) ear(sd, sp.ears, false); if (sp.horns) ear(sd, sp.horns, true); }
@@ -593,14 +593,21 @@ class Mannequin {
         weights: chainW([[0, -1e9], [2, .015], [3, L / 3], [4, L * 2 / 3]], Math.min(.05, L * .08))}), 1, L, this.size));
     }
     if (sp.mane) {
-      // a lion's mane: a shell round the head and neck, open in front for the face, as dark as the tail's tuft
-      const an = this.anthro, L = an && an.L, hh2 = L ? L.hh : hh, cy = L ? (L.chin + L.crown) / 2 : (hd.y0 + hd.y1) / 2, cz2 = L ? L.eyeZ - .45 * hh2 : cz;
-      const r = (L ? L.hw : hw) * 1.55, H = hh2 * 1.55, y0 = cy - H * .62;
-      const g = loft({origin: new V3(0, y0, cz2), axis: new V3(0, 1, 0), side: new V3(1, 0, 0), radial: 20, sub: 3, arc: [.75, Math.PI * 2 - .75],
-        secs: [[0, r * .75, r * .7], [H * .28, r * 1.18, r * 1.05], [H * .62, r * 1.22, r * 1.08], [H * .9, r * .95, r * .85], [H, r * .35, r * .3]],
-        mod: (ph, t) => 1 + .1 * Math.sin(ph * 11 + t * 37) + .05 * Math.sin(ph * 23 - t * 61), weights: rigidHead});
-      const n = g.attributes.position.count, A = new Float32Array(n * 4); for (let i = 0; i < n; i++) furPack(A, i * 4, 0, 0, 2.97, 1, 0);
-      g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.userData.noHull = true; geos.push(g);  // an open shell: no outline hull inside it
+      // a lion's mane: a shaggy ring round the face (its axis looking forward), fuller below where it falls onto the
+      // chest, as dark as the tail's tuft; rigid on the head
+      const an = this.anthro, L = an && an.L, hh2 = L ? L.hh : hh, cy = L ? L.eyeY - .08 * hh2 : (hd.y0 + hd.y1) / 2, cz2 = L ? L.eyeZ - .42 * hh2 : cz;
+      const R = (L ? L.hw : hw) * 1.12, r = hh2 * .24, g = new THREE.TorusGeometry(R, r, 14, 40), p = g.attributes.position, n = p.count;
+      for (let i = 0; i < n; i++) {
+        let x = p.getX(i), y = p.getY(i), z = p.getZ(i); const a = Math.atan2(y, x), lob = 1 + .16 * Math.sin(a * 13 + z * 60) + .08 * Math.sin(a * 29);
+        const low = Math.max(0, -Math.sin(a)) * .55, ring = Math.hypot(x, y), k = (ring - R) * lob;
+        x = Math.cos(a) * (R + k) * (1 + low * .25); y = Math.sin(a) * (R + k) * (1 + low * .6) - low * hh2 * .25; z = z * lob * (1 + low * .4) - low * hh2 * .12;
+        p.setXYZ(i, x, y + cy, z + cz2);
+      }
+      g.computeVertexNormals();
+      const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), A = new Float32Array(n * 4), ln = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { si[i * 4] = HEAD; sw[i * 4] = 1; furPack(A, i * 4, 0, 0, 2.97, 1, 0); ln[i * 4 + 3] = -1; }
+      g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+      g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     const I = new THREE.Matrix4();
