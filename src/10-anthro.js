@@ -287,13 +287,17 @@ function buildHeadUI() {
 // sculpted head choices for this species (plus the MakeHuman target head)
 function renderHeadModels() {
   const box = $('#headModelChips'); if (!box) return;
-  const sp = headSp(mq.body), list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
+  // the species' own heads first, then every other one (a hybrid: a fox's head on a wolf, a dragon's on a cat…)
+  const own = (SPECIES[mq.body.species] || {}).head || mq.body.species, all = Object.entries(HEAD_CATALOG), mine = all.filter(([, c]) => c.species.includes(own)), other = all.filter(([, c]) => !c.species.includes(own));
   const id = headModelFor(mq.body), c = id && HEAD_CATALOG[id];
-  chips(box, list.map(([k, c]) => [k, c.label]), id, v => {
-    mq.body.headModel = v; mq.body.headStyle = HEAD_CATALOG[v].style;
+  // a species without a sculpt of its own (tiger, lion, bear, horse, deer) has its MakeHuman head as the first choice
+  const recipe = !mine.length && HEAD_RECIPES[own], first = recipe ? [['', SPECIES[mq.body.species].label]] : [];
+  chips(box, [...first, ...[...mine, ...other].map(([k, c]) => [k, c.label])], id || '', v => {
+    if (!v || (mine.length && v === mine[0][0])) { delete mq.body.headModel; delete mq.body.headStyle; } else { mq.body.headModel = v; mq.body.headStyle = HEAD_CATALOG[v].style; }
     rebuildActive(true); syncHeadUI(); pushHistory();
   });
-  box.parentElement.hidden = list.length < 2;
+  if (other.length) { const sep = document.createElement('span'); sep.className = 'famlbl'; sep.textContent = tr('Híbrido: la cabeza de otra especie'); box.insertBefore(sep, box.children[first.length + mine.length]); }
+  box.parentElement.hidden = !all.length;
   const cr = $('#headCredit'); cr.innerHTML = '';
   if (c) { cr.append(tr('Cabeza: «{x}» de {a} (CC-BY), ', {x: c.label.replace(/ \(.*\)$/, ''), a: c.author})); const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Sketchfab'; cr.append(a, '.'); }
   else cr.textContent = tr(HEAD_CREDITS);
@@ -302,7 +306,7 @@ function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;
   const on = !!HEAD_RECIPES[headSp(mq.body)]; box.hidden = !on;
   setPressed($('#feetChips'), mq.body.feet || 'animal');
-  const L = ANIMAL_LEGS[(SPECIES[mq.body.species] || {}).legs || headSp(mq.body)];
+  const L = ANIMAL_LEGS[legSp(mq.body)];
   $('#feetNote').textContent = L ? tr(L.type === 'ungu' ? 'Del animal: patas ungulígradas, apoyadas en la pezuña, con el corvejón alto.' : L.type === 'planti' ? 'Del animal: patas plantígradas, apoyadas en toda la planta, como las de un oso.' : 'Del animal: patas digitígradas, apoyadas en los dedos; el tobillo es el corvejón que dobla hacia atrás.') : '';
   $('#padsRow').hidden = !(L && !L.hoof); $('#padsChk').checked = padsOn(mq.body);
   const t = SPECIES[mq.body.species] && SPECIES[mq.body.species].tail, own = mq.body.tail || {};
@@ -361,10 +365,10 @@ const ANIMAL_LEGS = {
   caballo:{type: 'ungu', mt: .7, th: 12, hock: .32, knee: .12, toe: .3, hoof: 'single', claws: 0, hand: 0},
   ciervo: {type: 'ungu', mt: .68, th: 14, hock: .32, knee: .12, toe: .32, hoof: true, claws: 0, hand: 0}
 };
-const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[(SPECIES[b.species] || {}).legs || headSp(b)] || null : null;
+const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[legSp(b)] || null : null;
 const animalFeet = m => !!legSpec(m && m.body);
 // pads: on paws with claws and on bears' soles by default; never on hooves (rabbits' feet are furred, so off for them)
-const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[headSp(b)]; return b && b.species !== 'humano' && (b.pads ?? !!(L && !L.hoof && (L.claws || L.type === 'planti'))); };
+const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b && b.species !== 'humano' && (b.pads ?? !!(L && !L.hoof && (L.claws || L.type === 'planti'))); };
 function remodelLegs(b, P, J, H) {
   const L = legSpec(b); if (!L || L.type === 'planti') return null;
   const sst = (a, c, x) => { const t = clamp((x - a) / (c - a), 0, 1); return t * t * (3 - 2 * t); };

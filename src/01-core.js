@@ -87,8 +87,11 @@ function tailOf(b) {
   if (!t || o.shape === 'no') return null;
   return {...t, shape: o.shape || t.shape, len: t.len * (o.len ?? 1), r: t.r * (o.r ?? 1), rest: t.rest};
 }
-// the species a body's head, legs and mouth come from
-const headSp = b => (b && SPECIES[b.species] && SPECIES[b.species].head) || (b && b.species) || 'humano';
+// the species a body's head (eyes, mouth) comes from: a head picked from another species makes a hybrid
+const headSp = b => { if (!b || b.species === 'humano') return 'humano'; const h = b.headModel && typeof HEAD_CATALOG !== 'undefined' && HEAD_CATALOG[b.headModel];
+  return h ? h.species[0] : (SPECIES[b.species] && SPECIES[b.species].head) || b.species; };
+// …and its legs: always the body's own species
+const legSp = b => (b && SPECIES[b.species] && (SPECIES[b.species].legs || SPECIES[b.species].head)) || (b && b.species);
 tLabels(SPECIES);
 
 /* ---------- hands ---------- */

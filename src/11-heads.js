@@ -9,8 +9,8 @@ const SNOUT_BY_LEVEL = [0, .45, .6, .75, .88, 1];
 function headModelFor(b) {
   // only sculpted (downloaded) heads: the species' own sculpt first, or the one chosen in the panel
   if (!b || b.species === 'humano') return null;
-  const sp = headSp(b), list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
-  if (b.headModel && list.some(([k]) => k === b.headModel)) return b.headModel;
+  if (b.headModel && HEAD_CATALOG[b.headModel]) return b.headModel;  // any sculpt, even another species' (a hybrid)
+  const sp = (SPECIES[b.species] || {}).head || b.species, list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
   return list.length ? list[0][0] : null;
 }
 function loadHeadModel(id) {
