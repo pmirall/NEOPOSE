@@ -348,11 +348,12 @@ class Mannequin {
     g.boundingSphere = new THREE.Sphere(new V3(), 20);
     // mouth shapes for speech: MakeHuman's mouth units as morph targets, mixed at run time (no rebuild)
     const vis = visemeTargets(); if (vis) { g.morphAttributes.position = vis; g.morphTargetsRelative = true; }
+    addMuscleAttrs(g, nV);
     this.geo = g;
     this.dom = new Uint8Array(nV);
     for (let i = 0; i < nV; i++) { let b = 0, bw = -1; for (let k = 0; k < 4; k++) if (FIG.sw[i * 4 + k] > bw) { bw = FIG.sw[i * 4 + k]; b = FIG.si[i * 4 + k]; } this.dom[i] = b; }
     // the body skeleton also carries the ear bones (indices after the baked ones), so sculpted ears can bend
-    this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R]);
+    this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R, ...muscleBones()]);  // last: the muscles' activations (03b)
     // furry parts use their own skeleton: pelvis, head and the three tail bones
     this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R,
       this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]]))];
@@ -390,7 +391,7 @@ class Mannequin {
       const d = FIG.hdeltas[FIG.setIdx[name]], q = meta.q * w; for (let i = 0; i < H.length; i++) H[i] += d[i] * q;
     }
     const swapId = headModelFor(this.body), swapReady = swapId && HEADS[swapId];
-    for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {}), ...extMorphs(this.body)})) {
+    for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {}), ...extMorphs(this.body), ...bodyMorphs(this.body)})) {
       const x = FIG.xsets[name]; if (!x || Math.abs(w) < 1e-4) continue; const q = meta.q * w;
       for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; P[o] += x.dv[k * 3] * q; P[o + 1] += x.dv[k * 3 + 1] * q; P[o + 2] += x.dv[k * 3 + 2] * q; }
       for (let k = 0; k < x.ih.length; k++) { const o = x.ih[k] * 3; H[o] += x.dh[k * 3] * q; H[o + 1] += x.dh[k * 3 + 1] * q; H[o + 2] += x.dh[k * 3 + 2] * q; }
@@ -408,6 +409,7 @@ class Mannequin {
     for (let i = 1; i < J.length; i += 3) J[i] -= minY;
     shiftAnthro(this, minY);
     this.J = J;
+    limbStumps(this, P, H, J); this.anchors.set(P); this.anchors.set(H, nV * 3);  // limb differences: the skin closes over the stump
     const jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
     this.bones.forEach((b, i) => {
       const p = meta.parents[i];
@@ -447,7 +449,7 @@ class Mannequin {
       this.hasEars = !!sp.ears || !!(this.anthro && this.anthro.earBase);
     }
     this.group.updateMatrixWorld(true);
-    this.skeleton.calculateInverses(); this.accSkeleton.calculateInverses();
+    this.skeleton.calculateInverses(); this.accSkeleton.calculateInverses(); fixMuscleInverses(this.skeleton);
     const I = new THREE.Matrix4();
     for (const m of [this.body3, ...this.hulls.slice(0, 1)]) m.bind(this.skeleton, I);
     this.computeLines(J);
@@ -456,6 +458,7 @@ class Mannequin {
     attachHeadSwap(this);
     musclesAfterBuild(this);
     garmentsAfterBuild(this);
+    limbsAfterBuild(this);
     this.posed = true;
     if (prev) { prev.pos[1] += this.rootY - oldRoot; this.setPose(prev); } else this.applyHands();
     this.setStyle(this.style);
@@ -690,12 +693,13 @@ class Mannequin {
     return this.bonePick[this.dom[a]];
   }
   box(step = 4) {
-    this.group.updateMatrixWorld(true);
+    this.group.updateMatrixWorld(true); this.skeleton.update(); this.accSkeleton.update();  // the skin on the CPU reads the skeleton's matrices
     const bx = new THREE.Box3(), v = new V3();
     for (const m of this.meshes) {
       const p = m.geometry.attributes.position, st = m === this.body3 ? step : 3;
       for (let i = 0; i < p.count; i += st) { v.fromBufferAttribute(p, i); m.boneTransform(i, v); v.applyMatrix4(m.matrixWorld); bx.expandByPoint(v); }
     }
+    for (const g of this.prosthetics || []) g.traverse(o => { if (o.isMesh && !o.userData.isHull) bx.union(new THREE.Box3().setFromObject(o)); });
     return bx;
   }
   getPose() {

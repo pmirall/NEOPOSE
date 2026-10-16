@@ -378,27 +378,97 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
-  // muscles that answer to the pose: shapes made for each body, driven by the joints, on clothes too
+  // muscles that answer to the pose and skin that keeps its volume (dual quaternions): body, clothes, thumbnails
   async muscles(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    const info = await A(() => { const m = window.__cdp.mq, g = m.body3.geometry, D = m.musc && m.musc.D, mx = k => { let x = 0; for (let i = 0; i < D[k].length; i += 3) x = Math.max(x, Math.hypot(D[k][i], D[k][i + 1], D[k][i + 2])); return x; };
-      return {n: D ? D.length : 0, morphs: (g.morphAttributes.position || []).length, normals: (g.morphAttributes.normal || []).length, biceps: D ? mx(0) : 0}; });
-    ok(info.n >= 25 && info.morphs === info.n + 7 && info.normals === info.morphs, `${info.n} muscle shapes after the 7 mouth shapes, with their normals`);
-    ok(info.biceps > .008 && info.biceps < .04, `the biceps rises ${(info.biceps * 100).toFixed(1)} cm at most on this body`);
-    const drive = id => A(id => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === id)); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(Array.from(C.mq.body3.morphTargetInfluences).slice(7))))); }, id);
+    const peak = () => A(() => { const F = window.__cdp.mq.musc; let x = 0, n = 0; for (let i = 0; i < F.ids.length; i++) if (F.ids[i] === 0) { n++; x = Math.max(x, Math.hypot(F.dv[i * 3], F.dv[i * 3 + 1], F.dv[i * 3 + 2])); } return {x, n}; });
+    const info = await A(() => { const m = window.__cdp.mq, g = m.body3.geometry, I = g.attributes.aMuscI; let used = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) used++;
+      return {attrs: !!I, used, morphs: (g.morphAttributes.position || []).length, bones: m.skeleton.bones.filter(b => b.name === '_musc').length}; });
+    ok(info.attrs && info.used > 2000 && info.morphs === 7 && info.bones === 2, `muscles live in the vertices (${info.used} moved by some muscle) and the skeleton's two activation bones; the mouth keeps its 7 shapes`);
+    const p0 = await peak();
+    ok(p0.x > .008 && p0.x < .04, `the biceps rises ${(p0.x * 100).toFixed(1)} cm at most on this body`);
+    const drive = id => A(id => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === id)); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(C.mq._muscVals.slice())))); }, id);
     const stand = await drive('pie'), guard = await drive('guardia'), toes = await drive('puntillas');
     ok(Math.max(...stand) < .2, `standing, the muscles rest (max ${Math.max(...stand).toFixed(2)})`);
     ok(guard[0] > .8 && guard[1] > .8, `a boxing guard flexes both biceps (${guard[0].toFixed(2)}, ${guard[1].toFixed(2)})`);
     ok(toes[22] > .8 && toes[23] > .8 && toes[0] < .2, `on tiptoe the calves work and the biceps do not (${toes[22].toFixed(2)}, ${toes[0].toFixed(2)})`);
+    // the sweet-wrapper test: a wrist turned 90° on the forearm keeps the forearm round
+    const keep = await A(() => { const C = window.__cdp, m = C.mq, b = m.body3; C.usePreset(C.POSES.find(p => p.id === 'pie'));
+      const w = m.joints.wristL, e = m.joints.elbowL, V = THREE.Vector3, pos = b.geometry.attributes.position, sk = m.skeleton;
+      const radius = () => { m.group.updateMatrixWorld(true); sk.update(); const a = e.getWorldPosition(new V()), c = w.getWorldPosition(new V()), u = c.clone().sub(a).normalize(); let s = 0, n = 0;
+        for (let i = 0; i < pos.count; i++) { if (m.bonePick[m.dom[i]] !== 'elbowL' && m.bonePick[m.dom[i]] !== 'wristL') continue; const v = b.boneTransform(i, new V().fromBufferAttribute(pos, i)).applyMatrix4(b.matrixWorld);
+          const t = v.clone().sub(a).dot(u), L = c.distanceTo(a); if (t < L * .8 || t > L * 1.05) continue; s += v.clone().sub(a).addScaledVector(u, -t).length(); n++; } return s / n; };
+      const r0 = radius(); w.quaternion.setFromAxisAngle(w.position.clone().normalize(), Math.PI / 2); const r1 = radius(); return r1 / r0; });
+    ok(keep > .93, `a wrist turned 90° keeps ${(keep * 100).toFixed(0)}% of the forearm's thickness (no sweet-wrapper pinch)`);
+    // the body sliders: the muscles follow while they move, not after
+    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('[data-sec=prop]').open = true);
+    await A(() => { const s = document.querySelector('#b_muscle'); s.value = 1; s.dispatchEvent(new Event('input')); });
+    await page.waitForTimeout(120); const p1 = await peak();
+    await A(() => { const s = document.querySelector('#b_muscle'); s.value = 0; s.dispatchEvent(new Event('input')); });
+    await page.waitForTimeout(120); const p2 = await peak();
+    ok(p1.x > p0.x * 1.3 && p2.x < p0.x * .8, `dragging “muscle” changes them at once (${(p2.x * 100).toFixed(1)} → ${(p0.x * 100).toFixed(1)} → ${(p1.x * 100).toFixed(1)} cm)`);
     await A(() => { const s = document.querySelector('#b_flex'); s.value = 0; s.dispatchEvent(new Event('input')); });
     const off = await drive('puntillas');
     ok(Math.max(...off) === 0, 'the “muscle reaction” slider at 0 switches them off');
-    const amt = await A(() => { const m = window.__cdp.mq, b = {...m.body, flex: 1}; m.musc = null; m.build({...b, muscle: 1, weight: .2}); const a = m.musc.D[0].reduce((x, v) => Math.max(x, Math.abs(v)), 0);
-      m.musc = null; m.build({...b, muscle: 0, weight: .8}); const c = m.musc.D[0].reduce((x, v) => Math.max(x, Math.abs(v)), 0); return [a, c]; });
-    ok(amt[0] > amt[1] * 2, `a muscular body shows more than a soft one (${(amt[0] * 100).toFixed(1)} vs ${(amt[1] * 100).toFixed(1)} cm)`);
+    // thumbnails of the pose library show them too
+    const th = await A(() => { const C = window.__cdp; C.renderThumb(C.POSES.find(p => p.id === 'guardia')); const t = C.thumbChars[0]; return t._muscVals ? t._muscVals[0] : -1; });
+    ok(th > .8, `the pose library's silhouettes flex too (biceps ${th.toFixed(2)})`);
     await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
-    const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => (g.geo.morphAttributes.position || []).length));
-    ok(worn.length && worn.every(n => n === info.n), `clothes follow the same shapes (${worn.join(', ')})`);
+    const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => { const I = g.geo.attributes.aMuscI; let u = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) u++; return u; }));
+    ok(worn.length && worn.some(n => n > 100), `clothes follow the same muscles (${worn.join(', ')} vertices)`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // body builds and advanced settings (MakeHuman modelling targets): shape where it should be, sex and age kept, undo
+  async bodies(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    ok(await A(() => Object.keys(window.__cdp.FIG.xsets).filter(k => /^bs?-/.test(k)).length) >= 60, 'the body sets are loaded');
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(800);
+    ok(await A(() => document.querySelectorAll('#buildGrid .pose').length) >= 12, 'the builds are shown as silhouettes');
+    // girth of the body at a height (fraction of its height), from its rest mesh
+    const girth = (id, at) => A(([id, at]) => { const m = window.__cdp.mq; if (id) document.querySelector(`#buildGrid .pose[data-id="${id}"]`).click(); else m.build(m.body);
+      const P = m.anchors, nV = window.__cdp.FIG.meta.nV, y0 = m.top * at; let w = 0, d = 0; for (let i = 0; i < nV; i++) { const y = P[i * 3 + 1]; if (Math.abs(y - y0) > .015 || /shoulder|elbow|wrist/.test(m.bonePick[m.dom[i]])) continue; w = Math.max(w, Math.abs(P[i * 3])); d = Math.max(d, P[i * 3 + 2]); }
+      return {w, d, g: m.body.gender, age: m.body.age}; }, [id, at]);
+    await A(() => { const m = window.__cdp.mq; m.body.gender = .3; m.body.age = 1.2; m.build(m.body); });
+    const avgW = await girth('media', .58), apple = await girth('manzana', .58), avgS = await girth('media', .82), bb = await girth('culturista', .82);
+    ok(apple.d > avgW.d + .01, `the apple build carries its fat on the belly (${(avgW.d * 100).toFixed(1)} → ${(apple.d * 100).toFixed(1)} cm forward)`);
+    ok(bb.w > avgS.w + .01, `the bodybuilder is broader at the shoulders (${(avgS.w * 100).toFixed(1)} → ${(bb.w * 100).toFixed(1)} cm)`);
+    ok(Math.abs(bb.g - .3) < 1e-6 && Math.abs(bb.age - 1.2) < 1e-6, 'a build keeps the character\'s sex and age');
+    await A(() => { document.querySelector('[data-sec=prop]').open = true; document.querySelector('#advMore').open = true; });
+    const hips0 = await girth(null, .5);
+    await A(() => { const s = document.querySelector('#adv_hipw'); s.value = 1; s.dispatchEvent(new Event('input')); s.dispatchEvent(new Event('change')); });
+    await page.waitForTimeout(150); const hips1 = await girth(null, .5);
+    ok(hips1.w > hips0.w + .01, `“hip width” widens the hips (${(hips0.w * 100).toFixed(1)} → ${(hips1.w * 100).toFixed(1)} cm)`);
+    await page.click('#shapeChips .chip:nth-child(3)'); await page.waitForTimeout(150);
+    ok(await A(() => window.__cdp.mq.body.shape) === 'pera', 'a body shape can be chosen');
+    await page.keyboard.press('Control+z'); await page.waitForTimeout(200); await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+    ok(await A(() => !(window.__cdp.mq.body.adv || {}).hipw && window.__cdp.mq.body.shape !== 'pera'), 'undo takes the advanced settings back');
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // limb differences: stumps that close, joints that are not there stay still, prostheses that pose, a wheelchair
+  async limbs(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('[data-sec=extremidades]').open = true);
+    const reach = () => A(() => { const m = window.__cdp.mq, P = m.anchors, nV = window.__cdp.FIG.meta.nV, s = m.J, i = window.__cdp.FIG.jIdx.shoulderL; let x = 0;
+      for (let v = 0; v < nV; v++) if (/shoulderL|elbowL|wristL|^fL/.test(m.bonePick[m.dom[v]] || '') || m.bonePick[m.dom[v]] === 'wristL') x = Math.max(x, Math.hypot(P[v * 3] - s[i * 3], P[v * 3 + 1] - s[i * 3 + 1], P[v * 3 + 2] - s[i * 3 + 2])); return x; });
+    const r0 = await reach();
+    await page.selectOption('#limb_armL', 'antebrazo'); await page.waitForTimeout(300);
+    const r1 = await reach(), st = await A(() => { const m = window.__cdp.mq; return {lock: [...m._limbLock], hide: [...m._limbHide], long: (() => { const P = m.geo.attributes.position.array, I = m.geo.index.array; let n = 0; for (let t = 0; t < I.length; t += 3) for (const [a, b] of [[I[t], I[t + 1]], [I[t + 1], I[t + 2]]]) if (Math.hypot(P[a * 3] - P[b * 3], P[a * 3 + 1] - P[b * 3 + 1], P[a * 3 + 2] - P[b * 3 + 2]) > .1) n++; return n; })()}; });
+    ok(r1 < r0 * .75, `below the elbow, the arm ends there (${(r0 * 100).toFixed(0)} → ${(r1 * 100).toFixed(0)} cm from the shoulder)`);
+    ok(st.long < 12, `the skin closes over the stump without stretched triangles (${st.long})`);
+    ok(st.lock.includes('wristL') && st.hide.includes('handL'), 'the missing wrist does not move and its hand handle goes away');
+    await page.click('[data-limb=armL] .limbpros .chip:nth-child(2)'); await page.waitForTimeout(300);
+    const pr = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'saludo')); m.group.updateMatrixWorld(true);
+      const hand = m.prosthetics.find(g => g.parent === m.joints.wristL), w = m.joints.wristL.getWorldPosition(new THREE.Vector3()); return {n: m.prosthetics.length, onWrist: !!hand, lock: m._limbLock.size, hy: w.y}; });
+    ok(pr.n >= 3 && pr.onWrist && pr.lock === 0, `with a prosthetic hand the arm poses again (${pr.n} parts, the hand on the wrist)`);
+    await page.selectOption('#limb_legR', 'muslo'); await page.waitForTimeout(300); await page.click('[data-limb=legR] .limbpros .chip:nth-child(2)'); await page.waitForTimeout(300);
+    const leg = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'pie')); const b = m.box(4), kn = m.prosthetics.some(g => g.parent === m.joints.kneeR), ft = m.prosthetics.some(g => g.parent === m.joints.ankleR); return {y: b.min.y, kn, ft}; });
+    ok(leg.kn && leg.ft && Math.abs(leg.y) < .01, `above the knee: knee unit and foot on their bones, standing on the floor (${leg.y.toFixed(3)} m)`);
+    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
+    ok(await A(() => window.__cdp.mq.garments.some(g => g.geo && g.geo.attributes.skinIndex.array.some((v, i) => i % 4 === 0 && v === window.__cdp.FIG.jIdx.elbowL && g.geo.attributes.skinWeight.array[i] === 1))), 'the sleeve over the stump hangs on the stump');
+    const sat = await A(async () => { const C = window.__cdp, g = C.makeProp('sillaRuedas', new THREE.Vector3(1.5, 0, 0)); await C.sitOn(C.mq, g); return C.mq.joints.hips.getWorldPosition(new THREE.Vector3()).y; });
+    ok(sat > .45 && sat < .7, `someone can sit in the wheelchair (pelvis at ${sat.toFixed(2)} m)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

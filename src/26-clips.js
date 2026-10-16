@@ -323,7 +323,7 @@ function clipThumb(c) {
   // the most telling moment: the frame furthest from the first one
   let best = 0, bi = 0; const a0 = c.frames[0].q;
   for (let i = 0; i < c.frames.length; i += Math.max(1, c.frames.length >> 4)) { let d = 0; for (const j of CLIP_J) d += 1 - Math.abs(new Q().fromArray(a0[j]).dot(new Q().fromArray(c.frames[i].q[j]))); if (d > best) { best = d; bi = i; } }
-  m.setPose(clipPose(m, c.frames[bi], new V3(0, 0, 0), 0, true, m.rootY / clipRig().rootY)); m.group.updateMatrixWorld(true);
+  m.setPose(clipPose(m, c.frames[bi], new V3(0, 0, 0), 0, true, m.rootY / clipRig().rootY)); m.group.updateMatrixWorld(true); applyMuscles(m, 1);
   const box = m.box(12), ctr = box.getCenter(new V3()), size = box.getSize(new V3()), r = Math.max(size.y, size.x * 1.25, size.z * 1.1) * .5;
   const d = r / Math.tan(thumbCam.fov * DEG / 2) * 1.12, az = 32 * DEG, el = 10 * DEG;
   thumbCam.position.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(d).add(ctr); thumbCam.lookAt(ctr); thumbR.render(thumbScene, thumbCam);
@@ -368,14 +368,14 @@ function miniStage(cv, alive, pose) {
   r.setPixelRatio(Math.min(devicePixelRatio, 2));
   const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .05, 60), dl = new THREE.DirectionalLight(0xffffff, .55);
   sc.add(new THREE.HemisphereLight(0xffffff, 0x8a8273, 1.05)); dl.position.set(2, 4, 3); sc.add(dl, new THREE.GridHelper(8, 16, 0xb9ad94, 0xd8cfba));
-  const fig = new Mannequin(makeCharMats(), 'volumen'); fig.noMuscles = true; fig.build(bodyOf('hombre')); sc.add(fig.group);
+  const fig = new Mannequin(makeCharMats(), 'volumen'); fig.build(bodyOf('hombre')); sc.add(fig.group);
   let last = 0, running = false;
   const loop = now => {
     if (!alive()) { running = false; return; }
     const w = cv.clientWidth, h = cv.clientHeight;
     if (w && cv.width !== Math.round(w * r.getPixelRatio())) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
     const p = pose(Math.min(.1, (now - last) / 1000), fig); last = now;
-    if (p) { fig.setPose(p); fig.group.updateMatrixWorld(true); const hp = fig.joints.hips.getWorldPosition(new V3()); cam.position.set(hp.x + 1.5, 1.25, hp.z + 3.1); cam.lookAt(hp.x, .88, hp.z); }
+    if (p) { fig.setPose(p); fig.group.updateMatrixWorld(true); applyMuscles(fig, 1); const hp = fig.joints.hips.getWorldPosition(new V3()); cam.position.set(hp.x + 1.5, 1.25, hp.z + 3.1); cam.lookAt(hp.x, .88, hp.z); }
     r.render(sc, cam); requestAnimationFrame(loop);
   };
   return {fig, start() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(loop); } }};

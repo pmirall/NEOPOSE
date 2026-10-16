@@ -14,14 +14,14 @@ function updateHandles() {
   const show = !practice.active && !sk.hideFig && !sk.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const n of DOT_JOINTS) {
     const d = jointDots[n], j = mq.joints[n];
-    d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n === 'hips' && state.ik);
+    d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
     if (!d.visible) continue;
     j.getWorldPosition(_hp); d.position.copy(_hp);
     d.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (state.ik ? .013 : .017) * coarse);
     d.children[0].material = state.selected === n ? DOT_SEL : DOT_FILL;
   }
   for (const id in handles) {
-    const h = handles[id]; h.visible = show && (state.ik || id === 'hips') && !(id === 'hips' && !state.ik && state.dots);
+    const h = handles[id]; h.visible = show && (state.ik || id === 'hips') && !(id === 'hips' && !state.ik && state.dots) && !(mq._limbHide && mq._limbHide.has(id));
     mq.joints[EFFECTOR[id]].getWorldPosition(_hp); h.position.copy(_hp);
     h.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (id === 'hips' ? .03 : .026) * coarse);
   }
@@ -37,7 +37,7 @@ function updateStools() {
 }
 function frame() {
   if (!mq) return;
-  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); muscleTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); muscleTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   animTick(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }

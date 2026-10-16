@@ -16,6 +16,7 @@ function renderThumb(def) {
   thumbChars.forEach((m, i) => m.group.visible = i < n);
   if (n === 1) { const m = thumbChars[0]; m.joints.hips.position.set(0, m.rootY, 0); applyPreset(m, def); }
   else applyGroupTo(thumbChars, def);
+  for (let i = 0; i < n; i++) applyMuscles(thumbChars[i], 1);
   const box = new THREE.Box3(); for (let i = 0; i < n; i++) box.union(thumbChars[i].box(12));
   const c = box.getCenter(new V3()), size = box.getSize(new V3());
   const r = Math.max(size.y, size.x * 1.25, size.z * 1.1) * .5;

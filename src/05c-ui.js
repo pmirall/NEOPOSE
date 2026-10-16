@@ -201,6 +201,8 @@ function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
   setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI();
   $('#headsOut').textContent = dec(mq.heads);
+  if (typeof syncAdvancedUI === 'function') { syncAdvancedUI(); renderBuilds(); }
+  if (typeof syncLimbsUI === 'function') syncLimbsUI();
 }
 const STYLE_NOTE = {
   construccion: 'Sombreado en tres tonos con anillos que rodean cada volumen: lo más útil para entender la forma.',
@@ -282,7 +284,8 @@ function buildSceneUI() {
   chips($('#ambChips'), Object.entries(AMBIENTS).map(([k, v]) => [k, v.label]), state.amb, id => { state.amb = id; applyAmbient(); });
   $('#envOutlineChk').onchange = e => { state.envOutline = e.target.checked; if (envGroup) setOutlines(envGroup, state.envOutline); for (const p of props) setOutlines(p, state.envOutline); for (const m of chars) setOutlines(m.stoolMesh, state.envOutline); };
   const pb = $('#propChips'); pb.innerHTML = '';
-  for (const [label, items] of [['Muebles y objetos', Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]])], ['Formas básicas', Object.entries(PROPS)]]) {
+  const ACCESS = ['sillaRuedas', 'muletas', 'andador', 'baston'];
+  for (const [label, items] of [['Muebles y objetos', Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]])], ['Accesibilidad', ACCESS.map(k => [k, PROPS[k]])], ['Formas básicas', Object.entries(PROPS).filter(([k]) => !ACCESS.includes(k))]]) {
     const c = document.createElement('div'); c.className = 'chips';
     if (label === 'Formas básicas') { const d = document.createElement('details'); d.className = 'more'; const sm = document.createElement('summary'); sm.textContent = tr(label); d.append(sm, c); pb.append(d); }
     else { const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); pb.append(h, c); }

@@ -8,7 +8,8 @@
 <li><b>Clothes</b>: 469 garments that fit any body and pose.</li>
 <li><b>Sets</b>: 24 places with their own lamps and shadows, 8 360° panoramas, and real objects to place.</li>
 <li><b>Camera</b>: lens, Dutch angle, one-, two- and three-point perspective framings with vanishing guides, and a four-view layout.</li>
-<li><b>Muscles that react to the pose</b>: biceps that bulge as the elbow bends, calves on tiptoe, glutes, abs, neck, and elbows and knees that keep their volume; clothes follow.</li>
+<li><b>Muscles that react to the pose</b>: biceps that bulge as the elbow bends, calves on tiptoe, glutes, abs, neck; dual quaternion skinning keeps wrists and elbows round; clothes and imported avatars follow.</li>
+<li><b>Every kind of body</b>: builds (slim, athletic, bodybuilder, curvy, pear, apple, plus size, pregnancy…), advanced settings for proportions, muscle, fat and where it sits, and limb differences at any level with prosthetic hands, hooks, feet and running blades; wheelchair, crutches and walking frame in the scene.</li>
 <li><b>Animation</b>: films made of shots, each with its own cast, set and camera moves; keys per character, onion skin and easing; a gallery of 96 ready-made moves (walk, run, jump, fight, gestures…, including Quaternius' CC0 Universal Animation Library) plus BVH, GLB and FBX import; drawings to animation: drop a storyboard sheet, photos or a video and every figure becomes a key pose (or motion capture) in one click; a script whose lines move the mouths and show as subtitles. Export every frame as PNG, a storyboard sheet, WebM video or BVH.</li>
 <li><b>Export</b>: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose, lines), posed GLB mesh and BVH.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer. Gesture practice with a timer, classes and random bodies, clothes and sets.</li>

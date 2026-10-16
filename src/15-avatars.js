@@ -160,11 +160,12 @@ function attachAvatar(m, parsed, info) {
   const depth = o => { let d = 0; while (o.parent) { d++; o = o.parent; } return d; };
   links.sort((a, c) => depth(a.b) - depth(c.b));
   const meshes = []; inner.traverse(o => { if (o.isMesh && !o.userData.isHull) { meshes.push(o); o.userData.avatarOf = m; } });
-  m.avatar = {root, inner, links, hips: map.hips, meshes, info, scale: s, k};
+  m.avatar = {root, inner, links, hips: map.hips, meshes, info, scale: s, k, map};
   root.scale.setScalar(s * k); root.updateMatrixWorld(true);
   scaleRig(m, k);
   m.body.avatar = info;
   retargetAvatar(m);
+  try { avatarMuscles(m); } catch (e) { console.warn('avatar muscles', e); }  // its own skin, the mannequin's pose
 }
 function detachAvatar(m) {
   if (!m.avatar) return;

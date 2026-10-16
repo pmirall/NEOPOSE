@@ -416,7 +416,7 @@ function clearGhost() { if (ghostMesh) { scene.remove(ghostMesh); ghostMesh.geom
 function makeGhost() {
   clearGhost();
   const m = mq.body3, p = m.geometry.attributes.position, arr = new Float32Array(p.count * 3), v = new V3();
-  mq.group.updateMatrixWorld(true);
+  mq.group.updateMatrixWorld(true); mq.skeleton.update();
   for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); m.boneTransform(i, v); v.applyMatrix4(m.matrixWorld); arr[i * 3] = v.x; arr[i * 3 + 1] = v.y; arr[i * 3 + 2] = v.z; }
   const g = new THREE.BufferGeometry(); g.setIndex(m.geometry.index); g.setAttribute('position', new THREE.BufferAttribute(arr, 3)); g.computeVertexNormals();
   ghostMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: 0x2b5a9e, transparent: true, opacity: .22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4}));
@@ -497,7 +497,7 @@ function bodyCapsules(m) {
   m.group.updateMatrixWorld(true); m.skeleton.update();
   const mesh = m.body3, names = FIG.meta.bones, nV = FIG.meta.nV, wp = n => m.joints[n].getWorldPosition(new V3());
   const caps = {}; for (const k in SEG_ENDS) caps[k] = {a: wp(SEG_ENDS[k][0]), b: SEG_ENDS[k][1] ? wp(SEG_ENDS[k][1]) : null, pts: []};
-  const v = new V3();  // boneTransform (three r147) skins the position it is given
+  const v = new V3(); m.group.updateMatrixWorld(true); m.skeleton.update();  // boneTransform skins the position it is given, from the skeleton's matrices
   for (let i = 0; i < nV; i += 3) {
     const n = names[m.dom[i]], k = SEG_OF[n] || (/^f[LR]/.test(n) ? 'hand' + n[1] : null); if (!k) continue;
     v.fromBufferAttribute(mesh.geometry.attributes.position, i); mesh.boneTransform(i, v); caps[k].pts.push(v.clone().applyMatrix4(mesh.matrixWorld));

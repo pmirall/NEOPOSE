@@ -208,6 +208,16 @@
             <div class="chips" id="bodyChips"></div>
             <div class="canon"><strong id="headsOut">7,5</strong><span>cabezas de alto · real ≈ 7–7½ · niño ≈ 5–6 · anime ≈ 8 · chibi 2–3</span></div>
           </details>
+          <details class="sec" data-sec="complexion" open>
+            <summary><h3>Complexión <span>músculo, grasa y forma</span></h3></summary>
+            <div class="pose-grid buildgrid" id="buildGrid"></div>
+            <p class="note">Mantiene el sexo y la edad del personaje. Afina cada parte en Proporciones → Ajustes avanzados.</p>
+          </details>
+          <details class="sec" data-sec="extremidades">
+            <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
+            <div id="limbsBox"></div>
+            <p class="note">El muñón se cierra con su forma y la ropa lo acompaña. Con prótesis, se posa como el resto del cuerpo. Silla de ruedas, muletas, andador y bastón: Escena → Objetos.</p>
+          </details>
           <details class="sec" data-sec="especie" open>
             <summary><h3>Especie</h3></summary>
             <div class="chips" id="speciesChips"></div>
@@ -248,6 +258,9 @@
             <div id="bodySliders"></div>
             <details class="more"><summary>Estilización (cabeza, piernas, manos…)</summary>
               <div id="styleSliders"></div>
+            </details>
+            <details class="more" id="advMore"><summary>Ajustes avanzados: músculo, grasa y forma</summary>
+              <div id="advBody"></div>
             </details>
           </details>
           <p class="note foot-note">Cuerpo basado en la malla anatómica de MakeHuman (dominio público, CC0). Edad, género, musculatura, grasa y altura mezclan sus modelos medidos; la estilización estira el esqueleto.</p>
@@ -554,6 +567,7 @@
         <li>Toca la mandíbula o una oreja de un anthro para moverlas a mano.</li>
         <li><b>Animaciones</b> (Animar → Animaciones): andar, correr, saltar, luchar, gestos… listas para añadir a un plano o usar como pose. También importa BVH, GLB o FBX con animaciones, o guarda la pista de un personaje.</li>
         <li><b>De dibujos a animación</b> (botón de la varita en Animar, o suelta los archivos sobre el lienzo): una hoja de storyboard se corta en viñetas, varias fotos se ordenan y un vídeo se convierte en captura de movimiento. Un clic en «Animar» y se mueve.</li>
+        <li><b>Cuerpos diversos</b> (Cuerpo): complexiones, ajustes avanzados de músculo, grasa y forma, y amputaciones con prótesis en Extremidades. Silla de ruedas, muletas y andador en Escena → Objetos.</li>
         <li><b>Avatares</b> (Cuerpo → Avatar importado): suelta un VRM, GLB o FBX humanoide sobre el lienzo, o elige uno libre de la galería. Se posa igual que el maniquí.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li></ul></section>
       <section><h4>Atajos</h4><dl class="keys">

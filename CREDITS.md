@@ -5,6 +5,8 @@ Malla base, esqueleto, objetivos de forma y las 470 prendas proceden de [MakeHum
 
 Los 10 peinados, el envejecimiento (hasta 90 años) y las expresiones faciales humanas también son recursos de sistema de MakeHuman (CC0): `tools/makehuman/build_hair.py` y `build_ext.py`.
 
+Las complexiones y los ajustes avanzados del cuerpo (grasa y músculo por zonas, proporciones, longitudes y formas corporales) usan los objetivos de modelado de MakeHuman (CC0), horneados con `tools/makehuman/build_body.py` en `app/figure-body.txt`.
+
 ## Esqueleto: BodyParts3D (CC BY 4.0)
 Los huesos del modo de construcción «Esqueleto» proceden de [BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/), © The Database Center for Life Science, bajo licencia [Creative Commons Atribución 4.0 Internacional](https://creativecommons.org/licenses/by/4.0/). Se han simplificado y ajustado a la figura con `tools/anatomy/build_skeleton.py`.
 

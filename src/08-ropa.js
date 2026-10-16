@@ -183,6 +183,7 @@ function refitGeometry(m, d, geo) {
   for (let i = 0; i < d.n; i++) { const a = Math.atan2(P[i * 3], P[i * 3 + 2]); L[i * 4] = Math.cos(a); L[i * 4 + 1] = Math.sin(a); L[i * 4 + 2] = P[i * 3 + 1] - cy; L[i * 4 + 3] = -1; }
   geo.attributes.position.needsUpdate = geo.attributes.aLine.needsUpdate = true;
   weldedNormals(geo, d.weld);
+  if (typeof limbGarmentSkin === 'function') limbGarmentSkin(m, d, geo);
 }
 
 /* ---------- garments on a character ---------- */
