@@ -62,7 +62,9 @@ function trackAt(K, f, st) {
     const k2 = K[Math.min(j + 1, K.length - 1)], tt = k2.f > K[j].f ? (g - K[j].f) / (k2.f - K[j].f) : 0;
     return tt > 0 ? mixPose(K[j].pose, k2.pose, clamp(tt, 0, 1)) : K[j].pose;
   }
-  const A = K[i], B = K[i + 1], t = (f - A.f) / (B.f - A.f), u = motionCurve(t, st);
+  const A = K[i], B = K[i + 1], t = (f - A.f) / (B.f - A.f);
+  if (A.ip === 'hold') return A.pose; if (A.ip === 'lin') return mixPose(A.pose, B.pose, t);  // held or straight to the next key: no curve, no arc
+  const u = motionCurve(t, st);
   const p = mixPoseX(A.pose, B.pose, u);
   // arcs: the pelvis travels on a curve through the keys around (Catmull-Rom), not straight from key to key
   if (st.arcs > 0 && !st.block) {

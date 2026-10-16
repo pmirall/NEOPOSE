@@ -261,7 +261,7 @@ function menuItemsAt(x, y) {
       ['Al suelo', act(() => withGlide(() => { mq.ground(); pushHistory(); }))],
       ['Pose al azar', act(() => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); }))],
       ['Pose inicial', act(() => withGlide(() => usePreset(POSE.pie)))],
-      ['Copiar la pose', () => { UX.clip = {pose: m.getPose(), yaw: m.yaw()}; toast(tr('Pose copiada: pégala en cualquier personaje.')); }, 'Ctrl C'],
+      ['Copiar la pose', () => { UX.clip = {pose: m.getPose(), yaw: m.yaw()}; UX.clipT = Date.now(); toast(tr('Pose copiada: pégala en cualquier personaje.')); }, 'Ctrl C'],
       ...(UX.clip ? [['Pegar la pose', act(() => pastePose(mq)), 'Ctrl V']] : []),
       ['Duplicar', act(() => duplicateChar(mq))],
       ['Guardar en Mis personajes', act(() => saveCharacter(mq))],
@@ -286,8 +286,9 @@ function duplicateChar(m) {
   if (m.outfit.length) setOutfit(c, JSON.parse(JSON.stringify(m.outfit)));
   setActive(chars.length - 1); pushHistory();
 }
-function openMenu(x, y) {
-  closeMenu(); const spec = menuItemsAt(x, y); if (!spec) return;
+function openMenu(x, y) { const spec = menuItemsAt(x, y); if (spec) openMenuSpec(spec, x, y); }
+function openMenuSpec(spec, x, y) {
+  closeMenu();
   const box = document.createElement('div'); box.className = 'ctxmenu'; box.id = 'ctxMenu'; box.setAttribute('role', 'menu');
   if (spec.title) { const h = document.createElement('p'); h.className = 'ctxtitle'; h.textContent = spec.title; box.appendChild(h); }
   for (const [label, fn, extra] of spec.items) {
@@ -397,7 +398,7 @@ function initPalette() {
     if ((e.ctrlKey || e.metaKey) && k === 'k') { e.preventDefault(); return $('#palModal').hidden ? openPalette() : closePalette(); }
     if (typing || e.altKey || sk.on || practice.active || !$('#palModal').hidden) return;
     if (e.ctrlKey || e.metaKey) {
-      if (k === 'c' && !getSelection().toString()) { UX.clip = {pose: mq.getPose(), yaw: mq.yaw()}; toast(tr('Pose copiada: pégala en cualquier personaje.')); }
+      if (k === 'c' && !getSelection().toString()) { UX.clip = {pose: mq.getPose(), yaw: mq.yaw()}; UX.clipT = Date.now(); toast(tr('Pose copiada: pégala en cualquier personaje.')); }
       else if (k === 'v' && UX.clip) { e.preventDefault(); withGlide(() => pastePose(mq)); toast(tr('Pose pegada'), {undo: true}); }
       return;
     }

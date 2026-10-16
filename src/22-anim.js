@@ -34,7 +34,7 @@ function around(K, f) {
   if (!K.length) return null;
   if (f <= K[0].f) return [K[0], K[0], 0]; if (f >= K[K.length - 1].f) return [K[K.length - 1], K[K.length - 1], 0];
   let i = 0; while (K[i + 1].f < f) i++;
-  const t = (f - K[i].f) / (K[i + 1].f - K[i].f); return [K[i], K[i + 1], K[i].lin ? t : ease(t)];  // keys from a gallery clip: straight on, frame to frame
+  const t = (f - K[i].f) / (K[i + 1].f - K[i].f); return [K[i], K[i + 1], K[i].ip === 'hold' ? 0 : K[i].lin || K[i].ip === 'lin' ? t : ease(t)];  // held, straight or eased to the next key  // keys from a gallery clip: straight on, frame to frame
 }
 function poseAt(ci, f) { return motionPoseAt(ci, f); }  // in-betweens with the character's way of moving (22b-motion)
 function camAt(f) {
@@ -69,14 +69,19 @@ function deleteKey(track = ANIM.track, f = ANIM.f) {
   ANIM.sel = null; setFrame(ANIM.f);
 }
 const hasKey = (track, f) => { const s = shot(); return !!(s && (track === 'cam' ? keyOf(s.cam, f) : s.keys[track] && keyOf(s.keys[track], f))); };
+// two poses that look the same (rotations within a few hundredths of a degree, the pelvis within a tenth of a millimetre)
+function samePose(a, b) {
+  for (const n of JOINTS) { const p = a.q[n], q = b.q[n]; if (!p || !q) { if (p || q) return false; continue; } const sg = p[0] * q[0] + p[1] * q[1] + p[2] * q[2] + p[3] * q[3] < 0 ? -1 : 1; for (let k = 0; k < 4; k++) if (Math.abs(p[k] - sg * q[k]) > 1e-4) return false; }
+  return !a.pos || !b.pos || a.pos.every((v, k) => Math.abs(v - b.pos[k]) < 1e-4);
+}
 // auto-key: an edit at the current frame becomes (or updates) the key of each character that changed
 function animAutoKey() {
   if (!ANIM.open || !ANIM.auto || ANIM.playing || ANIM.busy || !shot()) return;
   const s = shot(); padKeys(s);
   chars.forEach((m, i) => {
-    const cur = JSON.stringify(basePose(m).q), at = poseAt(i, ANIM.f), was = m._prevPose ? JSON.stringify(m._prevPose.q) : null;
-    if ((at ? JSON.stringify(at.q) : was) !== cur) setKey(i);
-    m._prevPose = basePose(m);
+    const cur = basePose(m), at = poseAt(i, ANIM.f) || m._prevPose;
+    if (!at || !samePose(at, cur)) setKey(i);  // with a tolerance: the pose in hand is rounded, the one in between keys is not
+    m._prevPose = cur;
   });
   thumbLater();
 }
@@ -98,7 +103,7 @@ async function enterShot(i, frame = 0) {
     applyCam(sc.cam); ANIM.camBase = sc.cam;
     chars.forEach(m => { m._prevPose = m.getPose(); });
   } finally { ANIM.busy = false; }
-  ANIM.sel = null; ANIM.track = Math.min(typeof ANIM.track === 'number' ? ANIM.track : 0, chars.length - 1);
+  ANIM.sel = null; TL.sel.clear(); syncSelBar(); ANIM.track = Math.min(typeof ANIM.track === 'number' ? ANIM.track : 0, chars.length - 1);
   setFrame(frame); renderStrip(); renderLabels(); hist.stack = []; hist.i = -1; pushHistory();
 }
 function addShot() {
@@ -257,10 +262,10 @@ function updateOnion() {
 }
 
 /* ---------- the dock: shot strip, transport, tracks ---------- */
-const LANE = () => matchMedia('(max-width: 600px)').matches ? 22 : 24, RULER = 18;
+const LANE = () => matchMedia('(pointer: coarse)').matches ? 32 : matchMedia('(max-width: 600px)').matches ? 22 : 24, RULER = 18;
 const lanes = () => ['cam', ...chars.map((_, i) => i), 'lines'];
-function trackX(f) { const c = $('#tlTrack'), pad = 12, s = shot(); return pad + f / Math.max(1, s.len - 1) * (c.clientWidth - pad * 2); }
-function trackF(x) { const c = $('#tlTrack'), pad = 12, s = shot(); return (x - pad) / Math.max(1, c.clientWidth - pad * 2) * (s.len - 1); }
+function trackX(f) { const c = $('#tlTrack'), pad = 12, v = tlView(); return pad + (f - v.a) / Math.max(1, v.b - v.a) * (c.clientWidth - pad * 2); }
+function trackF(x) { const c = $('#tlTrack'), pad = 12, v = tlView(); return v.a + (x - pad) / Math.max(1, c.clientWidth - pad * 2) * (v.b - v.a); }
 const laneY = i => RULER + i * LANE();
 function renderStrip() {
   const box = $('#mvStrip'); if (!box) return; box.innerHTML = '';
@@ -335,12 +340,15 @@ function drawTimeline() {
   L.forEach((ln, i) => { const y = laneY(i); if (ANIM.track === ln) { c.fillStyle = rule; c.fillRect(0, y, w, LANE()); } c.strokeStyle = rule; c.beginPath(); c.moveTo(0, y + LANE() - .5); c.lineTo(w, y + LANE() - .5); c.stroke(); });
   // ruler: seconds labelled, frames ticked
   c.font = `10px ${css('--f-mono')}`; c.textAlign = 'center';
-  const step = Math.max(1, Math.ceil((s.len / Math.max(1, w - 24)) * 5));
-  for (let f = 0; f < s.len; f++) { const x = trackX(f), isSec = f % ANIM.fps === 0; if (!isSec && f % step) continue;
+  const vw = tlView(s), step = Math.max(1, Math.ceil(((vw.b - vw.a + 1) / Math.max(1, w - 24)) * 5)), secStep = (vw.b - vw.a) / ANIM.fps > 40 ? 5 : 1;
+  for (let f = Math.max(0, Math.floor(vw.a)); f <= Math.min(s.len - 1, Math.ceil(vw.b)); f++) { const x = trackX(f), isSec = f % (ANIM.fps * secStep) === 0; if (!isSec && f % step) continue;
     c.strokeStyle = isSec ? soft : line; c.lineWidth = 1; c.beginPath(); c.moveTo(x + .5, RULER - (isSec ? 7 : 4)); c.lineTo(x + .5, RULER); c.stroke();
-    if (isSec) { c.fillStyle = soft; c.fillText(dec(f / ANIM.fps, 0) + 's', x, 9); } }
+    if (isSec) { c.fillStyle = soft; c.fillText(TL.frames ? String(f) : dec(f / ANIM.fps, 0) + 's', x, 9); } }
   // keys
-  const diamond = (x, y, r, fill, selected) => { c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.fillStyle = fill; c.fill(); if (selected) { c.strokeStyle = ink; c.lineWidth = 2; c.stroke(); } };
+  // a key's shape says how it goes on: diamond smooth, circle linear, square held; selected keys are blue with a white rim
+  const diamond = (x, y, r, fill, selected, k) => { if (k && TL.hover === k) r += 2; c.beginPath();
+    if (k && k.ip === 'hold') c.rect(x - r * .8, y - r * .8, r * 1.6, r * 1.6); else if (k && k.ip === 'lin') c.arc(x, y, r * .85, 0, Math.PI * 2); else { c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); }
+    c.fillStyle = selected ? blue : fill; c.fill(); if (selected) { c.strokeStyle = page; c.lineWidth = 2; c.stroke(); c.strokeStyle = blue; c.lineWidth = 1; c.stroke(); } else if (k && k.f === ANIM.f) { c.strokeStyle = page; c.lineWidth = 1.5; c.stroke(); } };
   L.forEach((ln, i) => {
     const y = laneY(i) + LANE() / 2;
     if (ln === 'lines') {
@@ -354,16 +362,18 @@ function drawTimeline() {
       const K = ln === 'cam' ? s.cam : (s.keys[ln] || []), col = ln === 'cam' ? ink : MV_COLS[ln % 4];
       if (K.length > 1) { c.strokeStyle = col; c.globalAlpha = .35; c.lineWidth = 2; c.beginPath(); c.moveTo(trackX(K[0].f), y); c.lineTo(trackX(K[K.length - 1].f), y); c.stroke(); c.globalAlpha = 1; }
       // a run of keys from a gallery clip reads as one block with its name; its own keys only at the ends
-      const isSel = k => ANIM.sel && ANIM.sel.track === ln && ANIM.sel.f === k.f;
+      const isSel = k => TL.sel.has(k);
+      for (let a = 0; a < K.length - 1; a++) if (!K[a].lin && K[a].ip === 'hold') { c.fillStyle = col; c.globalAlpha = .45; c.fillRect(trackX(K[a].f), y - 3, trackX(K[a + 1].f) - trackX(K[a].f), 6); c.globalAlpha = 1; }  // a held pose: a bar to the next key
       for (let a = 0; a < K.length; a++) {
-        if (!K[a].lin) { diamond(trackX(K[a].f), y, 6, col, isSel(K[a])); continue; }
+        if (!K[a].lin) { diamond(trackX(K[a].f), y, 6, col, isSel(K[a]), K[a]); continue; }
         let b = a; while (b < K.length - 1 && K[b].lin) b++;
         const x0 = trackX(K[a].f), x1 = trackX(K[b].f), hh = LANE() - 10;
-        c.fillStyle = col; c.globalAlpha = .28; c.beginPath(); c.roundRect ? c.roundRect(x0, y - hh / 2, x1 - x0, hh, 4) : c.rect(x0, y - hh / 2, x1 - x0, hh); c.fill(); c.globalAlpha = 1;
+        const blockSel = K.slice(a, b + 1).every(isSel); c.fillStyle = blockSel ? blue : col; c.globalAlpha = blockSel ? .35 : .28; c.beginPath(); c.roundRect ? c.roundRect(x0, y - hh / 2, x1 - x0, hh, 4) : c.rect(x0, y - hh / 2, x1 - x0, hh); c.fill(); c.globalAlpha = 1;
+        if (blockSel) { c.strokeStyle = blue; c.lineWidth = 1.5; c.stroke(); }
         const name = K.slice(a, b + 1).find(k => k.clip);
         if (name && x1 - x0 > 40) { c.save(); c.beginPath(); c.rect(x0 + 8, y - hh / 2, x1 - x0 - 16, hh); c.clip(); c.fillStyle = ink; c.textAlign = 'left'; c.font = `600 10px ${css('--f-body')}`; c.fillText(name.clip, x0 + 10, y + 3.5); c.restore(); }
-        diamond(x0, y, 5, col, isSel(K[a])); diamond(x1, y, 5, col, isSel(K[b]));
-        for (let k = a + 1; k < b; k++) if (isSel(K[k])) diamond(trackX(K[k].f), y, 5, col, true);
+        diamond(x0, y, 5, col, isSel(K[a]), K[a]); diamond(x1, y, 5, col, isSel(K[b]), K[b]);
+        if (!blockSel) for (let k = a + 1; k < b; k++) if (isSel(K[k])) diamond(trackX(K[k].f), y, 4, col, true);
         a = b;
       }
       if (ln === 'cam' && ANIM.camRec) { c.fillStyle = css('--red'); c.beginPath(); c.arc(w - 10, y, 3.5, 0, Math.PI * 2); c.fill(); }
@@ -372,9 +382,11 @@ function drawTimeline() {
   // playhead
   const x = trackX(ANIM.playing ? ANIM.t : ANIM.f); c.strokeStyle = blue; c.lineWidth = 2; c.beginPath(); c.moveTo(x, RULER - 2); c.lineTo(x, h); c.stroke();
   c.fillStyle = blue; c.beginPath(); c.moveTo(x - 6, RULER - 8); c.lineTo(x + 6, RULER - 8); c.lineTo(x + 6, RULER - 3); c.lineTo(x, RULER + 2); c.lineTo(x - 6, RULER - 3); c.closePath(); c.fill();
+  if (TL.box) { const b = TL.box; c.fillStyle = css('--blue-wash'); c.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); c.strokeStyle = blue; c.lineWidth = 1; c.setLineDash([4, 3]); c.strokeRect(b.x0 + .5, b.y0 + .5, b.x1 - b.x0, b.y1 - b.y0); c.setLineDash([]); }
+  if (s.view) { const v = s.view, bw = w * (v.b - v.a) / (s.len - 1), bx = w * v.a / (s.len - 1); c.fillStyle = soft; c.globalAlpha = .35; c.fillRect(bx, h - 3, bw, 3); c.globalAlpha = 1; }  // where the zoomed view is in the shot
   // readout and the key button
   const fr = ANIM.playing ? Math.floor(ANIM.t) : ANIM.f, tc = t => { const m = Math.floor(t / 60), ss = t - m * 60; return `${m}:${(ss < 10 ? '0' : '') + ss.toFixed(1)}`; };
-  $('#tlFrame').textContent = matchMedia('(max-width: 600px)').matches ? tc(sec(fr)) : `${tc(sec(fr))} / ${tc(sec(s.len - 1))}`;
+  $('#tlFrame').textContent = TL.frames ? `F ${fr + 1} / ${s.len}` : matchMedia('(max-width: 600px)').matches ? tc(sec(fr)) : `${tc(sec(fr))} / ${tc(sec(s.len - 1))}`;
   $('#tlFrame').title = tr('Fotograma {f} de {n}', {f: fr + 1, n: s.len});
   $('#tlShot').textContent = `${ANIM.cur + 1}/${ANIM.shots.length} · ${s.name}`;
   const k = hasKey(ANIM.track, ANIM.f), who = ANIM.track === 'cam' ? tr('la cámara') : speaker(ANIM.track);
@@ -427,7 +439,7 @@ function lineAtXY(x, y) {
 function buildAnimUI() {
   $('#animBtn').onclick = () => openTimeline(!ANIM.open);
   $('#tlClose').onclick = () => openTimeline(false);
-  $('#tlPlay').innerHTML = ICON_PLAY; $('#tlPlay').onclick = () => play(!ANIM.playing);
+  $('#tlPlay').innerHTML = ICON_PLAY; $('#tlPlay').onclick = e => { e.currentTarget.blur(); play(!ANIM.playing); };  // blurred: the space bar must not press it again
   $('#tlKey').onclick = () => { if (hasKey(ANIM.track, ANIM.f)) deleteKey(); else setKey(); pushHistory(); };
   const jump = d => { const s = shot(), K = (ANIM.track === 'cam' ? s.cam : s.keys[ANIM.track] || []).map(k => k.f); const t = d < 0 ? [...K].reverse().find(f => f < ANIM.f) : K.find(f => f > ANIM.f); if (t != null) setFrame(t); };
   $('#tlPrev').onclick = () => jump(-1); $('#tlNext').onclick = () => jump(1);
@@ -435,37 +447,9 @@ function buildAnimUI() {
   $('#tlLine').onclick = () => addLine();
   $('#tlExport').onclick = () => { EXK.kind = 'anim'; if (!ANIM.exported) { ANIM.exported = true; ex.size = 1; setPressed($('#exSize'), '1'); } openExport(); setPressed($('#exKind'), 'anim'); };
   $('#tlMin').onclick = () => { ANIM.min = !ANIM.min; $('#timeline').classList.toggle('min', ANIM.min); $('#tlMin').setAttribute('aria-expanded', String(!ANIM.min)); drawTimeline(); };
-  // tracks: scrub, pick a track, drag keys and lines
-  const cv = $('#tlTrack'); let drag = null;
+  // tracks: selection, moves, menus, zoom (22c-timeline)
+  const cv = $('#tlTrack'); initTimeline(cv); initTimelineKeys();
   const at = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
-  cv.addEventListener('pointerdown', e => {
-    if (ANIM.playing) play(false); if (ANIM.busy) return;
-    const {x, y} = at(e), L = lanes(), li = Math.floor((y - RULER) / LANE()), ln = y < RULER ? null : L[li], s = shot();
-    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-    if (ln === 'lines') { const hit = lineAtXY(x, y); if (hit) { const l = s.lines[hit.j]; drag = {line: hit.j, edge: hit.edge, x0: x, f0: l.f, len0: l.len, moved: false}; ANIM.sel = {line: hit.j}; drawTimeline(); return; } }
-    if (ln !== null && ln !== undefined && ln !== 'lines') {
-      if (ln !== ANIM.track) { ANIM.track = ln; if (typeof ln === 'number' && chars[ln] !== mq) setActive(ln); renderLabels(); }
-      const K = ln === 'cam' ? s.cam : s.keys[ln] || [], k = K.find(k => Math.abs(trackX(k.f) - x) < 8);
-      if (k) { ANIM.sel = {track: ln, f: k.f}; drag = {key: k, track: ln, moved: false}; setFrame(k.f); return; }
-    }
-    ANIM.sel = null; drag = {scrub: true}; setFrame(trackF(x));
-  });
-  cv.addEventListener('pointermove', e => {
-    if (!drag) return; const {x} = at(e), s = shot(), f = clamp(Math.round(trackF(x)), 0, s.len - 1);
-    if (drag.scrub) { if (f !== ANIM.f) setFrame(f); return; }
-    if (drag.key) { const K = drag.track === 'cam' ? s.cam : s.keys[drag.track]; if (f !== drag.key.f && !keyOf(K, f)) { drag.key.f = f; drag.moved = true; K.sort((a, b) => a.f - b.f); ANIM.sel = {track: drag.track, f}; setFrame(f, false); } return; }
-    if (drag.line !== undefined) {
-      const l = s.lines[drag.line], df = Math.round(trackF(x) - trackF(drag.x0)); if (!df && !drag.moved) return; drag.moved = true;
-      if (drag.edge) { l.len = clamp(drag.len0 + df, 2, s.len - l.f); l.auto = false; } else l.f = clamp(drag.f0 + df, 0, s.len - 2);
-      drawTimeline(); applyFrame(ANIM.f);
-    }
-  });
-  const up = () => {
-    if (drag && drag.key && drag.moved) { setFrame(drag.key.f); pushHistory(); }
-    if (drag && drag.line !== undefined) { if (!drag.moved) openLineEditor(drag.line); else pushHistory(); }
-    drag = null;
-  };
-  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('dblclick', e => { const {x, y} = at(e), i = lanes().indexOf('lines'); if (y >= laneY(i) && y <= laneY(i) + LANE() && !lineAtXY(x, y)) addLine(Math.round(trackF(x))); });
   new ResizeObserver(drawTimeline).observe(cv);
   new ResizeObserver(() => vp.style.setProperty('--dockH', $('#timeline').offsetHeight + 'px')).observe($('#timeline'));
@@ -498,7 +482,6 @@ function buildAnimUI() {
     else if (k === 'k' && !e.ctrlKey && !e.metaKey) $('#tlKey').click();
     else if (e.key === ',' || e.key === '<') e.shiftKey ? jump(-1) : setFrame(ANIM.f - 1);
     else if (e.key === '.' || e.key === '>') e.shiftKey ? jump(1) : setFrame(ANIM.f + 1);
-    else if ((k === 'delete' || k === 'backspace') && ANIM.sel && ANIM.sel.track !== undefined) { e.preventDefault(); deleteKey(ANIM.sel.track, ANIM.sel.f); pushHistory(); }
     else if (k === 'pageup' && ANIM.cur > 0) enterShot(ANIM.cur - 1);
     else if (k === 'pagedown' && ANIM.cur < ANIM.shots.length - 1) enterShot(ANIM.cur + 1);
   });
@@ -572,4 +555,4 @@ function applyAnimState(a) {
 }
 // undo and redo also cover the tracks of the current shot
 const animHist = () => ANIM.open && shot() ? {i: ANIM.cur, len: shot().len, keys: shot().keys, cam: shot().cam, lines: shot().lines} : undefined;
-function animHistRestore(h) { const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines}))); chars.forEach(m => { m._prevPose = m.getPose(); }); drawTimeline(); updateOnion(); }
+function animHistRestore(h) { TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines}))); chars.forEach(m => { m._prevPose = m.getPose(); }); drawTimeline(); updateOnion(); }

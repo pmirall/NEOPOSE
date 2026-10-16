@@ -769,6 +769,66 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // the timeline: select (click, Shift, box, a whole clip), delete, move, Alt-copy, copy/paste, interpolation, menu, zoom, keys
+  async timeline(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('#animBtn'); await page.waitForTimeout(400);
+    await A(() => { const C = window.__cdp; for (const [f, p] of [[0, 'pie'], [12, 'victoria'], [24, 'saludo'], [36, 'pensativo']]) { C.setFrameAnim(f); C.usePreset(C.POSES.find(x => x.id === p)); } });
+    await page.waitForTimeout(300);
+    const keys = () => A(() => window.__cdp.ANIM.shots[0].keys[0].map(k => k.f + (k.ip ? k.ip[0] : '')).join(','));
+    const xy = f => A(f => { const cv = document.querySelector('#tlTrack'), r = cv.getBoundingClientRect(); return {x: r.left + window.__cdp.tl.trackX(f), y: r.top + 18 + (matchMedia('(pointer: coarse)').matches ? 32 : 24) * 1.5}; }, f);
+    ok(await keys() === '0,12,24,36', `four keys to work with (${await keys()})`);
+    // click a key, Delete
+    let p = await xy(24); await page.mouse.click(p.x, p.y); await page.keyboard.press('Delete'); await page.waitForTimeout(200);
+    ok(await keys() === '0,12,36' && /Undo/.test(await A(() => document.querySelector('#hint').textContent)), `click a key, Delete: it goes, and the toast offers Undo (${await keys()})`);
+    await page.click('#hint .undo'); await page.waitForTimeout(300);
+    ok(await keys() === '0,12,24,36', 'Undo brings it back');
+    // Shift adds; Backspace deletes both
+    p = await xy(12); await page.mouse.click(p.x, p.y); p = await xy(24); await page.keyboard.down('Shift'); await page.mouse.click(p.x, p.y); await page.keyboard.up('Shift');
+    ok(await A(() => window.__cdp.tl.TL.sel.size) === 2 && !(await page.isHidden('#tlSelBar')), 'Shift+click adds to the selection and the action bar shows');
+    await page.keyboard.press('Backspace'); await page.waitForTimeout(200);
+    ok(await keys() === '0,36', `Backspace deletes the selection (${await keys()})`);
+    // box select from empty space
+    await page.keyboard.press('Control+z'); await page.waitForTimeout(300);
+    const a = await xy(6), b = await xy(30); await page.mouse.move(a.x, a.y - 6); await page.mouse.down(); await page.mouse.move(b.x, b.y + 6, {steps: 6}); await page.mouse.up();
+    ok(await A(() => window.__cdp.tl.TL.sel.size) === 2, `dragging on empty space draws a box that selects the keys inside (${await A(() => window.__cdp.tl.TL.sel.size)})`);
+    // drag to move
+    await page.keyboard.press('Escape'); p = await xy(36); const q = await xy(40); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(q.x, q.y, {steps: 5}); await page.mouse.up(); await page.waitForTimeout(200);
+    ok((await keys()).endsWith(',40'), `dragging a key moves it frame by frame (${await keys()})`);
+    // Alt-drag copies
+    p = await xy(40); const q2 = await xy(46); await page.keyboard.down('Alt'); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(q2.x, q2.y, {steps: 5}); await page.mouse.up(); await page.keyboard.up('Alt'); await page.waitForTimeout(200);
+    ok((await keys()).endsWith(',40,46'), `Alt while dragging leaves a copy behind (${await keys()})`);
+    // copy and paste at the playhead
+    p = await xy(12); await page.mouse.click(p.x, p.y); await page.keyboard.press('Control+c'); await A(() => window.__cdp.setFrameAnim(30)); await page.keyboard.press('Control+v'); await page.waitForTimeout(200);
+    const k30 = await A(() => { const K = window.__cdp.ANIM.shots[0].keys[0], a = K.find(k => k.f === 12), b = K.find(k => k.f === 30); return !!b && JSON.stringify(a.pose.q) === JSON.stringify(b.pose.q); });
+    ok(k30, `Ctrl+C / Ctrl+V copy a key to the playhead (${await keys()})`);
+    // interpolation: held
+    p = await xy(12); await page.mouse.click(p.x, p.y); await page.keyboard.press('t'); await page.waitForTimeout(200);
+    await page.click('#ctxMenu button:nth-of-type(3)'); await page.waitForTimeout(200);
+    const held = await A(() => { const C = window.__cdp, K = C.ANIM.shots[0].keys[0]; C.setFrameAnim(18); const now = JSON.stringify(C.mq.getPose().q.shoulderR); return K.find(k => k.f === 12).ip === 'hold' && now === JSON.stringify(K.find(k => k.f === 12).pose.q.shoulderR); });
+    ok(held, 'T → Constant: the pose holds until the next key (and the key turns square)');
+    // right click: the menu
+    p = await xy(24); await page.mouse.click(p.x, p.y, {button: 'right'}); await page.waitForTimeout(200);
+    const menu = await A(() => [...document.querySelectorAll('#ctxMenu button span')].map(s => s.textContent));
+    ok(menu.includes('Delete') && menu.includes('Copy') && menu.some(m => /Interpolation/.test(m)), `right click on a key: its menu (${menu.length} items)`);
+    await page.keyboard.press('Escape');
+    // a gallery clip: a click on its body selects all of it; Delete takes the whole clip away
+    const n0 = await A(async () => { const C = window.__cdp, K = C.clips; await K.loadClipLibrary(); C.setFrameAnim(48); K.insertClip(K.allClips().find(c => c.id === 'np-saludar'), 0, 48, {loops: 1}); return C.ANIM.shots[0].keys[0].length; });
+    const cx = await xy(54); await page.mouse.click(cx.x, cx.y); await page.waitForTimeout(150);
+    const selN = await A(() => window.__cdp.tl.TL.sel.size); await page.keyboard.press('Delete'); await page.waitForTimeout(200);
+    const n1 = await A(() => window.__cdp.ANIM.shots[0].keys[0].length);
+    ok(selN > 10 && n0 - n1 === selN, `a click on a gallery clip selects the whole clip (${selN} frames) and Delete removes it`);
+    // keyboard: arrows, Home/End, jump between keys
+    await A(() => window.__cdp.setFrameAnim(5)); await page.keyboard.press('ArrowRight'); const f1 = await A(() => window.__cdp.ANIM.f); await page.keyboard.press('ArrowUp'); const f2 = await A(() => window.__cdp.ANIM.f); await page.keyboard.press('End'); const f3 = await A(() => window.__cdp.ANIM.f);
+    ok(f1 === 6 && f2 === 12 && f3 === await A(() => window.__cdp.ANIM.shots[0].len - 1), `→ steps a frame (${f1}), ↑ jumps to the next key (${f2}), End to the last frame (${f3})`);
+    // Ctrl+wheel zooms the lanes, F fits them again
+    const mid = await xy(20); await page.mouse.move(mid.x, mid.y); await page.keyboard.down('Control'); await page.mouse.wheel(0, -300); await page.keyboard.up('Control'); await page.waitForTimeout(150);
+    const zoomed = await A(() => { const v = window.__cdp.tl.tlView(); return v.b - v.a; }); await page.keyboard.press('f'); await page.waitForTimeout(100);
+    const fit = await A(() => { const v = window.__cdp.tl.tlView(); return v.b - v.a; });
+    ok(zoomed < fit && fit === await A(() => window.__cdp.ANIM.shots[0].len - 1), `Ctrl+wheel zooms (${Math.round(zoomed)} frames in view), F fits the shot again`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

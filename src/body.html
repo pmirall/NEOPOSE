@@ -67,6 +67,7 @@
         <img class="photo-overlay" id="photoOverlay" alt="" hidden>
         <div class="subs" id="subs" hidden aria-live="polite"></div>
         <div class="timeline" id="timeline" hidden>
+          <div class="tlselbar" id="tlSelBar" hidden role="toolbar" aria-label="Claves seleccionadas"><span class="n"></span><button class="btn icon small" data-a="copy" title="Copiar (Ctrl+C)" aria-label="Copiar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h11v11H9zM5 15H4V4h11v1"/></svg></button><button class="btn icon small" data-a="paste" title="Pegar en el cursor (Ctrl+V)" aria-label="Pegar en el cursor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9zM7 5H5v15h14V5h-2M9 13h6M9 17h4"/></svg></button><button class="btn icon small" data-a="dup" title="Duplicar (Mayús+D)" aria-label="Duplicar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12M14 11v6M11 14h6"/></svg></button><button class="btn small" data-a="ip" title="Interpolación (T)">◆ ▾</button><button class="btn icon small danger" data-a="del" title="Borrar (Supr)" aria-label="Borrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button><button class="btn icon small" data-a="none" title="No seleccionar nada (Esc)" aria-label="No seleccionar nada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
           <div class="mvhead">
             <div class="mvstrip" id="mvStrip" role="list" aria-label="Planos"></div>
           </div>
@@ -633,6 +634,9 @@
         <dt><kbd>M</kbd> · <kbd>F</kbd></dt><dd>Espejar la pose · encuadrar a todos</dd>
         <dt><kbd>Ctrl</kbd> <kbd>C</kbd> / <kbd>Ctrl</kbd> <kbd>V</kbd></dt><dd>Copiar la pose y pegarla en otro personaje</dd>
         <dt>Clic derecho</dt><dd>Lo que se puede hacer ahí (en un personaje, un objeto o el fondo)</dd>
+        <dt><kbd>Espacio</kbd> · <kbd>←</kbd> <kbd>→</kbd> · <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Animar: reproducir · fotograma a fotograma · de clave en clave</dd>
+        <dt><kbd>K</kbd> · <kbd>Supr</kbd> · <kbd>Mayús</kbd> <kbd>D</kbd></dt><dd>Clave aquí · borrar las claves seleccionadas · duplicarlas</dd>
+        <dt><kbd>T</kbd> · <kbd>Alt</kbd> <kbd>,</kbd> <kbd>.</kbd> · <kbd>F</kbd></dt><dd>Interpolación · mover las claves un fotograma · ver todo el plano (Ctrl+rueda acerca)</dd>
         <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd></dl></section>
     </div>
     <div class="langrow"><span>Language · Idioma</span><div class="chips seg langChips"></div></div>

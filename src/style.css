@@ -488,7 +488,7 @@ body.practicing .modebar{display:none}
 .tlopts{position:absolute;right:0;bottom:calc(100% + 8px);width:min(560px,100%);box-sizing:border-box;background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px 12px;display:flex;flex-direction:column;gap:7px;max-height:60vh;overflow:auto}
 .tlchecks{display:flex;flex-wrap:wrap;gap:2px 14px}
 #animBtn[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
-body.anim .hint{display:none}
+body.anim .hint:not(.toast){display:none}
 .subs{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--dockH, 220px));z-index:3;max-width:min(80%,640px);text-align:center;pointer-events:none}
 .subs p{display:inline-block;margin:2px 0;background:rgba(20,18,15,.74);color:#fff;font:500 14px var(--f-body);padding:4px 10px;border-radius:6px}
 .subs b{font-weight:700;margin-right:6px}
@@ -856,3 +856,16 @@ button,.chip,.btn,.pose,.tab,summary{touch-action:manipulation}
 .scwarn{margin:0;padding-left:18px;max-height:96px;overflow:auto;font-size:12px;color:var(--red)}
 .scwarn:empty{display:none}
 @media (max-width:760px){ .scbody{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto} .schelp{max-height:34vh} .scmodal{padding:0} .scsheet{height:100%;max-height:none;border-radius:0} }
+
+/* ======================= timeline editing ======================= */
+.tlbody{position:relative}
+.tlselbar{position:absolute;right:14px;bottom:calc(100% + 8px);z-index:3;display:flex;align-items:center;gap:3px;padding:3px 4px 3px 10px;background:var(--page);border:1.5px solid var(--blue);border-radius:999px;box-shadow:var(--lift);animation:menuIn var(--dur-1) var(--ease)}
+.tlselbar .n{font-size:11.5px;font-weight:700;color:var(--blue);margin-right:4px;white-space:nowrap}
+.tlselbar .btn.icon.small{width:28px;height:28px;padding:4px;border-radius:50%}
+.tlselbar .btn.icon.small svg{width:16px;height:16px}
+.tlselbar .btn.small{min-height:28px;padding:2px 8px;border-radius:999px;font-size:11.5px}
+.tlselbar .danger{color:var(--red)}
+#tlTrack{touch-action:none}
+@media (pointer:coarse){ .tlselbar .btn.icon.small{width:38px;height:38px} .tlselbar .btn.small{min-height:38px} }
+body.anim .hint{bottom:calc(var(--dockH,0px) + 14px)}
+body.anim .timeline.min ~ .hint{bottom:12px}
