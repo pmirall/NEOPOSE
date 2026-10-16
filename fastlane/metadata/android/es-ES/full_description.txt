@@ -3,14 +3,14 @@
 <li><b>Posado</b>: IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o gira cada articulación. Clava manos y pies en su sitio, mezcla dos poses y sienta a los personajes en sillas, sofás o camas. Casi 100 poses para una a cuatro personas, gestos de manos, mirada y expresiones faciales.</li>
 <li><b>Pose desde una foto</b>: la pose de una persona en una imagen, detectada en el propio dispositivo (BlazePose de MediaPipe), con la foto sobre el lienzo como referencia.</li>
 <li><b>Cuerpo</b>: anatomía humana de MakeHuman desde la infancia hasta la vejez, con género, musculatura, peso, altura y estilización, de realista a chibi. Diez peinados en cualquier color y una vista del esqueleto real.</li>
-<li><b>Anthro</b>: lobo, zorro, perro, gato, conejo, cabra y dragón con cabezas esculpidas, patas digitígradas o con pezuñas, garras y colas.</li>
+<li><b>Anthro</b>: 19 especies (cánidos, felinos, osos y mapaches, conejos y ungulados, dragones) con cabezas esculpidas, pelaje y marcas que se ven desde cualquier lado (vientre, rayas, manchas, rosetas, calcetines, antifaz, anillos…), híbridos, colas con forma, porte y movimiento propio, zarpas con almohadillas, pezuñas y garras, patas digitígradas, plantígradas o con pezuña, hocico regulable y expresiones con orejas y cola.</li>
 <li><b>Avatares</b>: importa tu propio VRM, GLB o FBX humanoide, o elige uno libre de la galería Open Source Avatars (necesita Internet).</li>
 <li><b>Ropa</b>: 469 prendas que se adaptan a cualquier cuerpo y pose.</li>
 <li><b>Escenarios</b>: 24 lugares con sus propias lámparas y sombras, 8 panoramas de 360° y objetos reales para colocar.</li>
 <li><b>Cámara</b>: objetivo, plano holandés, encuadres de uno, dos y tres puntos de fuga con guías, y vista de cuatro ventanas.</li>
 <li><b>Músculos que reaccionan a la pose</b>, con skinning de cuaterniones duales; la ropa y los avatares los siguen.</li>
 <li><b>Todo tipo de cuerpos</b>: complexiones de delgada a talla grande y embarazo, proporciones, músculo y grasa, amputaciones con prótesis.</li>
-<li><b>Animación</b>: películas por planos con reparto, escenario y cámara propios; claves, papel cebolla, principios de animación (suavidad, anticipación, rebote, arrastre, arcos, estirar y encoger); 96 movimientos e importación BVH/GLB/FBX; de storyboard, fotos o vídeo a animación; guion con boca y subtítulos. Exporta PNG, capas, guion gráfico, MP4/WebM, GIF o BVH.</li>
+<li><b>Animación</b>: películas por planos con reparto, escenario y cámara propios; una línea de tiempo como la de los programas de animación (seleccionar, mover, copiar y borrar claves, interpolación), papel cebolla, principios de animación (suavidad, anticipación, rebote, arrastre, arcos, estirar y encoger); 96 movimientos e importación BVH/GLB/FBX; de storyboard, fotos o vídeo a animación; guion con boca y subtítulos. Exporta PNG, capas, guion gráfico, MP4/WebM, GIF o BVH.</li>
 <li><b>Del guion a la película</b>: escribe una escena (Fountain o «ANA: ¡Hola!») y se anima sola, sin IA: reparto, escenario y hora, más de 70 acciones con sinónimos en siete idiomas, voces en el dispositivo con labios sincronizados, subtítulos y planos con reglas de cine.</li>
 <li><b>Referencias libres</b>: busca fotos, GIF y panoramas con licencia libre (Openverse, Wikimedia Commons, Poly Haven) y conviértelos en poses, animaciones y escenarios, con filtro de contenido en el dispositivo.</li>
 <li><b>Para tu app de dibujo</b>: PSD con capas (escenario, personajes, líneas, boceto y una capa vacía), directo a Krita, ibisPaint, Clip Studio…</li>
@@ -18,6 +18,6 @@
 <li><b>Movilidad</b>: poses y animaciones con muletas, bastón, andador y silla de ruedas.</li>
 <li><b>Exportación</b>: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose, líneas), malla GLB posada y BVH.</li>
 <li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto; línea de acción, equilibrio, exageración y estirar y encoger también en la imagen fija. Práctica de gesto con temporizador, clases y cuerpos, ropa y escenarios al azar.</li>
-<li>En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>
+<li>La escena se guarda sola, tema claro u oscuro, aspecto de cuaderno de papel. En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>
 </ul>
 <p>Recursos: MakeHuman (CC0), Poly Haven (CC0), BodyParts3D (CC BY 4.0) y siete cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio del código.</p>

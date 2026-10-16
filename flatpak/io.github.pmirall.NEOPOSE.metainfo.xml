@@ -17,8 +17,8 @@
       <li xml:lang="es">Posado con IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o girando cada articulación; clava manos y pies, mezcla poses, siéntate en muebles; casi 100 poses de uno a cuatro personajes</li>
       <li>Human anatomy from MakeHuman: from childhood to old age, gender, muscle, weight, height and stylisation, from realistic to chibi; hairstyles, facial expressions and a real skeleton view</li>
       <li xml:lang="es">Anatomía humana de MakeHuman: de la infancia a la vejez, género, músculo, peso, altura y estilización, de realista a chibi; peinados, expresiones faciales y vista del esqueleto real</li>
-      <li>Anthro characters: wolf, fox, dog, cat, rabbit, goat and dragon with sculpted heads (realistic, toony and kemono), digitigrade or hoofed legs, claws and tails</li>
-      <li xml:lang="es">Personajes anthro: lobo, zorro, perro, gato, conejo, cabra y dragón con cabezas esculpidas (realistas, toony y kemono), patas digitígradas o con pezuña, garras y cola</li>
+      <li>Anthro characters: 19 species with sculpted heads (realistic, toony and kemono) and hybrids, coats and markings, tails that move, paws with pads, hoof-hands and claws, digitigrade, plantigrade or hoofed legs</li>
+      <li xml:lang="es">Personajes anthro: 19 especies con cabezas esculpidas (realistas, toony y kemono) e híbridos, pelaje y marcas, colas que se mueven, zarpas con almohadillas, pezuñas y garras, patas digitígradas, plantígradas o con pezuña</li>
       <li>Import your own humanoid avatars (VRM, GLB, FBX) or pick a free one from the Open Source Avatars gallery, and pose them with the same tools</li>
       <li xml:lang="es">Importa tus avatares humanoides (VRM, GLB, FBX) o elige uno libre de la galería de Open Source Avatars, y pósalos con las mismas herramientas</li>
       <li>469 garments that fit any body and pose</li>
@@ -92,6 +92,13 @@
     <display_length compare="ge">768</display_length>
   </requires>
   <releases>
+    <release version="1.5.0" date="2026-10-17">
+      <description>
+        <p>Anthro in depth: 19 species by family with sculpted heads and hybrids, coats and markings painted on the model (belly, stripes, spots, rosettes, socks, masks, ear and tail tips, rings) with over 40 reference coats, tails with each species' shape and carriage that follow the motion and wag, paws with pads, hoof-hands and claws, an adjustable snout, and expressions with ears and tail.</p>
+        <p>A timeline like animation software's: select, move, copy and delete keys, box selection, constant or linear interpolation and zoom.</p>
+        <p>A paper notebook look with visible paper texture and page turns; the scene saves itself, Settings with a light or dark theme, every window closes with Esc, framing that keeps everyone in view, and a better layout on phones.</p>
+      </description>
+    </release>
     <release version="1.4.5" date="2026-10-16">
       <description>
         <p>From script to film: write a scene as a script and NEOPOSE animates it, with no AI: cast, set and time of day, actions read from plain sentences in seven languages, on-device voices with lip sync, subtitles and camera shots chosen by film grammar.</p>

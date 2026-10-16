@@ -9,7 +9,7 @@
    classifier (NSFWJS, MIT) that keeps every thumbnail blurred until it has looked at it. Every result carries its
    title, author, source and licence, shown with it and kept with what is made from it. */
 const REF = {mode: 'pose', q: '', src: 'all', res: [], sel: null, page: 1, busy: false, tok: 0, nsfw: null, credits: []};
-const UA_HDR = {'Api-User-Agent': 'NEOPOSE/1.4.5 (https://github.com/pmirall/NEOPOSE)'};
+const UA_HDR = {'Api-User-Agent': 'NEOPOSE/1.5.0 (https://github.com/pmirall/NEOPOSE)'};
 
 /* ---------- safety ---------- */
 const BLOCK = ['nude', 'nudes', 'naked', 'nudity', 'nudist', 'topless', 'porn', 'porno', 'pornography', 'sex', 'sexy', 'sexual', 'erotic', 'erotica', 'nsfw', 'hentai', 'fetish', 'bdsm',
