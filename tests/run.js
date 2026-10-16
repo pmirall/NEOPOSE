@@ -56,7 +56,7 @@ const SUITES = {
       await page.click('.tab[data-tab=escena]');
       await page.evaluate(() => document.querySelector('#propChips .chip').click()); await page.waitForTimeout(800); await grab();
       await page.evaluate(() => document.querySelector('#addSpot').click()); await page.waitForTimeout(300); await grab();
-      for (const b of ['#exportBtn', '#helpBtn', '#practiceBtn']) { await page.click(b); await page.waitForTimeout(900); await grab(); await page.evaluate(() => document.querySelectorAll('.modal').forEach(m => m.hidden = true)); }
+      for (const b of ['#exportBtn', '#helpBtn', '#setBtn', '#practiceBtn']) { await page.click(b); await page.waitForTimeout(900); await grab(); await page.evaluate(() => document.querySelectorAll('.modal').forEach(m => m.hidden = true)); }
       await page.click('#sketchBtn'); await page.waitForTimeout(300); await grab(); await page.click('#skClose');
       if (lang === 'en') {
         const left = [...seen].filter(t => DICT[t] !== undefined && DICT[t] !== t);
@@ -78,8 +78,9 @@ const SUITES = {
       await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
       for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) { await page.click(`.tab[data-tab=${tab}]`); await page.waitForTimeout(250); await grab(); }
       await page.click('#helpBtn'); await page.waitForTimeout(300); await grab();
-      const note = await page.evaluate(() => !document.querySelector('#helpModal .mtnote').hidden);
       await page.screenshot({path: path.join(OUT, `${lang}-help.png`)}); await page.click('#helpClose');
+      await page.click('#setBtn'); await page.waitForTimeout(300); await grab();
+      const note = await page.evaluate(() => !document.querySelector('#setModal .mtnote').hidden); await page.click('#setClose');
       const vals = new Set(Object.values(D)), left = [...seen].filter(t => D[t] !== undefined && D[t] !== t && !vals.has(t));
       ok(left.length === 0 && note, `${lang}: no untranslated text, review note shown (${left.slice(0, 4).join(' | ') || 'ok'})`);
       ok(page.errors.length === 0, `${lang}: no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
@@ -102,8 +103,8 @@ const SUITES = {
   async language(browser) {
     const page = await open(browser);
     const before = await page.evaluate(async () => { const A = window.__cdp; A.useGroup(A.GROUP_POSES[2][3]); await A.setEnv('bosque'); return {n: A.chars.length, env: A.state.env}; });
-    await page.click('#helpBtn');
-    await Promise.all([page.waitForNavigation(), page.click('#helpModal .langChips .chip[data-v=es]')]);
+    await page.click('#setBtn');
+    await Promise.all([page.waitForNavigation(), page.click('#setModal .langChips .chip[data-v=es]')]);
     await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length === 2, null, {timeout: 120000});
     const after = await page.evaluate(() => ({lang: document.documentElement.lang, n: window.__cdp.chars.length, env: window.__cdp.state.env}));
     ok(after.lang === 'es' && after.n === before.n && after.env === before.env, `language switch keeps the scene (${JSON.stringify(after)})`);
@@ -665,6 +666,9 @@ const SUITES = {
     await ctx.addInitScript(() => { localStorage.setItem('cdp.welcomed', 'true'); localStorage.setItem('cdp.tipDrag', 'true'); });
     const page = await ctx.newPage(), url = `http://localhost:${server.address().port}/?pwa`; page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     await page.goto(url); await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+    // the first time, the service worker takes the page over and it reloads once (keeping the scene): let it settle
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 60000}).catch(() => {}); await page.waitForTimeout(1500);
+    await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
     const head = await page.evaluate(() => ({man: !!document.querySelector('link[rel=manifest]'), apple: !!document.querySelector('link[rel=apple-touch-icon]'), vp: document.querySelector('meta[name=viewport]').content}));
     ok(head.man && head.apple && /viewport-fit=cover/.test(head.vp), 'the page links the manifest and the iOS icon, and uses the whole screen');
     await page.waitForFunction(() => navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true), null, {timeout: 60000});
@@ -683,6 +687,8 @@ const SUITES = {
       await c.addInitScript(sa => { localStorage.setItem('cdp.welcomed', 'true'); localStorage.setItem('cdp.tipDrag', 'true'); if (sa) Object.defineProperty(navigator, 'standalone', {get: () => true});
         window.__shared = []; navigator.canShare = () => true; navigator.share = async d => { window.__shared.push(d.files[0].name); }; }, standalone);
       const p = await c.newPage(); await p.goto(url); await p.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+      await p.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout: 60000}).catch(() => {}); await p.waitForTimeout(1500);
+      await p.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
       if (!standalone) { await p.waitForTimeout(7000); ok(await p.evaluate(() => !document.querySelector('#installHint').hidden && /Share/.test(document.querySelector('#ihText').textContent)), 'iPhone in Safari: a hint explains how to add it to the home screen'); }
       else { await p.click('#exportBtn'); await p.waitForTimeout(1500); await p.click('#exSave'); await p.waitForTimeout(2500);
         const sh = await p.evaluate(() => window.__shared); ok(sh.length === 1 && /\.png$/.test(sh[0]) && await p.evaluate(() => document.querySelector('#installHint').hidden), `installed on iPhone: saving opens the share sheet (${sh[0]}) and there is no install hint`); }
@@ -826,6 +832,52 @@ const SUITES = {
     const zoomed = await A(() => { const v = window.__cdp.tl.tlView(); return v.b - v.a; }); await page.keyboard.press('f'); await page.waitForTimeout(100);
     const fit = await A(() => { const v = window.__cdp.tl.tlView(); return v.b - v.a; });
     ok(zoomed < fit && fit === await A(() => window.__cdp.ANIM.shots[0].len - 1), `Ctrl+wheel zooms (${Math.round(zoomed)} frames in view), F fits the shot again`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // usability: the scene survives a reload, windows close on Esc and give the focus back, the export's buttons stay in
+  // sight, the theme is remembered, the search finds settings and species
+  async ux(browser) {
+    const page = await open(browser, {viewport: {width: 1300, height: 860}}), A = (f, a) => page.evaluate(f, a);
+    const ready = () => page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000});
+    // windows: Esc closes the top one, Tab stays inside, the focus goes back to the button that opened it
+    for (const b of ['#helpBtn', '#setBtn', '#exportBtn', '#practiceBtn']) {
+      await page.focus(b); await page.keyboard.press('Enter'); await page.waitForTimeout(600);
+      const shown = await A(() => [...document.querySelectorAll('.modal')].filter(m => !m.hidden).map(m => m.id).join());
+      for (let i = 0; i < 30; i++) await page.keyboard.press('Tab');
+      const inside = await A(() => !!document.activeElement.closest('.modal:not([hidden])'));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+      const r = await A(b => ({closed: [...document.querySelectorAll('.modal')].every(m => m.hidden), back: document.activeElement === document.querySelector(b), modal: document.querySelector('.modal [role=dialog]').getAttribute('aria-modal')}), b);
+      ok(shown && inside && r.closed && r.back && r.modal === 'true', `${b}: ${shown} keeps Tab inside, Esc closes it and the focus goes back to the button`);
+    }
+    // the export window at 860 px: its main button in sight
+    await page.click('#exportBtn'); await page.waitForTimeout(1500);
+    const sv = await A(() => { const r = document.querySelector('#exSave').getBoundingClientRect(); return {b: Math.round(r.bottom), h: innerHeight}; });
+    ok(sv.b <= sv.h - 8, `export at 860 px: "Save PNG" is in sight (bottom ${sv.b} of ${sv.h})`);
+    await page.keyboard.press('Escape');
+    // the command search: species and settings
+    await page.keyboard.press('Control+k'); await page.waitForTimeout(300); await page.keyboard.type('wolf'); await page.waitForTimeout(300);
+    const wolf = await A(() => [...document.querySelectorAll('#palList li')].map(l => l.textContent));
+    await page.fill('#palInput', 'language'); await page.waitForTimeout(300);
+    const lang = await A(() => [...document.querySelectorAll('#palList li')].map(l => l.textContent));
+    ok(wolf.some(t => /Species.*Wolf/.test(t)) && lang.some(t => /Language: Español/.test(t)), `search finds species and settings (${wolf[0]} · ${lang[0]})`);
+    await page.keyboard.press('Escape');
+    // the theme: chosen in Settings, there again after a reload
+    await page.click('#setBtn'); await page.click('#themeChips .chip[data-v=dark]'); await page.waitForTimeout(200); await page.keyboard.press('Escape');
+    // the scene: changed, then the page is reloaded
+    await A(async () => { const C = window.__cdp; C.useGroup(C.GROUP_POSES[2][3]); await C.setEnv('bosque'); });
+    await page.waitForTimeout(2500); await page.reload(); await ready(); await page.waitForTimeout(1500);
+    const back = await A(() => ({n: window.__cdp.chars.length, env: window.__cdp.state.env, theme: document.documentElement.dataset.theme, act: document.querySelector('#hint .undo')?.textContent}));
+    ok(back.n === 2 && back.env === 'bosque' && back.act === 'Start afresh', `after a reload the scene is back, with a way to start afresh (${JSON.stringify(back)})`);
+    ok(back.theme === 'dark', 'the dark theme chosen in Settings is applied again after the reload');
+    await page.click('#hint .undo'); await page.waitForTimeout(1500);
+    const fresh = await A(() => ({n: window.__cdp.chars.length, env: window.__cdp.state.env}));
+    await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);
+    const undone = await A(() => ({n: window.__cdp.chars.length, env: window.__cdp.state.env}));
+    ok(fresh.n === 1 && fresh.env === 'estudio' && undone.n === 2, `"Start afresh" gives the starting scene, and undo brings the other back (${JSON.stringify(fresh)} → ${JSON.stringify(undone)})`);
+    // the script window: nothing to create from an empty script
+    await page.click('#animBtn'); await page.waitForTimeout(400); await page.click('#tlScript'); await page.waitForTimeout(200); await page.fill('#scText', '');
+    ok(await A(() => document.querySelector('#scGo').disabled && document.querySelector('#scUndo').disabled), 'script: “Create the film” waits for a script, and there is no film to recover yet');
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
