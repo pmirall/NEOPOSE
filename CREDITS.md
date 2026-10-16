@@ -39,6 +39,8 @@ Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/license
 ## Software
 - [three.js](https://threejs.org) r147: MIT (`app/vendor/LICENSE-three.txt`).
 - [meshoptimizer](https://github.com/zeux/meshoptimizer) (decodificador y gltfpack): MIT.
+- [fflate](https://github.com/101arrowz/fflate) (ZIP y compresión): MIT.
+- [gifenc](https://github.com/mattdesl/gifenc) 1.0.3 (GIF animado): MIT (`app/vendor/LICENSE-gifenc.txt`).
 - [Electron](https://www.electronjs.org) y [electron-builder](https://www.electron.build): MIT.
 
 ## Fuentes tipográficas (SIL Open Font License 1.1)

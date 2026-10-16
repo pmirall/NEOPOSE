@@ -12,7 +12,7 @@ js = ('const I18N = ' + json.dumps(I18N, ensure_ascii=False) + ';\nconst I18N_EN
       + 'const ENV_MANIFEST = ' + rd('app/envs/manifest.json') + ';\n'
       + 'const HEAD_CATALOG = ' + json.dumps(json.load(open(os.path.join(H, 'app/heads/catalog.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'
       + '\n'.join(rd(f'src/{m}.js') for m in MODULES))
-VENDOR = ['three.min.js', 'OrbitControls.js', 'TransformControls.js', 'GLTFLoader.js', 'meshopt_decoder.js', 'fflate.min.js', 'NURBSUtils.js', 'NURBSCurve.js', 'FBXLoader.js']
+VENDOR = ['three.min.js', 'OrbitControls.js', 'TransformControls.js', 'GLTFLoader.js', 'meshopt_decoder.js', 'fflate.min.js', 'gifenc.min.js', 'NURBSUtils.js', 'NURBSCurve.js', 'FBXLoader.js']
 html = f'''<!doctype html>
 <html lang="en">
 <head>

@@ -28,9 +28,15 @@
       <li>Drawing finishes (construction, volume, pencil, values, silhouette), guides and a sketch layer</li>
       <li xml:lang="es">Acabados de dibujo (construcción, volumen, lápiz, valores, silueta), guías y capa de boceto</li>
       <li>Gesture practice with a timer; pose from a photo, offline; animation timeline</li>
-      <li>Export: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose), GLB, BVH and WebM</li>
+      <li>Export: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose), GLB, BVH, MP4/WebM video, animated GIF and frames by layer</li>
       <li xml:lang="es">Práctica de gesto con temporizador; pose desde una foto, sin conexión; línea de tiempo de animación</li>
-      <li xml:lang="es">Exportación: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose), GLB, BVH y WebM</li>
+      <li xml:lang="es">Exportación: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose), GLB, BVH, vídeo MP4/WebM, GIF animado y fotogramas por capas</li>
+      <li>Animation principles on any move: easing, anticipation, bounce, drag, arcs, squash and stretch, exaggeration and timing, with spacing trails</li>
+      <li xml:lang="es">Principios de animación en cualquier movimiento: suavidad, anticipación, rebote, arrastre, arcos, estirar y encoger, exageración y ritmo, con trayectorias</li>
+      <li>Layered PSD and an “Open in…” button that opens it straight in Krita, GIMP, Clip Studio Paint, Photoshop…</li>
+      <li xml:lang="es">PSD con capas y botón «Abrir en…» que lo abre directamente en Krita, GIMP, Clip Studio Paint, Photoshop…</li>
+      <li>Save whole characters (body, clothes, prostheses) and reuse them; poses and animations with crutches, walking aids and wheelchairs</li>
+      <li xml:lang="es">Guarda personajes completos (cuerpo, ropa, prótesis) y reutilízalos; poses y animaciones con muletas, ayudas para caminar y silla de ruedas</li>
     </ul>
   </description>
   <launchable type="desktop-id">io.github.pmirall.NEOPOSE.desktop</launchable>

@@ -6,7 +6,7 @@
 const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true};
 const PRINT = {a5: ['A5', 1748, 2480], a4: ['A4', 2480, 3508], a3: ['A3', 3508, 4961]};
 const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D', anim: 'Animación'};
-const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
+const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
 const EX_MAPS = {depth: 'Profundidad', normal: 'Normales', openpose: 'Esqueleto OpenPose', lineart: 'Líneas'};
 const TURN_VIEWS = {4: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [180, 'Espalda']], 8: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [135, 'Tres cuartos de espalda'], [180, 'Espalda'], [225, 'Tres cuartos de espalda'], [270, 'Perfil'], [315, 'Tres cuartos']]};
 
@@ -320,11 +320,11 @@ const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0');
 /* ---------- the window ---------- */
 function exportKindUI() {
   const k = EXK.kind;
-  const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'layers' || w === 'board';
+  const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'layers' || w === 'gif' || w === 'board';
   $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d'; $('#exOptAnim').hidden = k !== 'anim';
   $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic; $('#exSizeRow').hidden = k === 'm3d' || !pic;
   $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim'; $('#exPsd').hidden = k !== 'img'; $('#exOpenIn').hidden = k !== 'img' && k !== 'anim';
-  $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'board');
+  $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers' && w !== 'gif'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'gif' || w === 'board');
   $('#exAnimRange').querySelectorAll('.chip').forEach(b => b.disabled = w === 'bvh' && b.dataset.v === 'movie');
   $('#exBg .chip[data-v=paper]').textContent = tr(k === 'turn' ? 'Papel' : 'Con escenario');
   $('#exSave').textContent = k === 'anim' ? tr('Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
@@ -402,6 +402,7 @@ async function exportAnimation() {
   exportBusy(true, 0);
   try {
     if (w === 'layers') await exportLayerSequences();
+    else if (w === 'gif') await exportGIF();
     else if (w === 'frames') {
       const files = {}, total = countFrames(); let n = 0;
       await eachFrame(EXK.animRange, EXK.animStep === 'keys' ? 'keys' : +EXK.animStep, async (i, f, s) => {
@@ -419,6 +420,24 @@ async function exportAnimation() {
     }
   } catch (e) { console.warn('anim export', e); $('#exMsg').textContent = tr('No se ha podido exportar: {e}', {e: e && e.message || e}); }
   exportBusy(false);
+}
+// animated GIF: plays anywhere (chats, references boards, PureRef), each frame held as long as it lasts
+async function exportGIF() {
+  const gif = gifenc.GIFEncoder(), total = countFrames(), MAXW = 720; let n = 0, held = null;
+  // a frame is written when the next one arrives: then we know how long it stays on screen
+  const write = endF => { const {data, width, height} = held.img, pal = gifenc.quantize(data, 256);
+    gif.writeFrame(gifenc.applyPalette(data, pal), width, height, {palette: pal, delay: Math.max(20, Math.round((endF - held.f) / ANIM.fps * 1000)), repeat: 0}); };
+  await eachFrame(EXK.animRange, EXK.animStep === 'keys' ? 'keys' : +EXK.animStep, async (i, f, s) => {
+    if (held) write(held.i === i ? f : held.s.len);
+    const cv = renderExportCanvas(EXK.subs ? f : null), k = Math.min(1, MAXW / cv.width), w = Math.round(cv.width * k), h = Math.round(cv.height * k);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+    if (ex.bg === 'alpha') { x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); }  // GIF has no soft transparency: on white
+    x.drawImage(cv, 0, 0, w, h); held = {i, f, s, img: x.getImageData(0, 0, w, h)};
+    n++; exportBusy(true, n / total); $('#exMsg').textContent = tr('Fotograma {n} de {t}…', {n, t: total});
+  });
+  if (held) write(held.s.len);
+  gif.finish(); saveFile(`animacion-${stamp()}.gif`, gif.bytes(), 'image/gif');
+  $('#exMsg').textContent = tr('GIF animado: {n} fotogramas.', {n});
 }
 // storyboard: a panel per shot (its first frame) with number, name, length, camera and the lines of the script
 async function storyboardPages() {

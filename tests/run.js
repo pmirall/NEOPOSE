@@ -566,6 +566,11 @@ const SUITES = {
     const [z] = await Promise.all([page.waitForEvent('download', {timeout: 300000}), page.click('#exSave')]);
     const zp = await z.path(), names = [...fs.readFileSync(zp).toString('latin1').matchAll(/(\d\d-[\w-]+\/\d\d-[\w-]+\/\d{4}\.png)/g)].map(m => m[1]), dirs = new Set(names.map(n => n.split('/')[1]));
     ok(/\.zip$/.test(z.suggestedFilename()) && dirs.size === 3 && names.length >= dirs.size * 2, `layered frames: ${dirs.size} layer folders (${[...dirs].join(', ')}), ${names.length / 2} files`);
+    await page.click('#exAnimWhat .chip[data-v="gif"]');
+    const [g] = await Promise.all([page.waitForEvent('download', {timeout: 300000}), page.click('#exSave')]);
+    const gb = fs.readFileSync(await g.path()), gw = gb.readUInt16LE(6); let gfr = 0, q = 13 + (gb[10] & 0x80 ? 3 << ((gb[10] & 7) + 1) : 0); const subs = () => { while (gb[q]) q += gb[q] + 1; q++; };
+    while (q < gb.length && gb[q] !== 0x3b) { if (gb[q] === 0x21) { q += 2; subs(); } else if (gb[q] === 0x2c) { gfr++; const fl = gb[q + 9]; q += 10 + (fl & 0x80 ? 3 << ((fl & 7) + 1) : 0) + 1; subs(); } else break; }
+    ok(/\.gif$/.test(g.suggestedFilename()) && gb.toString('latin1', 0, 6) === 'GIF89a' && gw <= 720 && gfr === names.length / 2 / 3, `an animated GIF (${gw} px wide, ${gfr} frames, ${Math.round(gb.length / 1024)} kB)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
