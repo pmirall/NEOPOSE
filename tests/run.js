@@ -735,6 +735,40 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // from a script to a film: reading (Fountain and the quick way, seven languages), voices, staging, cameras, the window
+  async script(browser) {
+    const page = await open(browser, {lang: 'es'}), A = (f, a) => page.evaluate(f, a);
+    const parse = await A(() => { const S = window.__cdp.script, P = S.parseScript('Title: Prueba\nAuthor: X\n\n.CASA DE ANA\n\nANA (V.O.)\n(susurrando)\nHola. [[nota]]\n\n/* fuera */\nBOB ^\nAdiós.\n\nCUT TO:\n\nINT. BAR - NOCHE\n\nANA: ¿Vienes?\nBob: Ya voy.\n');
+      return {title: P.title, scenes: P.scenes.map(s => [s.head.place, s.head.time, s.beats.map(b => b.k + (b.who ? ':' + b.who : '') + (b.emo ? '(' + b.emo + ')' : '')).join(',')]), names: [...P.names.values()].map(n => n.name)}; });
+    ok(parse.title === 'Prueba' && parse.scenes.length === 2 && parse.scenes[0][0] === 'CASA DE ANA' && parse.scenes[1][0] === 'BAR' && parse.scenes[1][1] === 'NOCHE', `scenes and headings (${JSON.stringify(parse.scenes.map(s => s[0] + '/' + s[1]))})`);
+    ok(/paren:Ana,line:Ana/.test(parse.scenes[0][2]) && /line:Bob/.test(parse.scenes[0][2]) && /trans/.test(parse.scenes[0][2]) && parse.scenes[1][2] === 'line:Ana,line:Bob' && parse.names.join() === 'Ana,Bob', `cues with extensions, parentheticals, transitions, notes, the boneyard and "NAME: line" (${parse.scenes.map(s => s[2]).join(' / ')})`);
+    const acts = await A(() => { const S = window.__cdp.script, cast = [{name: 'Luis', preset: 'hombre', body: {gender: 1}}, {name: 'Ana', preset: 'mujer', body: {gender: 0}}], r = (t, l) => S.readAction(t, cast, l, {last: null, lastOther: null, present: [0, 1]}).map(a => a.unknown ? '?' : a.who.join('+') + ':' + a.id + (a.target != null ? '>' + a.target : '')).join(' ');
+      return [r('Luis entra y se acerca a ella.', 'es'), r('Luis se levanta, coge el abrigo y sale corriendo.', 'es'), r('Ana golpea a Luis y él cae al suelo.', 'es'), r('Luis mira a Ana y sonríe.', 'es'), r('Ana no se sienta.', 'es'), r('Luis shrugs and sits down.', 'en'), r('Ana hugs him.', 'en'),
+        r('Luis entre et s\'assoit.', 'fr'), r('Ana abraça en Luis.', 'ca'), r('Luis geht hinaus.', 'de'), r('Ana saluta e si siede.', 'it'), r('Luis acena e senta-se.', 'pt')]; });
+    const want = ['0:enter 0:approach>1', '0:stand 0:pick 0:exit', '1:punch>0 0:fall', '0:face>1 0:smile', '', '0:shrug 0:sit', '1:hug>0', '0:enter 0:sit', '1:hug>0', '0:exit', '1:wave 1:sit', '0:wave 0:sit'];
+    acts.forEach((a, i) => ok(a === want[i], `action ${i + 1}: «${['entra y se acerca', 'se levanta, coge, sale corriendo', 'golpea / él cae', 'mira a Ana y sonríe', 'no se sienta', 'shrugs, sits down', 'hugs him', 'entre, s\'assoit', 'abraça', 'geht hinaus', 'saluta, si siede', 'acena, senta-se'][i]}» → ${a || '(nada)'}`));
+    const misc = await A(() => { const S = window.__cdp.script; return {emo: [S.emotionOf('enfadada'), S.emotionOf('smiling'), S.emotionOf('a gritos')], shot: [S.shotDirection('PRIMER PLANO DE ANA'), S.shotDirection('WIDE SHOT'), S.shotDirection('CONTRAPICADO')], lang: [S.scLang('El perro de la casa se va con su amo'), S.scLang('The dog leaves the house with his owner')],
+      place: [S.placeOf({place: 'COCINA'}), S.placeOf({place: 'THE OLD PUB'}), S.placeOf({place: 'Bosque oscuro'})], time: [S.timeOf({time: 'NOCHE'}), S.timeOf({time: 'SUNSET'})]}; });
+    ok(misc.emo.join() === 'enfado,sonrisa,grito' && misc.shot[0].size === 'cu' && misc.shot[1].size === 'ws' && misc.shot[2].angle === 'low' && misc.lang.join() === 'es,en' && misc.place.join() === 'cocina,taberna,bosque' && misc.time.join() === 'noche,atardecer', `faces, camera words, language, places and times (${JSON.stringify(misc.place)})`);
+    // the voice
+    const v = await A(async () => { const S = window.__cdp.script; try { const r = await S.sayLine('Hola, me llamo Ana.', 'es', {g: 'f', v: 2, p: 60, r: 168}); return {n: r.pcm.length, dur: r.dur, words: r.words.length}; } catch (e) { return {err: String(e)}; } });
+    ok(v.n > 10000 && v.dur > .6 && v.words >= 4, `the voice says a line on this device (${v.dur && v.dur.toFixed(2)} s, ${v.words} words)`);
+    // the whole sample through the window
+    await page.click('#animBtn'); await page.waitForTimeout(400); await page.click('#tlScript'); await page.waitForTimeout(200); await page.click('#scSample');
+    await page.click('#scGo');
+    await page.waitForFunction(() => window.__cdp.ANIM.shots.length > 3 && !document.querySelector('#scGo').disabled, null, {timeout: 240000});
+    const film = await A(() => { const C = window.__cdp, A = C.ANIM; return {n: A.shots.length, names: A.shots.map(s => s.name), env: [...new Set(A.shots.map(s => s.scene.extras.env))], amb: A.shots[0].scene.extras.amb, secs: A.shots.reduce((a, s) => a + s.len, 0) / A.fps,
+      lines: A.shots.flatMap(s => s.lines).filter(l => !l.cont).length, timed: A.shots.flatMap(s => s.lines).every(l => l.w && l.voice && l.lang === 'es'), cams: A.shots.every(s => s.cam.length >= 1), keys: A.shots.every(s => s.keys.every(K => K.length >= s.len - 1)),
+      warn: document.querySelector('#scWarn').textContent, chairs: A.shots.some(s => s.scene.extras.props.some(p => /silla/.test(p.t || p.type || JSON.stringify(p))))}; });
+    ok(film.n >= 6 && /situación/.test(film.names[0]) && film.env.join() === 'cocina,parque' && film.amb === 'interior', `the film: ${film.n} shots, ${film.secs.toFixed(1)} s, sets ${film.env.join(' → ')} (${film.names.slice(0, 4).join(' | ')}…)`);
+    ok(film.lines === 4 && film.timed && film.cams && film.keys, `every line is said with its voice and timed word by word; every shot has its camera and every frame its pose`);
+    ok(film.names.some(n => /hombro|Plano medio|primer plano/i.test(n)) && film.names.some(n => /dos|general/i.test(n)) && film.chairs, 'the camera follows film grammar (establishing, over the shoulder or singles, two-shots) and Luis has a chair to sit on');
+    ok(!film.warn, 'the sample is understood without warnings' + (film.warn ? ': ' + film.warn : ''));
+    const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
+    ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

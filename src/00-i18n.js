@@ -25,7 +25,7 @@ const tValues = o => { for (const k in o) if (typeof o[k] === 'string') o[k] = t
 const dec = (v, d = 1) => LANG !== 'en' ? v.toFixed(d).replace('.', ',') : v.toFixed(d);
 /* static HTML: text nodes and a few attributes are looked up as they are; a run of text with inline markup
    (<b>, <kbd>, <a>…) is looked up as one piece by its innerHTML, so sentences are not cut into fragments */
-const I18N_INLINE = new Set(['B', 'I', 'KBD', 'A', 'EM', 'STRONG', 'BR']);
+const I18N_INLINE = new Set(['B', 'I', 'KBD', 'A', 'EM', 'STRONG', 'BR', 'CODE']);
 function tDom(root) {
   if (LANG === 'es') return;
   const lk = s => look(s.replace(/\s+/g, ' ').trim());

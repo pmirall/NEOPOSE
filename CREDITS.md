@@ -43,6 +43,7 @@ Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/license
 - [gifenc](https://github.com/mattdesl/gifenc) 1.0.3 (GIF animado): MIT (`app/vendor/LICENSE-gifenc.txt`).
 - [NSFWJS](https://github.com/infinitered/nsfwjs) 4.4.0 (filtro de contenido de las referencias, modelo MobileNetV2): MIT (`app/vendor/nsfw/LICENSE-nsfwjs.txt`). TensorFlow.js Layers 4.22: Apache 2.0.
 - [omggif](https://github.com/deanm/omggif) 1.0.10 (lectura de GIF animados donde no hay WebCodecs, como en iOS): MIT (aviso en `app/vendor/omggif.js`).
+- [eSpeak NG](https://github.com/espeak-ng/espeak-ng) (voces de los personajes; compilación Emscripten de [Echogarden](https://github.com/echogarden-project/espeak-ng-emscripten), reducida a los siete idiomas de la app): GPL-3.0 (`app/vendor/espeak/COPYING`).
 - [Electron](https://www.electronjs.org) y [electron-builder](https://www.electron.build): MIT.
 
 ## Fuentes tipográficas (SIL Open Font License 1.1)

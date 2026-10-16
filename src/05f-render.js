@@ -39,8 +39,15 @@ function frame() {
   if (!mq) return;
   glideTick(); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
-  animTick(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
+  animTick(); dockView(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }
+// with the animation dock open, the shot is framed in the part of the canvas above it (what the film will show)
+function dockView() {
+  const tl = $('#timeline'), d = ANIM.open && !ANIM.rec && tl && !tl.hidden ? Math.min(tl.offsetHeight + 12, Hh * .55) : 0;
+  if (d > 20) { const a = W / (Hh - d); if (Math.abs(camera.aspect - a) > 1e-4 || !camera.view || !camera.view.enabled || camera.view.fullHeight !== Hh - d) { camera.aspect = a; camera.setFocalLength(state.focal); camera.setViewOffset(W, Hh - d, 0, 0, W, Hh); } }
+  else if (camera.view && camera.view.enabled) noDockView();
+}
+function noDockView() { camera.clearViewOffset(); camera.aspect = W / Hh; camera.setFocalLength(state.focal); camera.updateProjectionMatrix(); }
 renderer.setAnimationLoop(frame);
 
 /* ---------- export ---------- */
@@ -52,6 +59,7 @@ function renderExport() {
 }
 // the picture of the current view, with the chosen background, size and layers (also each frame of an animation)
 function renderExportCanvas(subsFrame) {
+  noDockView();  // the next frame puts it back
   const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines;
   const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value};
   const hidden = [...(typeof TRAIL !== 'undefined' && TRAIL.group ? [TRAIL.group] : []), ...(typeof DYN !== 'undefined' ? [DYN.loaObj, DYN.balObj, ...DYN.inbMeshes].filter(Boolean) : []), ...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];

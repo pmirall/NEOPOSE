@@ -36,6 +36,10 @@
       <li>Layered PSD and an “Open in…” button that opens it straight in Krita, GIMP, Clip Studio Paint, Photoshop…</li>
       <li xml:lang="es">PSD con capas y botón «Abrir en…» que lo abre directamente en Krita, GIMP, Clip Studio Paint, Photoshop…</li>
       <li>Save whole characters (body, clothes, prostheses) and reuse them; poses and animations with crutches, walking aids and wheelchairs</li>
+      <li>From script to film: a written scene becomes an animated film with voices, subtitles and film-grammar camera shots</li>
+      <li xml:lang="es">Del guion a la película: una escena escrita se convierte en una película animada con voces, subtítulos y planos con reglas de cine</li>
+      <li>Free reference search (photos, GIFs, panoramas) turned into poses, animations and sets</li>
+      <li xml:lang="es">Buscador de referencias libres (fotos, GIF, panoramas) para poses, animaciones y escenarios</li>
       <li xml:lang="es">Guarda personajes completos (cuerpo, ropa, prótesis) y reutilízalos; poses y animaciones con muletas, ayudas para caminar y silla de ruedas</li>
     </ul>
   </description>
@@ -88,6 +92,14 @@
     <display_length compare="ge">768</display_length>
   </requires>
   <releases>
+    <release version="1.4.5" date="2026-10-16">
+      <description>
+        <p>From script to film: write a scene as a script and NEOPOSE animates it, with no AI: cast, set and time of day, actions read from plain sentences in seven languages, on-device voices with lip sync, subtitles and camera shots chosen by film grammar.</p>
+        <p>Free references: search openly licensed photos, GIFs and panoramas and turn them into poses, animations and sets, with the light from the panorama's sun and a content filter on the device.</p>
+        <p>Animation principles (easing, anticipation, bounce, drag, arcs, squash and stretch), dynamism tools for still pictures, layered PSD and an "Open in…" button for drawing programs, GIF and MP4 export, saved characters, and poses and animations with crutches and wheelchairs.</p>
+        <p>Drag poses, clothes, colours and objects onto the canvas with a live preview, Ctrl+K search, finger gestures, context menus, and an installable web app for iPhone and iPad.</p>
+      </description>
+    </release>
     <release version="1.3.0" date="2026-10-16">
       <description>
         <p>Films made of shots, with camera moves and a script whose lines move the mouths, an animation gallery (96 moves, BVH, GLB and FBX import) and storyboards, photos or video turned into animation.</p>

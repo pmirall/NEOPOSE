@@ -6,7 +6,7 @@
 const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true};
 const PRINT = {a5: ['A5', 1748, 2480], a4: ['A4', 2480, 3508], a3: ['A3', 3508, 4961]};
 const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D', anim: 'Animación'};
-const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
+const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', audio: 'Diálogo en audio (WAV)', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
 const EX_MAPS = {depth: 'Profundidad', normal: 'Normales', openpose: 'Esqueleto OpenPose', lineart: 'Líneas'};
 const TURN_VIEWS = {4: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [180, 'Espalda']], 8: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [135, 'Tres cuartos de espalda'], [180, 'Espalda'], [225, 'Tres cuartos de espalda'], [270, 'Perfil'], [315, 'Tres cuartos']]};
 
@@ -408,6 +408,7 @@ async function exportAnimation() {
   try {
     if (w === 'layers') await exportLayerSequences();
     else if (w === 'gif') await exportGIF();
+    else if (w === 'audio') { $('#exMsg').textContent = tr('Preparando las voces…'); saveFile(`dialogo-${stamp()}.wav`, await dialogueWav(), 'audio/wav'); $('#exMsg').textContent = tr('Diálogo guardado en WAV.'); }
     else if (w === 'frames') {
       const files = {}, total = countFrames(); let n = 0;
       await eachFrame(EXK.animRange, EXK.animStep === 'keys' ? 'keys' : +EXK.animStep, async (i, f, s) => {

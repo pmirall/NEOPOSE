@@ -81,6 +81,7 @@
             <button class="btn icon tlrec" id="tlCamRec" aria-pressed="false" title="Grabar la cámara: cada encuadre se guarda como clave" aria-label="Grabar la cámara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3z"/></svg><i></i></button>
             <button class="btn icon" id="tlLine" title="Añadir una línea de diálogo" aria-label="Añadir una línea de diálogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v10H9l-5 4z"/><path d="M12 8v4M10 10h4"/></svg></button>
             <button class="btn icon" id="tlBoard" title="De dibujos o vídeo a animación: suelta un storyboard, fotos o un vídeo" aria-label="De dibujos o vídeo a animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg></button>
+            <button class="btn tlclips magic" id="tlScript" title="Del guion a la película: escribe la escena y se anima sola (voces, cámara y planos)" aria-label="Del guion a la película"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 11h6M10 15h6M10 19h3"/></svg><span>Guion</span></button>
             <button class="btn tlclips" id="tlClips" title="Galería de animaciones: andar, correr, saltar, luchar… o importa las tuyas" aria-label="Galería de animaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg><span>Animaciones</span></button>
             <button class="btn icon" id="tlExport" title="Exportar la animación" aria-label="Exportar la animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
             <button class="btn icon" id="tlMotion" aria-expanded="false" title="Interpretación: suavidad, anticipación, rebote, arrastre, arcos, estirar y encoger, exageración y ritmo" aria-label="Interpretación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17c3 0 4-10 7-10s3 10 6 10 3-6 5-6"/><circle cx="3" cy="17" r="1.2" fill="currentColor"/></svg></button>
@@ -103,6 +104,7 @@
               <label class="check"><input type="checkbox" id="tlAll"> Reproducir toda la película</label>
               <label class="check"><input type="checkbox" id="tlLoop"> Repetir</label>
               <label class="check"><input type="checkbox" id="tlSubs"> Subtítulos del guion</label>
+              <label class="check"><input type="checkbox" id="tlVoice"> Voz de los personajes (lectura del guion)</label>
             </div>
             <div class="row"><button class="btn small" id="tlSaveFilm">Guardar película…</button><button class="btn small" id="tlOpenFilm">Abrir película…</button><input type="file" id="tlFilmFile" accept=".json,application/json" hidden></div>
             <p class="note">Cada plano tiene su reparto, escenario y cámara. Posa en un fotograma y se guarda una clave (◆) del personaje; activa la grabación de cámara para animar el encuadre. En Diálogo, escribe lo que dice cada personaje: mueve la boca y sale como subtítulo. Arrastra rombos y líneas para cambiarlos de tiempo.</p>
@@ -615,6 +617,7 @@
         <li><b>Movilidad</b> (Pose → Movilidad y en Animaciones): poses y animaciones con muletas, bastón, andador y silla de ruedas; la ayuda técnica va con el personaje.</li>
         <li><b>Abrir en…</b> (arriba): lleva la imagen como PSD con capas a Krita, Clip Studio, Photoshop… Al exportar una animación, «Fotogramas por capas» da una secuencia por capa.</li>
         <li>Arrastra el fondo para girar la cámara, rueda para acercar, botón derecho para desplazar.</li>
+        <li><b>Del guion a la película</b> (Animar → Guion): escribe la escena como un guion y se crea sola: reparto, escenario y luz, animaciones, voces con los labios sincronizados, subtítulos y planos elegidos con reglas de cine. Después se retoca como cualquier animación.</li>
         <li><b>Referencias libres</b> (Pose → Desde una foto, Escena → Escenario o la galería de animaciones): busca imágenes, GIF y panoramas con licencia libre. Una foto pasa a pose, un GIF a animación y un panorama a escenario con su luz. La autoría queda a la vista.</li>
         <li><b>Arrastrar al lienzo</b>: lleva una pose a un personaje, un gesto a una mano, un color a una prenda o al pelo, y un objeto o un personaje guardado al punto del suelo donde lo sueltes. Antes de soltar ya ves cómo queda. En pantalla táctil, mantén pulsado o desliza hacia un lado.</li>
         <li><b>Con los dedos</b>: dos dedos a la vez deshacen y tres rehacen; mantén pulsado un personaje o el fondo para ver qué puedes hacer ahí. En el móvil, el panel sube y baja arrastrando su asa.</li></ul></section>
@@ -674,6 +677,34 @@
     <input type="search" id="palInput" placeholder="Busca una pose, una prenda, un escenario o una acción…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="palList" aria-label="Buscar">
     <ul class="pallist" id="palList" role="listbox"></ul>
     <p class="palfoot"><kbd>↑</kbd> <kbd>↓</kbd> elegir · <kbd>Intro</kbd> usar · <kbd>Esc</kbd> cerrar</p>
+  </div>
+</div>
+<div class="modal scmodal" id="scModal" hidden>
+  <div class="sheet scsheet" role="dialog" aria-labelledby="scT">
+    <div class="refhead"><h2 id="scT">Del guion a la película</h2><button class="gx" id="scClose" aria-label="Cerrar">×</button></div>
+    <div class="scbody">
+      <div class="sced">
+        <textarea id="scText" spellcheck="true" placeholder="INT. COCINA - NOCHE&#10;&#10;ANA está junto a la mesa. LUIS entra.&#10;&#10;LUIS&#10;(sonriendo)&#10;¡Hola!" aria-label="Guion"></textarea>
+        <div class="row"><button class="btn small" id="scSample">Cargar un ejemplo</button><button class="btn small" id="scOpen">Abrir un archivo…</button><input type="file" id="scFile" accept=".fountain,.txt,.md,text/plain" hidden><button class="btn small" id="scUndo">Recuperar la película anterior</button></div>
+      </div>
+      <aside class="schelp">
+        <h4>Cómo escribirlo</h4>
+        <ul>
+          <li><b>Escena:</b> <code>INT. COCINA - NOCHE</code>, <code>EXT. PARQUE - DÍA</code>. El lugar elige el escenario y la hora, la luz.</li>
+          <li><b>Diálogo:</b> el nombre en mayúsculas y debajo lo que dice, o <code>ANA: ¡Hola!</code>. Entre paréntesis, cómo lo dice: <code>(enfadada)</code>.</li>
+          <li><b>Acción:</b> frases normales: <code>Luis entra y se sienta.</code> <code>Ana le abraza.</code> <code>Leo corre hacia Ana.</code></li>
+          <li><b>Cámara</b> (opcional): <code>PRIMER PLANO DE ANA</code>, <code>PLANO GENERAL</code>, <code>CONTRAPICADO</code>, <code>SUBJETIVO</code>. Si no la indicas, se eligen los planos con reglas de cine.</li>
+          <li>Funciona en español, inglés, catalán, francés, portugués, alemán e italiano, y entiende el formato Fountain.</li>
+        </ul>
+        <label class="check"><input type="checkbox" id="scCams" checked> Planos automáticos (reglas de cine)</label>
+        <label class="check"><input type="checkbox" id="scVoice"> Voces de los personajes</label>
+        <label class="check"><input type="checkbox" id="scSubs"> Subtítulos</label>
+        <label class="check"><input type="checkbox" id="scOnline" checked> Buscar en internet los lugares que no estén</label>
+      </aside>
+    </div>
+    <p class="msg" id="scMsg" role="status"></p>
+    <ul class="scwarn" id="scWarn"></ul>
+    <div class="foot"><button class="btn primary magic" id="scGo">Crear la película</button></div>
   </div>
 </div>
 <div class="modal refmodal" id="refModal" hidden>

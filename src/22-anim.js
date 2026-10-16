@@ -142,7 +142,7 @@ let thumbRT = null, thumbTimer = 0;
 function thumbNow() {
   const s = shot(); if (!s) return;
   if (!thumbRT) thumbRT = new THREE.WebGLRenderTarget(256, 144);
-  const hide = exportHide(), asp = camera.aspect; camera.aspect = 16 / 9; camera.updateProjectionMatrix();
+  noDockView(); const hide = exportHide(), asp = camera.aspect; camera.aspect = 16 / 9; camera.updateProjectionMatrix();
   renderer.setRenderTarget(thumbRT); renderer.render(scene, camera); renderer.setRenderTarget(null);
   camera.aspect = asp; camera.updateProjectionMatrix(); hide();
   const px = new Uint8Array(256 * 144 * 4); renderer.readRenderTargetPixels(thumbRT, 0, 0, 256, 144, px);
@@ -177,7 +177,12 @@ function visemes(text) {
 const lineLen = text => Math.max(Math.round(ANIM.fps * .8), Math.round(ANIM.fps * (text.trim().length / 14 + .25)));
 function mouthAt(line, f) {
   const u = (f - line.f) / line.len; if (u < 0 || u >= 1 || !line.text.trim()) return null;
-  const V = visemes(line.text), i = V.findIndex(x => u < x.b); if (i < 0) return null;
+  // with the voice's timing (32-voice): each word's shapes inside the time that word takes, the mouth at rest between them
+  if (line.w) { const w = line.w.find(x => u >= x[2] && u < x[3]); return w ? mouthIn(line.text.slice(w[0], w[1]), (u - w[2]) / Math.max(1e-6, w[3] - w[2])) : null; }
+  return mouthIn(line.text, u);
+}
+function mouthIn(text, u) {
+  const V = visemes(text), i = V.findIndex(x => u < x.b); if (i < 0) return null;
   const cur = V[i], nxt = V[i + 1], span = cur.b - cur.a, blend = nxt ? clamp((u - (cur.b - span * .35)) / (span * .35), 0, 1) : 0;
   const A = VIS[cur.v], B = nxt ? VIS[nxt.v] : A;
   return {w: A[0].map((x, k) => x + (B[0][k] - x) * blend), jaw: A[1] + (B[1] - A[1]) * blend};
@@ -209,7 +214,7 @@ function play(on) {
   if (on && ANIM.busy) return;
   ANIM.playing = on; if (on && ANIM.f >= shot().len - 1) ANIM.t = 0;
   const b = $('#tlPlay'); b.setAttribute('aria-pressed', String(on)); b.innerHTML = on ? ICON_PAUSE : ICON_PLAY; b.title = tr(on ? 'Pausa (espacio)' : 'Reproducir (espacio)');
-  if (on) { clearOnion(); animLast = performance.now(); } else setFrame(ANIM.t);
+  voiceStop(); if (on) { voiceCtx(); clearOnion(); animLast = performance.now(); } else setFrame(ANIM.t);
 }
 let animLast = 0;
 function animTick() {
@@ -223,10 +228,11 @@ function animTick() {
     if (ANIM.loop && !ANIM.rec) return ANIM.all && ANIM.shots.length > 1 ? nextShotWhilePlaying(0) : (ANIM.t = 0, undefined);
     ANIM.t = s.len - 1; applyFrame(ANIM.t); play(false); if (ANIM.rec) ANIM.rec.done(); return;
   }
-  applyFrame(ANIM.t); ANIM.f = Math.floor(ANIM.t); drawTimeline();
+  applyFrame(ANIM.t); voiceTick(ANIM.t); ANIM.f = Math.floor(ANIM.t); drawTimeline();
 }
 async function nextShotWhilePlaying(i) {
   if (ANIM.rec) ANIM.rec.pause();
+  VOICE.started.clear();  // the lines of the next shot (a line cut in two goes on sounding: see voiceTick)
   await enterShot(i, 0); ANIM.t = 0; animLast = performance.now();
   if (ANIM.rec) ANIM.rec.resume();
 }
@@ -389,13 +395,20 @@ function addLine(f = ANIM.f) {
   s.lines.push(l); s.lines.sort((a, b) => a.f - b.f); ANIM.sel = {line: s.lines.indexOf(l)}; drawTimeline(); openLineEditor(s.lines.indexOf(l));
 }
 let leIndex = -1, leLen = null;
+// a line typed by hand: once the typing stops, the voice says how long it lasts and where its words fall
+let timeLineT = 0;
+function timeLineLater(l, s) {
+  clearTimeout(timeLineT);
+  timeLineT = setTimeout(async () => { const lang = l.lang || (LANG.slice(0, 2) in VOICE_LANGS ? LANG.slice(0, 2) : 'en'), tm = await lineTiming(l.text, lang, l.voice || voiceOf(chars[l.c], l.c));
+    if (!tm.words) return; if (l.auto) l.len = Math.min(Math.max(2, Math.round(tm.dur * ANIM.fps)), Math.max(2, s.len - l.f)); l.w = lineWords(tm.words, l.text, l.len / ANIM.fps); drawTimeline(); }, 500);
+}
 function openLineEditor(j) {
   const s = shot(), l = s.lines[j]; if (!l) return; leIndex = j; ANIM.sel = {line: j};
   const box = $('#lineEdit'); box.hidden = false;
   chips($('#leChar'), chars.map((_, i) => [String(i), speaker(i)]), String(l.c), v => { l.c = +v; drawTimeline(); applyFrame(ANIM.f); });
   $$('#leChar .chip').forEach((b, i) => b.style.setProperty('--sw', MV_COLS[i % 4]));
   const ta = $('#leText'); ta.value = l.text; setTimeout(() => ta.focus({preventScroll: true}), 0);
-  ta.oninput = () => { l.text = ta.value; if (l.auto) { l.len = Math.min(lineLen(l.text), Math.max(2, s.len - l.f)); leLen.set(sec(l.len)); } visCache.clear(); drawTimeline(); applyFrame(ANIM.f); };
+  ta.oninput = () => { l.text = ta.value; l.w = null; if (l.auto) { l.len = Math.min(lineLen(l.text), Math.max(2, s.len - l.f)); leLen.set(sec(l.len)); } visCache.clear(); timeLineLater(l, s); drawTimeline(); applyFrame(ANIM.f); };
   leLen.set(sec(l.len)); $('#leAuto').checked = !!l.auto;
   drawTimeline();
 }
@@ -468,6 +481,7 @@ function buildAnimUI() {
   ANIM.lenEl = slider($('#tlLenBox'), {id: 'tlLen', label: 'Duración de este plano', min: .5, max: 30, step: .5, value: 4, fmt: v => dec(v) + ' s', input: v => setShotLen(v * ANIM.fps)});
   const chk = (id, key, after) => { const el = $(id); el.checked = ANIM[key]; el.onchange = () => { ANIM[key] = el.checked; after && after(); }; };
   chk('#tlAuto', 'auto'); chk('#tlOnion', 'onion', updateOnion); chk('#tlEase', 'ease', () => setFrame(ANIM.f)); chk('#tlLoop', 'loop'); chk('#tlAll', 'all'); chk('#tlSubs', 'subs', () => showSubs(ANIM.f));
+  { const v = $('#tlVoice'); v.checked = VOICE.on; v.onchange = () => { VOICE.on = v.checked; store.set('cdp.tts', VOICE.on); if (!VOICE.on) voiceStop(); }; }
   $('#tlMotion').onclick = () => { const p = $('#mvMotion'); p.hidden = !p.hidden; $('#tlMotion').setAttribute('aria-expanded', String(!p.hidden)); $('#tlOpts').hidden = true; if (!p.hidden) syncMotionUI(); };
   buildMotionUI();
   $('#tlMore').onclick = () => { $('#mvMotion').hidden = true; const p = $('#tlOpts'); p.hidden = !p.hidden; $('#tlMore').setAttribute('aria-expanded', String(!p.hidden)); if (!p.hidden) { ANIM.lenEl.set(sec(shot().len)); setPressed($('#tlFps'), String(ANIM.fps)); } };
@@ -519,13 +533,14 @@ function burnSubs(cv, f) {
 function recordVideo(range, onDone) {
   if (!canvas.captureStream || !window.MediaRecorder) { toast(tr('Este navegador no puede grabar vídeo.')); return onDone && onDone(); }
   // MP4 where the browser can make it (Photoshop and Clip Studio import it as a video layer), WebM otherwise
-  const type = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)), mp4 = /mp4/.test(type || '');
+  const talk = VOICE.on && ANIM.shots.some(s => s.lines.some(l => l.text.trim()));
+  const type = [...(talk ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'] : []), 'video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)), mp4 = /mp4/.test(type || '');
   const start = async () => {
     if (range === 'movie' && ANIM.cur !== 0) await enterShot(0, 0); else setFrame(0);
-    const stream = canvas.captureStream(30), rec = new MediaRecorder(stream, type ? {mimeType: type, videoBitsPerSecond: 8e6} : {}), parts = [], hide = exportHide(), all = ANIM.all, loop = ANIM.loop;
+    const voice = talk ? voiceStream() : null, stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...(voice ? voice.getAudioTracks() : [])]), rec = new MediaRecorder(stream, type ? {mimeType: type, videoBitsPerSecond: 8e6} : {}), parts = [], hide = exportHide(), all = ANIM.all, loop = ANIM.loop;
     ANIM.all = range === 'movie'; ANIM.loop = false;
     rec.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
-    rec.onstop = () => { hide(); ANIM.rec = null; ANIM.all = all; ANIM.loop = loop; stream.getTracks().forEach(t => t.stop());
+    rec.onstop = () => { hide(); voiceStreamEnd(); ANIM.rec = null; ANIM.all = all; ANIM.loop = loop; stream.getTracks().forEach(t => t.stop());
       new Blob(parts, {type: mp4 ? 'video/mp4' : 'video/webm'}).arrayBuffer().then(b => { saveFile(`animacion-${stamp()}.${mp4 ? 'mp4' : 'webm'}`, new Uint8Array(b), mp4 ? 'video/mp4' : 'video/webm'); onDone && onDone(); }); };
     ANIM.rec = {pause: () => rec.state === 'recording' && rec.pause(), resume: () => rec.state === 'paused' && rec.resume(), done: () => rec.stop()};
     clearOnion(); rec.start(); play(true);
