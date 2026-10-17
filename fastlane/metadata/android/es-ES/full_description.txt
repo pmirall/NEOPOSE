@@ -2,7 +2,7 @@
 <ul>
 <li><b>Posado</b>: IK (arrastra manos, pies y pelvis), FK (arrastra cualquier articulación y solo gira su hueso) o gira cada articulación. Clava manos y pies en su sitio, mezcla dos poses y sienta a los personajes en sillas, sofás o camas. Casi 100 poses para una a cuatro personas, gestos de manos, mirada y expresiones faciales.</li>
 <li><b>Pose desde una foto</b>: la pose de una persona en una imagen, detectada en el propio dispositivo (BlazePose de MediaPipe), con la foto sobre el lienzo como referencia.</li>
-<li><b>Cuerpo</b>: anatomía humana de MakeHuman desde la infancia hasta la vejez, con género, musculatura, peso, altura y estilización, de realista a chibi. Diez peinados en cualquier color y una vista del esqueleto real.</li>
+<li><b>Cuerpo</b>: anatomía humana de MakeHuman desde la infancia hasta la vejez, con género, musculatura, peso, altura y estilización, de realista a chibi. 28 peinados en cualquier color y una vista del esqueleto real.</li>
 <li><b>Anthro</b>: 19 especies (cánidos, felinos, osos y mapaches, conejos y ungulados, dragones) con cabezas esculpidas, pelaje y marcas que se ven desde cualquier lado (vientre, rayas, manchas, rosetas, calcetines, antifaz, anillos…), híbridos, colas con forma, porte y movimiento propio, zarpas con almohadillas, pezuñas y garras, patas digitígradas, plantígradas o con pezuña, hocico regulable y expresiones con orejas y cola.</li>
 <li><b>Avatares</b>: importa tu propio VRM, GLB o FBX humanoide, o elige uno libre de la galería Open Source Avatars (necesita Internet).</li>
 <li><b>Ropa</b>: 469 prendas que se adaptan a cualquier cuerpo y pose.</li>
@@ -18,6 +18,6 @@
 <li><b>Movilidad</b>: poses y animaciones con muletas, bastón, andador y silla de ruedas.</li>
 <li><b>Exportación</b>: PNG hasta A3 a 300 ppp, hojas de giro, mapas para IA (profundidad, normales, OpenPose, líneas), malla GLB posada y BVH.</li>
 <li><b>Dibujo</b>: acabados de construcción, volumen, lápiz, valores y silueta, guías y capa de boceto; línea de acción, equilibrio, exageración y estirar y encoger también en la imagen fija. Práctica de gesto con temporizador, clases y cuerpos, ropa y escenarios al azar.</li>
-<li>La escena se guarda sola, tema claro u oscuro, aspecto de cuaderno de papel. En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>
+<li>Trabajos enteros en archivos .neopose (con la película, el boceto y los avatares importados). La escena se guarda sola, tema claro u oscuro, aspecto de cuaderno de papel, posado con el teclado y tutoriales prácticos. En inglés y español, y en catalán, francés, portugués, alemán e italiano (traducción automática pendiente de revisión). Las escenas se comparten con un enlace.</li>
 </ul>
 <p>Recursos: MakeHuman (CC0), Poly Haven (CC0), BodyParts3D (CC BY 4.0) y siete cabezas esculpidas de Sketchfab (CC BY 4.0). Créditos completos en el repositorio del código.</p>

@@ -95,6 +95,13 @@
     <display_length compare="ge">768</display_length>
   </requires>
   <releases>
+    <release version="1.6.0" date="2026-10-17">
+      <description>
+        <p>28 hairstyles (eighteen new ones from the MakeHuman community: quiff, pompadour, pixie, cornrows, afro puffs, buns, updos, braids, bobs with bangs and long styles), clothes that open where an anthro's tail comes out, and fluffy fur tufts that take the coat's colour.</p>
+        <p>Whole works saved as .neopose files: cast, coats, clothes, set, camera, the film with all its shots, the sketch and imported avatars; double-click opens them. The 3D model export carries an anthro's coat and markings as vertex colours.</p>
+        <p>Posing with the keyboard with screen reader announcements, hands-on tutorials for animating, script to film and coats, reviewed Catalan, French, Portuguese, German and Italian translations, and a canvas that rests when nothing moves to save battery on phones.</p>
+      </description>
+    </release>
     <release version="1.5.0" date="2026-10-17">
       <description>
         <p>Anthro in depth: 19 species by family with sculpted heads and hybrids, coats and markings painted on the model (belly, stripes, spots, rosettes, socks, masks, ear and tail tips, rings) with over 40 reference coats, tails with each species' shape and carriage that follow the motion and wag, paws with pads, hoof-hands and claws, an adjustable snout, and expressions with ears and tail.</p>

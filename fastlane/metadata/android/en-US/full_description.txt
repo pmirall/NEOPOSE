@@ -2,7 +2,7 @@
 <ul>
 <li><b>Posing</b>: IK (drag hands, feet and hips), FK (drag any joint and only its bone turns) or rotate each joint. Pin hands and feet in place, blend two poses, seat characters on chairs, sofas or beds. Almost 100 poses for one to four characters, hand gestures, gaze and facial expressions.</li>
 <li><b>Pose from a photo</b>: the pose of a person in a picture, found on the device itself (MediaPipe BlazePose), with the photo kept over the canvas as a reference.</li>
-<li><b>Body</b>: human anatomy from MakeHuman from childhood to old age, with gender, muscle, weight, height and stylisation, from realistic to chibi. Ten hairstyles in any colour, and a real skeleton view.</li>
+<li><b>Body</b>: human anatomy from MakeHuman from childhood to old age, with gender, muscle, weight, height and stylisation, from realistic to chibi. 28 hairstyles in any colour, and a real skeleton view.</li>
 <li><b>Anthro</b>: 19 species (canids, felines, bears and raccoons, rabbits and hoofed animals, dragons) with sculpted heads, coats and markings you can see from any side (belly, stripes, spots, rosettes, socks, masks, rings…), hybrids, tails with their own shape, carriage and motion, paws with pads, hoof-hands and claws, digitigrade, plantigrade or hoofed legs, an adjustable snout and expressions with ears and tail.</li>
 <li><b>Avatars</b>: import your own humanoid VRM, GLB or FBX, or pick a free one from the Open Source Avatars gallery (needs Internet).</li>
 <li><b>Clothes</b>: 469 garments that fit any body and pose.</li>
@@ -18,6 +18,6 @@
 <li><b>Mobility</b>: poses and animations with crutches, a walking stick, a walking frame and a wheelchair.</li>
 <li><b>Export</b>: PNG up to A3 at 300 ppi, turnaround sheets, AI maps (depth, normals, OpenPose, lines), posed GLB mesh and BVH.</li>
 <li><b>Drawing</b>: construction, volume, pencil, values and silhouette finishes, guides and a sketch layer; line of action, balance, exaggeration and squash and stretch for still pictures too. Gesture practice with a timer, classes and random bodies, clothes and sets.</li>
-<li>The scene saves itself, light or dark theme, a paper notebook look. In English and Spanish, plus Catalan, French, Portuguese, German and Italian (machine translations awaiting review). Scenes can be shared as a link.</li>
+<li>Whole works saved as .neopose files (film, sketch and imported avatars included). The scene saves itself, light or dark theme, a paper notebook look, posing with the keyboard and hands-on tutorials. In English and Spanish, plus Catalan, French, Portuguese, German and Italian (machine translations awaiting review). Scenes can be shared as a link.</li>
 </ul>
 <p>Assets: MakeHuman (CC0), Poly Haven (CC0), BodyParts3D (CC BY 4.0) and seven sculpted heads from Sketchfab (CC BY 4.0). Full credits in the source repository.</p>
