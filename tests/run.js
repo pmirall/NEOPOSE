@@ -140,7 +140,11 @@ const SUITES = {
   async hair(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
     await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(500);
-    ok(await A(() => document.querySelectorAll('#hairGrid .hairItem').length) === 11, 'every hairstyle has a tile, plus bald');
+    const tiles = await A(() => document.querySelectorAll('#hairGrid .hairItem').length);
+    ok(tiles >= 29, `every hairstyle has a tile, plus bald (${tiles})`);
+    ok(/Elvaerwyn \(CC-BY/.test(await A(() => document.querySelector('#hairGrid .hairItem[data-v="h-elvs_micky_afro"]').title)), 'a CC BY hairstyle names its author');
+    await page.click('#hairGrid .hairItem[data-v="h-elvs_braided_rows"]'); await page.waitForTimeout(3500);
+    ok(await A(() => { const m = window.__cdp.mq; return !!(m.hairG && m.hairG.d && m.hairG.spec.id === 'h-elvs_braided_rows'); }), 'a community hairstyle (cornrows) is worn');
     await page.click('#hairGrid .hairItem[data-v="h-long01"]'); await page.waitForTimeout(2000);
     await page.click('#hairSw button[data-c="#c7a066"]'); await page.waitForTimeout(300);
     let s = await A(() => { const m = window.__cdp.mq; return {g: !!(m.hairG && m.hairG.d), col: m.hairG && '#' + m.hairG.U.uColA.value.getHexString()}; });
@@ -149,7 +153,7 @@ const SUITES = {
     await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(2500);
     s = await A(() => { const m = window.__cdp.mq; return {kept: m.garments.includes(m.hairG), cards: document.querySelectorAll('#garmentList .garment').length, outfit: m.outfit.length}; });
     ok(s.kept && s.cards === s.outfit, `dressing keeps the hair out of the outfit (${JSON.stringify(s)})`);
-    for (let i = 0; i < 3; i++) { await page.click('#undo'); await page.waitForTimeout(600); }
+    for (let i = 0; i < 4; i++) { await page.click('#undo'); await page.waitForTimeout(600); }
     ok(await A(() => !window.__cdp.mq.hairG && !window.__cdp.mq.body.hair), 'undo takes the hair off again');
     await page.click('#redo'); await page.waitForTimeout(1500);
     await page.click('.tab[data-tab=cuerpo]'); await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1500);
@@ -838,6 +842,18 @@ const SUITES = {
     await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(2500); const paw = await finger();
     await A(() => document.querySelector('#handsChips .chip[data-v="humanas"]').click()); await page.waitForTimeout(800); const hum = await finger();
     ok(paw < hum * .8 && await A(() => document.querySelector('#handsChips .chip[data-v="animal"]').textContent) === 'Paws', `a fox has paws: fingers ${(paw * 100).toFixed(1)} cm against ${(hum * 100).toFixed(1)} cm with human hands`);
+    // fluff tufts (and none when sleek); clothes open where the tail comes out and hide the tufts they cover
+    await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(2500);
+    const tufts = await A(() => window.__cdp.mq.fluffGeo ? window.__cdp.mq.fluffGeo.attributes.position.count : 0);
+    await A(() => { const i = document.querySelector('#coatFluff'); i.value = 0; i.dispatchEvent(new Event('input')); }); await page.waitForTimeout(500);
+    ok(tufts > 100 && await A(() => !window.__cdp.mq.fluffGeo), `a fox has fluff tufts (${tufts} vertices) and a sleek one none`);
+    await A(() => { const i = document.querySelector('#coatFluff'); i.value = .6; i.dispatchEvent(new Event('input')); }); await page.waitForTimeout(500);
+    await page.click('.tab[data-tab=ropa]'); await A(() => document.querySelector('#outfitChips .chip[data-v="traje"]').click()); await page.waitForTimeout(4500);
+    const cloth = await A(() => { const m = window.__cdp.mq, g = m.garments.find(g => g.geo && g.d && g.d.n > 500), A = g.geo.attributes.aHide.array, P = g.geo.attributes.position.array, O = m.tailRoot;
+      let hole = 0; for (let i = 0; i < g.d.n; i++) if (A[i] === 1 && Math.hypot(P[i * 3] - O.x, P[i * 3 + 1] - O.y, P[i * 3 + 2] - O.z) < .1) hole++;
+      const F = m.fluffGeo.attributes.aHide.array; let hid = 0; for (const v of F) if (v === 1) hid++; return {hole, hid}; });
+    ok(cloth.hole > 3 && cloth.hid > 0, `a suit opens where the tail comes out (${cloth.hole} vertices) and hides the tufts under its sleeves (${cloth.hid})`);
+    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
     // a furry cast read from a script
     const sp = await A(() => { const s = window.__cdp.furry.speciesOf; return [s('REX', 'REX, un lobo gris, entra.'), s('MIA', 'Mia (gata) mira.'), s('ANA', "ANA can't bear the silence."), s('ZORRO', 'ZORRO: ¡Hola!')].join(); });
     ok(sp === 'lobo,gato,,zorro', `a script's cast: “REX, un lobo”, “Mia (gata)”, the name ZORRO; “can't bear” is not a bear (${sp})`);

@@ -248,7 +248,7 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, paws: mq.body.paws, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, paws: mq.body.paws, fluff: mq.body.fluff, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   // species by family, so the list reads like a field guide
   const fams = [['', ''], ['can', 'Cánidos'], ['fel', 'Felinos'], ['otro', 'Osos y prociónidos'], ['pre', 'Conejos y ungulados'], ['rep', 'Reptiles']], spBox = $('#speciesChips');

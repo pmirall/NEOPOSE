@@ -359,9 +359,10 @@ class Mannequin {
     this.skeleton = new THREE.Skeleton([...this.bones, this.ears.L, this.ears.R, ...muscleBones()]);  // last: the muscles' activations (03b)
     // furry parts use their own skeleton: pelvis, head and the three tail bones
     this.accBones = [this.bones[FIG.jIdx.hips], this.bones[FIG.jIdx.head], ...this.tail, this.bones[FIG.jIdx.jaw], this.ears.L, this.ears.R,
-      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]])), this.bones[FIG.jIdx.wristL], this.bones[FIG.jIdx.wristR]];
+      this.bones[FIG.jIdx.ankleL], this.bones[FIG.jIdx.ankleR], ...['L', 'R'].flatMap(s => [0, 1, 2, 3, 4].map(f => this.bones[FIG.jIdx[`f${s}${f}2`]])), this.bones[FIG.jIdx.wristL], this.bones[FIG.jIdx.wristR],
+      this.bones[FIG.jIdx.chest], this.bones[FIG.jIdx.neck], this.bones[FIG.jIdx.elbowL], this.bones[FIG.jIdx.elbowR]];
     this.accSkeleton = new THREE.Skeleton(this.accBones);
-    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR', 'wristL', 'wristR'];
+    this.accPick = ['hips', 'head', 'tail1', 'tail2', 'tail3', 'jaw', 'earL', 'earR', 'ankleL', 'ankleR', 'wristL', 'wristL', 'wristL', 'wristL', 'wristL', 'wristR', 'wristR', 'wristR', 'wristR', 'wristR', 'wristL', 'wristR', 'chest', 'neck', 'elbowL', 'elbowR'];
     const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
@@ -610,6 +611,11 @@ class Mannequin {
       g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
+    // fluff tufts are skinned like the skin under them: the body's skeleton, not the accessories'
+    this.fluffGeo = null;
+    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, this.lib[this.style]); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
+      this.group.add(fm); fm.bind(this.skeleton, I0); this.acc.push(fm); this.meshes.push(fm);
+      if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.skeleton, I0); this.acc.push(o); this.hulls.push(o); } } }
     const I = new THREE.Matrix4();
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];

@@ -5,6 +5,10 @@ Malla base, esqueleto, objetivos de forma y las 470 prendas proceden de [MakeHum
 
 Los 10 peinados, el envejecimiento (hasta 90 años) y las expresiones faciales humanas también son recursos de sistema de MakeHuman (CC0): `tools/makehuman/build_hair.py` y `build_ext.py`.
 
+Peinados de la comunidad de MakeHuman (packs de recursos *hair01*, *hair02* y *hair03*, convertidos con `tools/makehuman/build_hair.py`):
+- CC0 1.0: «Corto texturizado» y «Pixie» (Culturalibre), «Bob con flequillo» (Margaret Toigo), «Liso con flequillo» (Cortu), «Larga a capas» (o4saken), «Moño» (RehmanPolanski), «Dos trenzas» y «Moño trenzado» (Elvaerwyn).
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): «Tupé», «Pompadour», «Rizado corto», «Larga ondulada», «Ochentero», «Recogido», «Trenzas pegadas» y «Moños afro» de **Elvaerwyn**; «Coleta de lado» y «Larga voluminosa» de **Culturalibre**. Las texturas de «Dos trenzas» y «Moño trenzado» se han pasado a grises neutros para poder teñirlas.
+
 Las complexiones y los ajustes avanzados del cuerpo (grasa y músculo por zonas, proporciones, longitudes y formas corporales) usan los objetivos de modelado de MakeHuman (CC0), horneados con `tools/makehuman/build_body.py` en `app/figure-body.txt`.
 
 ## Esqueleto: BodyParts3D (CC BY 4.0)

@@ -48,7 +48,7 @@ function renderHairUI() {
   grid.classList.toggle('off', !!why);
   for (const h of [{id: '', title: tr('Sin pelo')}, ...HAIR.list]) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'hairItem'; b.dataset.v = h.id;
-    b.setAttribute('aria-pressed', String(h.id === cur)); b.title = h.title; b.disabled = !!why;
+    b.setAttribute('aria-pressed', String(h.id === cur)); b.title = h.title + (h.license && h.license !== 'CC0' ? ` · ${h.author} (${h.license})` : ''); b.disabled = !!why;  // CC BY hair carries its author
     b.innerHTML = h.thumb ? `<img alt="" src="${h.thumb}">` : '<span class="bald" aria-hidden="true"></span>';
     const t = document.createElement('span'); t.className = 'lt'; t.textContent = h.title; b.appendChild(t);
     b.onclick = () => { setHair(mq, h.id); renderHairUI(); tourEvent('body'); pushHistory(); };

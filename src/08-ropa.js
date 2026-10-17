@@ -254,9 +254,9 @@ function updateBodyHide(m) {
   // 1: skin not drawn · .5: skin drawn (it may show through openings) but its ink outline is not, so it cannot poke through loose cloth
   for (const g of order) if (g.spec.hide !== false) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }
   if (m.mouthOpen && m.anthro && m.anthro.lip) for (const i of m.anthro.lip) H[i] = 1;
-  m.geo.attributes.aHide.needsUpdate = true;
+  m.geo.attributes.aHide.needsUpdate = true; if (typeof hideFluff === 'function') hideFluff(m, H);
   // garments under others: hidden wherever an outer garment lies over them (or they poke out through it a little)
-  const outer = [];
+  const outer = [], hole = tailHole(m);
   for (let k = order.length - 1; k >= 0; k--) {
     const g = order[k], d = g.d, A = g.geo.attributes.aHide.array;
     g.rankIdx = k; setLayerOffset(g); A.fill(0);
@@ -264,9 +264,20 @@ function updateBodyHide(m) {
       const P = g.geo.attributes.position.array;
       for (let i = 0; i < d.n; i++) { for (const o of outer) if (coveredBy(o, P[i * 3], P[i * 3 + 1], P[i * 3 + 2])) { A[i] = 1; break; } }
     }
+    if (hole) { const P = g.geo.attributes.position.array; for (let i = 0; i < d.n; i++) if (hole(P[i * 3], P[i * 3 + 1], P[i * 3 + 2])) A[i] = 1; }
     g.geo.attributes.aHide.needsUpdate = true;
     if (g.spec.hide !== false && !(d.alpha > .02)) outer.push(surfaceGrid(g.geo));
   }
+}
+/* a tail hole: trousers, skirts, coats and underwear open where the tail comes out (as anthro clothes are made), a
+   little wider than the tail's root so the tail fills it; along the first stretch of the tail, in its natural carriage */
+const TAIL_ROOT_R = {tupida: .6, gruesa: .75, crin: .6, 'pompón': .85};
+function tailHole(m) {
+  const t = m.hasTail && m.tailRoot && tailOf(m.body); if (!t) return null;
+  const r = (TAIL_ROOT_R[t.shape] || 1) * t.r * m.size * 1.3 + .008, rest = (t.rest || [[0, 0, 0]])[0];
+  const dir = m.tailDir.clone().applyEuler(new THREE.Euler(rest[0] * DEG, rest[1] * DEG, rest[2] * DEG)), len = Math.min(.12 * m.size, t.len * m.size * .3), O = m.tailRoot;
+  return (x, y, z) => { const dx = x - O.x, dy = y - O.y, dz = z - O.z, al = clamp(dx * dir.x + dy * dir.y + dz * dir.z, -.02, len);
+    const ex = dx - dir.x * al, ey = dy - dir.y * al, ez = dz - dir.z * al; return ex * ex + ey * ey + ez * ez < r * r; };
 }
 // shoes with soles lift the figure so it stands on them
 function updateGroundPad(m) {

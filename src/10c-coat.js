@@ -198,6 +198,73 @@ function tailRest(m, n) { const t = tailOf(m && m.body); return t && t.rest ? t.
 // put the tail in its natural carriage (a new species, a new shape)
 function restTail(m) { for (const n of ['tail1', 'tail2', 'tail3']) { const r = tailRest(m, n); if (r) m.joints[n].rotation.set(r[0] * DEG, r[1] * DEG, r[2] * DEG); } }
 
+/* ---------- fluff: the tufts that make a furry silhouette ----------
+   Furry art draws fur as tufts that break the outline where the coat is longest: a ruff on the neck and chest, tufts
+   behind the elbows, cuffs at the wrists and on the hocks. They are cones grown out of the skin, leaning with the hair
+   (down and back), each taking the coat's colour at its root; all of them one mesh. body.fluff: 0 sleek … 1 very fluffy. */
+const FLUFF_DEF = {can: .55, fel: .4, otro: .5, pre: .3, rep: 0};
+const fluffOf = b => b && b.species !== 'humano' ? (b.fluff ?? FLUFF_DEF[(SPECIES[b.species] || {}).fam] ?? .4) : 0;
+function fluffGeo(m) {
+  const k = fluffOf(m.body); if (k < .02) return null;
+  const P = m.geo.attributes.position.array, N = m.geo.attributes.normal.array, E = m.geo.attributes.aEye.array, J = m.J, sz = m.size || 1, nV = FIG.meta.nV;
+  const jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]), ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]);
+  const reg = FIG.region, rng = mulberry(7), parts = [];
+  // spread n roots over the vertices that pass `ok`, far from each other
+  const pick = (ok, n) => { const c = []; for (let i = 0; i < nV; i++) if (!FIG.eye[i] && ok(i)) c.push(i); if (!c.length) return [];
+    const out = [c[Math.floor(rng() * c.length)]];
+    while (out.length < n) { let best = -1, bd = -1; for (let t = 0; t < 40; t++) { const i = c[Math.floor(rng() * c.length)]; let d = Infinity; for (const o of out) d = Math.min(d, (P[i * 3] - P[o * 3]) ** 2 + (P[i * 3 + 1] - P[o * 3 + 1]) ** 2 + (P[i * 3 + 2] - P[o * 3 + 2]) ** 2); if (d > bd) { bd = d; best = i; } } out.push(best); }
+    return out; };
+  const SI = m.geo.attributes.skinIndex.array, SW = m.geo.attributes.skinWeight.array;
+  // a tuft lies along the skin (flat, wide, leaning with the hair) and is skinned like the skin it grows from
+  const tuft = (i, bone, len, w, lean) => {
+    const o = new V3(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]), n = new V3(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]).normalize();
+    const ax = lean.clone().addScaledVector(n, -lean.dot(n)).normalize().multiplyScalar(.85).addScaledVector(n, .35).normalize(), L = len * (.75 + .5 * rng()) * sz, W = w * (.8 + .4 * rng()) * sz;
+    const side = n.clone().cross(ax).normalize(), wts = [0, 1, 2, 3].map(k => [SI[i * 4 + k], SW[i * 4 + k]]).filter(x => x[1] > 0);
+    const g = loft({origin: o.clone().addScaledVector(n, -W * .12), axis: ax, side, radial: 6, sub: 2, n: 2,
+      secs: [[0, W, W * .22], [L * .4, W * .7, W * .16], [L * .78, W * .3, W * .08], [L, .0008, .0008]], bend: .12, weights: () => wts});
+    const ln = g.attributes.aLine.array; for (let v = 3; v < ln.length; v += 4) ln[v] = -1;  // no contour rings on a tuft
+    // the colour of the coat where it grows
+    const c = E.slice(i * 4, i * 4 + 4), cnt = g.attributes.position.count, A = new Float32Array(cnt * 4);
+    for (let v = 0; v < cnt; v++) A.set(c[3] < -1.5 ? c : [0, 0, 0, -2.5], v * 4);
+    g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(cnt), 1));
+    g.setAttribute('aRoot', new THREE.BufferAttribute(new Float32Array(cnt).fill(i), 1)); parts.push(g);
+  };
+  const down = new V3(0, -1, -.25).normalize(), back = new V3(0, -.4, -1).normalize(), s = k;
+  const neck = jp('neck'), chest = jp('chest'), chin = m.anthro ? m.anthro.L.chin : neck.y + .06 * sz;
+  // neck ruff and chest fluff: from under the chin down the breastbone, and round the sides and back of the neck
+  for (const i of pick(i => reg[m.dom[i]] === 'torso' || reg[m.dom[i]] === 'neck' ? P[i * 3 + 1] > chest.y + .02 * sz && P[i * 3 + 1] < chin - .01 * sz && N[i * 3 + 2] > .35 && Math.abs(P[i * 3]) < .075 * sz : false, Math.round(6 + 10 * s)))
+    tuft(i, ACC('chest'), .05 + .06 * s, .022, down);
+  for (const i of pick(i => reg[m.dom[i]] === 'neck' && P[i * 3 + 1] < chin + .02 * sz && N[i * 3 + 2] < .2, Math.round(3 + 8 * s)))
+    tuft(i, ACC('neck'), .04 + .05 * s, .02, new V3(0, -.7, -.3).normalize());
+  for (const sd of ['L', 'R']) {
+    const el = jp('elbow' + sd), wr = jp('wrist' + sd), an = jp('ankle' + sd);
+    // behind the elbow, round the wrist (a cuff pointing to the hand), on the back of the hock
+    for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - el.y) < .035 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('elbow' + sd), .035 + .04 * s, .016, back);
+    for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && P[i * 3 + 1] > wr.y && P[i * 3 + 1] < wr.y + .035 * sz, Math.round(4 + 4 * s))) tuft(i, ACC('wrist' + sd), .025 + .03 * s, .013, new V3(0, -1, 0));
+    if (legSpec(m.body)) for (const i of pick(i => /^(leg|foot)/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - an.y) < .03 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('ankle' + sd), .03 + .035 * s, .015, back);
+  }
+  return parts.length ? mergeLofts(parts) : null;
+}
+// a tuft is not drawn where clothes cover the skin it grows from (called with the body's hide values)
+function hideFluff(m, H) {
+  const g = m.fluffGeo; if (!g) return;
+  const R = g.attributes.aRoot.array, A = g.attributes.aHide.array;
+  for (let i = 0; i < R.length; i++) A[i] = H[R[i]] >= .5 ? 1 : 0;
+  g.attributes.aHide.needsUpdate = true;
+}
+// many small lofted pieces as one mesh (same attributes in each)
+function mergeLofts(parts) {
+  const names = Object.keys(parts[0].attributes), g = new THREE.BufferGeometry(), idx = []; let off = 0;
+  for (const nm of names) {
+    const a0 = parts[0].attributes[nm], tot = parts.reduce((t, p) => t + p.attributes[nm].array.length, 0), arr = new a0.array.constructor(tot); let o = 0;
+    for (const p of parts) { arr.set(p.attributes[nm].array, o); o += p.attributes[nm].array.length; }
+    g.setAttribute(nm, new THREE.BufferAttribute(arr, a0.itemSize));
+  }
+  for (const p of parts) { const I = p.index.array; for (let i = 0; i < I.length; i++) idx.push(I[i] + off); off += p.attributes.position.count; p.dispose(); }
+  g.setIndex(idx); return g;
+}
+const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
 /* ---------- the panel: Pelaje ---------- */
 const coatSl = {};
 function buildCoatUI() {
@@ -209,6 +276,8 @@ function buildCoatUI() {
     inp.onchange = () => pushHistory();
     l.append(inp, document.createTextNode(tr(label))); $('#coatCols').append(l);
   });
+  coatSl.fluff = slider($('#fluffBox'), {id: 'coatFluff', label: 'Pelo esponjoso', min: 0, max: 1, step: .01, value: .5, fmt: v => v < .02 ? tr('Pelo liso') : pctFmt(v),
+    input: v => { mq.body.fluff = v; rebuildActive(); }, change: pushHistory});
   coatSl.sock = slider($('#coatSockBox'), {id: 'coatSock', label: 'Altura de los calcetines', min: 0, max: 1, step: .01, value: .72, fmt: pctFmt,
     input: v => editCoat(c => { c.sock = 1 - v * .9; }, false), change: pushHistory});
   coatSl.tip = slider($('#coatTipBox'), {id: 'coatTip', label: 'Punta de la cola', min: .05, max: 1, step: .01, value: .25, fmt: pctFmt,
@@ -223,7 +292,7 @@ function editCoat(fn, hist = true) {
 function syncCoatUI(light) {
   const box = $('#coatBox'); if (!box) return;
   const anthro = mq.body.species !== 'humano' && !mq.avatar; box.hidden = !anthro; if (!anthro) return;
-  const c = coatOf(mq.body), sp = mq.body.species;
+  const c = coatOf(mq.body), sp = mq.body.species; if (coatSl.fluff) coatSl.fluff.set(fluffOf(mq.body));
   if (!light) {
     const list = coatPresetsFor(sp).concat(Object.entries(COATS).filter(([, p]) => !p.for.includes(sp) && p.for.includes(headSp(mq.body))));
     chips($('#coatChips'), [['', 'Sin color'], ...list.map(([k, p]) => [k, p.label])], c ? c.preset || '*' : '', id => {
