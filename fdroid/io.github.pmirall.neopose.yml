@@ -83,9 +83,28 @@ Builds:
       - android/app/src/main/assets/public/vendor/pose
       - android/app/src/main/assets/public/vendor/nsfw
 
+  - versionName: 1.6.0
+    versionCode: 10600
+    commit: c24d4a95337e0c2f1f87dcf815322d88cf3a917d
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y nodejs npm
+    init: cd ../.. && npm ci --ignore-scripts
+    gradle:
+      - yes
+    prebuild: cd ../.. && python3 build.py && python3 tools/android_sync.py
+    scandelete:
+      - node_modules
+    scanignore:
+      - app/vendor/pose
+      - app/vendor/nsfw
+      - android/app/src/main/assets/public/vendor/pose
+      - android/app/src/main/assets/public/vendor/nsfw
+
 AllowedAPKSigningKeys: 119baa49a503498ecff0de520c273797ec54c6617fc7af0620f0d3fb5416a7f6
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.5.0
-CurrentVersionCode: 10500
+CurrentVersion: 1.6.0
+CurrentVersionCode: 10600
