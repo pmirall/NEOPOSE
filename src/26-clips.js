@@ -313,6 +313,7 @@ async function importAnimFile(file) {
 /* ---------- the gallery window ---------- */
 const AG = {cat: 'todas', q: '', sel: null, prev: null, t: 0, opts: {loops: 1, speed: 1, inPlace: false}};
 async function openAnimGallery() {
+  tourEvent('clips');
   $('#animGallery').hidden = false; $('#agMsg').textContent = CLIPS.lib ? '' : tr('Cargando la galería…');
   await loadClipLibrary(); $('#agMsg').textContent = '';
   if (!AG.sel) AG.sel = CLIPS.lib[0];

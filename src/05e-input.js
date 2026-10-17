@@ -126,6 +126,34 @@ tc.addEventListener('objectChange', () => {
   } else if (s && s.kind === 'prop' && s.obj.position.y < 0) s.obj.position.y = 0;
 });
 tc.addEventListener('mouseUp', () => { if (state.sel) pushHistory(); });
+/* ---------- posing with the keyboard ----------
+   The canvas takes the focus (Tab): J and Shift+J go from joint to joint, the arrows turn the one chosen (up/down
+   bend it, left/right twist it, with Shift the third axis; 5° a press, 1° with Alt), within the joint's limits, with
+   symmetry and pins as when it is dragged. What is chosen and its angles are read out to screen readers. */
+function announce(msg) { const l = $('#srLive'); if (!l) return; l.textContent = ''; requestAnimationFrame(() => { l.textContent = msg; }); }
+const kbJoints = () => DOT_JOINTS.filter(n => mq.joints[n] && !(n.startsWith('tail') && !mq.hasTail) && !(n.startsWith('ear') && !mq.hasEars));
+let kbHistT = 0;
+{
+  const gl = $('#gl'); gl.tabIndex = 0; gl.setAttribute('role', 'application');
+  gl.setAttribute('aria-label', tr('Lienzo 3D. J y Mayús+J eligen una articulación; las flechas la giran (Mayús: el tercer eje; Alt: de 1 en 1).'));
+  gl.addEventListener('keydown', e => {
+    if (practice.active || sk.on || topModal() || e.ctrlKey || e.metaKey) return;
+    if (e.key.toLowerCase() === 'j') {
+      const L = kbJoints(), i = L.indexOf(state.selected), n = L[((i < 0 ? (e.shiftKey ? 0 : -1) : i) + (e.shiftKey ? -1 : 1) + L.length) % L.length];
+      select(n); announce(JOINT_LABEL[n]); e.preventDefault(); e.stopPropagation(); return;
+    }
+    if (!/^Arrow/.test(e.key) || !state.selected || !state.sel || state.sel.kind !== 'joint') return;
+    e.preventDefault(); e.stopPropagation();  // the timeline's arrows are for when the canvas does not have the focus
+    const n = state.selected, j = mq.joints[n], d = (e.altKey ? 1 : 5) * DEG * (e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : -1);
+    const ax = e.key === 'ArrowUp' || e.key === 'ArrowDown' ? 'x' : e.shiftKey ? 'z' : 'y';
+    j.rotation.order = 'XYZ'; j.rotation[ax] += d;
+    if (HINGE[n]) j.rotation.set(clamp(j.rotation.x, HINGE[n][0] * DEG, HINGE[n][1] * DEG), 0, 0, 'XYZ');
+    if (state.sym) mirrorJoint(mq, n); enforcePins(mq, n); syncJointSliders(); if (typeof wake === 'function') wake();
+    clearTimeout(kbHistT); kbHistT = setTimeout(pushHistory, 500);
+    const r = j.rotation, deg = v => Math.round(v / DEG);
+    announce(HINGE[n] ? `${JOINT_LABEL[n]}: ${deg(r.x)}°` : `${JOINT_LABEL[n]}: ${deg(r.x)}°, ${deg(r.y)}°, ${deg(r.z)}°`);
+  });
+}
 addEventListener('keydown', e => {
   if (e.target.matches('input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select') || topModal()) return;
   const k = e.key.toLowerCase();

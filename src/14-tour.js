@@ -13,11 +13,39 @@ const TOUR_STEPS = [
   {id: 'anim', title: 'Dale movimiento', text: 'Pulsa Animar: posa en dos momentos de la línea de tiempo y el paso de una pose a otra se hace solo.', target: '#animBtn', done: 'anim'},
   {id: 'export', title: 'Llévatelo a tu dibujo', text: 'Pulsa Exportar: imagen PNG, hoja de giro, mapas para IA o modelo 3D.', target: '#exportBtn', done: 'export'}
 ];
-for (const st of TOUR_STEPS) { st.title = tr(st.title); st.text = tr(st.text); }
-const TOUR = {on: false, i: 0, el: null};
+// short hands-on tutorials for the big features, from Help or Ctrl+K; a step already done (skip) is passed by
+const TOURS = {
+  basico: TOUR_STEPS,
+  animar: [
+    {id: 'a-open', title: 'Abre la línea de tiempo', text: 'Pulsa Animar: abajo aparecen los planos y la línea de tiempo.', target: '#animBtn', done: 'anim', skip: () => ANIM.open},
+    {id: 'a-key1', title: 'Primera pose', text: 'Elige una pose en la pestaña Pose: se guarda como clave en este fotograma.', target: '#poseGrid', tab: 'pose', done: 'key'},
+    {id: 'a-move', title: 'Avanza en el tiempo', text: 'Arrastra en la línea de tiempo o pulsa → unas cuantas veces para ir un segundo más adelante.', target: '#tlTrack', done: 'frame'},
+    {id: 'a-key2', title: 'Segunda pose', text: 'Elige otra pose. El paso de una a otra se calcula solo.', target: '#poseGrid', tab: 'pose', done: 'key'},
+    {id: 'a-play', title: 'Reprodúcelo', text: 'Pulsa reproducir (o la barra espaciadora).', target: '#tlPlay', done: 'play'},
+    {id: 'a-style', title: 'Dale estilo', text: 'Abre Interpretación (el botón de la curva) y prueba «Cartoon»: anticipación, rebote y arrastre.', target: '#tlMotion', done: 'motion'},
+    {id: 'a-clips', title: 'Movimientos listos', text: 'Animaciones trae andar, correr, saltar, luchar… para añadirlos al plano.', target: '#tlClips', done: 'clips'}
+  ],
+  guion: [
+    {id: 'g-open', title: 'Abre la línea de tiempo', text: 'Pulsa Animar.', target: '#animBtn', done: 'anim', skip: () => ANIM.open},
+    {id: 'g-script', title: 'Abre el guion', text: 'Pulsa Guion en la barra de la línea de tiempo.', target: '#tlScript', done: 'script'},
+    {id: 'g-write', title: 'Escribe una escena', text: 'Escribe personajes que hablan y hacen cosas, por ejemplo «ANA: ¡Hola!» y «Luis entra y se sienta.», o usa el ejemplo.', target: '#scText', done: 'scriptText'},
+    {id: 'g-go', title: 'Crea la película', text: 'Pulsa «Crear la película»: reparto, escenario, acciones, voces, subtítulos y planos salen solos.', target: '#scGo', done: 'film'},
+    {id: 'g-play', title: 'Mírala', text: 'Reprodúcela. Cada plano se puede retocar como cualquier otro.', target: '#tlPlay', done: 'play'}
+  ],
+  pelaje: [
+    {id: 'p-sp', title: 'Elige un animal', text: 'En Cuerpo → Especie elige uno: lobo, zorro, tigre, mapache…', target: '[data-sec=especie]', tab: 'cuerpo', done: 'species', skip: () => mq.body.species !== 'humano'},
+    {id: 'p-coat', title: 'Un pelaje de referencia', text: 'En Pelaje y marcas toca uno de los pelajes de la especie.', target: '#coatChips', tab: 'cuerpo', done: 'coat'},
+    {id: 'p-mark', title: 'Tus marcas', text: 'Toca una marca para ponerla clara, otra vez para oscura y otra para quitarla; las muestras cambian los colores.', target: '#coatMarks', tab: 'cuerpo', done: 'mark'},
+    {id: 'p-tail', title: 'La cola', text: 'Prueba otra forma de cola o cambia su largo y su grosor.', target: '#tailUI', tab: 'cuerpo', done: 'tail'},
+    {id: 'p-expr', title: 'Lenguaje corporal', text: 'En Pose → Cara, cada expresión mueve a la vez boca, orejas y cola.', target: '#exprChips', tab: 'pose', done: 'expr'}
+  ]
+};
+const TOUR_NAMES = {basico: 'Lo básico', animar: 'Animar', guion: 'Del guion a la película', pelaje: 'Pelaje y marcas'};
+for (const L of Object.values(TOURS)) for (const st of L) { st.title = tr(st.title); st.text = tr(st.text); }
+const TOUR = {on: false, i: 0, el: null, steps: TOUR_STEPS};
 function tourEvent(name) {
   if (!TOUR.on) return;
-  const st = TOUR_STEPS[TOUR.i]; if (!st || st.done !== name || TOUR.busy) return;
+  const st = TOUR.steps[TOUR.i]; if (!st || st.done !== name || TOUR.busy) return;
   TOUR.busy = true; TOUR.el.classList.add('ok'); const i = TOUR.i; setTimeout(() => { if (TOUR.on && TOUR.i === i) tourGo(i + 1); }, 750);
 }
 function handleRect(id) {
@@ -36,7 +64,7 @@ function tourRect(st) {
 }
 function tourPlace() {
   if (!TOUR.on) return;
-  const st = TOUR_STEPS[TOUR.i], r = tourRect(st), hole = $('#tourHole'), card = TOUR.el;
+  const st = TOUR.steps[TOUR.i], r = tourRect(st), hole = $('#tourHole'), card = TOUR.el;
   if (r) { const pad = 6; Object.assign(hole.style, {left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px'}); hole.hidden = false; } else hole.hidden = true;
   // card: next to the target where it fits, else at the bottom (at the top on a phone when the target is in the sheet)
   const cw = Math.min(340, innerWidth - 24), ch = card.offsetHeight || 180, inSheet = r && innerWidth <= 760 && typeof st.target === 'string' && $(st.target.split(',')[0].trim())?.closest('#book');
@@ -52,8 +80,9 @@ function tourPlace() {
 }
 function tourGo(i) {
   TOUR.i = i; TOUR.busy = false;
-  if (i >= TOUR_STEPS.length) return tourEnd(true);
-  const st = TOUR_STEPS[i];
+  if (i >= TOUR.steps.length) return tourEnd(true);
+  const st = TOUR.steps[i];
+  if (st.skip && st.skip()) return tourGo(i + 1);  // already done
   if (st.tab) {
     showTab(st.tab); setPanel(true); const d = document.querySelector(st.target.split(',')[0].trim()); const sec = d && d.closest('details.sec'); if (sec) sec.open = true;
     if (typeof sheetOn === 'function' && sheetOn()) setSheet('full');
@@ -64,14 +93,15 @@ function tourGo(i) {
   if (st.before) st.before();
   const c = TOUR.el; c.classList.remove('ok');
   c.querySelector('.tt').textContent = st.title; c.querySelector('.tx').textContent = st.text;
-  c.querySelector('.tn').textContent = tr('{i} de {n}', {i: i + 1, n: TOUR_STEPS.length});
-  c.querySelector('.dots').innerHTML = TOUR_STEPS.map((_, k) => `<i class="${k < i ? 'd' : k === i ? 'c' : ''}"></i>`).join('');
-  c.querySelector('[data-a=next]').textContent = tr(i === TOUR_STEPS.length - 1 ? 'Terminar' : 'Saltar paso');
+  c.querySelector('.tn').textContent = tr('{i} de {n}', {i: i + 1, n: TOUR.steps.length});
+  c.querySelector('.dots').innerHTML = TOUR.steps.map((_, k) => `<i class="${k < i ? 'd' : k === i ? 'c' : ''}"></i>`).join('');
+  c.querySelector('[data-a=next]').textContent = tr(i === TOUR.steps.length - 1 ? 'Terminar' : 'Saltar paso');
   if (st.done === 'orbit') TOUR.cam0 = camera.position.clone().sub(controls.target).normalize();
   requestAnimationFrame(tourPlace);
 }
-function tourStart() {
+function tourStart(name = 'basico') {
   closeWelcome(); closeHelp && closeHelp();
+  TOUR.steps = TOURS[typeof name === 'string' && TOURS[name] ? name : 'basico'];
   TOUR.on = true; $('#tour').hidden = false; TOUR.el = $('#tourCard');
   tourGo(0);
 }
@@ -83,16 +113,17 @@ function openWelcome() { $('#welcome').hidden = false; $('#wStart').focus(); }
 function closeWelcome() { $('#welcome').hidden = true; store.set('cdp.welcomed', true); }
 function initTour() {
   $('#wStart').onclick = tourStart; $('#wSkip').onclick = closeWelcome;
-  $('#helpTour').onclick = tourStart;
+  $('#helpTour').onclick = () => tourStart('basico');
+  $$('#helpTours [data-tour]').forEach(b => b.onclick = () => tourStart(b.dataset.tour));
   $('#tourCard').addEventListener('click', e => { const a = e.target.dataset.a; if (a === 'next') tourGo(TOUR.i + 1); else if (a === 'quit') tourEnd(false); });
   addEventListener('resize', tourPlace);
   // the camera step completes after a clear orbit; the IK target follows the hand while the camera moves
   setInterval(() => {
     if (!TOUR.on) return;
-    const st = TOUR_STEPS[TOUR.i];
-    if (st.done === 'orbit' && TOUR.cam0 && camera.position.clone().sub(controls.target).normalize().angleTo(TOUR.cam0) > .35) tourEvent('orbit');
+    const st = TOUR.steps[TOUR.i];
+    if (st && st.done === 'orbit' && TOUR.cam0 && camera.position.clone().sub(controls.target).normalize().angleTo(TOUR.cam0) > .35) tourEvent('orbit');
   }, 200);
-  const follow = () => { if (TOUR.on && typeof TOUR_STEPS[TOUR.i]?.target === 'function') tourPlace(); requestAnimationFrame(follow); };
+  const follow = () => { if (TOUR.on && typeof TOUR.steps[TOUR.i]?.target === 'function') tourPlace(); requestAnimationFrame(follow); };
   requestAnimationFrame(follow);
   if (!store.get('cdp.welcomed', false)) openWelcome();
 }

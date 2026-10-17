@@ -250,7 +250,7 @@ function syncExprUI() {
     exprFor = kind;
     if (human) chips($('#exprChips'), Object.entries(FACE_EXPR).map(([k, v]) => [k, v.label]), mq.body.expr || 'neutra', id => {
       mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); });
-    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); syncJointSliders(); pushHistory(); });
+    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); syncJointSliders(); pushHistory(); tourEvent('expr'); });
   }
   setPressed($('#exprChips'), human ? mq.body.expr || 'neutra' : mq.aexpr || '');
   $('#exprAmtBox').hidden = !human || !mq.body.expr;
@@ -277,10 +277,10 @@ function buildHeadUI() {
     input: v => { mq.body.snout = v > .985 ? undefined : v; rebuildActive(); }, change: pushHistory});
   chips($('#handsChips'), [['animal', 'Zarpas'], ['humanas', 'Humanas']], 'animal', v => { mq.body.paws = v === 'animal' ? undefined : v; rebuildActive(true); syncHeadUI(); pushHistory(); });
   $('#padsChk').onchange = e => { mq.body.pads = e.target.checked; rebuildActive(true); pushHistory(); };
-  chips($('#tailChips'), TAIL_SHAPES, '', v => { mq.body.tail = {...(mq.body.tail || {}), shape: v === (SPECIES[mq.body.species].tail || {}).shape ? undefined : v}; rebuildActive(true); syncHeadUI(); pushHistory(); });
+  chips($('#tailChips'), TAIL_SHAPES, '', v => { mq.body.tail = {...(mq.body.tail || {}), shape: v === (SPECIES[mq.body.species].tail || {}).shape ? undefined : v}; rebuildActive(true); syncHeadUI(); pushHistory(); tourEvent('tail'); });
   chips($('#tailMoveChips'), [['quieta', 'Quieta'], ['viva', 'Viva'], ['meneo', 'Meneo'], ['rapido', 'Meneo rápido']], 'viva', v => { mq.body.tailMove = v === 'viva' ? undefined : v; if (ANIM.open) setFrame(ANIM.f); pushHistory(); });
   headSl.tlen = slider($('#tailLenBox'), {id: 'tailLen', label: 'Largo de la cola', min: .3, max: 2, step: .01, value: 1, def: 1, fmt: pctFmt,
-    input: v => { mq.body.tail = {...(mq.body.tail || {}), len: v}; rebuildActive(); }, change: pushHistory});
+    input: v => { mq.body.tail = {...(mq.body.tail || {}), len: v}; rebuildActive(); }, change: () => { pushHistory(); tourEvent('tail'); }});
   headSl.tr = slider($('#tailThickBox'), {id: 'tailThick', label: 'Grosor de la cola', min: .4, max: 2, step: .01, value: 1, def: 1, fmt: pctFmt,
     input: v => { mq.body.tail = {...(mq.body.tail || {}), r: v}; rebuildActive(); }, change: pushHistory});
   syncHeadUI();

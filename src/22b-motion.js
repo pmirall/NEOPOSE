@@ -147,7 +147,7 @@ function motionTrack() { return typeof ANIM.track === 'number' ? ANIM.track : Ma
 function setMotion(patch, all) {
   const s = shot(); if (!s) return; s.motion = s.motion || {};
   for (const ci of all ? chars.map((_, i) => i) : [motionTrack()]) s.motion[ci] = {...motionOf(s, ci), ...patch};
-  setFrame(ANIM.f); syncMotionUI(); if (typeof motionTrailsDirty === 'function') motionTrailsDirty();
+  setFrame(ANIM.f); syncMotionUI(); if (typeof motionTrailsDirty === 'function') motionTrailsDirty(); tourEvent('motion');
 }
 function buildMotionUI() {
   const box = $('#mvMotion'); if (!box) return; box.innerHTML = '';

@@ -339,7 +339,7 @@ function buildCoatUI() {
 // changes to the coat are the body's own from then on (a preset is only where it starts)
 function editCoat(fn, hist = true) {
   const c = coatOf(mq.body) || coatOf({...mq.body, coat: undefined}); if (!c) return;
-  const own = {...c, c: c.c.slice(), m: {...c.m}}; fn(own); mq.body.coat = own; applyCoat(mq); syncCoatUI(true); if (hist) pushHistory();
+  const own = {...c, c: c.c.slice(), m: {...c.m}}; fn(own); mq.body.coat = own; applyCoat(mq); syncCoatUI(true); if (hist) pushHistory(); tourEvent('mark');
 }
 function syncCoatUI(light) {
   const box = $('#coatBox'); if (!box) return;
@@ -348,7 +348,7 @@ function syncCoatUI(light) {
   if (!light) {
     const list = coatPresetsFor(sp).concat(Object.entries(COATS).filter(([, p]) => !p.for.includes(sp) && p.for.includes(headSp(mq.body))));
     chips($('#coatChips'), [['', 'Sin color'], ...list.map(([k, p]) => [k, p.label])], c ? c.preset || '*' : '', id => {
-      mq.body.coat = id ? {preset: id} : null; applyCoat(mq); syncCoatUI(); pushHistory(); });
+      mq.body.coat = id ? {preset: id} : null; applyCoat(mq); syncCoatUI(); pushHistory(); tourEvent('coat'); });
     chips($('#coatMarks'), COAT_MARKS.map(([k, l]) => [k, l]), null, k => editCoat(cc => { const v = cc.m[k] || 0; cc.m[k] = (v + 1) % 3; if (!cc.m[k]) delete cc.m[k]; }));
   }
   setPressed($('#coatChips'), c ? (mq.body.coat && mq.body.coat.c ? '' : c.preset) : '');

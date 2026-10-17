@@ -893,6 +893,27 @@ const SUITES = {
     ok(page.errors.length === 0, 'no errors ' + page.errors.slice(0, 2).join(' | '));
     await page.context().close();
   },
+  // the hands-on tutorials (coat and markings) and posing with the keyboard
+  async tours(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a), step = () => A(() => window.__cdp.tour.TOUR.steps[window.__cdp.tour.TOUR.i]?.id || (window.__cdp.tour.TOUR.on ? '?' : 'end'));
+    await A(() => window.__cdp.tour.tourStart('pelaje')); await page.waitForTimeout(600);
+    const s0 = await step();
+    await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(2500); const s1 = await step();
+    await A(() => document.querySelector('#coatChips .chip[data-v="zorro_ar"]').click()); await page.waitForTimeout(1200); const s2 = await step();
+    await A(() => document.querySelector('#coatMarks .chip[data-v="spots"]').click()); await page.waitForTimeout(1200); const s3 = await step();
+    ok([s0, s1, s2, s3].join() === 'p-sp,p-coat,p-mark,p-tail', `the coat tutorial moves on as each thing is done (${[s0, s1, s2, s3].join(' → ')})`);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    ok(await A(() => !window.__cdp.tour.TOUR.on), 'Esc leaves the tutorial');
+    ok(await A(() => document.querySelectorAll('#helpTours [data-tour]').length) === 3, 'Help offers the three tutorials');
+    // the keyboard: focus the canvas, J picks a joint, an arrow turns it and the turn is read out
+    await page.focus('#gl'); await page.keyboard.press('j'); await page.keyboard.press('j'); await page.waitForTimeout(200);
+    const sel = await A(() => window.__cdp.state.selected), x0 = await A(() => window.__cdp.mq.joints[window.__cdp.state.selected].rotation.x);
+    await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp'); await page.waitForTimeout(300);
+    const x1 = await A(() => window.__cdp.mq.joints[window.__cdp.state.selected].rotation.x), live = await A(() => document.querySelector('#srLive').textContent);
+    ok(sel && Math.abs((x1 - x0) * 180 / Math.PI - 10) < .5 && /°/.test(live), `with the keyboard: J chose ${sel}, two ↑ turned it 10° and it was read out (“${live}”)`);
+    ok(page.errors.length === 0, 'no errors ' + page.errors.slice(0, 2).join(' | '));
+    await page.context().close();
+  },
   async timeline(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     await page.click('#animBtn'); await page.waitForTimeout(400);

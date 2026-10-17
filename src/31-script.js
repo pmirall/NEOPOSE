@@ -553,15 +553,17 @@ function makeShot(D, B, u, ui, sample, side, cast) {
 }
 
 /* ---------- the window ---------- */
-const filmReady = r => tr('Película lista: {s}, {n}.', {s: trn(r.scenes, '1 escena', '{n} escenas'), n: trn(r.shots, '1 plano', '{n} planos')});
+const filmReady = r => (tourEvent('film'), tr('Película lista: {s}, {n}.', {s: trn(r.scenes, '1 escena', '{n} escenas'), n: trn(r.shots, '1 plano', '{n} planos')}));
 // a film with keys of its own is replaced only on a second, deliberate click (and it can still be recovered)
 const filmUsed = () => ANIM.shots.some(s => s.keys.some(K => K.length) || s.cam.length || s.lines.some(l => l.text.trim()));
 function scriptState() {
   const go = $('#scGo'); $('#scUndo').disabled = !SC.last || SC.busy;
   if (!SC.busy) go.disabled = !$('#scText').value.trim();
+  if ($('#scText').value.trim().length > 12) tourEvent('scriptText');
   go.textContent = tr(SC.armed ? 'Sustituir la película actual' : 'Crear la película');
 }
 function openScript() {
+  tourEvent('script');
   const m = $('#scModal'); m.hidden = false; const ta = $('#scText');
   if (!ta.value.trim()) ta.value = store.get('cdp.script', '') || '';
   SC.armed = false; scriptState();

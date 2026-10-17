@@ -28,6 +28,7 @@
     <div class="stage-wrap">
       <div id="viewport">
         <canvas id="gl"></canvas>
+        <div id="srLive" class="sr" aria-live="polite"></div>
         <canvas id="mvSide" aria-hidden="true"></canvas>
         <canvas id="overlay"></canvas>
         <canvas id="sketch"></canvas>
@@ -661,6 +662,7 @@
         <dt><kbd>?</kbd></dt><dd>Esta ayuda</dd>
         <dt><kbd>Ctrl</kbd> <kbd>K</kbd> · <kbd>/</kbd></dt><dd>Buscar poses, ropa, escenarios y acciones</dd>
         <dt><kbd>Ctrl</kbd> <kbd>S</kbd> / <kbd>Ctrl</kbd> <kbd>O</kbd></dt><dd>Guardar / abrir un archivo .neopose</dd>
+        <dt><kbd>Tab</kbd> al lienzo · <kbd>J</kbd> · flechas</dt><dd>Posar con el teclado: J (o Mayús+J) elige articulación, las flechas la giran; Mayús, el tercer eje; Alt, de 1 en 1</dd>
         <dt><kbd>M</kbd> · <kbd>F</kbd></dt><dd>Espejar la pose · encuadrar a todos</dd>
         <dt><kbd>Ctrl</kbd> <kbd>C</kbd> / <kbd>Ctrl</kbd> <kbd>V</kbd></dt><dd>Copiar la pose y pegarla en otro personaje</dd>
         <dt>Clic derecho</dt><dd>Lo que se puede hacer ahí (en un personaje, un objeto o el fondo)</dd>
@@ -672,6 +674,7 @@
         <dt>Boceto: <kbd>B</kbd> <kbd>E</kbd> <kbd>[</kbd> <kbd>]</kbd></dt><dd>Pincel · goma · tamaño</dd>
         <dt><kbd>Ctrl</kbd> <kbd>Intro</kbd></dt><dd>Guion: crear la película</dd></dl></section>
     </div>
+    <div class="row tours" id="helpTours"><span class="lbl">Tutoriales:</span><button class="btn small" data-tour="animar">Animar</button><button class="btn small" data-tour="guion">Del guion a la película</button><button class="btn small" data-tour="pelaje">Pelaje y marcas</button></div>
     <div class="foot"><button class="btn" id="helpSet">Ajustes</button><button class="btn" id="helpTour">Ver el tutorial</button><button class="btn primary" id="helpClose" data-close>Entendido</button></div>
   </div>
 </div>

@@ -50,7 +50,7 @@ function applyFrame(f) {
 }
 function setFrame(f, apply = true) {
   const s = shot(); if (!s) return;
-  ANIM.f = clamp(Math.round(f), 0, s.len - 1); ANIM.t = ANIM.f; if (typeof wake === 'function') wake();
+  ANIM.f = clamp(Math.round(f), 0, s.len - 1); ANIM.t = ANIM.f; if (typeof wake === 'function') wake(); if (ANIM.f >= 6) tourEvent('frame');
   if (apply) { applyFrame(ANIM.f); syncJointSliders(); syncHandUI(); refreshPins(mq); }
   drawTimeline(); updateOnion();
 }
@@ -63,6 +63,7 @@ function setKey(track = ANIM.track, f = ANIM.f) {
   else { const K = s.keys[track], m = chars[track]; if (!m) return; const p = basePose(m), k = keyOf(K, f);
     if (k) k.pose = p; else { if (!K.length && f > 0 && m._prevPose) K.push({f: 0, pose: m._prevPose}); K.push({f, pose: p}); K.sort((a, b) => a.f - b.f); } }
   drawTimeline(); updateOnion(); thumbLater();
+  tourEvent('key');
 }
 function deleteKey(track = ANIM.track, f = ANIM.f) {
   const s = shot(); if (track === 'cam') s.cam = s.cam.filter(k => k.f !== f); else if (s.keys[track]) s.keys[track] = s.keys[track].filter(k => k.f !== f);
@@ -216,6 +217,7 @@ function showSubs(f) {
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
 function play(on) {
+  if (on) tourEvent('play');
   if (on && ANIM.busy) return;
   ANIM.playing = on; if (on && ANIM.f >= shot().len - 1) ANIM.t = 0;
   const b = $('#tlPlay'); b.setAttribute('aria-pressed', String(on)); b.innerHTML = on ? ICON_PAUSE : ICON_PLAY; b.title = tr(on ? 'Pausa (espacio)' : 'Reproducir (espacio)');
@@ -293,7 +295,7 @@ function renderStrip() {
     box.appendChild(card);
   });
   const add = document.createElement('button'); add.type = 'button'; add.className = 'mvadd'; add.innerHTML = `${MV_ICONS.plus}<span>${tr('Plano')}</span>`; add.title = tr('Plano nuevo a partir de lo que se ve ahora');
-  add.onclick = addShot; box.appendChild(add);
+  add.onclick = addShot; const li = document.createElement('div'); li.setAttribute('role', 'listitem'); li.className = 'mvaddwrap'; li.appendChild(add); box.appendChild(li);  // a list holds list items only
   const cur = box.querySelector('.mvshot.on'); if (cur) cur.scrollIntoView({block: 'nearest', inline: 'nearest'});
   const tot = ANIM.shots.reduce((a, s) => a + s.len, 0); $('#mvTotal').textContent = trn(ANIM.shots.length, '1 plano · {s} s', '{n} planos · {s} s', {s: dec(sec(tot))});
 }

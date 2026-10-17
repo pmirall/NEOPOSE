@@ -302,7 +302,7 @@ details.more[open] > summary{margin-bottom:4px}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;margin:0;font-size:13px;align-items:center}
 .keys dt{white-space:nowrap}
 .keys dd{margin:0;color:var(--ink-soft)}
-kbd{font-family:var(--f-mono);font-size:11.5px;border:1.5px solid var(--line);border-bottom-width:2.5px;border-radius:4px;padding:0 5px;background:var(--paper)}
+kbd{color:var(--ink);font-family:var(--f-mono);font-size:11.5px;border:1.5px solid var(--line);border-bottom-width:2.5px;border-radius:4px;padding:0 5px;background:var(--paper)}
 .sketch-bar details.more{margin:0}
 
 @media (max-width:1100px){ .tb .btn > span{display:none} .tb .btn{padding:6px 8px} }
@@ -411,6 +411,11 @@ body.practicing .modebar{display:none}
 .coatcol input[type=color]::-webkit-color-swatch{border:none;border-radius:4px}
 .coatmarks .chip{position:relative;padding-left:24px}
 .coatmarks .chip::before{content:"";position:absolute;left:8px;top:50%;width:11px;height:11px;margin-top:-6px;border-radius:50%;border:1.5px solid currentColor;background:var(--mk,transparent)}
+.mvaddwrap{display:contents}
+.tours{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 2px}.tours .lbl{margin:0 4px 0 0}
+/* for screen readers only */
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#gl:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
 .hairgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:5px;padding:2px 0 6px}
 .hairItem{display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:3px;border:1.5px solid var(--line);border-radius:6px;background:var(--page);cursor:pointer;color:var(--ink);font:inherit;min-width:0}
 .hairItem img,.hairItem .bald{width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;background:var(--stage);display:block}
