@@ -4,7 +4,7 @@
    - everything else (clothes, sets, heads, the pose model) is kept the first time it is used, per release;
    - a new version waits until the app says so (the "Update" button), so a session is never swapped mid-work.
    Written by build.py from src/sw.js. */
-const VERSION = '1.5.0', BUILD = '56d61b211f', SHELL = 'neopose-shell-' + BUILD, ASSETS = 'neopose-assets-' + VERSION;
+const VERSION = '1.5.0', BUILD = '6d76750c5e', SHELL = 'neopose-shell-' + BUILD, ASSETS = 'neopose-assets-' + VERSION;
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon.png", "icons/apple-touch-icon.png", "icons/icon-192.png", "fonts/fonts.css", "vendor/three.min.js", "vendor/OrbitControls.js", "vendor/TransformControls.js", "vendor/GLTFLoader.js", "vendor/meshopt_decoder.js", "vendor/fflate.min.js", "vendor/gifenc.min.js", "vendor/NURBSUtils.js", "vendor/NURBSCurve.js", "vendor/FBXLoader.js", "fonts/CourierPrime-400-latin-ext.woff2", "fonts/CourierPrime-400-latin.woff2", "fonts/CourierPrime-700-latin-ext.woff2", "fonts/CourierPrime-700-latin.woff2", "fonts/Kalam-400-latin-ext.woff2", "fonts/Kalam-400-latin.woff2", "fonts/Kalam-700-latin-ext.woff2", "fonts/Kalam-700-latin.woff2", "fonts/Karla-400-latin-ext.woff2", "fonts/Karla-400-latin.woff2", "fonts/Karla-500-latin-ext.woff2", "fonts/Karla-500-latin.woff2", "fonts/Karla-600-latin-ext.woff2", "fonts/Karla-600-latin.woff2", "fonts/Karla-700-latin-ext.woff2", "fonts/Karla-700-latin.woff2", "figure.txt", "figure-ext.txt", "figure-body.txt", "skeleton.txt"];
 self.addEventListener('install', e => e.waitUntil(caches.open(SHELL).then(c => c.addAll(CORE.map(u => new Request(u, {cache: 'reload'}))))));
 self.addEventListener('activate', e => e.waitUntil((async () => {

@@ -35,8 +35,18 @@ function updateStools() {
     s.userData.seat.position.y = hs - .022; s.userData.leg.scale.y = hs - .04; s.userData.leg.position.y = (hs - .04) / 2;
   }
 }
+/* resting: on phones and tablets (and in the balanced and saver qualities) the canvas is drawn at full speed while
+   something happens (a finger or the mouse, the keyboard, the camera, a film playing, a glide, a garment or head
+   arriving, the first seconds after any change) and a few times a second when nothing does, which is most of the time
+   someone spends looking at the pose to draw it: far less battery and heat. wake() is called by whatever changes. */
+const REST = {last: performance.now(), drawn: 0};
+function wake() { REST.last = performance.now(); }
+for (const t of ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart']) addEventListener(t, wake, {passive: true, capture: true});
+controls.addEventListener('change', wake);
+const resting = now => state.quality !== 'alta' && now - REST.last > 2500 && !ANIM.playing && !ANIM.rec && !TWEENS.size && !CAMG.go && !practice.active && !(typeof SC !== 'undefined' && SC.busy);
 function frame() {
   if (!mq) return;
+  const now = performance.now(); if (resting(now) && now - REST.drawn < 250) return; REST.drawn = now;
   glideTick(); camGlideTick(); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
   for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
   animTick(); dockView(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);

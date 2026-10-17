@@ -42,6 +42,7 @@ modules:
       - install -Dm755 neopose.sh /app/bin/neopose
       - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.desktop -t /app/share/applications
       - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 flatpak/io.github.pmirall.NEOPOSE.xml -t /app/share/mime/packages
       - install -Dm644 build/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.pmirall.NEOPOSE.svg
       - install -Dm644 LICENSE -t /app/share/licenses/io.github.pmirall.NEOPOSE
       - install -Dm644 CREDITS.md -t /app/share/licenses/io.github.pmirall.NEOPOSE

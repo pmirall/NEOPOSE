@@ -209,6 +209,8 @@
             </form>
             <div class="pose-grid" id="myPoses"></div>
             <p class="empty" id="myEmpty">Aún no hay nada guardado. Coloca a los personajes, ponle nombre y pulsa Guardar. Se queda en este navegador.</p>
+            <div class="row" style="margin-top:8px"><button class="btn small" id="saveFile" title="Ctrl+S">Guardar archivo…</button><button class="btn small" id="openFile" title="Ctrl+O">Abrir archivo…</button></div>
+            <p class="note">Un archivo <b>.neopose</b> guarda la escena entera: reparto, ropa, escenario, cámara, la película con todos sus planos, el boceto y los avatares importados. Ábrelo en otro dispositivo o suéltalo sobre el lienzo.</p>
             <div class="row" style="margin-top:8px"><button class="btn small" id="shareScene">Compartir enlace</button><button class="btn small" id="copyScene">Copiar como texto</button><button class="btn small" id="pasteScene">Pegar escena</button></div>
           </details>
           <details class="sec" data-sec="ayudas">
@@ -291,6 +293,7 @@
                 <div class="chips coatmarks" id="coatMarks"></div>
                 <div id="coatSockBox"></div><div id="coatTipBox"></div>
                 <p class="note">Toca una marca para ponerla en el color claro, otra vez para el oscuro y otra para quitarla. Las marcas siguen la pose y se ven desde cualquier lado.</p>
+                <p class="note">Para una hoja de referencia en colores planos, usa el acabado <b>Solo línea</b> (Dibujo). El pelaje y las marcas también van en el modelo 3D exportado (GLB).</p>
               </div>
             </div>
           </details>
@@ -657,6 +660,7 @@
         <dt><kbd>B</kbd> · <kbd>A</kbd> · <kbd>Ctrl</kbd> <kbd>E</kbd></dt><dd>Boceto · Animar · Exportar</dd>
         <dt><kbd>?</kbd></dt><dd>Esta ayuda</dd>
         <dt><kbd>Ctrl</kbd> <kbd>K</kbd> · <kbd>/</kbd></dt><dd>Buscar poses, ropa, escenarios y acciones</dd>
+        <dt><kbd>Ctrl</kbd> <kbd>S</kbd> / <kbd>Ctrl</kbd> <kbd>O</kbd></dt><dd>Guardar / abrir un archivo .neopose</dd>
         <dt><kbd>M</kbd> · <kbd>F</kbd></dt><dd>Espejar la pose · encuadrar a todos</dd>
         <dt><kbd>Ctrl</kbd> <kbd>C</kbd> / <kbd>Ctrl</kbd> <kbd>V</kbd></dt><dd>Copiar la pose y pegarla en otro personaje</dd>
         <dt>Clic derecho</dt><dd>Lo que se puede hacer ahí (en un personaje, un objeto o el fondo)</dd>

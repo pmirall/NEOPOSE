@@ -203,7 +203,7 @@ function createGarment(m, spec) {
     const h = new THREE.SkinnedMesh(g.geo, garmentHullMat(g.U)); h.frustumCulled = false;
     const I = new THREE.Matrix4(); s.bind(m.skeleton, I); h.bind(m.skeleton, I);
     m.group.add(s, h); g.meshes = [s]; g.hull = h;
-    updateGarment(m, g); updateBodyHide(m); updateGroundPad(m); applyGarmentVis(m);
+    updateGarment(m, g); updateBodyHide(m); updateGroundPad(m); applyGarmentVis(m); if (typeof wake === 'function') wake();
     if (m === mq && typeof renderGarmentList === 'function') renderGarmentList();
   }).catch(e => { console.warn('ropa', spec.id, e); g.failed = true; });
   return g;

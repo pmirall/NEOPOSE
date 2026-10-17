@@ -7,6 +7,7 @@ Comment=3D figure for drawing: poses, human and anthro anatomy, clothes, sets an
 Comment[es]=Figura 3D para dibujar: poses, anatomía humana y anthro, ropa, escenarios y luces
 Icon=io.github.pmirall.NEOPOSE
 Exec=neopose %U
+MimeType=application/x-neopose;
 Terminal=false
 Categories=Graphics;3DGraphics;Education;Art;
 Keywords=pose;drawing;anatomy;reference;mannequin;3D;anthro;furry;dibujo;anatomía;referencia;maniquí;

@@ -469,6 +469,7 @@ class Mannequin {
     this.setStyle(this.style); applyCoat(this);
     this.highlight(this.hiJoint);
     if (this.formMode !== 'figura') this.buildForms();
+    if (typeof wake === 'function') wake();  // a rebuilt figure is drawn at once, even at rest
   }
   /* Bridgman / Loomis construction: simple solids hung on the real bones */
   buildForms() {

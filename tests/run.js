@@ -860,6 +860,39 @@ const SUITES = {
     ok(page.errors.length === 0, 'no errors ' + page.errors.slice(0, 2).join(' | '));
     await page.context().close();
   },
+  // .neopose files: the whole work (cast, coats, film, sketch, guides) saved, the scene changed, opened again
+  async file(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await page.click('#cast .chip.add'); await page.waitForTimeout(1500);
+    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3000);
+    await A(() => { const i = document.querySelector('#coatCols input[data-k="0"]'); i.value = '#224466'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); });
+    await page.click('#animBtn'); await page.waitForTimeout(500);
+    await A(() => { const C = window.__cdp; for (const [f, p] of [[0, 'pie'], [12, 'victoria']]) { C.setFrameAnim(f); C.usePreset(C.POSES.find(x => x.id === p)); } });
+    await A(() => { const C = window.__cdp; C.sk.strokes.push({brush: 'lapiz', color: '#2e2a25', size: 4, opacity: 1, pts: [[.1, .1, .5], [.3, .3, .5]]}); C.state.guides.thirds = true; });
+    const state = () => A(() => JSON.stringify({c: window.__cdp.chars.map(m => [m.body.species, m.body.coat && m.body.coat.c[0]]), keys: window.__cdp.ANIM.shots[0].keys.map(K => K.map(k => k.f).join(',')), sk: window.__cdp.sk.strokes.length}));
+    const before = await state();
+    const bytes = await A(async () => Array.from(await window.__cdp.file.neoposeBytes('prueba')));
+    ok(bytes[0] === 0x50 && bytes[1] === 0x4b && bytes.length > 1000, `a .neopose is a ZIP (${(bytes.length / 1024).toFixed(0)} kB)`);
+    // change everything, then open the file
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    await A(() => { const C = window.__cdp; C.sk.strokes.length = 0; C.state.guides.thirds = false; C.restore({chars: [{body: {...C.chars[0].body, species: 'humano'}, pose: C.chars[0].getPose()}], active: 0}); });
+    await A(async b => { await window.__cdp.file.openNeopose(new File([new Uint8Array(b)], 'prueba.neopose')); }, bytes); await page.waitForTimeout(3500);
+    const after = await state();
+    ok(after === before && await A(() => window.__cdp.state.guides.thirds), `opening it brings back the cast, the coat, the film, the sketch and the guides (${after})`);
+    ok(/prueba/.test(await A(() => document.querySelector('#hint').textContent)), 'it says what was opened');
+    // the GLB carries an anthro's coat as vertex colours (the base colour and the light belly, at least)
+    const glb = await A(() => { const b = window.__cdp.exportGLB(), dv = new DataView(b.buffer), jl = dv.getUint32(12, true), J = JSON.parse(new TextDecoder().decode(b.subarray(20, 20 + jl))), bin = 20 + jl + 8;
+      const mesh = J.meshes.findIndex(m => m.name === 'personaje2'), at = J.meshes[mesh].primitives[0].attributes, acc = J.accessors[at.COLOR_0], view = J.bufferViews[acc.bufferView];
+      const C = new Float32Array(b.buffer.slice(bin + (view.byteOffset || 0), bin + (view.byteOffset || 0) + acc.count * 12)), seen = new Set();
+      for (let i = 0; i < acc.count; i++) seen.add([0, 1, 2].map(k => Math.round(C[i * 3 + k] * 20)).join());
+      return {colors: !!at.COLOR_0, distinct: seen.size}; });
+    ok(glb.colors && glb.distinct >= 3, `the GLB wears the coat as vertex colours (${glb.distinct} shades)`);
+    // the old "copy as text" JSON is read as a version-0 file
+    const old = await A(() => window.__cdp.file.migrateScene({cdp: 1, chars: [{body: {}}]}));
+    ok(old.version === await A(() => window.__cdp.file.NP_VERSION) && old.scene && old.scene.chars.length === 1, 'the old scene text is migrated to the current format');
+    ok(page.errors.length === 0, 'no errors ' + page.errors.slice(0, 2).join(' | '));
+    await page.context().close();
+  },
   async timeline(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     await page.click('#animBtn'); await page.waitForTimeout(400);
@@ -971,6 +1004,16 @@ const SUITES = {
       const m = await page.evaluate(() => ({scroll: document.documentElement.scrollWidth - innerWidth, canvas: document.querySelector('#gl').getBoundingClientRect().height}));
       ok(m.scroll <= 0, `${lang} phone: no horizontal scroll (${m.scroll}px)`);
       ok(m.canvas > 200, `${lang} phone: canvas is visible (${Math.round(m.canvas)}px)`);
+      if (lang === 'en') {
+        // a phone at rest draws a few frames a second, and the garment library is not fetched until Ropa is opened
+        const rest = await page.evaluate(() => new Promise(res => setTimeout(() => { const r = window.__cdp.renderer, f0 = r.info.render.frame; setTimeout(() => res(r.info.render.frame - f0), 3000); }, 3000)));
+        const cat0 = await page.evaluate(() => performance.getEntriesByType('resource').some(e => /ropa\/catalog\.json/.test(e.name)));
+        await page.evaluate(() => document.querySelector('.tab[data-tab=ropa]').click()); await page.waitForTimeout(2500);
+        const cat1 = await page.evaluate(() => performance.getEntriesByType('resource').some(e => /ropa\/catalog\.json/.test(e.name)) && !!document.querySelector('#garmentAdd details, #garmentAdd .libItem'));
+        ok(rest <= 20, `${lang} phone: at rest the canvas is drawn a few times a second (${rest} frames in 3 s)`);
+        ok(!cat0 && cat1, `${lang} phone: the garment library is fetched when Ropa is opened, not at start`);
+        await page.evaluate(() => document.querySelector('.tab[data-tab=pose]').click()); await page.waitForTimeout(500);
+      }
       const hh = await page.evaluate(() => document.querySelector('header.top').getBoundingClientRect().height);
       ok(hh < 60, `${lang} phone: the top bar fits on one line (${Math.round(hh)}px)`);
       await page.screenshot({path: path.join(OUT, `${lang}-phone.png`)});

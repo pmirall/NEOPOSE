@@ -41,6 +41,15 @@
       "package.json"
     ],
     "asar": true,
+    "fileAssociations": [
+      {
+        "ext": "neopose",
+        "name": "NEOPOSE scene",
+        "description": "NEOPOSE scene",
+        "mimeType": "application/x-neopose",
+        "role": "Editor"
+      }
+    ],
     "compression": "maximum",
     "win": {
       "icon": "build/icon.png",

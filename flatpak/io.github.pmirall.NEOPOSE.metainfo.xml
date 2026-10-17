@@ -82,6 +82,9 @@
     <color type="primary" scheme_preference="light">#e4ddcb</color>
     <color type="primary" scheme_preference="dark">#2b5a9e</color>
   </branding>
+  <provides>
+    <mediatype>application/x-neopose</mediatype>
+  </provides>
   <content_rating type="oars-1.1"/>
   <supports>
     <control>pointing</control>

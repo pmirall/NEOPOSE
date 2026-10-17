@@ -101,6 +101,21 @@ ipcMain.handle('neopose:openIn', async (e, id, name, bytes) => {
   } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
 });
 
+// .neopose files from the system (double click, "Open with"): on the command line at start, from a second launch while
+// running (one window only), or from macOS's open-file; handed to the page once it is ready
+const pending = [];
+const isScene = a => typeof a === 'string' && /\.neopose$/i.test(a) && fs.existsSync(a);
+function sendScenes() {
+  const win = BrowserWindow.getAllWindows()[0]; if (!win || !win.ready) return;
+  while (pending.length) { const f = pending.shift(); try { win.webContents.send('neopose:file', path.basename(f), fs.readFileSync(f)); } catch (_) {} }
+  if (win.isMinimized()) win.restore(); win.focus();
+}
+for (const a of process.argv.slice(1)) if (isScene(a)) pending.push(a);
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on('second-instance', (e, argv) => { for (const a of argv.slice(1)) if (isScene(a)) pending.push(a); sendScenes(); });
+app.on('open-file', (e, f) => { e.preventDefault(); if (isScene(f)) { pending.push(f); sendScenes(); } });
+ipcMain.on('neopose:ready', e => { const win = BrowserWindow.fromWebContents(e.sender); if (win) { win.ready = true; sendScenes(); } });
+
 app.whenReady().then(() => {
   protocol.handle('app', req => {
     const { pathname } = new URL(req.url);

@@ -134,6 +134,7 @@ function toggleGarment(id) {
 }
 function renderLibrary() {
   const box = $('#garmentAdd'); if (!box) return;
+  if (!ROPA.catalog && state.tab !== 'ropa' && !ROPA.catalogP) { box.innerHTML = ''; return; }  // not shown yet: no need to fetch it
   if (!ROPA.catalog) { box.innerHTML = `<p class="empty">${tr('Cargando la biblioteca…')}</p>`; loadCatalog().then(renderLibrary, () => box.innerHTML = `<p class="empty">${tr('No se pudo cargar la biblioteca de ropa.')}</p>`); return; }
   const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.cat));
   box.innerHTML = '';

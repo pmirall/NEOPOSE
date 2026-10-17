@@ -119,6 +119,58 @@ const FUR_GLSL = `
     return c;
   }`;
 
+/* ---------- the same coat on the CPU: vertex colours for the GLB ----------
+   A line-for-line copy of furPaint() (the shader), so a model taken to Blender or a game engine wears the markings
+   exactly as they are seen here. Colours out in linear light, as glTF wants them. */
+const fract = x => x - Math.floor(x);  // smooth() is 03-figure.js's smoothstep
+function fHashJS(x, y, z) { x = fract(x * .3183099 + .1) * 17; y = fract(y * .3183099 + .1) * 17; z = fract(z * .3183099 + .1) * 17; return fract(x * y * z * (x + y + z)); }
+function fNoiseJS(x, y, z) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z); let fx = x - ix, fy = y - iy, fz = z - iz;
+  fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); fz = fz * fz * (3 - 2 * fz);
+  const h = (a, b, c) => fHashJS(ix + a, iy + b, iz + c), L = (a, b, t) => a + (b - a) * t;
+  return L(L(L(h(0, 0, 0), h(1, 0, 0), fx), L(h(0, 1, 0), h(1, 1, 0), fx), fy), L(L(h(0, 0, 1), h(1, 0, 1), fx), L(h(0, 1, 1), h(1, 1, 1), fx), fy), fz);
+}
+function fCellJS(x, y, z) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z), fx = x - ix, fy = y - iy, fz = z - iz; let d = 8, id = 0;
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
+    const gx = ix + a, gy = iy + b, gz = iz + c, rx = a + fHashJS(gx, gy, gz) - fx, ry = b + fHashJS(gx + 19.1, gy + 19.1, gz + 19.1) - fy, rz = c + fHashJS(gx + 47.7, gy + 47.7, gz + 47.7) - fz, e = rx * rx + ry * ry + rz * rz;
+    if (e < d) { d = e; id = fHashJS(gx + 7.3, gy + 7.3, gz + 7.3); } }
+  return [Math.sqrt(d), id];
+}
+function furPaintJS(C, E, px, py, pz) {
+  const w = -E[3]; if (w < 1.5) return null;
+  const kind = Math.floor(w) - 1, fr = fract(w) - .5, mix = (c, d, t) => c.map((v, i) => v + (d[i] - v) * t), M = C.m, slot = (k, c) => k > 1.5 ? C.c2 : k > .5 ? C.c1 : c;
+  if (kind > 3.5) return [.86, .81, .7]; if (kind > 2.5) return mix(C.le, [.32, .29, .26], .45); if (kind > 1.5) return C.le;
+  let c = C.c0, m; const belly = Math.max(E[0], 0), muz = Math.max(-E[0], 0), dist = E[1], tip = E[2], dors = clamp(fr / .45, 0, 1), mask = clamp(-fr / .45, 0, 1);
+  const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly);
+  if ((m = M[0]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, belly));
+  if ((m = M[1]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, muz));
+  if ((m = M[6]) > .5) c = mix(c, slot(m, c), smooth(.35, .7, dors));
+  if ((m = M[7]) > .5) { const s = Math.sin(py * 64 + fNoiseJS(px * 7, py * 7, pz * 7) * 5 + fNoiseJS(px * 2.5, py * 2.5, pz * 2.5) * 6), ww = smooth(.58, .76, s + (fNoiseJS(px * 16, py * 16, pz * 16) - .5) * .7); c = mix(c, slot(m, c), ww * body * (1 - onTail)); }
+  if ((m = M[8]) > .5) { const ce = fCellJS(px * 15, py * 15, pz * 15), r = .2 + .14 * ce[1]; c = mix(c, slot(m, c), (1 - smooth(r - .05, r, ce[0])) * body); }
+  if ((m = M[9]) > .5) { const ce = fCellJS(px * 14, py * 14, pz * 14), ring = smooth(.16, .22, ce[0]) * (1 - smooth(.34, .42, ce[0])) * (fNoiseJS(px * 46, py * 46, pz * 46) >= .28 ? 1 : 0);
+    const dot2 = 1 - smooth(.07, .11, fCellJS(px * 21 + 3.1, py * 21 + 3.1, pz * 21 + 3.1)[0]); c = mix(c, slot(m, c), Math.max(ring, dot2 * (ce[1] >= .6 ? 1 : 0)) * body); }
+  if ((m = M[2]) > .5) c = mix(c, slot(m, c), smooth(C.sock - .025, C.sock + .025, dist));
+  if ((m = M[3]) > .5) c = mix(c, slot(m, c), smooth(.3, .6, mask));
+  if ((m = M[4]) > .5) c = mix(c, slot(m, c), smooth(.55, .7, tip) * (1 - onTail));
+  if ((m = M[10]) > .5) { const f = fract(u * 5 + .25); c = mix(c, slot(m, c), onTail * smooth(.12, .2, u) * smooth(.42, .5, f) * (1 - smooth(.92, .98, f))); }
+  if ((m = M[5]) > .5) c = mix(c, slot(m, c), onTail * smooth(.97 - C.tip, 1.03 - C.tip, u));
+  return c;
+}
+// per-vertex colours (linear RGB) of one of a character's meshes in its coat, or null
+function coatColors(m, mesh) {
+  const coat = coatOf(m.body), g = mesh.geometry, E = g.attributes.aEye; if (!coat || !E) return null;
+  const lin = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b].map(v => v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); };
+  const C = {c0: lin(coat.c[0]), c1: lin(coat.c[1]), c2: lin(coat.c[2]), le: lin(coat.le || '#2a2422'), m: COAT_ORDER.map(k => coat.m[k] || 0), sock: coat.sock ?? .72, tip: coat.tip ?? .25};
+  const P = g.attributes.position.array, n = P.length / 3, k = 1 / (m.size || 1), out = new Float32Array(n * 3), e = [0, 0, 0, 0], eyeW = lin('#f2efe9'), base = C.c0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < 4; j++) e[j] = E.array[i * 4 + j];
+    const c = e[3] > .5 ? eyeW : furPaintJS(C, e, P[i * 3] * k, P[i * 3 + 1] * k, P[i * 3 + 2] * k) || base;
+    out[i * 3] = c[0]; out[i * 3 + 1] = c[1]; out[i * 3 + 2] = c[2];
+  }
+  return out;
+}
+
 /* ---------- where every vertex is, for the coat ----------
    aEye of a vertex that is not an eye = (belly, how far down the limb, along an ear 0..1 or the tail 2..3, packed w).
    kind: 1 fur, 2 leather (nose, pads), 3 claw or hoof, 4 horn. Eyes and meshes without the attribute are left alone. */

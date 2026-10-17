@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-neopose">
+    <comment>NEOPOSE scene</comment>
+    <comment xml:lang="es">Escena de NEOPOSE</comment>
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.neopose"/>
+    <icon name="io.github.pmirall.NEOPOSE"/>
+  </mime-type>
+</mime-info>

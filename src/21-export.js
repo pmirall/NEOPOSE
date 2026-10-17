@@ -226,18 +226,19 @@ function bakedMesh(o) {
 }
 function exportGLB() {
   const items = [];
-  const add = (name, o, color) => { if (!o || !o.visible || !o.geometry || !o.geometry.attributes.position) return; items.push({name, geo: bakedMesh(o), color}); };
+  const add = (name, o, color, colors) => { if (!o || !o.visible || !o.geometry || !o.geometry.attributes.position) return; items.push({name, geo: bakedMesh(o), color, colors}); };
   chars.forEach((m, ci) => {
     if (!m.group.visible) return;
     const coat = coatOf(m.body), skin = new THREE.Color(coat ? coat.c[0] : 0xcfc5b3);  // an anthro in its coat's base colour
-    add(`personaje${ci + 1}`, m.body3, skin);
-    for (const a of m.acc || []) if (!a.userData.hull && a.visible && a.isMesh) add(`personaje${ci + 1}_extra`, a, skin);
+    // an anthro's coat and markings go along as vertex colours
+    add(`personaje${ci + 1}`, m.body3, skin, coatColors(m, m.body3));
+    for (const a of m.acc || []) if (!a.userData.hull && a.visible && a.isMesh) add(`personaje${ci + 1}_extra`, a, skin, a.userData.mouth ? null : coatColors(m, a));
     for (const g of m.garments || []) if (g.meshes && g.meshes[0]) add(`personaje${ci + 1}_${g.hair ? 'pelo' : 'ropa'}`, g.meshes[0], new THREE.Color(g.spec.mode === 'tex' ? (g.d && g.d.avg ? `rgb(${g.d.avg.join(',')})` : '#888') : g.spec.colA));
   });
   for (const p of props) p.traverse(o => { if (o.isMesh && !o.userData.isHull && !o.isInstancedMesh) add('objeto', o, o.material && o.material.color ? o.material.color : new THREE.Color(0x999999)); });
   return glbBytes(items);
 }
-// a minimal glTF 2.0 binary: one buffer, positions + normals + indices per mesh, a plain colour material each
+// a minimal glTF 2.0 binary: one buffer, positions + normals (+ vertex colours) + indices per mesh, a plain colour material each
 function glbBytes(items) {
   const chunks = [], views = [], accs = [], meshes = [], nodes = [], mats = []; let off = 0;
   const push = (arr, target) => { const b = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength); chunks.push(b); const pad = (4 - b.byteLength % 4) % 4; if (pad) chunks.push(new Uint8Array(pad)); views.push({buffer: 0, byteOffset: off, byteLength: b.byteLength, target}); off += b.byteLength + pad; return views.length - 1; };
@@ -249,8 +250,9 @@ function glbBytes(items) {
     accs.push({bufferView: pv, componentType: 5126, count: n, type: 'VEC3', min: mn, max: mx}); const pa = accs.length - 1;
     accs.push({bufferView: nv, componentType: 5126, count: n, type: 'VEC3'}); const na = accs.length - 1;
     const prim = {attributes: {POSITION: pa, NORMAL: na}, material: mats.length};
+    if (it.colors) { accs.push({bufferView: push(new Float32Array(it.colors), 34962), componentType: 5126, count: n, type: 'VEC3'}); prim.attributes.COLOR_0 = accs.length - 1; }
     if (it.geo.index) { const I = new Uint32Array(it.geo.index.array); accs.push({bufferView: push(I, 34963), componentType: 5125, count: I.length, type: 'SCALAR'}); prim.indices = accs.length - 1; }
-    const c = it.color || new THREE.Color(.7, .7, .7);
+    const c = it.colors ? new THREE.Color(1, 1, 1) : it.color || new THREE.Color(.7, .7, .7);  // vertex colours multiply the base colour: white
     mats.push({name: it.name, pbrMetallicRoughness: {baseColorFactor: [c.r, c.g, c.b, 1], metallicFactor: 0, roughnessFactor: .8}, doubleSided: true});
     meshes.push({name: it.name, primitives: [prim]}); nodes.push({name: it.name, mesh: meshes.length - 1});
   }

@@ -7,7 +7,7 @@ function pushHistory() {
   if (hist.stack[hist.i] === s) return;
   hist.stack = hist.stack.slice(0, hist.i + 1); hist.stack.push(s);
   if (hist.stack.length > 80) hist.stack.shift();
-  hist.i = hist.stack.length - 1; updateUndo(); autosaveSoon();
+  hist.i = hist.stack.length - 1; updateUndo(); autosaveSoon(); if (typeof wake === 'function') wake();
   // someone joined (or left) the cast or a body changed shape: make room in the frame if needed
   const sig = chars.length + JSON.stringify(chars.map(m => [m.body.species, m.body.headStyle, m.heads, m.size]));
   if (hist.castSig && sig !== hist.castSig) reframeSoon();
@@ -194,6 +194,8 @@ function showTab(id) {
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
   store.set('cdp.tab', id);
+  // the garment library (1.3 MB) is fetched the first time it is shown, not at start
+  if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && !ROPA.catalog) renderLibrary();
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); setPanel(true); });
 /* collapsible sections remember whether they were open */

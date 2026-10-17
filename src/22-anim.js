@@ -50,7 +50,7 @@ function applyFrame(f) {
 }
 function setFrame(f, apply = true) {
   const s = shot(); if (!s) return;
-  ANIM.f = clamp(Math.round(f), 0, s.len - 1); ANIM.t = ANIM.f;
+  ANIM.f = clamp(Math.round(f), 0, s.len - 1); ANIM.t = ANIM.f; if (typeof wake === 'function') wake();
   if (apply) { applyFrame(ANIM.f); syncJointSliders(); syncHandUI(); refreshPins(mq); }
   drawTimeline(); updateOnion();
 }
