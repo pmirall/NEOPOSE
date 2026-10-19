@@ -57,7 +57,15 @@ function sceneTicks() {
   for (const m of chars) { m.group.visible = !gone; if (gone) m.stoolMesh.visible = false; if (ANIM.rec && m.lib && m.lib.uHi) m.lib.uHi.value = -1; }
 }
 // with the animation dock open, the shot is framed in the part of the canvas above it (what the film will show)
+// a frame of its own shape on the canvas (a comic panel being edited): the camera is that picture's, placed where the
+// frame guide is, so what is inside the guide is exactly what the panel will show (and the canvas around it, the rest)
+function applyFrameAspect(a) { state.frameAspect = a || null; if (!a) { noDockView(); return; } panelFrameView(); }
+function panelFrameView() {
+  const f = frameRect(W, Hh); camera.aspect = state.frameAspect; camera.setFocalLength(state.focal);
+  camera.setViewOffset(f.w, f.h, -f.x, -f.y, W, Hh); camera.updateProjectionMatrix();
+}
 function dockView() {
+  if (state.frameAspect) return panelFrameView();
   const tl = $('#timeline'), d = ANIM.open && !ANIM.rec && tl && !tl.hidden ? Math.min(tl.offsetHeight + 12, Hh * .55) : 0;
   if (d > 20) { const a = W / (Hh - d); if (Math.abs(camera.aspect - a) > 1e-4 || !camera.view || !camera.view.enabled || camera.view.fullHeight !== Hh - d) { camera.aspect = a; camera.setFocalLength(state.focal); camera.setViewOffset(W, Hh - d, 0, 0, W, Hh); } }
   else if (camera.view && camera.view.enabled) noDockView();
@@ -109,6 +117,31 @@ function renderExportCanvas(subsFrame) {
   hidden.forEach((h, i) => h.visible = hv[i]);
   if (subsFrame != null) burnSubs(out, subsFrame);
   return onPaper(out, alpha);
+}
+// the current view as a picture of any shape and size, whatever the window is: the camera keeps its lens and turns
+// to the picture's aspect (a comic panel, a film frame, a print), the renderer draws at exactly w × h. bg: 'paper'
+// (the set), 'alpha' (nothing behind), 'lines' (the ink alone, transparent elsewhere — the key drawings' line)
+function renderView(o) {
+  const w = Math.max(2, Math.round(o.w)), h = Math.max(2, Math.round(o.h)), lines = o.bg === 'lines', alpha = o.bg === 'alpha' || lines;
+  const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value, pano: panoSphere.visible};
+  const hidden = [...(typeof TRAIL !== 'undefined' && TRAIL.group ? [TRAIL.group] : []), ...(typeof DYN !== 'undefined' ? [DYN.loaObj, DYN.balObj, ...DYN.inbMeshes].filter(Boolean) : []), ...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];
+  const hv = hidden.map(x => x.visible); tc.visible = false; hidden.forEach(x => x.visible = false);
+  if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; panoSphere.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
+  if (lines) { for (const m of chars) m.setStyle('contorno'); LU.uRender.value = 0; }
+  const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, px = LU.uPx.value.clone(), k = h / Hh;
+  camera.clearViewOffset(); camera.aspect = w / h; camera.setFocalLength(state.focal); camera.updateProjectionMatrix();
+  renderer.setPixelRatio(1); renderer.setSize(w, h, false); LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; LU.uPx.value.set(2 / w, 2 / h);
+  updateLights(); updateStools(); renderer.render(scene, camera);
+  const out = document.createElement('canvas'); out.width = w; out.height = h; const c = out.getContext('2d'); c.drawImage(renderer.domElement, 0, 0, w, h, 0, 0, w, h);
+  if (lines) { const id = c.getImageData(0, 0, w, h), d = id.data;
+    for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, a = clamp((.93 - L) / .55, 0, 1); d[i + 3] = Math.round(d[i + 3] * a); d[i] *= .6; d[i + 1] *= .6; d[i + 2] *= .6; }
+    c.putImageData(id, 0, 0); }
+  renderer.setPixelRatio(pr); LU.uLineW.value = lw; LU.uDpr.value = dpr; LU.uPx.value.copy(px);
+  if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; }
+  tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = vis.pano;
+  hidden.forEach((x, i) => x.visible = hv[i]);
+  resize(); dockView();  // the window's own size and aspect back
+  return out;
 }
 function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus(); }
 function closeExport() { $('#exportModal').hidden = true; }

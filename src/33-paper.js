@@ -6,7 +6,7 @@
 let leafNow = null;
 function turnTo(id) {
   const from = state.tab; if (!id || id === from || UX.reduce || !$('#book') || document.body.classList.contains('nopanel')) return showTab(id);
-  const order = tabs.map(t => t.dataset.tab), fwd = order.indexOf(id) > order.indexOf(from);
+  const order = tabs.filter(t => !t.hidden).map(t => t.dataset.tab), fwd = order.indexOf(id) > order.indexOf(from);
   if (leafNow) leafNow.remove();
   const page = $('.page'), r = page.getBoundingClientRect(), b = $('#book').getBoundingClientRect(), leaf = leafNow = document.createElement('div');
   leaf.className = 'leaf' + (fwd ? '' : ' back'); Object.assign(leaf.style, {left: r.left - b.left + 'px', top: r.top - b.top + 'px', width: r.width + 'px', height: r.height + 'px'});
@@ -21,8 +21,8 @@ function buildPaper() {
   // a tab list as screen readers and keyboards expect it: one stop for Tab, the arrows (and Home, End) to move along
   for (const t of tabs) { const sec = $(`.page section[data-tab="${t.dataset.tab}"]`); t.id = 'tab-' + t.dataset.tab; sec.id = 'panel-' + t.dataset.tab; sec.setAttribute('role', 'tabpanel'); sec.setAttribute('aria-labelledby', t.id); t.setAttribute('aria-controls', sec.id); }
   $('.tabs').addEventListener('keydown', e => {
-    const i = tabs.indexOf(document.activeElement); if (i < 0) return;
-    const j = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1}[e.key]; if (j === undefined) return;
-    e.preventDefault(); const t = tabs[(j + tabs.length) % tabs.length]; t.focus(); turnTo(t.dataset.tab); setPanel(true);
+    const vis = tabs.filter(t => !t.hidden), i = vis.indexOf(document.activeElement); if (i < 0) return;
+    const j = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: vis.length - 1}[e.key]; if (j === undefined) return;
+    e.preventDefault(); const t = vis[(j + vis.length) % vis.length]; t.focus(); turnTo(t.dataset.tab); setPanel(true);
   });
 }

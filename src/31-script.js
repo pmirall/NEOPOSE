@@ -103,7 +103,11 @@ function castOf(P, text) {
   const out = [], seen = new Set(); let alt = 0; const genre = genreOf(text), lang = scLang(text), names = [...P.names.values()].map(n => ({name: n.name, aka: n.aka}));
   for (const [key, n] of P.names) {
     if (seen.has(key)) continue; seen.add(key);
-    const mine = (SAVED_CHARS || []).find(c => scNorm(c.name) === key || scNorm(c.name).split(/\s+/)[0] === key.split(/\s+/)[0]);
+    // the project's cast first (Personajes y lugares), then «Mis personajes»: a name the work already has keeps its design
+    const same = c => scNorm(c.name) === key || scNorm(c.name).split(/\s+/)[0] === key.split(/\s+/)[0];
+    const pc = typeof PROJECT !== 'undefined' && PROJECT.cast.find(same);
+    if (pc) { out.push({key, name: n.name, aka: n.aka, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(pc.body)), name: n.name, castId: pc.id}, preset: pc.preset || null, outfit: (pc.outfit || []).map(x => ({...x})), mine: true}); continue; }
+    const mine = (SAVED_CHARS || []).find(same);
     if (mine) { out.push({key, name: n.name, aka: n.aka, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(mine.body)), name: n.name}, preset: mine.preset || null, outfit: mine.outfit || [], mine: true}); continue; }
     // what the action says about them (their introduction, what they wear), not what anyone says
     // (a name that is what they are, said with an article — «Um FANTASMA», «Un HOMBRE», «the GUARD» — is read as words)
@@ -873,8 +877,8 @@ function lineOfInterest(D, at) {
   const a = at(D.present[0], 0), b = at(D.present[1], 0), d = new V3(b.x - a.x, 0, b.z - a.z).normalize(), n = new V3(-d.z, 0, d.x);
   if (n.z < 0) n.negate(); return {n, d};
 }
-function camFor(spec, t, D, sample, side) {
-  const W = sample(t), vfovOf = f => 2 * Math.atan(.5 * camera.filmGauge / Math.max(camera.aspect, 1) / f), k = W.size;
+function camFor(spec, t, D, sample, side, aspect = camera.aspect) {
+  const W = sample(t), vfovOf = f => 2 * Math.atan(.5 * camera.filmGauge / Math.max(aspect, 1) / f), k = W.size;
   const subj = spec.subj.map(c => W.of[c]).filter(x => x && x.hips.y > -10);  // (not who has gone)
   if (!subj.length) {  // nobody there: the place itself, from in front and low, looking up a little (a sky, a building, a hall)
     if (!['est', 'master'].includes(spec.type) || Object.values(W.of).some(x => x.hips.y > -10)) return null;
@@ -886,7 +890,7 @@ function camFor(spec, t, D, sample, side) {
   if (spec.type === 'est' || spec.type === 'master' || spec.type === 'two' || spec.type === 'fight') {
     const all = spec.type === 'est' ? Object.values(W.of).filter(x => x.hips.y > -10) : subj, xs = all.map(s => s.hips);
     const c = xs.reduce((a, p) => a.add(p), new V3()).multiplyScalar(1 / xs.length); let spread = 0; for (const p of xs) spread = Math.max(spread, p.distanceTo(c));
-    H = Math.max(H, (spread * 2 + 1.1 * k) / Math.max(1, camera.aspect) * 1.15, spec.type === 'est' ? 3.4 * k : 0);
+    H = Math.max(H, (spread * 2 + 1.1 * k) / Math.max(1, aspect) * 1.15, spec.type === 'est' ? 3.4 * k : 0);
     focal = spec.type === 'est' ? 24 : focal; const vf = vfovOf(focal), d = H / 2 / Math.tan(vf / 2);
     const el = (spec.type === 'est' ? 18 : 7) * DEG, dir = n.clone().add(side.d ? side.d.clone().multiplyScalar(spec.type === 'est' ? .55 : .15) : new V3()).normalize();
     tgt = new V3(c.x, Math.max(.5 * k, (spec.type === 'est' ? c.y * .9 : mid.y - H / 6)), c.z);
@@ -895,7 +899,7 @@ function camFor(spec, t, D, sample, side) {
     const S = subj[0], O = W.of[spec.other], dirOS = S.eye.clone().sub(O.eye).setY(0).normalize(), sideV = n.clone().multiplyScalar(n.dot(new V3().crossVectors(new V3(0, 1, 0), dirOS)) >= 0 ? 1 : -1);
     pos = O.eye.clone().addScaledVector(dirOS, -.62 * k).addScaledVector(new V3(-dirOS.z, 0, dirOS.x).multiplyScalar(sideV.dot(new V3(-dirOS.z, 0, dirOS.x)) >= 0 ? 1 : -1), .36 * k).add(new V3(0, .06 * k, 0));
     tgt = S.eye.clone().add(new V3(0, -H / 6, 0)); const d = pos.distanceTo(tgt);
-    focal = clamp(camera.filmGauge / Math.max(camera.aspect, 1) * d / H, 22, 110);
+    focal = clamp(camera.filmGauge / Math.max(aspect, 1) * d / H, 22, 110);
   } else if (spec.type === 'insert') {  // the hands and what they work on, from beside and a little above
     const S = subj[0], side2 = new V3(-S.fwd.z, 0, S.fwd.x).multiplyScalar(n.dot(new V3(-S.fwd.z, 0, S.fwd.x)) >= 0 ? 1 : -1);
     tgt = S.hands.clone().addScaledVector(S.fwd, .12 * k); focal = 60; const d = .55 * k / Math.tan(vfovOf(focal) / 2);
@@ -924,11 +928,11 @@ function camFor(spec, t, D, sample, side) {
 // a still camera that keeps its people in: their heads and hips at the start, middle and end of the shot are seen through
 // it, and it steps back (the same lens) until they stay inside the frame with room above the heads
 const _fitCam = new THREE.PerspectiveCamera();
-function fitCam(c, u, sample) {
+function fitCam(c, u, sample, aspect = camera.aspect) {
   const pts = []; for (const t of [u.t0 + .05, (u.t0 + u.t1) / 2, u.t1 - .05]) { const W = sample(t); for (const ci of u.subj) { const x = W.of[ci]; if (x && x.hips.y > -10) pts.push(x.eye.clone().add(new V3(0, .12 * W.size, 0)), x.hips); } }
   if (!pts.length) return c;
   const T = new V3().fromArray(c.t); let P = new V3().fromArray(c.p);
-  _fitCam.filmGauge = camera.filmGauge; _fitCam.aspect = camera.aspect; _fitCam.setFocalLength(c.f); _fitCam.near = .05; _fitCam.far = 500;
+  _fitCam.filmGauge = camera.filmGauge; _fitCam.aspect = aspect; _fitCam.setFocalLength(c.f); _fitCam.near = .05; _fitCam.far = 500;
   for (let n = 0; n < 4; n++) {
     _fitCam.position.copy(P); _fitCam.lookAt(T); _fitCam.updateMatrixWorld(true); _fitCam.updateProjectionMatrix();
     let worst = 0; for (const p of pts) { const q = p.clone().project(_fitCam); if (q.z > 1) { worst = 2; break; } worst = Math.max(worst, Math.abs(q.x) / .94, q.y / .92, -q.y / .98); }

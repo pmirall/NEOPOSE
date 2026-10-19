@@ -102,7 +102,7 @@ function initPracticeUI() {
   bindChipGroup('#prFocus', v => { practice.focus = v; savePractice(); syncPracticeOpts(); });
   bindChipGroup('#prMemSecs', v => { practice.mem = +v; savePractice(); });
   bindChipGroup('#prClothes', v => { practice.clothes = v; savePractice(); });
-  $('#practiceBtn').onclick = () => { if (practice.active) return stopPractice(); renderStats(); syncPracticeOpts(); $('#practiceModal').hidden = false; $('#practiceModal .sheet').scrollTop = 0; $('#prStart').focus({preventScroll: true}); };
+  $('#practiceBtn').onclick = () => { if (practice.active) return stopPractice(); if (typeof WS !== 'undefined' && WS.cur !== 'static') setWorkspace('static'); renderStats(); syncPracticeOpts(); $('#practiceModal').hidden = false; $('#practiceModal .sheet').scrollTop = 0; $('#prStart').focus({preventScroll: true}); };
   $('#prCancel').onclick = () => $('#practiceModal').hidden = true;
   $('#practiceModal').onclick = e => { if (e.target.id === 'practiceModal') $('#practiceModal').hidden = true; };
   $('#prStart').onclick = () => { $('#practiceModal').hidden = true; startPractice(); };

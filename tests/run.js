@@ -39,6 +39,8 @@ const texts = page => page.evaluate(() => {
   for (const el of document.querySelectorAll('[title],[aria-label],[placeholder],[alt]')) for (const a of ['title', 'aria-label', 'placeholder', 'alt']) { const v = el.getAttribute(a); if (v) out.push(v); }
   return out;
 });
+// a tab of the panel, whatever space it lives in (the app switches to that space first)
+const goTab = (page, id) => page.evaluate(id => { const S = window.__cdp.spaces; if (S) return S.goTab(id); document.querySelector(`.tab[data-tab=${id}]`).click(); }, id);
 const waitIdle = page => page.waitForFunction(() => !window.__cdp.practice.busy, null, {timeout: 120000});
 
 const SUITES = {
@@ -48,12 +50,12 @@ const SUITES = {
       const page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
       await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
       for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) {
-        await page.click(`.tab[data-tab=${tab}]`); await page.waitForTimeout(400);
+        await goTab(page, tab); await page.waitForTimeout(400);
         if (tab === 'ropa') { await page.click('#outfitChips .chip'); await page.waitForTimeout(2500); await page.evaluate(() => document.querySelectorAll('#garmentList details, #garmentAdd details').forEach(d => d.open = true)); }
         if (tab === 'cuerpo') { await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1200); }
         await grab(); await page.screenshot({path: path.join(OUT, `${lang}-${tab}.png`)});
       }
-      await page.click('.tab[data-tab=escena]');
+      await goTab(page, 'escena');
       await page.evaluate(() => document.querySelector('#propChips .chip').click()); await page.waitForTimeout(800); await grab();
       await page.evaluate(() => document.querySelector('#addSpot').click()); await page.waitForTimeout(300); await grab();
       for (const b of ['#exportBtn', '#helpBtn', '#setBtn', '#practiceBtn']) { await page.click(b); await page.waitForTimeout(900); await grab(); await page.evaluate(() => document.querySelectorAll('.modal').forEach(m => m.hidden = true)); }
@@ -76,7 +78,7 @@ const SUITES = {
     for (const lang of ['ca', 'fr', 'pt', 'de', 'it']) {
       const D = LANG_DICT(lang), page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
       await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
-      for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) { await page.click(`.tab[data-tab=${tab}]`); await page.waitForTimeout(250); await grab(); }
+      for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) { await goTab(page, tab); await page.waitForTimeout(250); await grab(); }
       await page.click('#helpBtn'); await page.waitForTimeout(300); await grab();
       await page.screenshot({path: path.join(OUT, `${lang}-help.png`)}); await page.click('#helpClose');
       await page.click('#setBtn'); await page.waitForTimeout(300); await grab();
@@ -139,7 +141,7 @@ const SUITES = {
   // hairstyles: worn and tinted, kept when dressing, undone, refused by species heads
   async hair(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(500);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(500);
     const tiles = await A(() => document.querySelectorAll('#hairGrid .hairItem').length);
     ok(tiles >= 29, `every hairstyle has a tile, plus bald (${tiles})`);
     ok(/Elvaerwyn \(CC-BY/.test(await A(() => document.querySelector('#hairGrid .hairItem[data-v="h-elvs_micky_afro"]').title)), 'a CC BY hairstyle names its author');
@@ -150,13 +152,13 @@ const SUITES = {
     let s = await A(() => { const m = window.__cdp.mq; return {g: !!(m.hairG && m.hairG.d), col: m.hairG && '#' + m.hairG.U.uColA.value.getHexString()}; });
     ok(s.g && s.col === '#c7a066', `the hair is worn and tinted (${JSON.stringify(s)})`);
     await page.screenshot({path: path.join(OUT, 'hair.png')});
-    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(2500);
+    await goTab(page, 'ropa'); await page.click('#outfitChips .chip'); await page.waitForTimeout(2500);
     s = await A(() => { const m = window.__cdp.mq; return {kept: m.garments.includes(m.hairG), cards: document.querySelectorAll('#garmentList .garment').length, outfit: m.outfit.length}; });
     ok(s.kept && s.cards === s.outfit, `dressing keeps the hair out of the outfit (${JSON.stringify(s)})`);
     for (let i = 0; i < 4; i++) { await page.click('#undo'); await page.waitForTimeout(600); }
     ok(await A(() => !window.__cdp.mq.hairG && !window.__cdp.mq.body.hair), 'undo takes the hair off again');
     await page.click('#redo'); await page.waitForTimeout(1500);
-    await page.click('.tab[data-tab=cuerpo]'); await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1500);
+    await goTab(page, 'cuerpo'); await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1500);
     ok(await A(() => !window.__cdp.mq.hairG && document.querySelector('#hairGrid').classList.contains('off')), 'species heads do not wear human hair');
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
@@ -164,16 +166,16 @@ const SUITES = {
   // skeleton construction mode: the bones appear inside a ghost of the figure, follow body changes, and go away again
   async skeleton(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await page.click('.tab[data-tab=dibujo]'); await page.evaluate(() => document.querySelector('[data-sec=constr]').open = true);
+    await goTab(page, 'dibujo'); await page.evaluate(() => document.querySelector('[data-sec=constr]').open = true);
     await page.click('#formChips .chip[data-v="esqueleto"]');
     await page.waitForFunction(() => window.__cdp.mq.skel && window.__cdp.mq.skel.mesh.visible, null, {timeout: 30000});
     ok(await A(() => !document.querySelector('#skelNote').hidden), 'the skeleton credit is shown');
     const h0 = await A(() => { const g = window.__cdp.mq.skel.geo; g.computeBoundingBox(); return g.boundingBox.max.y; });
-    await page.click('.tab[data-tab=cuerpo]'); await page.click('#bodyChips .chip[data-v="nino"]'); await page.waitForTimeout(1200);
+    await goTab(page, 'cuerpo'); await page.click('#bodyChips .chip[data-v="nino"]'); await page.waitForTimeout(1200);
     const h1 = await A(() => { const g = window.__cdp.mq.skel.geo; g.computeBoundingBox(); return g.boundingBox.max.y; });
     ok(h1 < h0 * .9, `the bones follow a smaller body (${h0.toFixed(2)} → ${h1.toFixed(2)} m)`);
     await page.screenshot({path: path.join(OUT, 'skeleton.png')});
-    await page.click('.tab[data-tab=dibujo]'); await page.click('#formChips .chip[data-v="figura"]'); await page.waitForTimeout(300);
+    await goTab(page, 'dibujo'); await page.click('#formChips .chip[data-v="figura"]'); await page.waitForTimeout(300);
     ok(await A(() => !window.__cdp.mq.skel), 'back to the figure, the skeleton is removed');
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
@@ -181,10 +183,10 @@ const SUITES = {
   // posing helpers: a pinned hand stays put, a library pose can be blended with the one before, a chair can be sat on
   async posing(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await page.click('.tab[data-tab=pose]'); await page.evaluate(() => document.querySelector('[data-sec=ayudas]').open = true);
+    await goTab(page, 'pose'); await page.evaluate(() => document.querySelector('[data-sec=ayudas]').open = true);
     await page.click('#pinChips .chip[data-v="handL"]');
     const d = await A(() => { const C = window.__cdp, m = C.mq, w0 = m.joints.wristL.getWorldPosition(new THREE.Vector3());
-      document.querySelector('.tab[data-tab=pose]').click(); m.joints.chest.rotation.x += .25; m.joints.chest.rotation.y += .2; m.group.updateMatrixWorld(true); C.enforcePins(m, 'chest');
+      (window.__cdp.spaces ? window.__cdp.spaces.goTab('pose') : document.querySelector('.tab[data-tab=pose]').click()); m.joints.chest.rotation.x += .25; m.joints.chest.rotation.y += .2; m.group.updateMatrixWorld(true); C.enforcePins(m, 'chest');
       return m.joints.wristL.getWorldPosition(new THREE.Vector3()).distanceTo(w0); });
     ok(d < .02, `a pinned hand stays where it was (${(d * 100).toFixed(1)} cm)`);
     await page.click('#pinChips .chip[data-v="handL"]');
@@ -204,10 +206,10 @@ const SUITES = {
   // scene: a 360° panorama behind the cast, perspective framings, the four-view layout
   async scene(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await page.click('.tab[data-tab=escena]'); await page.click('#envChips .chip[data-v="pano_prado"]');
+    await goTab(page, 'escena'); await page.click('#envChips .chip[data-v="pano_prado"]');
     await page.waitForFunction(() => window.__cdp.panoReady(), null, {timeout: 30000}).catch(() => {});
     ok(await A(() => window.__cdp.panoReady()), 'the panorama is shown behind the cast');
-    await page.click('.tab[data-tab=camara]'); await page.click('#perspChips .chip[data-v="p2"]'); await page.waitForTimeout(300);
+    await goTab(page, 'camara'); await page.click('#perspChips .chip[data-v="p2"]'); await page.waitForTimeout(300);
     const c = await A(() => ({y: window.__cdp.camera.position.y, t: window.__cdp.controls.target.y, g: document.querySelector('#gPersp').checked}));
     ok(Math.abs(c.y - c.t) < .02 && c.g, `two-point framing: level camera, horizon guide on (${JSON.stringify(c)})`);
     await page.click('#multiBtn'); await page.waitForTimeout(800);
@@ -436,7 +438,7 @@ const SUITES = {
       const r0 = radius(); w.quaternion.setFromAxisAngle(w.position.clone().normalize(), Math.PI / 2); const r1 = radius(); return r1 / r0; });
     ok(keep > .93, `a wrist turned 90° keeps ${(keep * 100).toFixed(0)}% of the forearm's thickness (no sweet-wrapper pinch)`);
     // the body sliders: the muscles follow while they move, not after
-    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('[data-sec=prop]').open = true);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('[data-sec=prop]').open = true);
     await A(() => { const s = document.querySelector('#b_muscle'); s.value = 1; s.dispatchEvent(new Event('input')); });
     await page.waitForTimeout(120); const p1 = await peak();
     await A(() => { const s = document.querySelector('#b_muscle'); s.value = 0; s.dispatchEvent(new Event('input')); });
@@ -448,7 +450,7 @@ const SUITES = {
     // thumbnails of the pose library show them too
     const th = await A(() => { const C = window.__cdp; C.renderThumb(C.POSES.find(p => p.id === 'guardia')); const t = C.thumbChars[0]; return t._muscVals ? t._muscVals[0] : -1; });
     ok(th > .8, `the pose library's silhouettes flex too (biceps ${th.toFixed(2)})`);
-    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
+    await goTab(page, 'ropa'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
     const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => { const I = g.geo.attributes.aMuscI; let u = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) u++; return u; }));
     ok(worn.length && worn.some(n => n > 100), `clothes follow the same muscles (${worn.join(', ')} vertices)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
@@ -458,7 +460,7 @@ const SUITES = {
   async bodies(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     ok(await A(() => Object.keys(window.__cdp.FIG.xsets).filter(k => /^bs?-/.test(k)).length) >= 60, 'the body sets are loaded');
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(800);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(800);
     ok(await A(() => document.querySelectorAll('#buildGrid .pose').length) >= 12, 'the builds are shown as silhouettes');
     // girth of the body at a height (fraction of its height), from its rest mesh
     const girth = (id, at) => A(([id, at]) => { const m = window.__cdp.mq; if (id) document.querySelector(`#buildGrid .pose[data-id="${id}"]`).click(); else m.build(m.body);
@@ -484,7 +486,7 @@ const SUITES = {
   // limb differences: stumps that close, joints that are not there stay still, prostheses that pose, a wheelchair
   async limbs(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('[data-sec=extremidades]').open = true);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('[data-sec=extremidades]').open = true);
     const reach = () => A(() => { const m = window.__cdp.mq, P = m.anchors, nV = window.__cdp.FIG.meta.nV, s = m.J, i = window.__cdp.FIG.jIdx.shoulderL; let x = 0;
       for (let v = 0; v < nV; v++) if (/shoulderL|elbowL|wristL|^fL/.test(m.bonePick[m.dom[v]] || '') || m.bonePick[m.dom[v]] === 'wristL') x = Math.max(x, Math.hypot(P[v * 3] - s[i * 3], P[v * 3 + 1] - s[i * 3 + 1], P[v * 3 + 2] - s[i * 3 + 2])); return x; });
     const r0 = await reach();
@@ -500,7 +502,7 @@ const SUITES = {
     await page.selectOption('#limb_legR', 'muslo'); await page.waitForTimeout(300); await page.click('[data-limb=legR] .limbpros .chip:nth-child(2)'); await page.waitForTimeout(300);
     const leg = await A(() => { const C = window.__cdp, m = C.mq; C.usePreset(C.POSES.find(p => p.id === 'pie')); const b = m.box(4), kn = m.prosthetics.some(g => g.parent === m.joints.kneeR), ft = m.prosthetics.some(g => g.parent === m.joints.ankleR); return {y: b.min.y, kn, ft}; });
     ok(leg.kn && leg.ft && Math.abs(leg.y) < .01, `above the knee: knee unit and foot on their bones, standing on the floor (${leg.y.toFixed(3)} m)`);
-    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
+    await goTab(page, 'ropa'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
     ok(await A(() => window.__cdp.mq.garments.some(g => g.geo && g.geo.attributes.skinIndex.array.some((v, i) => i % 4 === 0 && v === window.__cdp.FIG.jIdx.elbowL && g.geo.attributes.skinWeight.array[i] === 1))), 'the sleeve over the stump hangs on the stump');
     const sat = await A(async () => { const C = window.__cdp, g = C.makeProp('sillaRuedas', new THREE.Vector3(1.5, 0, 0)); await C.sitOn(C.mq, g); return C.mq.joints.hips.getWorldPosition(new THREE.Vector3()).y; });
     ok(sat > .45 && sat < .7, `someone can sit in the wheelchair (pelvis at ${sat.toFixed(2)} m)`);
@@ -542,8 +544,8 @@ const SUITES = {
   // saved characters, and poses and animations with mobility aids
   async people(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(3500);
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
+    await goTab(page, 'ropa'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(3500);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(300);
     await A(() => document.querySelector('#buildGrid .pose[data-id="robusta"]').click()); await page.waitForTimeout(400);
     page.once('dialog', d => d.accept('Marta'));
     await page.click('#charSave'); await page.waitForTimeout(2500);
@@ -569,7 +571,7 @@ const SUITES = {
   // layers for drawing programs: a real layered PSD, “Open in…” on the desktop and in the browser, one sequence per layer
   async layers(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    await page.click('.tab[data-tab=ropa]'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(2500);
+    await goTab(page, 'ropa'); await page.click('#outfitChips .chip:nth-child(2)'); await page.waitForTimeout(2500);
     const psd = await A(async () => {
       const C = window.__cdp; const b = await C.layers.layeredPSD(), d = new DataView(b.buffer, b.byteOffset, b.byteLength);
       const sig = String.fromCharCode(...b.slice(0, 4)), ch = d.getUint16(12), h = d.getUint32(14), w = d.getUint32(18), depth = d.getUint16(22), mode = d.getUint16(24);
@@ -636,13 +638,13 @@ const SUITES = {
     const end = await A(() => JSON.stringify(window.__cdp.mq.getPose().q)); await page.waitForTimeout(300);
     ok(mid !== end && end === await A(() => JSON.stringify(window.__cdp.mq.getPose().q)), 'a pose picked in the panel glides into place and settles');
     // an object onto the floor where it is dropped
-    await page.click('.tab[data-tab=escena]'); await A(() => { document.querySelector('#propChips').closest('details').open = true; }); await page.waitForTimeout(300);
+    await goTab(page, 'escena'); await A(() => { document.querySelector('#propChips').closest('details').open = true; }); await page.waitForTimeout(300);
     const n0 = await A(() => window.__cdp.props.length), spot = await A(() => { const r = document.querySelector('#gl').getBoundingClientRect(); return {x: r.left + r.width * .2, y: r.top + r.height * .85}; });
     await drag('#propChips > .chips .chip[data-v]', spot); await page.mouse.up(); await page.waitForTimeout(500);
     const pr = await A(s => { const C = window.__cdp, g = C.props[C.props.length - 1], r = document.querySelector('#gl').getBoundingClientRect(), p = g.position.clone().project(C.camera); return {n: C.props.length, dx: Math.abs(r.left + (p.x + 1) / 2 * r.width - s.x), y: g.position.y}; }, spot);
     ok(pr.n === n0 + 1 && pr.dx < 40 && pr.y < .01, `an object lands on the floor where it is dropped (${Math.round(pr.dx)} px off)`);
     // a colour onto a garment
-    await page.click('.tab[data-tab=ropa]'); await A(() => ['#outfitChips', '#dropColors'].forEach(s => { document.querySelector(s).closest('details').open = true; })); await page.click('#outfitChips .chip:nth-child(3)'); await page.waitForTimeout(3500);
+    await goTab(page, 'ropa'); await A(() => ['#outfitChips', '#dropColors'].forEach(s => { document.querySelector(s).closest('details').open = true; })); await page.click('#outfitChips .chip:nth-child(3)'); await page.waitForTimeout(3500);
     await drag('#dropColors button:nth-child(9)', await at(1, 'chest'));
     const hovC = await A(() => document.querySelector('.dndtarget.hot span')?.textContent); await page.mouse.up(); await page.waitForTimeout(500);
     const tint = await A(() => { const m = window.__cdp.chars[1], g = m.garments.find(g => g.spec.mode === 'tint'); return g && g.spec.colA; });
@@ -659,7 +661,7 @@ const SUITES = {
     await page.keyboard.press('Enter'); await page.waitForTimeout(2500);
     ok(found[0] === 'Forest' && await A(() => window.__cdp.state.env) === 'bosque', `search: “forest” → ${found.slice(0, 3).join(', ')}; Enter opens it`);
     // sliders: type a value, double click resets
-    await page.click('.tab[data-tab=camara]'); await A(() => document.querySelectorAll('.page section[data-tab=camara] details.sec').forEach(d => d.open = true)); await page.waitForTimeout(300);
+    await goTab(page, 'camara'); await A(() => document.querySelectorAll('.page section[data-tab=camara] details.sec').forEach(d => d.open = true)); await page.waitForTimeout(300);
     const sl = await A(() => { document.querySelector('#roll').parentElement.querySelector('output').click(); return document.activeElement && document.activeElement.classList.contains('slnum'); });
     await page.keyboard.type('20'); await page.keyboard.press('Enter'); await page.waitForTimeout(200);
     const typed = await A(() => ({out: document.querySelector('#roll').parentElement.querySelector('output').textContent, v: +document.querySelector('#roll').value}));
@@ -863,6 +865,91 @@ const SUITES = {
   },
   // scripts of every kind (genres, the seven languages, Fountain, «NAME: line», plays, no headings, sound effects in
   // capitals, introductions with ages): the cast and nobody else, how each one looks, the sets, nothing misunderstood
+  // the three spaces: each shows its own tabs and buttons; the switcher, Alt+1/2/3, A and a tab asked for from
+  // anywhere move between them; the timeline is Animación's; the phone keeps one line on top
+  async spaces(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    const vis = () => A(() => [...document.querySelectorAll('.tabs .tab')].filter(t => !t.hidden).map(t => t.dataset.tab).join(','));
+    ok(await A(() => document.body.dataset.ws) === 'static' && await vis() === 'pose,dibujo,escena,luz,camara,comic', `starts in Static: ${await vis()}`);
+    await page.click('#wsChars'); await page.waitForTimeout(400);
+    const c = await vis(), top = await A(() => ['#sketchBtn', '#practiceBtn', '#openIn', '#exportBtn'].map(s => getComputedStyle(document.querySelector(s)).display !== 'none'));
+    ok(c === 'cuerpo,ropa,escena' && !top[0] && !top[1] && top[2] && top[3], `Characters & places: ${c}; sketch and practice belong to Static`);
+    await page.click('#animBtn'); await page.waitForTimeout(600);
+    ok(await A(() => window.__cdp.ANIM.open && document.body.dataset.ws === 'anim' && !document.querySelector('#timeline').hidden), 'Animation opens the timeline');
+    await page.click('#animBtn'); await page.waitForTimeout(500);
+    ok(await A(() => !window.__cdp.ANIM.open && document.body.dataset.ws === 'chars'), 'Animation again: back to the space it came from, timeline closed');
+    await page.keyboard.press('Alt+Digit2'); await page.waitForTimeout(300); const s2 = await A(() => document.body.dataset.ws);
+    await page.keyboard.press('a'); await page.waitForTimeout(500); const s3 = await A(() => document.body.dataset.ws);
+    await page.keyboard.press('a'); await page.waitForTimeout(500); const s4 = await A(() => document.body.dataset.ws);
+    ok(s2 === 'static' && s3 === 'anim' && s4 === 'static', `Alt+2 → ${s2}, A → ${s3}, A → ${s4}`);
+    await goTab(page, 'ropa'); await page.waitForTimeout(400);
+    ok(await A(() => document.body.dataset.ws === 'chars' && !document.querySelector('section[data-tab=ropa]').hidden), 'a tab asked for from anywhere brings its space (Ropa → Characters)');
+    await page.keyboard.press('Alt+Digit2'); await page.keyboard.press('2'); await page.waitForTimeout(300);
+    ok(await A(() => window.__cdp.state.tab) === 'dibujo', 'number keys count the visible tabs (2 in Static = Dibujo)');
+    await page.reload(); await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length); await page.waitForTimeout(600);
+    ok(await A(() => document.body.dataset.ws === 'static' && window.__cdp.state.tab === 'dibujo'), 'the space and its tab come back after a reload');
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors');
+    await page.screenshot({path: path.join(OUT, 'spaces-desktop.png')});
+    await page.context().close();
+    const ph = await open(browser, {viewport: {width: 390, height: 844}, mobile: true}), P = fn => ph.evaluate(fn);
+    for (const w of ['chars', 'static', 'anim']) {
+      await ph.evaluate(w => window.__cdp.spaces.setWorkspace(w), w); await ph.waitForTimeout(600);
+      const m = await P(() => ({h: document.querySelector('header.top').getBoundingClientRect().height, x: document.documentElement.scrollWidth - innerWidth, tabs: [...document.querySelectorAll('.tabs .tab')].filter(t => !t.hidden).length}));
+      ok(m.h < 60 && m.x <= 0 && m.tabs === {chars: 3, static: 6, anim: 5}[w], `phone, ${w}: top bar ${Math.round(m.h)} px, no sideways scroll, ${m.tabs} tabs`);
+      await ph.screenshot({path: path.join(OUT, `spaces-phone-${w}.png`)});
+    }
+    await ph.context().close();
+  },
+  // comic and manga pages: panels are shots seen at one frame, drawn in the key drawings' line; balloons point at their
+  // speakers; a panel is set up in 3D and given back; pages come from the film, linked; pages export for print
+  async comic(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    await goTab(page, 'comic'); await page.waitForTimeout(600);
+    const s0 = await A(() => { const K = window.__cdp.comic, c = K.comic(); return {view: !document.querySelector('#pageView').hidden, pages: c.pages.length, panels: c.pages[0].panels.length, rtl: c.rtl, order: K.readingOrder(c.pages[0]).slice(0, 2).map(p => p.x)}; });
+    ok(s0.view && s0.pages === 1 && s0.panels === 4 && s0.rtl && s0.order[0] > s0.order[1], `the Cómic tab shows a manga page of 4 panels, read right to left (first at x ${Math.round(s0.order[0])} mm)`);
+    // a panel from what the canvas shows, drawn in line
+    const d = await A(async () => { const C = window.__cdp, K = C.comic, p = K.comic().pages[0].panels[0]; K.CM.sel = p; document.querySelector('#cmFromStage').click();
+      const k = 2; await K.CM.queue; const px = [Math.round(p.w * k), Math.round(p.h * k)]; window.__cdp.comic.CM.cache.clear();
+      const img = await K.pageImage(K.comic().pages[0], 50.8); const hit = [...K.CM.cache.values()][0]; const g = hit.img.getContext('2d'), id = g.getImageData(0, 0, hit.img.width, hit.img.height).data; let ink = 0, white = 0;
+      for (let i = 0; i < id.length; i += 4) { const L = id[i] * .3 + id[i + 1] * .59 + id[i + 2] * .11; if (L < 60) ink++; else if (L > 200) white++; }
+      return {shot: !!p.shot, w: img.width, h: img.height, ink: ink / (id.length / 4), white: white / (id.length / 4), anchors: hit.anchors.filter(Boolean).length, px}; });
+    ok(d.shot && d.w === Math.round(182 / 25.4 * 50.8) && d.ink > .002 && d.white > .3 && d.anchors >= 1, `a panel from the canvas, drawn in line (${(d.ink * 100).toFixed(1)} % ink, ${(d.white * 100).toFixed(0)} % paper), its speaker's head found; page ${d.w}×${d.h} px`);
+    // set up in 3D: the panel keeps the new pose, the canvas gets its own back
+    const e = await A(async () => { const C = window.__cdp, K = C.comic, p = K.comic().pages[0].panels[0], m = C.chars[0], before = JSON.stringify(m.getPose().q.chest);
+      await K.editPanel(p); const editing = !!K.CM.edit && document.querySelector('#pageView').hidden; m.joints.chest.rotation.y += .6; m.group.updateMatrixWorld(true);
+      await K.finishPanelEdit(); const after = JSON.stringify(C.chars[0].getPose().q.chest);
+      return {editing, kept: JSON.stringify(p.shot.keys[0][0].pose.q.chest) !== before, back: after === before}; });
+    ok(e.editing && e.kept && e.back, 'a panel set up in 3D keeps its new pose; the canvas gets its own picture back');
+    // a balloon: kind, text, speaker
+    await goTab(page, 'comic'); await page.waitForTimeout(300);
+    await A(() => { const K = window.__cdp.comic; K.CM.sel = K.comic().pages[0].panels[0]; document.querySelector('#cmAddB').click(); });
+    await page.fill('#cmText', '¡Hola!'); await page.click('#cmKind .chip[data-v="shout"]');
+    const b = await A(() => { const p = window.__cdp.comic.comic().pages[0].panels[0], b = p.balloons[0]; return b && {text: b.text, kind: b.kind, ci: b.ci}; });
+    ok(b && b.text === '¡Hola!' && b.kind === 'shout' && b.ci === 0, `a balloon: «${b && b.text}», ${b && b.kind}, said by character ${b && b.ci + 1}`);
+    // pages from the film, linked to its shots
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    const txt = fs.readFileSync(path.join(__dirname, 'anim-scripts', 'a04-drama.es.txt'), 'utf8');
+    const f = await page.evaluate(async t => { const C = window.__cdp; C.script.VOICE.on = false; await C.script.scriptToFilm(t, {cams: true, online: false}); return C.ANIM.shots.length; }, txt);
+    await page.click('#wsStatic'); await goTab(page, 'comic'); await page.waitForTimeout(300);
+    const L = await A(async () => { const K = window.__cdp.comic, n = await K.filmToComic(); const P = K.comic().pages.flatMap(p => p.panels), linked = P.filter(p => p.link), said = P.reduce((a, p) => a + p.balloons.length, 0);
+      const p = linked[0], s = K.panelShot(p), k0 = K.panelKey(p, 100, 100); s.rev = (s.rev || 0) + 1; const k1 = K.panelKey(p, 100, 100);
+      return {n, linked: linked.length, said, follows: k0 !== k1}; });
+    ok(L.n === f && L.linked === f && L.said >= 2 && L.follows, `${L.n} panels from the ${f} shots of the film, linked (a change in the film redraws them), ${L.said} balloons from its lines`);
+    // print: the page at 300 dpi; saved in the .neopose and back
+    const x = await A(async () => { const K = window.__cdp.comic, C = window.__cdp, cv = await K.pageImage(K.comic().pages[0], 300);
+      const bytes = await C.file.neoposeBytes('t'), n = K.comic().pages.length; C.project.applyProjectState(null);
+      await C.file.openNeopose(new File([bytes], 't.neopose')); return {w: cv.width, h: cv.height, n, back: C.project.PROJECT.comic && C.project.PROJECT.comic.pages.length}; });
+    ok(x.w === 2150 && x.h === 3035 && x.back === x.n, `a manga page at 300 dpi is ${x.w}×${x.h} px (B5); the ${x.n} pages come back from the .neopose file`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
+    await page.screenshot({path: path.join(OUT, 'comic-desktop.png')});
+    await page.context().close();
+    const ph = await open(browser, {viewport: {width: 390, height: 844}, mobile: true});
+    await goTab(ph, 'comic'); await ph.waitForTimeout(800);
+    const m = await ph.evaluate(() => ({x: document.documentElement.scrollWidth - innerWidth, view: !document.querySelector('#pageView').hidden, h: document.querySelector('#pageView').getBoundingClientRect().height}));
+    ok(m.view && m.x <= 0 && m.h > 150, `phone: the page shows (${Math.round(m.h)} px tall), no sideways scroll`);
+    await ph.screenshot({path: path.join(OUT, 'comic-phone.png')});
+    await ph.context().close();
+  },
   // the key poses of a film drawn in line: found in the motion, exported with a timing sheet and an exposure sheet; the
   // camera and light of a shot restyled from the timeline
   async keylines(browser) {
@@ -923,7 +1010,7 @@ const SUITES = {
   // tail in animation), pads, a furry cast from a script, tail and ears in the BVH
   async furry(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(400);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(400);
     const n = await A(() => ({chips: document.querySelectorAll('#speciesChips .chip').length, fams: document.querySelectorAll('#speciesChips .famlbl').length}));
     ok(n.chips >= 19 && n.fams === 5, `species by family (${n.chips} species in ${n.fams} families)`);
     await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3500);
@@ -949,7 +1036,7 @@ const SUITES = {
     ok(await A(() => !window.__cdp.mq.hasTail), '“No tail” takes it away');
     await A(() => document.querySelector('#tailChips .chip[data-v="tupida"]').click()); await page.waitForTimeout(400);
     // expressions move the tail with the ears: fear tucks it under, happy lifts it
-    await page.click('.tab[data-tab=pose]'); await page.waitForTimeout(400);
+    await goTab(page, 'pose'); await page.waitForTimeout(400);
     const tx = () => A(() => window.__cdp.mq.joints.tail1.rotation.x);
     await A(() => document.querySelector('#exprChips .chip[data-v="miedo"]').click()); const fear = await tx();
     await A(() => document.querySelector('#exprChips .chip[data-v="feliz"]').click()); const happy = await tx();
@@ -968,7 +1055,7 @@ const SUITES = {
     const bvh = await A(() => window.__cdp.exportBVH(window.__cdp.mq));
     ok(/JOINT tail3/.test(bvh) && /JOINT earL/.test(bvh) && bvh.split('MOTION')[1].trim().split('\n')[2].split(' ').length === (bvh.match(/CHANNELS 3/g).length * 3 + 6), 'the BVH carries the tail and ears, with a value for every channel');
     // more species: plantigrade bear with a sole pad, single-hoofed horse, a lion's mane
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(300);
     for (const sp of ['oso', 'caballo', 'leon']) { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(1500); }
     ok(await A(() => window.__cdp.mq.body.species === 'leon' && window.__cdp.mq.acc.some(a => a.geometry.attributes.aEye && Math.abs(a.geometry.attributes.aEye.array[2] - 2.97) < .01)), 'a lion has its mane');
     // a hybrid: the fox girl's head on a tiger's body keeps the tiger's legs and coat
@@ -987,12 +1074,12 @@ const SUITES = {
     await A(() => { const i = document.querySelector('#coatFluff'); i.value = 0; i.dispatchEvent(new Event('input')); }); await page.waitForTimeout(500);
     ok(tufts > 100 && await A(() => !window.__cdp.mq.fluffGeo), `a fox has fluff tufts (${tufts} vertices) and a sleek one none`);
     await A(() => { const i = document.querySelector('#coatFluff'); i.value = .6; i.dispatchEvent(new Event('input')); }); await page.waitForTimeout(500);
-    await page.click('.tab[data-tab=ropa]'); await A(() => document.querySelector('#outfitChips .chip[data-v="traje"]').click()); await page.waitForTimeout(4500);
+    await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitChips .chip[data-v="traje"]').click()); await page.waitForTimeout(4500);
     const cloth = await A(() => { const m = window.__cdp.mq, g = m.garments.find(g => g.geo && g.d && g.d.n > 500), A = g.geo.attributes.aHide.array, P = g.geo.attributes.position.array, O = m.tailRoot;
       let hole = 0; for (let i = 0; i < g.d.n; i++) if (A[i] === 1 && Math.hypot(P[i * 3] - O.x, P[i * 3 + 1] - O.y, P[i * 3 + 2] - O.z) < .1) hole++;
       const F = m.fluffGeo.attributes.aHide.array; let hid = 0; for (const v of F) if (v === 1) hid++; return {hole, hid}; });
     ok(cloth.hole > 3 && cloth.hid > 0, `a suit opens where the tail comes out (${cloth.hole} vertices) and hides the tufts under its sleeves (${cloth.hid})`);
-    await page.click('.tab[data-tab=cuerpo]'); await page.waitForTimeout(300);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(300);
     // a furry cast read from a script
     const sp = await A(() => { const s = window.__cdp.furry.speciesOf; return [s('REX', 'REX, un lobo gris, entra.'), s('MIA', 'Mia (gata) mira.'), s('ANA', "ANA can't bear the silence."), s('ZORRO', 'ZORRO: ¡Hola!')].join(); });
     ok(sp === 'lobo,gato,,zorro', `a script's cast: “REX, un lobo”, “Mia (gata)”, the name ZORRO; “can't bear” is not a bear (${sp})`);
@@ -1003,7 +1090,7 @@ const SUITES = {
   async file(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     await page.click('#cast .chip.add'); await page.waitForTimeout(1500);
-    await page.click('.tab[data-tab=cuerpo]'); await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3000);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3000);
     await A(() => { const i = document.querySelector('#coatCols input[data-k="0"]'); i.value = '#224466'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); });
     await page.click('#animBtn'); await page.waitForTimeout(500);
     await A(() => { const C = window.__cdp; for (const [f, p] of [[0, 'pie'], [12, 'victoria']]) { C.setFrameAnim(f); C.usePreset(C.POSES.find(x => x.id === p)); } });
@@ -1168,11 +1255,11 @@ const SUITES = {
         // a phone at rest draws a few frames a second, and the garment library is not fetched until Ropa is opened
         const rest = await page.evaluate(() => new Promise(res => setTimeout(() => { const r = window.__cdp.renderer, f0 = r.info.render.frame; setTimeout(() => res(r.info.render.frame - f0), 3000); }, 3000)));
         const cat0 = await page.evaluate(() => performance.getEntriesByType('resource').some(e => /ropa\/catalog\.json/.test(e.name)));
-        await page.evaluate(() => document.querySelector('.tab[data-tab=ropa]').click()); await page.waitForTimeout(2500);
+        await page.evaluate(() => (window.__cdp.spaces ? window.__cdp.spaces.goTab('ropa') : document.querySelector('.tab[data-tab=ropa]').click())); await page.waitForTimeout(2500);
         const cat1 = await page.evaluate(() => performance.getEntriesByType('resource').some(e => /ropa\/catalog\.json/.test(e.name)) && !!document.querySelector('#garmentAdd details, #garmentAdd .libItem'));
         ok(rest <= 20, `${lang} phone: at rest the canvas is drawn a few times a second (${rest} frames in 3 s)`);
         ok(!cat0 && cat1, `${lang} phone: the garment library is fetched when Ropa is opened, not at start`);
-        await page.evaluate(() => document.querySelector('.tab[data-tab=pose]').click()); await page.waitForTimeout(500);
+        await page.evaluate(() => (window.__cdp.spaces ? window.__cdp.spaces.goTab('pose') : document.querySelector('.tab[data-tab=pose]').click())); await page.waitForTimeout(500);
       }
       const hh = await page.evaluate(() => document.querySelector('header.top').getBoundingClientRect().height);
       ok(hh < 60, `${lang} phone: the top bar fits on one line (${Math.round(hh)}px)`);

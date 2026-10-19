@@ -53,7 +53,7 @@ function autosaveNow(e) {
   if (AUTO.base === null) return; clearTimeout(AUTO.t);
   // not in the middle of a practice session (random scenes), a playing film or a script being staged
   if (practice.active || ANIM.playing || ANIM.busy || (typeof SC !== 'undefined' && SC.busy)) return e ? undefined : autosaveSoon(3000);
-  const an = animState(), data = histStr() !== AUTO.base || an ? JSON.stringify({v: 1, t: Date.now(), ...snapshot(), ...sceneExtras(true)}) : null;
+  const an = animState(), pj = typeof projectState === 'function' && projectState(), data = histStr() !== AUTO.base || an || pj ? JSON.stringify({v: 1, t: Date.now(), ...snapshot(), ...sceneExtras(true, {project: true})}) : null;
   const ls = () => { try { if (data) localStorage.setItem(AUTO.key, data); else localStorage.removeItem(AUTO.key); } catch (_) {} };
   if (e) ls();
   try { (data ? idb.set(AUTO.key, data) : idb.del(AUTO.key)).then(() => { if (!e) try { localStorage.removeItem(AUTO.key); } catch (_) {} }, ls); } catch (_) { ls(); }
@@ -187,15 +187,19 @@ function setPressed(parent, id) { parent.querySelectorAll('.chip').forEach(c => 
 function bindChipGroup(sel, onPick) { const p = $(sel); p.querySelectorAll('.chip').forEach(c => c.onclick = () => { setPressed(p, c.dataset.v); onPick(c.dataset.v); }); }
 
 const tabs = $$('.tab');
-const TAB_ALIAS = {manos: 'pose', luz: 'escena'};
+const TAB_ALIAS = {manos: 'pose'};
 function showTab(id) {
   id = TAB_ALIAS[id] || id; if (!tabs.some(t => t.dataset.tab === id)) id = 'pose';
+  // a tab of another space brings its space along (see 05h-spaces)
+  if (typeof WS !== 'undefined' && WS.ready && !wsTabs(WS.cur).includes(id)) return setWorkspace(wsOfTab(id), {tab: id});
   tabs.forEach(t => { t.setAttribute('aria-selected', String(t.dataset.tab === id)); t.tabIndex = t.dataset.tab === id ? 0 : -1; });
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
   store.set('cdp.tab', id);
   // the garment library (1.3 MB) is fetched the first time it is shown, not at start
   if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && !ROPA.catalog) renderLibrary();
+  // Estático's comic page shows with its tab (and the 3D canvas with the others)
+  if (typeof showPage === 'function') showPage(id === 'comic');
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); setPanel(true); });
 /* collapsible sections remember whether they were open */
@@ -239,7 +243,7 @@ function setLang(l) {
   carryScene(); location.reload();
 }
 // the scene goes over a reload (a language switch, an update) in this tab at once
-function carryScene() { if (!chars.length) return; try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true)})); } catch (e) {} }
+function carryScene() { if (!chars.length) return; try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true, {project: true})})); } catch (e) {} }
 $$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
 $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 /* the canvas hint steps back once the user has tried posing */
@@ -250,7 +254,7 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 let bodyEls = {};
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, paws: mq.body.paws, fluff: mq.body.fluff, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
+    mq.body = {...bodyOf(id), castId: mq.body.castId, name: mq.body.name, species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, paws: mq.body.paws, fluff: mq.body.fluff, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   // species by family, so the list reads like a field guide
   const fams = [['', ''], ['can', 'Cánidos'], ['fel', 'Felinos'], ['otro', 'Osos y prociónidos'], ['pre', 'Conejos y ungulados'], ['rep', 'Reptiles']], spBox = $('#speciesChips');
@@ -290,16 +294,17 @@ const STYLE_NOTE = {
   volumen: 'Sombreado suave para estudiar luces y sombras sobre la anatomía.',
   silueta: 'Mancha plana para leer la línea de acción y el gesto.',
   lapiz: 'Sombreado a lápiz con tramas cruzadas según la luz, también en el escenario: una referencia que ya parece un dibujo.',
-  valores: 'Estudio de valores en dos o tres tonos planos (notan), para decidir dónde van las masas de sombra.'
+  valores: 'Estudio de valores en dos o tres tonos planos (notan), para decidir dónde van las masas de sombra.',
+  trama: 'Trama de puntos como en el manga: la sombra en puntos más grandes cuanto más oscura, la más honda en negro.'
 };
 function applyDrawing() {
   for (const m of chars) { m.outlineOn = state.outline > 0 && state.style !== 'silueta'; m.setStyle(state.style); }
   LU.uOutW.value = state.outline;
   LU.uLineA.value = state.style === 'silueta' || state.lineMode === 'ninguna' ? 0 : state.lineA;
   LU.uMer.value = state.lineMode === 'malla' ? 4 : 0;
-  LU.uRender.value = state.style === 'lapiz' ? 1 : state.style === 'valores' ? 2 : 0;
+  LU.uRender.value = state.style === 'lapiz' ? 1 : state.style === 'valores' ? 2 : state.style === 'trama' ? 3 : 0;
   $('#styleNote').textContent = tr(STYLE_NOTE[state.style]);
-  $('#hatchBox').hidden = state.style !== 'lapiz'; $('#valueBox').hidden = state.style !== 'valores';
+  $('#hatchBox').hidden = state.style !== 'lapiz'; $('#valueBox').hidden = state.style !== 'valores' && state.style !== 'trama';
   applyAmbient();
 }
 function buildDrawUI() {

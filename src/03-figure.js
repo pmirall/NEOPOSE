@@ -4,16 +4,22 @@ const LU = {
   uLineCol: {value: new THREE.Color(0x3a3229)}, uCenterCol: {value: new THREE.Color(0xb0432c)},
   uHiCol: {value: new THREE.Color(0x2b5a9e)},
   uOutW: {value: 1.6}, uPx: {value: new THREE.Vector2(.002, .002)}, uOutCol: {value: new THREE.Color(0x1e1a15)},
-  // 0 normal · 1 pencil hatching · 2 value study
-  uRender: {value: 0}, uDpr: {value: 1}, uThresh: {value: .5}, uLevels: {value: 3}, uHatch: {value: .4},
+  // 0 normal · 1 pencil hatching · 2 value study · 3 screentone (manga dots; uTone: the dot cell in pixels)
+  uRender: {value: 0}, uDpr: {value: 1}, uThresh: {value: .5}, uLevels: {value: 3}, uHatch: {value: .4}, uTone: {value: 7},
   uPaper: {value: new THREE.Color(0xf4f0e6)}, uGraphite: {value: new THREE.Color(0x2e2a25)}
 };
 const SKETCH_GLSL = `
-  uniform float uRender, uDpr, uThresh, uLevels, uHatch;
+  uniform float uRender, uDpr, uThresh, uLevels, uHatch, uTone;
   uniform vec3 uPaper, uGraphite;
   float hatchL(vec2 p, vec2 d, float s) { float f = abs(fract(dot(p, d) / s) - .5) * s; return 1.0 - smoothstep(.4, 1.3, f); }
   vec3 sketchify(vec3 c) {
     float L = dot(c, vec3(.299, .587, .114));
+    if (uRender > 2.5) {  // screentone: a 45° grid of dots, bigger where it is darker; the darkest shadow solid, the light paper
+      vec2 p = gl_FragCoord.xy / uDpr, q = vec2(p.x + p.y, p.y - p.x) * .7071 / uTone, cell = fract(q) - .5;
+      float r = sqrt(clamp((uThresh * 1.5 - L) / (uThresh * 1.5), 0.0, 1.0)) * .62, d = length(cell), aa = .9 / uTone;
+      float ink = L < uThresh * .32 ? 1.0 : 1.0 - smoothstep(r - aa, r + aa, d);
+      return mix(uPaper, uGraphite, ink);
+    }
     if (uRender > 1.5) {
       vec3 mid = mix(uGraphite, uPaper, .55);
       if (uLevels < 2.5) return L < uThresh ? uGraphite : uPaper;
@@ -140,7 +146,7 @@ function makeCharMats() {
   return {uHi, uMouth, uEye, uFur,
     construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),
     contorno: patchLines(new THREE.MeshBasicMaterial({color: 0xf8f5ee}), uHi, uMouth, uEye, uFur),
-    volumen: vol, lapiz: vol, valores: vol,
+    volumen: vol, lapiz: vol, valores: vol, trama: vol,
     silueta: patchLines(new THREE.MeshBasicMaterial({color: 0x2a2620}), uHi, uMouth, uEye),
     outline: OUTLINE_MAT,
     form: patchEnv(new THREE.MeshToonMaterial({color: 0xaeb8c2, gradientMap: TOON_GRAD})),

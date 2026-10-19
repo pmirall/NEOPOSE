@@ -6,12 +6,16 @@
      scene.json   {format: 'neopose', version, app, saved, name, scene: {…snapshot, …extras}, sketch, ui}
      thumb.png    a picture of the scene as it was saved (file managers and the app's own list can show it)
      avatars/<id> the imported avatars the scene uses
+   Since version 2, scene.json also has `project`: the cast and locations of Personajes y lugares, the film's
+   format and the comic pages (see 35-project).
    `version` is the file format's, not the app's: older files are brought up to date by migrateScene() step by step,
    and a newer file still opens, with a warning, keeping what this version understands. */
-const NP_VERSION = 1;
+const NP_VERSION = 2;
 const NP_MIGRATIONS = {
   // 0 → 1: the first files were the plain JSON of "Copy as text" ({cdp: 1, chars, …}); they become the scene
-  0: o => ({format: 'neopose', version: 1, scene: o})
+  0: o => ({format: 'neopose', version: 1, scene: o}),
+  // 1 → 2: the shared project (cast, locations, film format, comic) — empty for older files
+  1: o => ({...o, version: 2, project: o.project || null})
 };
 function migrateScene(o) {
   if (o && o.cdp && !o.format) o = {version: 0, ...o};
@@ -27,7 +31,7 @@ async function neoposeBytes(name) {
     const r = await avatarDB.get(a.id); if (r && r.buf) files[`avatars/${a.id}`] = new Uint8Array(r.buf);
   }
   const doc = {format: 'neopose', version: NP_VERSION, app: APP_VERSION, saved: new Date().toISOString(), name: name || '',
-    scene, sketch: sk.strokes.length ? sk.strokes : undefined, ui: {guides: {...state.guides}, ratio: state.ratio},
+    scene, sketch: sk.strokes.length ? sk.strokes : undefined, ui: {guides: {...state.guides}, ratio: state.ratio}, project: projectState(),
     avatars: Object.keys(files).map(k => {
       const id = k.slice(8), m = chars.find(c => c.body.avatar && c.body.avatar.id === id); return {id, name: m.body.avatar.name, file: m.body.avatar.file}; })};
   files['scene.json'] = fflate.strToU8(JSON.stringify(doc));
@@ -58,7 +62,7 @@ async function openNeopose(file) {
     if (!doc.scene || !doc.scene.chars || !doc.scene.chars.length) throw new Error(tr('no es un archivo de NEOPOSE'));
     for (const a of doc.avatars || []) { const b = files[`avatars/${a.id}`]; if (b) await avatarDB.put({id: a.id, file: a.file || a.name, buf: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)}); }
     if (ANIM.playing) play(false);
-    restore(doc.scene);
+    restore(doc.scene); applyProjectState(doc.project);
     if (doc.scene.cam) applySceneExtras({cam: doc.scene.cam}); else frameAll();
     sk.strokes = Array.isArray(doc.sketch) ? doc.sketch : []; sk.redo = []; redrawSketch();
     if (doc.ui) {

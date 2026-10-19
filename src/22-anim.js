@@ -12,7 +12,11 @@ const ANIM = {open: false, fps: 12, shots: [], cur: 0, f: 0, t: 0, playing: fals
   camRec: false, track: 0, sel: null, ghosts: [], busy: false, min: false};
 const MV_COLS = ['#b0432c', '#2b5a9e', '#4b8a5c', '#8a5aa8'];
 const JAW_AXIS = new V3(1, 0, 0);
-const shot = () => ANIM.shots[ANIM.cur];
+// the shot being shown: the film's current one, or another shot put on stage for a moment (a comic panel is a shot
+// seen at one frame: ANIM.focus lends it the whole film evaluator — poses, faces, camera, lights, effects)
+const shot = () => ANIM.focus || ANIM.shots[ANIM.cur];
+// a shot changed: whatever was drawn from it (a panel, a thumbnail) is drawn again
+const touchShot = s => { if (s) s.rev = (s.rev || 0) + 1; };
 const sec = f => f / ANIM.fps;
 let shotSeq = 0;
 function captureScene() {
@@ -78,7 +82,7 @@ function placeFilmKey(s) {
 }
 // the light of a shot, chosen: a mood (or the automatic one), or none of the film's lights (the set's alone)
 function setShotLight(s, mood) {
-  if (!s) return;
+  if (!s) return; touchShot(s);
   if (mood === 'ninguna') { s.key = 0; s.light = {...(s.light || {}), mood}; return; }
   if (!s.key) s.key = 1; s.light = {...(s.light || {}), mood};
 }
@@ -89,7 +93,7 @@ function setShotLight(s, mood) {
 const CAM_STYLES = {tal: 'Como está', fija: 'Fija', suave: 'Suave', mano: 'En mano', dinamica: 'Dinámica'};
 tValues(CAM_STYLES);
 function setCamStyle(s, kind) {
-  if (!s || !s.cam.length) return false;
+  if (!s || !s.cam.length) return false; touchShot(s);
   if (!s.camBase) s.camBase = JSON.parse(JSON.stringify(s.cam));
   const B = s.camBase, a = B[0].c, z = B[B.length - 1].c, end = Math.max(1, s.len - 1), fps = ANIM.fps;
   const mk = (p, t, f, r) => ({p: p.toArray().map(v => +v.toFixed(3)), t: t.toArray().map(v => +v.toFixed(3)), f: +f.toFixed(1), r: +(r || 0).toFixed(2)});
@@ -161,7 +165,7 @@ function setFrame(f, apply = true) {
 
 /* ---------- keys ---------- */
 const keyOf = (K, f) => K.find(k => k.f === f);
-function setKey(track = ANIM.track, f = ANIM.f) {
+function setKey(track = ANIM.track, f = ANIM.f) { touchShot(shot());
   const s = shot(); padKeys(s);
   if (track === 'cam') { const k = keyOf(s.cam, f), c = camState(); if (k) k.c = c; else { if (!s.cam.length && f > 0) s.cam.push({f: 0, c: ANIM.camBase || c}); s.cam.push({f, c}); s.cam.sort((a, b) => a.f - b.f); } }
   else { const K = s.keys[track], m = chars[track]; if (!m) return; const p = basePose(m), k = keyOf(K, f);
@@ -169,7 +173,7 @@ function setKey(track = ANIM.track, f = ANIM.f) {
   drawTimeline(); updateOnion(); thumbLater();
   tourEvent('key');
 }
-function deleteKey(track = ANIM.track, f = ANIM.f) {
+function deleteKey(track = ANIM.track, f = ANIM.f) { touchShot(shot());
   const s = shot(); if (track === 'cam') s.cam = s.cam.filter(k => k.f !== f); else if (s.keys[track]) s.keys[track] = s.keys[track].filter(k => k.f !== f);
   ANIM.sel = null; setFrame(ANIM.f);
 }
@@ -195,7 +199,7 @@ function camAutoKey() { if (ANIM.open && ANIM.camRec && !ANIM.playing && !ANIM.b
 
 /* ---------- shots ---------- */
 // leave the current shot: keep its cast, set and a thumbnail; enter another and rebuild its scene
-function storeShot() { const s = shot(); if (!s) return; s.scene = captureScene(); padKeys(s); }
+function storeShot() { const s = shot(); if (!s) return; s.scene = captureScene(); padKeys(s); touchShot(s); }
 // what a shot needs built: who is there, what they wear, the set and its things (not poses, camera or faces)
 const stageOf = sc => JSON.stringify([sc.chars.map(c => [c.body, c.preset, c.outfit]), {...sc.extras, cam: undefined}]);
 async function enterShot(i, frame = 0) {
@@ -205,19 +209,21 @@ async function enterShot(i, frame = 0) {
   const playing = ANIM.playing, prev = shot();
   if (i !== ANIM.cur && !playing) { storeShot(); thumbNow(); }
   ANIM.busy = true; ANIM.cur = i; const s = shot();
-  try {
-    const sc = s.scene;
-    if (!playing || !prev || stageOf(prev.scene) !== stageOf(sc)) {
-      restore({chars: sc.chars.map(c => ({body: c.body, preset: c.preset, pose: c.pose, outfit: c.outfit})), active: Math.min(active, sc.chars.length - 1), ...sc.extras});
-      await (state.envReady || Promise.resolve()).catch(() => {});
-      await Promise.all(chars.flatMap(m => (m.garments || []).map(g => g.ready))).catch(() => {});
-    }
-    applyCam(sc.cam); ANIM.camBase = sc.cam;
-    chars.forEach(m => { m._prevPose = m.getPose(); });
-  } finally { ANIM.busy = false; }
+  try { await stageShot(s, playing && prev ? prev : null); } finally { ANIM.busy = false; }
   if (playing) { ANIM.playedInto = true; applyFrame(frame); ANIM.f = frame; markStrip(); prepareNext(); return; }
   ANIM.sel = null; TL.sel.clear(); syncSelBar(); ANIM.track = Math.min(typeof ANIM.track === 'number' ? ANIM.track : 0, chars.length - 1);
   setFrame(frame); renderStrip(); renderLabels(); hist.stack = []; hist.i = -1; pushHistory();
+}
+// a shot's stage built: who is there, dressed, on its set, its camera (nothing rebuilt when it stands where `prev` did)
+async function stageShot(s, prev) {
+  const sc = s.scene;
+  if (!prev || stageOf(prev.scene) !== stageOf(sc)) {
+    restore({chars: sc.chars.map(c => ({body: c.body, preset: c.preset, pose: c.pose, outfit: c.outfit})), active: Math.min(active, sc.chars.length - 1), ...sc.extras});
+    await (state.envReady || Promise.resolve()).catch(() => {});
+    await Promise.all(chars.flatMap(m => (m.garments || []).map(g => g.ready))).catch(() => {});
+  }
+  applyCam(sc.cam); ANIM.camBase = sc.cam;
+  chars.forEach(m => { m._prevPose = m.getPose(); });
 }
 // after playing through cuts: the shot it stopped in becomes the one being edited, as if entered by hand
 function settleAfterPlay() {
@@ -251,7 +257,7 @@ function moveShot(d) {
   const i = ANIM.cur, j = i + d; if (j < 0 || j >= ANIM.shots.length) return;
   [ANIM.shots[i], ANIM.shots[j]] = [ANIM.shots[j], ANIM.shots[i]]; ANIM.cur = j; renderStrip();
 }
-function setShotLen(len) {
+function setShotLen(len) { touchShot(shot());
   const s = shot(); s.len = Math.max(2, Math.round(len));
   for (const K of s.keys) for (const k of K) k.f = Math.min(k.f, s.len - 1);
   for (const k of s.cam) k.f = Math.min(k.f, s.len - 1);
@@ -588,6 +594,7 @@ function drawTimeline() {
 }
 function openTimeline(on) {
   ANIM.open = on; $('#timeline').hidden = !on; $('#animBtn').setAttribute('aria-pressed', String(on)); document.body.classList.toggle('anim', on);
+  if (typeof wsFollowTimeline === 'function') wsFollowTimeline(on);  // the space goes with it (05h-spaces)
   if (on) {
     if (!ANIM.shots.length) { ANIM.shots.push(newShot()); ANIM.cur = 0; ANIM.camBase = camState(); chars.forEach(m => { m._prevPose = m.getPose(); }); }
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();
@@ -772,4 +779,4 @@ function applyAnimState(a) {
 }
 // undo and redo also cover the tracks of the current shot
 const animHist = () => ANIM.open && shot() ? {i: ANIM.cur, len: shot().len, keys: shot().keys, cam: shot().cam, lines: shot().lines} : undefined;
-function animHistRestore(h) { TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines}))); chars.forEach(m => { m._prevPose = m.getPose(); }); drawTimeline(); updateOnion(); }
+function animHistRestore(h) { TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; touchShot(s); Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines}))); chars.forEach(m => { m._prevPose = m.getPose(); }); drawTimeline(); updateOnion(); }

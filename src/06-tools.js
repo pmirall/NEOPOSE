@@ -133,6 +133,7 @@ function endStroke() {
 }
 skl.addEventListener('pointerup', endStroke); skl.addEventListener('pointercancel', endStroke);
 function setSketch(on) {
+  if (on && typeof WS !== 'undefined' && WS.ready && WS.cur !== 'static') setWorkspace('static');  // drawing over the figure is Estático's
   sk.on = on; skl.classList.toggle('on', on); $('#sketchBar').hidden = !on;
   $('#sketchBtn').setAttribute('aria-pressed', String(on));
   if (on) select(null);
@@ -602,7 +603,7 @@ const sunRing = new THREE.Mesh(new THREE.TorusGeometry(1, .004, 4, 64), new THRE
 sunRing.renderOrder = 998; scene.add(sunRing);
 let sunR = 2;
 function updateSun() {
-  const show = $('#sunChk').checked && state.tab === 'escena' && $('#secLuz').open && !practice.active && !sk.on && !ANIM.rec;
+  const show = $('#sunChk').checked && state.tab === 'luz' && $('#secLuz').open && !practice.active && !sk.on && !ANIM.rec;
   sunHandle.visible = sunRing.visible = show; if (!show) return;
   sunR = 1.5 * (chars.reduce((s, m) => s + m.size, 0) / chars.length);
   const az = state.light.az * DEG, el = state.light.el * DEG;
@@ -626,14 +627,16 @@ function serializeProp(g) {
     h: h ? {c: chars.indexOf(h.m), side: h.side} : null, r: g.userData.ride ? {c: chars.indexOf(g.userData.ride.m), kind: g.userData.ride.kind, side: g.userData.ride.side, L: g.userData.ride.L} : null};
 }
 function serializeLight(g) { const l = g.userData.ref.light; return {t: g.userData.light, p: g.position.toArray().map(v => +v.toFixed(3)), c: g.userData.color, i: +l.intensity.toFixed(2), d: +l.distance.toFixed(1)}; }
-function sceneExtras(withCam) {
+function sceneExtras(withCam, opt = {}) {
   const o = {env: state.env, amb: state.amb, props: props.map(serializeProp), lights: extraLights.map(serializeLight)};
+  if (opt.project && typeof projectState === 'function') o.project = projectState();  // (the work's cast, places and comic: saved work only, not poses or links)
   if (withCam) { o.cam = {p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}; o.look = {style: state.style, form: state.form, light: state.light, lineMode: state.lineMode}; const an = typeof animState === 'function' && animState(); if (an) o.anim = an; }
   return o;
 }
 function clearProps() { for (const p of [...props]) { releaseProp(p); scene.remove(p); } props.length = 0; }
 function clearLights() { for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; }
 function applySceneExtras(o) {
+  if ('project' in o && typeof applyProjectState === 'function') applyProjectState(o.project);
   if (o.anim && typeof applyAnimState === 'function') applyAnimState(o.anim);
   if (o.env && o.env !== state.env) { setEnv(o.env); $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === o.env))); }
   if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }

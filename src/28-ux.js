@@ -335,6 +335,7 @@ function paletteIndex() {
     ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar archivo .neopose', saveNeopose, 'Ctrl+S'], ['Tutorial: lo básico', () => tourStart('basico')], ['Tutorial: animar', () => tourStart('animar')], ['Tutorial: del guion a la película', () => tourStart('guion')], ['Tutorial: pelaje y marcas', () => tourStart('pelaje')], ['Abrir archivo .neopose', pickNeopose, 'Ctrl+O'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
     add('cmd', tr(label), fn, key || '');
   for (const t of tabs) add('tab', tr('Ir a {x}', {x: tabName(t.dataset.tab)}), () => { showTab(t.dataset.tab); setPanel(true); }, '');
+  WS_ORDER.forEach((id, i) => add('cmd', tr('Espacio: {x}', {x: tr(WORKSPACES[id].label)}), () => setWorkspace(id), 'Alt ' + (i + 1)));
   for (const p of POSES) add('pose', p.label, () => withGlide(() => usePreset(p)), p.find || '');
   for (const n of [2, 3, 4]) for (const p of GROUP_POSES[n] || []) add('pose', p.label, () => withGlide(() => useGroup(p)), tr('{n} personas', {n}));
   for (const [k, v] of Object.entries(OUTFITS)) add('outfit', tr(v[0]), () => { wearOutfit(mq, v[1]); renderGarmentList(); renderLibrary(); renderCast(); pushHistory(); });

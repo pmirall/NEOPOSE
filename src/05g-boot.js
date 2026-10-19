@@ -8,11 +8,11 @@ function boot(data, saved) {
   const snap = data && data.snap && data.snap.chars && data.snap.chars.length ? data.snap : saved && saved.chars && saved.chars.length ? saved : null;
   if (snap) { AUTO.base = histStr(); AUTO.fresh = {...snapshot(), ...sceneExtras(true)}; try { restore(snap); } catch (e) { console.warn('restore', e); } }
   setActive(Math.min(active, chars.length - 1));
-  showTab(store.get('cdp.tab', 'pose'));
+  showTab(store.get('cdp.tab', 'pose')); initSpaces();
   initTour(); initAvatars();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
-  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI();
+  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI(); buildComicUI();
   resize(); setView(30, 8); frameAll();
   if (snap && snap.cam) applySceneExtras({cam: snap.cam});
   pushHistory(); initAutosave(!!snap, !!snap && snap === saved);
