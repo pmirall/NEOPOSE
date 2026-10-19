@@ -823,6 +823,15 @@ const SUITES = {
     ok(talk.neck < 35 && talk.step < 4.5 && talk.blinks >= 3, `talking: the head is turned ${Math.round(talk.neck)}° or less on the chest 90% of the time, the jaw moves ${talk.step.toFixed(1)}° a frame, ${talk.blinks} frames of closed eyes in 20 s`);
     const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
     ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
+    // a film that does not stall at its cuts, and whose shots are not all alike
+    const cuts = await A(async () => { const C = window.__cdp, A = C.ANIM, S = C.script; let builds = 0; const M = C.chars[0].constructor, ob = M.prototype.build; M.prototype.build = function (...a) { builds++; return ob.apply(this, a); };
+      await S.enterShot(0, 0); A.playing = true; const ms = [];
+      for (let i = 1; i < A.shots.length; i++) { await new Promise(r => setTimeout(r, 150)); const t0 = performance.now(); await S.enterShot(i, 0); ms.push(performance.now() - t0); }
+      A.playing = false; M.prototype.build = ob;
+      const moving = A.shots.filter(s => s.cam.length > 1).length, lenses = new Set(A.shots.map(s => Math.round(s.cam[0].c.f / 4))).size, kinds = new Set(A.shots.map(s => s.name.split('·')[1].trim())).size;
+      return {worst: Math.max(...ms), mean: ms.reduce((a, x) => a + x, 0) / ms.length, builds, moving: moving / A.shots.length, lenses, kinds}; });
+    ok(cuts.builds === 0 && cuts.mean < 40, `playing through the cuts rebuilds nobody and takes ${cuts.mean.toFixed(0)} ms a cut (worst ${cuts.worst.toFixed(0)} ms)`);
+    ok(cuts.moving > .6 && cuts.lenses >= 5 && cuts.kinds >= 6, `the shots are not all alike: ${Math.round(cuts.moving * 100)} % of them move, ${cuts.lenses} lens lengths, ${cuts.kinds} kinds and sizes of shot`);
     // the set and the look come from what the script says
     const lab = await A(async () => { const S = window.__cdp.script; const r = await S.scriptToFilm('INT. LABORATORIO - NOCHE\n\nUn laboratorio lleno de tubos de ensayo y pantallas. La científica ANA lleva una bata blanca, pelirroja y con coleta.\n\nANA\nYa casi está.\n\nAna observa una muestra.\n', {cams: false, online: false});
       const A = window.__cdp.ANIM, c = A.shots[0].scene.chars[0]; return {warn: r.warn, env: A.shots[0].scene.extras.env, outfit: c.outfit.map(g => g.id), hair: c.body.hair, col: c.body.hairCol}; });

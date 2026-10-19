@@ -41,12 +41,21 @@ function camAt(f) {
   const r = around(shot().cam, f); if (!r) return null; const [a, b, t] = r, L = (x, y) => x.map((v, i) => v + (y[i] - v) * t);
   return {p: L(a.c.p, b.c.p), t: L(a.c.t, b.c.t), f: a.c.f + (b.c.f - a.c.f) * t, r: a.c.r + (b.c.r - a.c.r) * t};
 }
+// a film's key light: what a crew puts on every shot, a soft light from beside and above the camera on whoever is in
+// it, so faces read even in a set lit from behind (films made from a script turn it on: s.key)
+const filmKey = new THREE.SpotLight(0xfff1e0, 0, 14, 32 * DEG, .75, 1.1); filmKey.castShadow = false; scene.add(filmKey, filmKey.target);
+function placeFilmKey(s) {
+  if (!s || !s.key || !ANIM.open) { filmKey.intensity = 0; return; }
+  const P = camera.position, T = controls.target, d = P.clone().sub(T), r = d.length(), right = new V3(0, 1, 0).cross(d).normalize();
+  filmKey.position.copy(P).addScaledVector(right, -r * .45).add(new V3(0, r * .35 + .3, 0)).addScaledVector(d, -.15);
+  filmKey.target.position.copy(T); filmKey.target.updateMatrixWorld(); filmKey.distance = r * 3 + 4; filmKey.intensity = s.key * (state.amb === 'noche' ? .8 : 1.1);
+}
 // everything at frame f: poses, camera, mouths, subtitles
 function applyFrame(f) {
   const s = shot(); if (!s) return; padKeys(s);
   chars.forEach((m, i) => { const p = poseAt(i, f); if (p) m.setPose(p); applySquash(m, i, f); });
   const c = camAt(f); if (c) applyCam(c);
-  applyMouths(f); showSubs(f);
+  placeFilmKey(s); applyMouths(f); showSubs(f);
 }
 function setFrame(f, apply = true) {
   const s = shot(); if (!s) return;
@@ -92,20 +101,41 @@ function camAutoKey() { if (ANIM.open && ANIM.camRec && !ANIM.playing && !ANIM.b
 /* ---------- shots ---------- */
 // leave the current shot: keep its cast, set and a thumbnail; enter another and rebuild its scene
 function storeShot() { const s = shot(); if (!s) return; s.scene = captureScene(); padKeys(s); }
+// what a shot needs built: who is there, what they wear, the set and its things (not poses, camera or faces)
+const stageOf = sc => JSON.stringify([sc.chars.map(c => [c.body, c.preset, c.outfit]), {...sc.extras, cam: undefined}]);
 async function enterShot(i, frame = 0) {
   if (ANIM.busy || !ANIM.shots[i]) return;
-  if (i !== ANIM.cur) { storeShot(); thumbNow(); }
+  // playing on through a cut: nothing has been edited, so nothing is stored, drawn or kept for undo now (that is done
+  // when it stops), and if the next shot stands on the same stage nothing is rebuilt: the cut costs one frame
+  const playing = ANIM.playing, prev = shot();
+  if (i !== ANIM.cur && !playing) { storeShot(); thumbNow(); }
   ANIM.busy = true; ANIM.cur = i; const s = shot();
   try {
     const sc = s.scene;
-    restore({chars: sc.chars.map(c => ({body: c.body, preset: c.preset, pose: c.pose, outfit: c.outfit})), active: Math.min(active, sc.chars.length - 1), ...sc.extras});
-    await (state.envReady || Promise.resolve()).catch(() => {});
-    await Promise.all(chars.flatMap(m => (m.garments || []).map(g => g.ready))).catch(() => {});
+    if (!playing || !prev || stageOf(prev.scene) !== stageOf(sc)) {
+      restore({chars: sc.chars.map(c => ({body: c.body, preset: c.preset, pose: c.pose, outfit: c.outfit})), active: Math.min(active, sc.chars.length - 1), ...sc.extras});
+      await (state.envReady || Promise.resolve()).catch(() => {});
+      await Promise.all(chars.flatMap(m => (m.garments || []).map(g => g.ready))).catch(() => {});
+    }
     applyCam(sc.cam); ANIM.camBase = sc.cam;
     chars.forEach(m => { m._prevPose = m.getPose(); });
   } finally { ANIM.busy = false; }
+  if (playing) { ANIM.playedInto = true; applyFrame(frame); ANIM.f = frame; markStrip(); prepareNext(); return; }
   ANIM.sel = null; TL.sel.clear(); syncSelBar(); ANIM.track = Math.min(typeof ANIM.track === 'number' ? ANIM.track : 0, chars.length - 1);
   setFrame(frame); renderStrip(); renderLabels(); hist.stack = []; hist.i = -1; pushHistory();
+}
+// after playing through cuts: the shot it stopped in becomes the one being edited, as if entered by hand
+function settleAfterPlay() {
+  if (!ANIM.playedInto) return; ANIM.playedInto = false;
+  ANIM.sel = null; TL.sel.clear(); syncSelBar(); ANIM.track = Math.min(typeof ANIM.track === 'number' ? ANIM.track : 0, chars.length - 1);
+  renderStrip(); renderLabels(); hist.stack = []; hist.i = -1; pushHistory();
+}
+// the strip's current shot, without redrawing every card
+function markStrip() { const box = $('#mvStrip'); if (!box) return; const id = shot().id; box.querySelectorAll('.mvshot').forEach(c => { const on = +c.dataset.id === id; c.classList.toggle('on', on); if (on) { c.setAttribute('aria-current', 'true'); c.scrollIntoView && c.scrollIntoView({block: 'nearest', inline: 'nearest'}); } else c.removeAttribute('aria-current'); }); }
+// while a shot plays, the next one's set is got ready (models loaded, built, its shaders compiled) so the cut does not wait
+function prepareNext() {
+  const n = ANIM.shots[ANIM.cur + 1]; if (!n || !n.scene || !n.scene.extras) return;
+  const id = n.scene.extras.env; if (id && id !== state.env && typeof prepareEnv === 'function') setTimeout(() => prepareEnv(id), 60);
 }
 function addShot() {
   storeShot(); thumbNow();
@@ -240,6 +270,15 @@ function browsAt(line, u) {
   if (['triste', 'miedo', 'preocupado'].includes(line.emo)) inner = .5;
   return [up, inner];
 }
+// the face of the moment (a film made from a script keeps when each one changes: s.faces), eased over a third of a second
+function faceAt(s, i, f) {
+  const F = s.faces && s.faces[i]; if (!F || !F.length) return null;
+  const k = Math.round(.33 * (ANIM.fps || 12)); let j = 0; while (j < F.length - 1 && F[j + 1].f <= f) j++;
+  const cur = F[j], prev = j ? F[j - 1] : null, u = prev && f < cur.f + k ? clamp((f - cur.f) / k, 0, 1) : 1, w = {};
+  const add = (e, a) => { const x = FACE_EXPR[e]; if (x) for (const [n, v] of Object.entries(x.u)) w[n] = (w[n] || 0) + v * a; };
+  if (f >= cur.f) add(cur.e, u * u * (3 - 2 * u) * (cur.a ?? 1)); if (prev && u < 1) add(prev.e, (1 - u * u * (3 - 2 * u)) * (prev.a ?? 1));
+  return w;
+}
 function applyMouths(f) {
   const s = shot(), nv = mouthCount(), t = f / (ANIM.fps || 12);
   chars.forEach((m, i) => {
@@ -248,7 +287,8 @@ function applyMouths(f) {
     if (inf && nv) {
       const bl = human ? blinkAt(i, t + (s.t0 || 0), talk) : 0, W = new Array(nv).fill(0);
       if (mo && human) mo.w.forEach((v, k) => W[k] = v);
-      if (nv > 7) { W[7] = W[8] = bl; W[9] = W[10] = br[0]; W[11] = W[12] = br[1]; }
+      const fc = human ? faceAt(s, i, f) : null; if (fc) for (const [n, v] of Object.entries(fc)) if (UNIT_AT[n] != null && UNIT_AT[n] < nv) W[UNIT_AT[n]] += v * (mo && n.startsWith('mouth') ? .5 : 1);
+      if (nv > 7) { W[7] = Math.max(W[7], bl); W[8] = Math.max(W[8], bl); W[9] += br[0]; W[10] += br[0]; W[11] += br[1]; W[12] += br[1]; }
       for (let k = 0; k < nv && k < inf.length; k++) { inf[k] = W[k]; for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences[k] = W[k]; }
     }
     const jaw = mo ? mo.jaw * (human ? .55 : 1.4) * DEG : 0, q = m.joints.jaw.quaternion;  // take the last shape off, put this one on
@@ -273,7 +313,7 @@ function play(on) {
   if (on && ANIM.busy) return;
   ANIM.playing = on; if (on && ANIM.f >= shot().len - 1) ANIM.t = 0;
   const b = $('#tlPlay'); b.setAttribute('aria-pressed', String(on)); b.innerHTML = on ? ICON_PAUSE : ICON_PLAY; b.title = tr(on ? 'Pausa (espacio)' : 'Reproducir (espacio)');
-  voiceStop(); if (on) { voiceCtx(); clearOnion(); animLast = performance.now(); } else setFrame(ANIM.t);
+  voiceStop(); if (on) { voiceCtx(); clearOnion(); animLast = performance.now(); prepareNext(); } else { settleAfterPlay(); setFrame(ANIM.t); }
 }
 let animLast = 0;
 function animTick() {

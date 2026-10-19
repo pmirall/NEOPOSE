@@ -185,9 +185,13 @@ function parseFigureExt(buf) {
   for (const x of meta.xsets) FIG.xsets[x.name] = {iv: take(Uint16Array, x.n), dv: take(Int16Array, x.n * 3), ih: take(Uint16Array, x.nh), dh: take(Int16Array, x.nh * 3), dj: take(Float32Array, nJ * 3)};
 }
 // the speech units, as dense relative morph targets shared by every character (built once); then the eyelids and the
-// brows, which blink and lift as people talk and listen (see faceAt in 22-anim)
+// brows, which blink and lift as people talk and listen, and the rest of what the faces of a film are made of, so a
+// face changes at once, without rebuilding the body (see applyMouths in 22-anim)
 const VISEME_UNITS = ['mouth-open', 'mouth-pursing', 'mouth-protusion', 'mouth-compression', 'mouth-corner-puller', 'mouth-retraction', 'mouth-eversion',
-  'eye-left-closure', 'eye-right-closure', 'eyebrows-left-up', 'eyebrows-right-up', 'eyebrows-left-inner-up', 'eyebrows-right-inner-up'];
+  'eye-left-closure', 'eye-right-closure', 'eyebrows-left-up', 'eyebrows-right-up', 'eyebrows-left-inner-up', 'eyebrows-right-inner-up',
+  'eye-left-opened-up', 'eye-right-opened-up', 'eye-left-slit', 'eye-right-slit', 'eyebrows-left-down', 'eyebrows-right-down', 'mouth-depression', 'mouth-elevation',
+  'mouth-part-later', 'mouth-upward-retraction', 'neck-platysma', 'nose-left-elevation', 'nose-right-elevation'];
+const UNIT_AT = Object.fromEntries(VISEME_UNITS.map((u, i) => [u, i]));
 function visemeTargets() {
   if (FIG.visemes !== undefined) return FIG.visemes;
   if (!FIG.xsets['e-mouth-open']) return (FIG.visemes = null);

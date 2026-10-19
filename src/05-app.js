@@ -147,17 +147,33 @@ function setEnv(id) {
   if (S && S.assets.some(a => !SETS[a])) toast('Cargando escenario…');
   return state.envReady = ready.then(() => { if (tok === envToken) buildEnv(id); }, err => { console.error(err); if (tok === envToken) { toast('No se ha podido cargar el escenario.'); buildEnv('vacio'); } });
 }
-function buildEnv(id) {
-  if (envGroup) {
-    scene.remove(envGroup);
-    const cached = new Set(Object.values(geoCache));
-    envGroup.traverse(o => { if (o.isMesh && !o.userData.isHull && !cached.has(o.geometry) && !o.userData.shared) o.geometry.dispose(); if (o.isLight && o.shadow && o.shadow.map) o.shadow.map.dispose(); });
-  }
-  envGroup = new THREE.Group(); envGroup.userData.lamps = [];
+/* Sets are kept once built (the last few), so going back to one, or cutting between scenes of a film, swaps it in at
+   once instead of building it again; prepareEnv builds the next one ahead, off screen, and compiles its shaders. */
+const ENV_KEEP = new Map(), ENV_KEEP_MAX = 4;
+function disposeEnv(g) { const cached = new Set(Object.values(geoCache)); g.traverse(o => { if (o.isMesh && !o.userData.isHull && !cached.has(o.geometry) && !o.userData.shared) o.geometry.dispose(); if (o.isLight && o.shadow && o.shadow.map) o.shadow.map.dispose(); }); }
+function makeEnvGroup(id) {
+  const g = new THREE.Group(); g.userData.lamps = []; g.userData.envId = id;
   const S = SCENES[id];
-  (S ? S.build : ENV_BUILD[id])(envGroup);
-  envGroup.traverse(o => { if (o.isMesh && o.parent && o.parent.parent && o.parent.parent.userData.asset) o.userData.shared = true; });
-  addOutlines(envGroup); setOutlines(envGroup, state.envOutline);
+  (S ? S.build : ENV_BUILD[id])(g);
+  g.traverse(o => { if (o.isMesh && o.parent && o.parent.parent && o.parent.parent.userData.asset) o.userData.shared = true; });
+  addOutlines(g); return g;
+}
+function keepEnv(id, g) {
+  ENV_KEEP.delete(id); ENV_KEEP.set(id, g);
+  while (ENV_KEEP.size > ENV_KEEP_MAX) { const [k, old] = ENV_KEEP.entries().next().value; ENV_KEEP.delete(k); if (old !== envGroup) disposeEnv(old); }
+}
+async function prepareEnv(id) {
+  const S = SCENES[id]; if (!S || ENV_KEEP.has(id)) return;
+  try { await Promise.all(S.assets.map(loadAsset)); } catch (_) { return; }
+  if (ENV_KEEP.has(id)) return;
+  const g = makeEnvGroup(id); keepEnv(id, g);
+  try { renderer.compile(g, camera); } catch (_) {}
+}
+function buildEnv(id) {
+  const S = SCENES[id];
+  if (envGroup) scene.remove(envGroup);
+  envGroup = ENV_KEEP.get(id) || makeEnvGroup(id); keepEnv(id, envGroup);
+  setOutlines(envGroup, state.envOutline);
   scene.add(envGroup); collectOccluders();
   state.guides.grid = id === 'vacio'; grid.visible = state.guides.grid; const gg = $('#gGrid'); if (gg) gg.checked = state.guides.grid;
   const want = S && S.amb ? S.amb : null;

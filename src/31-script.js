@@ -218,6 +218,7 @@ function directScene(sc, idx, cast, lang, o) {
   // who is in the scene: whoever speaks or is named, in order of appearance (four at most)
   for (const b of sc.beats) { if (b.who) add(cast.findIndex(c => c.name === b.who)); if (b.k === 'act') for (const [k, i] of cast.map((c, i) => [scWords(c.name)[0], i])) if (scWords(b.text).includes(k)) add(i); }
   if (!present.length && cast.length) present.push(0);
+  present.sort((a, b) => a - b);  // always in the cast's order: from scene to scene each one keeps their figure (no rebuilding at the cut)
   const local = ci => present.indexOf(ci), N = present.length;
   // where each one starts: in place, or off to one side if their first action is to come in
   const firstAct = new Map(), plans = [];
@@ -295,13 +296,13 @@ function directScene(sc, idx, cast, lang, o) {
             seg(s, tA, tA + dur, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw, loop: spec.t === 'loop' || (spec.loops || 1) > 1, root: !c.loop && c.id !== 'np-saltar'});
             if (!c.loop && c.id !== 'np-saltar') { const e2 = c.frames[c.frames.length - 1].p, s0 = c.frames[0].p, k = chars[local(ci)] ? chars[local(ci)].rootY / clipRig().rootY : 1, dd = new V3(e2[0] - s0[0], 0, e2[2] - s0[2]).multiplyScalar(k).applyAxisAngle(new V3(0, 1, 0), s.yaw); s.x += dd.x; s.z += dd.z; }
             if (spec.down) s.mode = 'down';
-            t1 = tA + dur; events.push({shot: takeShot(), t0: tA, t1, kind: ['punch', 'kick', 'sword', 'shoot', 'hurt', 'knock', 'block', 'dodge', 'throw', 'spell'].includes(a.id) ? 'fight' : ['jump', 'climb', 'roll', 'fall'].includes(a.id) ? 'big' : 'gesture', c: ci, target: a.target});
+            t1 = tA + dur; events.push({shot: takeShot(), t0: tA, t1, kind: ['punch', 'kick', 'sword', 'shoot', 'hurt', 'knock', 'block', 'dodge', 'throw', 'spell'].includes(a.id) ? 'fight' : ['jump', 'climb', 'roll', 'fall'].includes(a.id) ? 'big' : 'gesture', c: ci, target: a.target, act: a.id});
             // the one hit reacts
             if (tgt && ['punch', 'kick', 'sword', 'shoot', 'throw', 'spell'].includes(a.id) && !(b.acts || []).some(x => x.who && x.who.includes(tgt.ci) && ['hurt', 'knock', 'block', 'dodge', 'fall'].includes(x.id))) {
               const hc = clipById(a.id === 'shoot' ? 'ual1-Death01' : 'ual1-Hit_Chest'); if (hc) { const th = tA + Math.min(dur * .45, .5); seg(tgt, Math.max(th, tgt.segs.length ? tgt.segs[tgt.segs.length - 1].t1 : 0), th + hc.len, 'clip', {clip: hc.id, at: {x: tgt.x, z: tgt.z}, yaw: tgt.yaw}); if (a.id === 'shoot') tgt.mode = 'down'; tgt.expr.push({t: th, e: 'miedo'}); } }
             break; }
           case 'pose': { if (tgt) faceTo(s, tgt, t0); const tA = s.segs.length ? Math.max(t0, s.segs[s.segs.length - 1].t1) : t0; seg(s, tA, tA + (spec.dur || 1.2) + .3, 'pose', {pose: spec.pose, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = tA + (spec.dur || 1.2) + .3;
-            events.push({t0: tA, t1, kind: a.id === 'kick' || a.id === 'block' || a.id === 'dodge' ? 'fight' : 'gesture', c: ci, shot: takeShot()}); break; }
+            events.push({t0: tA, t1, kind: a.id === 'kick' || a.id === 'block' || a.id === 'dodge' ? 'fight' : 'gesture', c: ci, shot: takeShot(), act: a.id}); break; }
           case 'group': { if (!tgt) { warn.push(tr('«{x}»: ¿con quién?', {x: a.text})); break; }
             let tA = t0; if (dist(s, tgt) > 1.3) tA = walkTo(s, tgt.x, tgt.z, t0, 'walk', .9);
             const tB = Math.max(tA, tgt.segs.length ? tgt.segs[tgt.segs.length - 1].t1 : 0), d = spec.dur || 1.6;
@@ -477,14 +478,14 @@ function groupPose(D, li, g) {
 const SC_H = {ews: 14, ws: 5, fs: 2.25, mfs: 1.45, ms: .98, mcu: .64, cu: .4, ecu: .16};
 const SC_F = {ews: 20, ws: 24, fs: 30, mfs: 35, ms: 40, mcu: 55, cu: 75, ecu: 100};
 const SC_LADDER = ['ews', 'ws', 'fs', 'mfs', 'ms', 'mcu', 'cu', 'ecu'];
-const SC_SHOT_NAME = {est: 'Plano de situación', master: 'Plano general', two: 'Plano a dos', ots: 'Sobre el hombro', single: 'Plano', track: 'Seguimiento', pov: 'Subjetivo', react: 'Reacción', fight: 'Acción'};
+const SC_SHOT_NAME = {est: 'Plano de situación', master: 'Plano general', two: 'Plano a dos', ots: 'Sobre el hombro', single: 'Plano', track: 'Seguimiento', pov: 'Subjetivo', react: 'Reacción', fight: 'Acción', insert: 'Detalle'};
 function planShots(D) {
   const units = [], N = D.present.length, L = D.lines;
   const push = (t0, t1, spec) => { if (t1 - t0 > .05) units.push({t0, t1, ...spec}); };
   // an establishing shot when the place changes (and at the start), until the first line or for 3 s
   const firstLine = L.length ? L[0].t0 - .25 : D.len, estEnd = Math.max(Math.min(firstLine, D.events.length && D.events[0].kind === 'move' ? Math.max(3, D.events[0].t1) : 3.2), Math.min(2.5, D.len));
   push(0, Math.min(estEnd, D.len), {type: 'est', size: 'ws', subj: D.present.slice()});
-  let t = Math.min(estEnd, D.len), exch = 0, lastSubj = null, lastSize = null;
+  let t = Math.min(estEnd, D.len), exch = 0, lastSubj = null, lastSize = null, insertN = 0;
   const timeline = [...L.map(l => ({...l, k: 'line'})), ...D.events.filter(e => !L.some(l => e.t0 < l.t0 + l.dur - .05 && e.t1 > l.t0 + .05)).map(e => ({...e, k: 'act'}))].sort((a, b) => a.t0 - b.t0);
   for (const e of timeline) {
     const t0 = Math.max(t, e.k === 'line' ? e.t0 - .25 : e.t0); if (t0 >= D.len) break;
@@ -502,6 +503,7 @@ function planShots(D) {
     else if (e.kind === 'fight') spec = {type: 'fight', size: units.length % 2 ? 'mfs' : 'fs', subj: e.target != null ? [e.c, e.target] : [e.c]};
     else if (e.kind === 'big') spec = {type: 'single', size: 'fs', subj: [e.c], angle: 'low'};
     else if (e.kind === 'group') spec = {type: 'two', size: 'ms', subj: [e.c, e.target]};
+    else if (INSERT_ACTS.includes(e.act) && (insertN++ % 2 === 0)) spec = {type: 'insert', size: 'cu', subj: [e.c]};  // a hand at work, close: every other one
     else spec = {type: 'single', size: 'mfs', subj: [e.c]};
     if (e.k === 'act' && e.shot) spec = shotFromDirection(e.shot, spec, D);
     // a shot shorter than a second and a half is not worth a cut: the last one goes on
@@ -518,7 +520,7 @@ function planShots(D) {
     const left = D.present.filter(c => there(c, tm)); if (vis.length) u.subj = vis; else if (left.length) Object.assign(u, {type: left.length > 1 ? 'master' : 'single', size: 'fs', subj: left, other: undefined}); }
   // merge what is left too short at the end
   for (let i = units.length - 1; i > 0; i--) if (units[i].t1 - units[i].t0 < 1) { units[i - 1].t1 = units[i].t1; units.splice(i, 1); }
-  return units;
+  return styleShots(units, D);
 }
 function shotFromDirection(sd, spec, D) {
   const d = sd.dir, out = {...spec, fixed: true};
@@ -529,6 +531,48 @@ function shotFromDirection(sd, spec, D) {
   if (sd.who && sd.who.length) { out.subj = sd.who; }
   if (d.angle) out.angle = d.angle; if (d.move) out.move = d.move;
   return out;
+}
+/* ---------- a film that breathes: how each shot moves and from where ----------
+   A cut is not all a film does: the establishing shot comes down onto the place (a crane), groups are watched with
+   a slow drift, a camera creeps in on a line that matters or on a face that reacts, a fight is shot handheld. Angles
+   follow the feeling (from below for anger or a shout, from above for fear or sadness), and each shot turns a few
+   degrees and changes its lens a touch, so two shots of the same person never look the same. Never across the line. */
+const INSERT_ACTS = ['paint', 'study', 'point', 'pick', 'touch', 'show', 'drink', 'phone', 'fix'];
+const hashF = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+function styleShots(units, D) {
+  const emoOf = u => { const L = D.lines.find(l => l.c === u.subj[0] && l.t0 < u.t1 && l.t0 + l.dur > u.t0); return L ? [L.emo, L.inten] : [null, 0]; };
+  units.forEach((u, i) => {
+    const h = hashF(i * 7.31 + D.idx * 101.7), h2 = hashF(i * 3.17 + D.idx * 57.1 + 9), [emo, inten] = emoOf(u);
+    if (u.fixed && u.move) return;
+    if (u.type === 'est') u.cam = {kind: 'crane', amt: .5};
+    else if (u.type === 'master' || u.type === 'two') u.cam = {kind: 'drift', amt: (h > .5 ? 1 : -1) * .06};
+    else if (u.type === 'fight') u.cam = {kind: 'hand', amt: .012};
+    else if (u.type === 'react') u.cam = {kind: 'push', amt: .1};
+    else if (u.type === 'insert') u.cam = {kind: 'drift', amt: (h > .5 ? 1 : -1) * .05};
+    else if (u.type === 'single' || u.type === 'ots') u.cam = inten > .55 || ['grito', 'enfado', 'miedo', 'triste', 'sorpresa'].includes(emo) ? {kind: 'push', amt: .14} : h < .45 ? {kind: 'drift', amt: (h2 > .5 ? 1 : -1) * .035} : {kind: 'hand', amt: .004};
+    if (u.type === 'single' || u.type === 'react') {
+      if (!u.angle) u.angle = ['grito', 'enfado'].includes(emo) && inten > .5 ? 'low' : ['miedo', 'triste'].includes(emo) ? 'high' : null;
+      u.az = (h2 - .5) * 16; u.el = (h - .5) * 6; u.fk = .9 + h2 * .22;
+    } else if (u.type === 'ots') { u.el = (h - .5) * 4; u.fk = .95 + h * .1; }
+    else if (u.type === 'master' || u.type === 'two') { u.az = (h - .5) * 10; u.fk = .92 + h2 * .16; }
+  });
+  return units;
+}
+// the camera's keys for a shot: from where it is framed, moving as its style says
+function camMove(c, mv, len, fps) {
+  if (!mv || len < 4) return [{f: 0, c}];
+  const P = new V3().fromArray(c.p), T = new V3().fromArray(c.t), d = P.clone().sub(T), r = d.length(), right = new V3(0, 1, 0).cross(d).normalize();
+  const mk2 = (p, t, f = c.f, rr = c.r) => ({p: p.toArray().map(v => +v.toFixed(3)), t: t.toArray().map(v => +v.toFixed(3)), f: +f.toFixed(1), r: +rr.toFixed(2)});
+  const a = mv.amt, end = len - 1;
+  if (mv.kind === 'push') return [{f: 0, c}, {f: end, c: mk2(T.clone().addScaledVector(d, 1 - a), T, c.f * (1 + a * .25))}];
+  if (mv.kind === 'drift') return [{f: 0, c: mk2(P.clone().addScaledVector(right, -r * a / 2), T.clone().addScaledVector(right, -r * a / 3))}, {f: end, c: mk2(P.clone().addScaledVector(right, r * a / 2), T.clone().addScaledVector(right, r * a / 3))}];
+  if (mv.kind === 'crane') return [{f: 0, c: mk2(P.clone().add(new V3(0, r * a * .35, 0)).addScaledVector(d, a * .15), T.clone().add(new V3(0, r * a * .08, 0)))}, {f: end, c}];
+  if (mv.kind === 'hand') {  // a held camera: small, slow wanders and a hint of roll, a key every half second
+    const K = [], step = Math.max(2, Math.round(fps * .55));
+    for (let f = 0, i = 0; f <= end; f = Math.min(end, f + step), i++) { const w = (n, s) => (hashF(i * 5.7 + n + len) - .5) * 2 * s; K.push({f, c: mk2(P.clone().add(new V3(w(1, r * a), w(2, r * a * .7), w(3, r * a * .5))), T.clone().add(new V3(w(4, r * a * .5), w(5, r * a * .5), 0)), c.f, c.r + w(6, a * 60))}); if (f === end) break; }
+    return K;
+  }
+  return [{f: 0, c}];
 }
 // the scene's line of interest: between the first two people; the camera stays on the side that faces +Z
 function lineOfInterest(D, at) {
@@ -555,6 +599,10 @@ function camFor(spec, t, D, sample, side) {
     pos = O.eye.clone().addScaledVector(dirOS, -.62 * k).addScaledVector(new V3(-dirOS.z, 0, dirOS.x).multiplyScalar(sideV.dot(new V3(-dirOS.z, 0, dirOS.x)) >= 0 ? 1 : -1), .36 * k).add(new V3(0, .06 * k, 0));
     tgt = S.eye.clone().add(new V3(0, -H / 6, 0)); const d = pos.distanceTo(tgt);
     focal = clamp(camera.filmGauge / Math.max(camera.aspect, 1) * d / H, 22, 110);
+  } else if (spec.type === 'insert') {  // the hands and what they work on, from beside and a little above
+    const S = subj[0], side2 = new V3(-S.fwd.z, 0, S.fwd.x).multiplyScalar(n.dot(new V3(-S.fwd.z, 0, S.fwd.x)) >= 0 ? 1 : -1);
+    tgt = S.hands.clone().addScaledVector(S.fwd, .12 * k); focal = 60; const d = .55 * k / Math.tan(vfovOf(focal) / 2);
+    pos = tgt.clone().addScaledVector(S.fwd.clone().multiplyScalar(.75).add(side2).normalize(), d).add(new V3(0, d * .35, 0));
   } else if (spec.type === 'pov' && spec.other != null && W.of[spec.other]) {
     pos = W.of[spec.other].eye.clone(); tgt = subj[0].eye.clone(); focal = 32;
   } else {  // a single (or a reaction, or a follow): in front of the subject, a little towards whoever they face, on the camera's side
@@ -566,6 +614,9 @@ function camFor(spec, t, D, sample, side) {
     pos = tgt.clone().addScaledVector(toCam, d);
   }
   if (spec.angle === 'high') pos.y += pos.distanceTo(tgt) * .45; else if (spec.angle === 'low') pos.y = Math.max(.25 * k, tgt.y - pos.distanceTo(tgt) * .3);
+  // the shot's own little turn: a few degrees round (never across the line) and up or down, and its lens
+  if (spec.az || spec.el) { const v = pos.clone().sub(tgt), r = v.length(), ax = new V3(-v.z, 0, v.x).normalize(); v.applyAxisAngle(new V3(0, 1, 0), (spec.az || 0) * DEG); if (ax.lengthSq() > 1e-6) v.applyAxisAngle(ax, -(spec.el || 0) * DEG); pos = tgt.clone().add(v.setLength(r)); }
+  if (spec.fk && spec.type !== 'pov') { const d0 = pos.distanceTo(tgt); pos = tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(spec.fk)); focal *= spec.fk; void d0; }
   pos.y = Math.max(pos.y, .15);
   return {p: pos.toArray().map(v => +v.toFixed(3)), t: tgt.toArray().map(v => +v.toFixed(3)), f: +focal.toFixed(1), r: 0};
 }
@@ -625,7 +676,7 @@ function worldSampler(D, B) {
       const m = chars[li], key = tr2.keys[f], save = m.getPose(); m.setPose(key.pose); m.group.updateMatrixWorld(true);
       const eye = m.joints.head.getWorldPosition(new V3()).add(new V3(0, m.headH * .35, 0)), hips = m.joints.hips.getWorldPosition(new V3());
       const yaw = facingOf(key.pose.q), nx = tr2.keys[Math.min(B.n - 1, f + 6)].pose.pos, vel = new V3(nx[0] - key.pose.pos[0], 0, nx[2] - key.pose.pos[2]);
-      of[tr2.ci] = {eye, hips, fwd: new V3(Math.sin(yaw), 0, Math.cos(yaw)), vel}; size = m.size || 1;
+      of[tr2.ci] = {eye, hips, fwd: new V3(Math.sin(yaw), 0, Math.cos(yaw)), vel, hands: [m.joints.wristL, m.joints.wristR].map(j => j.getWorldPosition(new V3())).sort((a, b) => b.distanceTo(hips) + b.y - a.distanceTo(hips) - a.y)[0]}; size = m.size || 1;  // (the hand at work: the one held out and up)
       m.setPose(save); m.group.updateMatrixWorld(true);
     });
     const r = {of, size}; cache.set(f, r); return r;
@@ -633,12 +684,15 @@ function worldSampler(D, B) {
 }
 function makeShot(D, B, u, ui, sample, side, cast) {
   const fps = ANIM.fps, f0 = Math.round(u.t0 * fps), f1 = Math.max(f0 + 2, Math.round(u.t1 * fps)), len = f1 - f0;
-  const s = newShot(`${D.idx + 1}${String.fromCharCode(65 + (ui % 26))} · ${tr(SC_SHOT_NAME[u.type] || 'Plano')}${u.size && !['est', 'master', 'two'].includes(u.type) ? ' ' + tr({ews: 'muy general', ws: 'general', fs: 'entero', mfs: 'americano', ms: 'medio', mcu: 'medio corto', cu: 'primer plano', ecu: 'detalle'}[u.size]) : ''}`);
+  const s = newShot(`${D.idx + 1}${String.fromCharCode(65 + (ui % 26))} · ${tr(SC_SHOT_NAME[u.type] || 'Plano')}${u.size && !['est', 'master', 'two', 'insert'].includes(u.type) ? ' ' + tr({ews: 'muy general', ws: 'general', fs: 'entero', mfs: 'americano', ms: 'medio', mcu: 'medio corto', cu: 'primer plano', ecu: 'detalle'}[u.size]) : ''}`);
   s.len = len;
   // the scene as it stands at the shot's first frame: bodies (with the face of the moment), clothes, set
   s.scene = captureScene();
-  s.scene.chars = D.present.map((ci, li) => { const m = chars[li], st = D.st[li], e = [...st.expr].filter(x => x.t <= (u.t0 + u.t1) / 2).pop(); const body = {...m.body}; if (e && e.e && body.species === 'humano') { body.expr = e.e; body.exprAmt = 1; } else delete body.expr;
+  // (the faces change on the body's morphs as the shot plays, not baked into it: the body stays the same from shot to
+  // shot, so cutting between them does not rebuild anyone)
+  s.scene.chars = D.present.map((ci, li) => { const m = chars[li], body = {...m.body}; delete body.expr;
     return {body, preset: m.bodyPreset, outfit: (cast[ci].outfit || []).map(x => ({...x})), pose: B.tracks[li].keys[Math.min(f0, B.n - 1)].pose}; });
+  s.faces = D.present.map((ci, li) => { const E = D.st[li].expr.filter(x => x.t < u.t1), out = []; for (const x of E) { const f = Math.round((x.t - u.t0) * fps); if (f <= 0 && out.length) out.length = 0; out.push({f: Math.max(f, -1000), e: x.e || 'neutra'}); } return out; });
   s.keys = B.tracks.map(tr2 => { const K = []; for (let f = f0; f < Math.min(f1, B.n); f++) K.push({f: f - f0, pose: tr2.keys[f].pose, lin: true}); return K; });
   // anthros say it with their ears and tail: the moment's feeling as body language, over the baked keys (the jaw is the voice's)
   D.present.forEach((ci, li) => { const m = chars[li]; if (!m || m.body.species === 'humano' || !s.keys[li]) return;
@@ -646,7 +700,8 @@ function makeShot(D, B, u, ui, sample, side, cast) {
     const Qs = Object.fromEntries(Object.entries(J).map(([n, r]) => [n, new Q().setFromEuler(new THREE.Euler(r[0], r[1], r[2])).toArray()]));
     s.keys[li] = s.keys[li].map(k => ({...k, pose: {...k.pose, q: {...k.pose.q, ...Qs}}})); });
   const c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move ? camFor(u, u.t1 - .05, D, sample, side) : null;
-  if (c0) { s.scene.cam = c0; s.cam = [{f: 0, c: c0}]; if (c1) s.cam.push({f: len - 1, c: c1}); }
+  if (c0) { s.cam = c1 ? [{f: 0, c: c0}, {f: len - 1, c: c1}] : camMove(c0, u.cam, len, fps); s.scene.cam = s.cam[0].c; }
+  s.key = u.type === 'est' ? .5 : 1;
   s.lines = D.lines.filter(l => l.t0 < u.t1 && l.t0 + l.dur > u.t0).map(l => ({c: D.present.indexOf(l.c), f: Math.round((l.t0 - u.t0) * fps), len: Math.max(2, Math.round(l.dur * fps)), text: l.text, lang: l.lang, voice: l.voice,
     w: lineWords(l.words, l.text, l.dur), cont: l.t0 < u.t0 - .01 || undefined}));
   return s;
