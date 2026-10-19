@@ -17830,12 +17830,17 @@ function balloonTail(G, anchor, R, k) {
   const {b, cx, cy, rx, ry, fs} = G; if (BOXY.has(b.kind) || b.tail === 'none') return null;
   let tx, ty, tipD;
   if (b.tail === 'off') { const e = [[cx - R.x, -1, 0], [R.x + R.w - cx, 1, 0], [cy - R.y, 0, -1], [R.y + R.h - cy, 0, 1]].sort((a, c) => a[0] - c[0])[0]; tx = cx + e[1] * (e[0] + k * 3); ty = cy + e[2] * (e[0] + k * 3); }
-  else if (anchor) { tx = R.x + anchor.x * R.w; ty = R.y + anchor.y * R.h; }
+  else if (anchor) { tx = R.x + clamp(anchor.x, .03, .97) * R.w; ty = R.y + clamp(anchor.y, .03, .97) * R.h; }  // (a head out of the picture: towards it, to the panel's edge)
   else return null;
   const dx = tx - cx, dy = ty - cy, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, wb = Math.min(rx, ry) * .32;
   tipD = b.tail === 'off' ? d : Math.max(Math.min(d * .72, d - fs * 1.2), Math.min(rx, ry) * 1.1);
   const tip = [cx + ux * tipD, cy + uy * tipD], P = new Path2D();
-  if (b.kind === 'thought') { const bubbles = [[.55, .16], [.75, .1], [.9, .06]].map(([t, r]) => [cx + (tip[0] - cx) * t / .9 * (tipD / d > .95 ? .95 : 1), cy + (tip[1] - cy) * t / .9 * (tipD / d > .95 ? .95 : 1), Math.min(rx, ry) * r]); return {bubbles}; }
+  if (b.kind === 'thought') {
+    // little bubbles from the cloud's edge towards the head, smaller as they go
+    const m = Math.min(rx, ry), e = .92 / Math.hypot(ux / rx, uy / ry), rs = [m * .2, m * .13, m * .08]; let at = e + m * .1, bubbles = [];
+    for (const r of rs) { at += r; bubbles.push([cx + ux * at, cy + uy * at, r]); at += r + m * .12; }
+    return {bubbles};
+  }
   if (b.kind === 'radio') {
     // a zigzag that thins to its point
     const st = [[0, 1], [.42, .8], [.38, .62], [.72, .4], [.66, .3], [1, 0]], L = tipD, side = (s, t, w) => [cx + ux * L * t - uy * (s * wb * w + zig(t)), cy + uy * L * t + ux * (s * wb * w + zig(t))];
