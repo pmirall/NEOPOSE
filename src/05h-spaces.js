@@ -9,9 +9,9 @@
    anywhere (the palette, a tour, a link) brings its space along. Alt+1, Alt+2, Alt+3 switch; A goes in and out of
    Animación as it always did. Each space remembers its tab. */
 const WORKSPACES = {
-  chars: {label: 'Personajes', title: 'Personajes y lugares: cuerpo, especie, pelo, ropa y escenarios (Alt+1)', tabs: ['cuerpo', 'ropa', 'escena']},
+  chars: {label: 'Personajes', title: 'Personajes y lugares: cuerpo, especie, pelo, ropa y escenarios (Alt+1)', tabs: ['cuerpo', 'ropa', 'escena', 'biblia']},
   static: {label: 'Estático', title: 'Estático: una imagen (pose, luz, cámara y estilo) o páginas de cómic y manga (Alt+2)', tabs: ['pose', 'dibujo', 'escena', 'luz', 'camara', 'comic']},
-  anim: {label: 'Animación', title: 'Animación: línea de tiempo, planos, guion e interpretación (Alt+3, A)', tabs: ['pose', 'escena', 'luz', 'camara', 'dibujo']}
+  anim: {label: 'Animación', title: 'Animación: línea de tiempo, planos, guion e interpretación (Alt+3, A)', tabs: ['pelicula', 'pose', 'escena', 'luz', 'camara', 'dibujo']}
 };
 const WS_ORDER = ['chars', 'static', 'anim'];
 const WS = {cur: 'static', last: store.get('cdp.wsTabs', {}), back: 'static', next: null, want: null};

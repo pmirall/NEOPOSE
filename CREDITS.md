@@ -51,7 +51,7 @@ Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/license
 - [Electron](https://www.electronjs.org) y [electron-builder](https://www.electron.build): MIT.
 
 ## Fuentes tipográficas (SIL Open Font License 1.1)
-Kalam, Karla y Courier Prime, incluidas en `app/fonts/` con sus licencias `OFL-*.txt`.
+Kalam, Karla, Courier Prime, Comic Neue (rotulación de los bocadillos) y Bangers (onomatopeyas), incluidas en `app/fonts/` con sus licencias `OFL-*.txt`.
 
 ## Referencias libres (búsqueda en línea)
 Las búsquedas se hacen desde el dispositivo, sin cuenta ni clave, en [Openverse](https://openverse.org) (imágenes CC y de dominio público de Flickr, Wikimedia, el Smithsonian y otros museos), [Wikimedia Commons](https://commons.wikimedia.org) y la API de [Poly Haven](https://polyhaven.com) (panoramas y modelos CC0; «Powered by Poly Haven»). Solo se muestran licencias que permiten adaptar (CC0, dominio público, CC BY, CC BY-SA, GFDL), con título, autoría, fuente y licencia junto a cada imagen y a lo que se hace con ella.

@@ -321,9 +321,9 @@ function directScene(sc, idx, cast, lang, o) {
   };
   const faceTo = (s, b, t) => { if (!b) return; s.yaw = Math.atan2(b.x - s.x, b.z - s.z); seg(s, t, t + .45, 'turn', {yaw: s.yaw}); };
   const intensity = (b) => { let k = .25; if (/!/.test(b.text)) k += .25; if (/!{2,}|[A-ZÁÉÍÓÚÑ]{4,}/.test(b.text)) k += .25; if (b.emo && !['sonrisa', 'concentrado'].includes(b.emo)) k += .3; return Math.min(1, k); };
-  let pendingShot = null; const takeShot = () => { const x = pendingShot; pendingShot = null; return x; };
+  const panels = []; let pendingShot = null; const takeShot = () => { const x = pendingShot; pendingShot = null; return x; };
   for (const b of sc.beats) {
-    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: scWho(b.text, cast).filter(i => present.includes(i)), t: T}; continue; }
+    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: scWho(b.text, cast).filter(i => present.includes(i)), t: T}; if (b.panel) panels.push({t: T, dir: b.dir}); continue; }
     if (b.k === 'trans') { const tw = scNorm(b.text);
       if (/fade in|fundido de entrada|desde negro|fondu d'ouverture|abblende auf|aufblende|dissolvenza in apertura|fos d'entrada/.test(tw)) fxs.push({t: T, fx: 'fadein'});
       else if (/fade out|fade to black|fundido a negro|fundido en negro|fundido|fondu au noir|fondu|abblende|dissolvenza|fos a negre|escurecimento/.test(tw)) fxs.push({t: null, fx: 'fadeout'});
@@ -438,7 +438,7 @@ function directScene(sc, idx, cast, lang, o) {
   if (pendingShot && pendingShot.dir && pendingShot.dir.move) { events.push({t0: T, t1: T + 3.5, kind: 'cam', c: present[0], shot: takeShot()}); T += 3.5; }
   const len = present.length ? Math.max(T + .9, 3) : Math.max(3.5, T + .5, Math.min(8, 1.3 * sc.beats.filter(b => b.k === 'act').reduce((a, b) => a + b.text.split(/(?<=[.!?])\s+/).length, 0)));
   for (const f of fxs) if (f.t == null) f.t = len - 1.2;
-  return {sc, idx, present, st, lines, events, chairs, warn, len, lang, fx: fxs};
+  return {sc, idx, present, st, lines, events, chairs, warn, len, lang, fx: fxs, panels};
 }
 
 /* ---------- timing with the voices ---------- */
@@ -804,6 +804,15 @@ function planShots(D) {
     if (e.k === 'line' && e.dur > 6 && N >= 2 && e.to != null) { const m1 = e.t0 + e.dur * .45; units[units.length - 1].t1 = m1; push(m1, m1 + 1.6, {type: 'react', size: 'mcu', subj: [e.to], other: e.c}); push(m1 + 1.6, D.len, {...spec}); t = m1 + 1.6; }
   }
   if (units.length) units[units.length - 1].t1 = D.len;
+  // a comic script: one shot per PANEL, whatever happens in it (its size and angle if the panel says so; else what the
+  // shot planned for that moment would have been)
+  if (D.panels && D.panels.length) {
+    const marks = D.panels.map(p => ({...p, t: Math.min(p.t, D.len - .3)})), out = [];
+    marks.forEach((m, i) => { const t0 = i ? m.t : 0, t1 = i < marks.length - 1 ? marks[i + 1].t : D.len; if (t1 - t0 < .05) return;
+      const mid = (t0 + t1) / 2, base = units.find(u => u.t0 <= mid && u.t1 > mid) || units[units.length - 1] || {type: 'master', size: 'fs', subj: D.present.slice()};
+      const u = {...base, t0, t1, panel: true}; if (m.dir && (m.dir.size || m.dir.angle)) Object.assign(u, shotFromDirection({dir: m.dir}, u, D)); out.push(u); });
+    if (out.length) return styleShots(out, D);
+  }
   const there = (c, t) => { const s = D.st[D.present.indexOf(c)]; return s && !(s.onAt != null && t < s.onAt) && !(s.offAt != null && t > s.offAt); };
   for (const u of units) { const tm = u.type === 'track' ? u.t0 + .3 : (u.t0 + u.t1) / 2, vis = u.subj.filter(c => there(c, tm)); if (vis.length === u.subj.length) continue;
     const left = D.present.filter(c => there(c, tm)); if (vis.length) u.subj = vis; else if (left.length) Object.assign(u, {type: left.length > 1 ? 'master' : 'single', size: 'fs', subj: left, other: undefined}); }
@@ -996,6 +1005,9 @@ async function scriptToFilm(text, o = {}) {
       const firstActs = sc.beats.filter(b => b.k === 'act').slice(0, 2).map(b => b.text).join(' '), head = sc.head.place ? sc.head : {...sc.head, place: firstActs, time: firstActs};
       let env = sc.head.place ? placeOf(head) : null;
       if (!sc.head.place) for (const sent of firstActs.split(/(?<=[.!?])\s+/)) { env = placeOf({...sc.head, place: sent}); if (env) break; } if (!env && sc.head.place && o.online !== false) { msg(tr('Buscando un escenario para «{p}»…', {p: sc.head.place})); env = await placeOnline(sc.head); }
+      // (a place of the project's named in the heading: its set, objects and light)
+      const loc = sc.head.place && typeof PROJECT !== 'undefined' ? PROJECT.locations.find(l => scNorm(sc.head.place).includes(scNorm(l.name)) || scNorm(l.name).includes(scNorm(sc.head.place))) : null;
+      if (loc) env = loc.env;
       if (!env && !sc.head.place && lastEnv) env = lastEnv;  // (a page or an act that does not say where: where we were)
       if (!env) { const outside = sc.head.int === false || (sc.head.int == null && /\b(cielo|sky|ciel|ceu|himmel|sol|sun|soleil|luna|moon|lune|lua|mond|calle|street|bosque|forest|wald|jardin|garden)\b/.test(scNorm(firstActs))); env = SC_WORLD_PLACE[genre][outside ? 1 : 0]; }
       // (a street of the West is a dusty plain, a street of a fantasy among old stones)
@@ -1004,6 +1016,7 @@ async function scriptToFilm(text, o = {}) {
       const amb = tm === 'noche' ? (SCENES[env] && SCENES[env].group === 'in' ? 'interior' : 'noche') : tm === 'atardecer' ? 'atardecer' : tm === 'dia' && SCENES[env] && SCENES[env].group !== 'in' ? 'dia' : null;
       if (amb) { state.amb = amb; applyAmbient(); setPressed($('#ambChips'), amb); }
       clearProps();
+      if (loc) { applySceneExtras({props: loc.props, lights: loc.lights}); if (!tm0 && loc.amb) { state.amb = loc.amb; applyAmbient(); } }
       // laid out again now that the bodies exist (sizes), timed with the voices, baked, shot
       const D = directScene(sc, idx, cast, lang, o); D.genre = genre;
       await timeLines(D, cast);
@@ -1058,7 +1071,7 @@ function makeShot(D, B, u, ui, sample, side, cast) {
   let c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move === 'track' ? camFor(u, u.t1 - .05, D, sample, side) : null;
   if (c0 && !c1 && !['insert', 'pov', 'ots'].includes(u.type)) c0 = fitCam(c0, u, sample);
   if (c0) { s.cam = c1 ? [{f: 0, c: c0}, {f: len - 1, c: c1}] : camMove(c0, u.cam, len, fps); s.scene.cam = s.cam[0].c; }
-  s.key = u.type === 'est' ? .6 : 1;
+  s.key = u.type === 'est' ? .6 : 1; s.kind = u.type; s.size = u.size;  // (what kind of shot it is: a comic panel made from it frames the same way)
   // a little overlap: the chest, the head and the hands arrive a moment after the hips (Interpretación › Arrastre)
   s.motion = Object.fromEntries(s.keys.map((_, li) => [li, {drag: .25}]));
   s.light = filmLightFor(D, u, c0, sample, cast);
@@ -1094,12 +1107,15 @@ async function runScript() {
   VOICE.on = $('#scVoice').checked; store.set('cdp.tts', VOICE.on); ANIM.subs = $('#scSubs').checked; const sb = $('#tlSubs'); if (sb) sb.checked = ANIM.subs; const tv = $('#tlVoice'); if (tv) tv.checked = VOICE.on;
   const go = $('#scGo'); go.disabled = $('#scUndo').disabled = true; $('#scWarn').innerHTML = '';
   try {
+    SC.pages = /^\s*(PAGE|PAGES|P[AÁÀ]GINA|SEITE|PAGINE)\s+\S+/mi.test(text);
     const r = await scriptToFilm(text, {cams: $('#scCams').checked, online: $('#scOnline').checked});
     if (r) {
       if (r.warn.length) { const ul = $('#scWarn'); for (const w of r.warn.slice(0, 30)) { const li = document.createElement('li'); li.textContent = w; ul.appendChild(li); } }
       else setTimeout(closeScript, 900);
       toast(filmReady(r), {undo: undoScript});
-      setTimeout(() => { if ($('#scModal').hidden || !r.warn.length) play(true); }, 1000);
+      // and its comic: a page per PAGE of a comic script (or six panels a page), each panel a shot, linked
+      if (SC.target === 'both') { setWorkspace('static', {tab: 'comic'}); await new Promise(res => setTimeout(res, 60)); const n = await filmToComic({byScene: SC.pages}); if (n) toast(tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n})); }
+      else setTimeout(() => { if ($('#scModal').hidden || !r.warn.length) play(true); }, 1000);
     }
   } catch (e) { console.warn('script', e); $('#scMsg').textContent = tr('No se ha podido: {e}', {e: e && e.message || e}); }
   go.disabled = false; scriptState();
@@ -1110,6 +1126,10 @@ async function undoScript() {
   SC.last = null; scriptState(); $('#scMsg').textContent = tr('Película anterior recuperada.'); if ($('#scModal').hidden) toast(tr('Película anterior recuperada.'));
 }
 function buildScriptUI() {
+  // what to make: the film, or the film and its comic pages (a comic script, PAGE / PANEL, asks for both)
+  SC.target = store.get('cdp.scTarget', 'film');
+  chips($('#scTarget'), [['film', tr('Película')], ['both', tr('Película y cómic')]], SC.target, v => { SC.target = v; store.set('cdp.scTarget', v); setPressed($('#scTarget'), v); });
+  $('#scText').addEventListener('input', () => { if (/^\s*(PAGE|P[AÁÀ]GINA|SEITE|PAGINE)\s+\S+[\s\S]*^\s*(PANEL|VI[ÑN]ETA|VIGNETTE|VIGNETTA|VINHETA|CASE|PANELL)\b/mi.test($('#scText').value) && SC.target !== 'both') { SC.target = 'both'; setPressed($('#scTarget'), 'both'); } });
   $('#tlScript').onclick = openScript; $('#scClose').onclick = closeScript; $('#scModal').onclick = e => { if (e.target.id === 'scModal') closeScript(); };
   $('#scGo').onclick = runScript; $('#scUndo').onclick = undoScript;
   $('#scSample').onclick = () => { $('#scText').value = SC_SAMPLE[LANG.startsWith('es') ? 'es' : 'en']; scriptState(); };

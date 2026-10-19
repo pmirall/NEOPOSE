@@ -56,6 +56,11 @@ function layoutPanels(tpl, c = comic()) {
   });
   return out.map(r => ({id: newId('p'), x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.w.toFixed(2), h: +r.h.toFixed(2), shot: null, link: null, f: 0, balloons: []}));
 }
+// n panels in rows of up to three (a page with more than a template holds)
+function layoutGrid(n, c = comic()) {
+  const rows = Math.ceil(n / 3), tplRows = []; let left = n; for (let r = 0; r < rows; r++) { const k = Math.ceil(left / (rows - r)); tplRows.push([1, new Array(k).fill(1)]); left -= k; }
+  PANEL_TEMPLATES._grid = {label: '', rows: tplRows}; const out = layoutPanels('_grid', c); delete PANEL_TEMPLATES._grid; return out;
+}
 // reading order: top to bottom, then left to right (right to left in manga)
 function readingOrder(pg, c = comic()) {
   return [...pg.panels].sort((a, b) => Math.abs(a.y - b.y) > 4 ? a.y - b.y : (c.rtl ? b.x - a.x : a.x - b.x));
@@ -84,7 +89,28 @@ async function stagePanel(p, prev) {
   ANIM.focus = s; await stageShot(s, prev || null);
   const f = Math.min(panelFrame(p), s.len - 1); applyFrame(f); if (p.cam) applyCam(p.cam);
   chars.forEach(m => m.group.updateMatrixWorld(true));
+  if (!p.cam && p.link && p.autoCam !== false) { const c = panelAutoCam(p.w / p.h, s); if (c) applyCam(c); }
   return true;
+}
+// a film shot's framing turned to a panel's shape: the camera stays where it is and looks the same way; it turns to
+// the middle of the people the film frame shows and zooms so they fill the panel as they filled the shot (a close-up
+// stays a close-up, a two-shot keeps both) — a wide establishing shot keeps its whole place
+function panelAutoCam(aspect, s) {
+  if (s && (s.kind === 'est' || s.kind === 'master')) return null;
+  const fa = PROJECT.film.aspect || 16 / 9, cam = camera.clone(); cam.clearViewOffset(); cam.aspect = fa; cam.setFocalLength(state.focal); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+  let x0 = 1, x1 = -1, y0 = 1, y1 = -1, any = false;
+  for (const m of chars) { if (!m.group.visible) continue; const hp = m.joints.hips.getWorldPosition(new V3()); if (hp.y < -5) continue;
+    const top = m.joints.head.getWorldPosition(new V3()).add(new V3(0, m.headH * .6, 0)), pts = [top, hp, m.joints.ankleL.getWorldPosition(new V3()), m.joints.ankleR.getWorldPosition(new V3()), m.joints.wristL.getWorldPosition(new V3()), m.joints.wristR.getWorldPosition(new V3())];
+    const q = pts.map(v => v.clone().project(cam)); if (!q.some(v => v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1)) continue;  // (not in the film's frame)
+    for (const v of q) { if (v.z > 1) continue; x0 = Math.min(x0, clamp(v.x, -1, 1)); x1 = Math.max(x1, clamp(v.x, -1, 1)); y0 = Math.min(y0, clamp(v.y, -1, 1)); y1 = Math.max(y1, clamp(v.y, -1, 1)); any = true; } }
+  if (!any || x1 <= x0 || y1 <= y0) return null;
+  const tv = Math.tan(cam.fov * DEG / 2), th = tv * fa, cx = (x0 + x1) / 2 * th, cy = (y0 + y1) / 2 * tv;
+  // the tangent the panel needs to hold them with a little air, never closer than a third of the shot's own view
+  const need = Math.max((y1 - y0) / 2 * tv / .86, (x1 - x0) / 2 * th / (aspect * .9)), tvp = clamp(need, tv * .35, tv * 1.15);
+  const P = camera.position.clone(), T = controls.target.clone(), dist = P.distanceTo(T), fwd = T.clone().sub(P).normalize(), right = new V3().crossVectors(fwd, camera.up).normalize(), up = new V3().crossVectors(right, fwd);
+  const dir = fwd.clone().add(right.multiplyScalar(cx)).add(up.multiplyScalar(cy)).normalize(), t = P.clone().addScaledVector(dir, dist);
+  const focal = (camera.filmGauge / Math.max(aspect, 1)) / 2 / tvp;
+  return {p: P.toArray(), t: t.toArray(), f: clamp(focal, 10, 200), r: state.roll || 0};
 }
 // where each character's head is in the panel's picture (0..1): the balloons' tails point at it
 function panelAnchors(aspect) {
@@ -100,12 +126,14 @@ async function drawPanelOnStage(p, w, h) {
   if (look.tone) { const st = state.style, ur = LU.uRender.value; for (const m of chars) m.setStyle('trama'); LU.uRender.value = 3; tone = renderView({w, h, bg: 'alpha'}); for (const m of chars) m.setStyle(st); LU.uRender.value = ur; }
   if (look.set) { set = renderView({w, h, bg: 'paper'}); const g = set.getContext('2d'), id = g.getImageData(0, 0, w, h), d = id.data;
     for (let i = 0; i < d.length; i += 4) { const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, v = Math.round(255 - (1 - L) * 255 * .22); d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } g.putImageData(id, 0, 0); }
-  const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); if (set) g.drawImage(set, 0, 0); if (tone) g.drawImage(tone, 0, 0);
-  g.drawImage(recolor(ink, '#141210', 1), 0, 0);
-  return {img: out, anchors: panelAnchors(aspect)};
+  const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d'), anchors = panelAnchors(aspect);
+  g.fillStyle = p.bg === 'black' ? '#141210' : '#fff'; g.fillRect(0, 0, w, h);
+  if (set && !['speed', 'focus', 'flash', 'black', 'white'].includes(p.bg)) g.drawImage(set, 0, 0); if (tone) g.drawImage(tone, 0, 0);
+  if (p.bg && p.bg !== 'set') panelEffect(g, p.bg, w, h, anchors.find(Boolean));
+  g.drawImage(recolor(ink, p.bg === 'black' ? '#f4f1ea' : '#141210', 1), 0, 0);
+  return {img: out, anchors};
 }
-const panelKey = (p, w, h) => { const s = panelShot(p), c = comic(); return [p.id, s ? s.id : '-', s ? s.rev || 0 : 0, panelFrame(p), w, h, JSON.stringify(p.cam || null), c.look.tone, c.look.set].join('|'); };
+const panelKey = (p, w, h) => { const s = panelShot(p), c = comic(); return [p.id, s ? s.id : '-', s ? s.rev || 0 : 0, panelFrame(p), w, h, JSON.stringify(p.cam || null), p.bg || '', c.look.tone, c.look.set, PROJECT.film.aspect || ''].join('|'); };
 // several panels drawn in one go (the workbench put back once at the end); cached by what they show
 function drawPanels(list, pxOf) {
   CM.queue = CM.queue.then(async () => {
@@ -121,19 +149,45 @@ function drawPanels(list, pxOf) {
 }
 function comicChanged() { if (typeof drawPage === 'function' && $('#pageView') && !$('#pageView').hidden) drawPage(); if (typeof syncComicUI === 'function') syncComicUI(); }
 
+// the backgrounds of manga: speed lines (the move), focus lines (to a face), a flash (a shock)
+function panelEffect(g, kind, w, h, a) {
+  const cx = a ? a.x * w : w / 2, cy = a ? a.y * h : h / 2, rnd = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); }, L = Math.hypot(w, h);
+  g.save(); g.fillStyle = '#141210';
+  if (kind === 'speed') for (let i = 0; i < 70; i++) { const y = rnd(i) * h, len = w * (.35 + rnd(i + 99) * .6), th = Math.max(1, h * .006 * (.4 + rnd(i + 7))), x = rnd(i + 3) * (w - len * .5);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y - th / 2); g.lineTo(x + len, y + th / 2); g.closePath(); g.fill(); }
+  else if (kind === 'focus' || kind === 'flash') {
+    const n = kind === 'focus' ? 140 : 46, inner = Math.min(w, h) * (kind === 'focus' ? .3 : .18);
+    for (let i = 0; i < n; i++) { const ang = (i + rnd(i) * .6) / n * Math.PI * 2, r0 = inner * (.8 + rnd(i + 5) * .5), wd = (kind === 'focus' ? .006 : .045) * (.5 + rnd(i + 11));
+      g.beginPath(); g.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0); g.lineTo(cx + Math.cos(ang - wd) * L, cy + Math.sin(ang - wd) * L); g.lineTo(cx + Math.cos(ang + wd) * L, cy + Math.sin(ang + wd) * L); g.closePath(); g.fill(); }
+    if (kind === 'flash') { const gr = g.createRadialGradient(cx, cy, 0, cx, cy, inner * 1.6); gr.addColorStop(0, '#fff'); gr.addColorStop(.7, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }
+  }
+  g.restore();
+}
+// a sound written on the page (BLAM, ドン): big letters, white with a thick ink edge, turned, over the panels
+function drawSfx(g, x, k, ox, oy, sel) {
+  const px = x.size * k; g.save(); g.translate(ox + x.x * k, oy + x.y * k); g.rotate((x.rot || 0) * DEG); g.font = SFX_FONT(px); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineJoin = 'round'; g.lineWidth = px * .2; g.strokeStyle = '#141210'; g.strokeText(x.text, 0, 0); g.fillStyle = x.fill || '#ffffff'; g.fillText(x.text, 0, 0);
+  const wd = g.measureText(x.text).width; if (sel) { g.strokeStyle = '#2b5a9e'; g.lineWidth = 2; g.setLineDash([5, 4]); g.strokeRect(-wd / 2 - 6, -px * .6, wd + 12, px * 1.2); }
+  g.restore(); return {w: wd, h: px * 1.1};
+}
+
 /* ---------- balloons ---------- */
 // lines of text that fit a width
 function wrapText(g, text, maxW) {
   const rows = []; for (const para of String(text || '').split('\n')) { let row = ''; for (const w of para.split(/\s+/).filter(Boolean)) { const t = row ? row + ' ' + w : w; if (row && g.measureText(t).width > maxW) { rows.push(row); row = w; } else row = t; } rows.push(row); }
   return rows;
 }
-const balloonFont = (px, b) => `${b.kind === 'shout' ? 700 : 600} ${px}px ${css('--f-hand')}, ${css('--f-body')}, sans-serif`;
+const balloonFont = (px, b) => `${b.kind === 'shout' ? 700 : 400} ${px}px "Comic Neue", ${css('--f-hand')}, sans-serif`;
+const SFX_FONT = px => `400 ${px}px Bangers, "Comic Neue", ${css('--f-hand')}, sans-serif`;
+// the lettering fonts come with the app, loaded the first time a page is drawn
+const comicFonts = () => CM.fonts || (CM.fonts = Promise.all(['700 20px "Comic Neue"', '400 20px "Comic Neue"', '400 20px Bangers'].map(f => document.fonts.load(f).catch(() => {}))));
 // one balloon in a panel rectangle R (px): its body round the text, its tail to the speaker; k = px per mm
 function drawBalloon(g, b, R, anchor, k, sel) {
   const fs = (b.size || 9) / 72 * 25.4 * k, pad = fs * .7; g.font = balloonFont(fs, b);
   const maxW = Math.min(R.w * .62, fs * 14), rows = wrapText(g, b.text || '…', maxW), tw = Math.max(fs * 2, ...rows.map(r => g.measureText(r).width)), th = rows.length * fs * 1.12;
-  const cx = R.x + b.x * R.w, cy = R.y + b.y * R.h, cap = b.kind === 'caption';
-  const rx = cap ? tw / 2 + pad : (tw / 2 + pad) * 1.18, ry = cap ? th / 2 + pad * .7 : (th / 2 + pad) * 1.18;
+  const cap = b.kind === 'caption', rx = cap ? tw / 2 + pad : (tw / 2 + pad) * 1.18, ry = cap ? th / 2 + pad * .7 : (th / 2 + pad) * 1.18, mg = k * 1.5;
+  // (kept inside its panel, whatever its text grew to)
+  const cx = clamp(R.x + b.x * R.w, R.x + rx + mg, Math.max(R.x + rx + mg, R.x + R.w - rx - mg)), cy = clamp(R.y + b.y * R.h, R.y + ry + mg, Math.max(R.y + ry + mg, R.y + R.h - ry - mg));
   g.save(); g.lineWidth = Math.max(1, k * .3); g.strokeStyle = '#141210'; g.fillStyle = '#fff'; g.lineJoin = 'round';
   // the tail first (its base under the body), to the speaker's mouth, stopping short of it
   if (!cap && anchor && b.kind !== 'thought') {
@@ -158,27 +212,28 @@ function drawBalloon(g, b, R, anchor, k, sel) {
 /* ---------- a page drawn: on screen, or for print ---------- */
 // panels into a 2D context at k px per mm (offset ox, oy); cached panel pictures where there are, a note where not
 function composePage(g, pg, k, ox, oy, o = {}) {
-  const c = comic(), P = c.page; g.fillStyle = '#fff'; g.fillRect(ox, oy, P.w * k, P.h * k);
+  const c = comic(), P = c.page, part = o.part, want = x => !part || part === x; if (!part) { g.fillStyle = '#fff'; g.fillRect(ox, oy, P.w * k, P.h * k); }
   const hits = [];
   for (const [i, p] of readingOrder(pg, c).entries()) {
     const R = {x: ox + p.x * k, y: oy + p.y * k, w: p.w * k, h: p.h * k}, w = Math.round(R.w * (o.px || 1)), h = Math.round(R.h * (o.px || 1)), hit = CM.cache.get(panelKey(p, w, h));
     g.save(); g.beginPath(); g.rect(R.x, R.y, R.w, R.h); g.clip();
-    if (hit) g.drawImage(hit.img, R.x, R.y, R.w, R.h);
+    if (hit && want('panels')) g.drawImage(hit.img, R.x, R.y, R.w, R.h);
     else if (o.screen) { g.fillStyle = '#f4f1ea'; g.fillRect(R.x, R.y, R.w, R.h); g.fillStyle = '#8a8170'; const fs = Math.max(10, Math.min(k * 3.2, R.w / 9)); g.font = `600 ${fs}px ${css('--f-body')}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       const rows = wrapText(g, panelShot(p) ? tr('Dibujando…') : tr('Viñeta vacía: doble clic para montarla'), R.w * .82); rows.forEach((r, j) => g.fillText(r, R.x + R.w / 2, R.y + R.h / 2 + (j - (rows.length - 1) / 2) * fs * 1.25)); g.textBaseline = 'alphabetic'; }
-    for (const b of p.balloons) { const box = drawBalloon(g, b, R, hit && b.ci != null ? hit.anchors[b.ci] : null, k, o.screen && CM.selB === b); hits.push({b, p, box}); }
+    if (want('balloons')) for (const b of p.balloons) { const box = drawBalloon(g, b, R, hit && b.ci != null ? hit.anchors[b.ci] : null, k, o.screen && CM.selB === b); hits.push({b, p, box}); }
     g.restore();
-    g.lineWidth = Math.max(1, k * .5); g.strokeStyle = '#141210'; g.strokeRect(R.x, R.y, R.w, R.h);
+    if (want('borders') && p.border !== 'none') { g.lineWidth = Math.max(1, k * .5); g.strokeStyle = '#141210'; g.strokeRect(R.x, R.y, R.w, R.h); }
     if (o.screen) { if (CM.sel === p) { g.strokeStyle = '#2b5a9e'; g.lineWidth = 3; g.strokeRect(R.x - 2, R.y - 2, R.w + 4, R.h + 4); }
       g.fillStyle = '#8a8170'; g.font = `600 ${Math.max(10, k * 2.4)}px ${css('--f-mono')}`; g.textAlign = 'left'; g.fillText(String(i + 1), R.x + 4, R.y + Math.max(12, k * 3)); }
   }
+  if (want('sfx')) for (const x of pg.sfx || []) { const b = drawSfx(g, x, k, ox, oy, o.screen && CM.selX === x); hits.push({x, box: {x: ox + x.x * k - b.w / 2, y: oy + x.y * k - b.h / 2, w: b.w, h: b.h}}); }
   return hits;
 }
 // the page at print size (dpi): the panels drawn for it first
-async function pageImage(pg, dpi = 300) {
-  const c = comic(), k = mmPx(1, dpi);
+async function pageImage(pg, dpi = 300, part) {
+  const c = comic(), k = mmPx(1, dpi); await comicFonts();
   await drawPanels(pg.panels, p => [Math.round(p.w * k), Math.round(p.h * k)]);
   const cv = document.createElement('canvas'); cv.width = Math.round(c.page.w * k); cv.height = Math.round(c.page.h * k);
-  composePage(cv.getContext('2d'), pg, k, 0, 0, {});
+  composePage(cv.getContext('2d'), pg, k, 0, 0, {part});
   return cv;
 }

@@ -13,7 +13,7 @@ function showPage(on) {
   if (on) { if (!comic().pages.length) addPage('p4'); drawPage(); }
 }
 function drawPage() {
-  if (!pageOn()) return; const c = comic(), pg = curPage(); if (!pg) return;
+  if (!pageOn()) return; if (!CM.fontsReady) { comicFonts().then(() => { CM.fontsReady = true; drawPage(); }); } const c = comic(), pg = curPage(); if (!pg) return;
   const box = $('#pageView'), r = box.getBoundingClientRect(), dpr = pv.dpr = Math.min(devicePixelRatio || 1, 2), cv = pv.cv;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const pad = 26 * dpr, k = Math.min((cv.width - pad * 2) / c.page.w, (cv.height - pad * 2 - 30 * dpr) / c.page.h);
@@ -31,7 +31,7 @@ function drawPage() {
 }
 // what is under a point of the page view (device px): a balloon first, then a panel
 function pageHit(x, y) {
-  for (let i = pv.hits.length - 1; i >= 0; i--) { const h = pv.hits[i], B = h.box; if (x >= B.x && x <= B.x + B.w && y >= B.y && y <= B.y + B.h) return {b: h.b, p: h.p}; }
+  for (let i = pv.hits.length - 1; i >= 0; i--) { const h = pv.hits[i], B = h.box; if (x >= B.x && x <= B.x + B.w && y >= B.y && y <= B.y + B.h) return h.x ? {x: h.x} : {b: h.b, p: h.p}; }
   const pg = curPage(); if (!pg) return null;
   for (const p of pg.panels) { const X = pv.ox + p.x * pv.k, Y = pv.oy + p.y * pv.k; if (x >= X && x <= X + p.w * pv.k && y >= Y && y <= Y + p.h * pv.k) return {p}; }
   return null;
@@ -44,11 +44,13 @@ function initPageView() {
   new ResizeObserver(() => pageOn() && drawPage()).observe(el);
   const at = e => { const r = pv.cv.getBoundingClientRect(); return [(e.clientX - r.left) * pv.dpr, (e.clientY - r.top) * pv.dpr]; };
   pv.cv.addEventListener('pointerdown', e => {
-    const [x, y] = at(e), h = pageHit(x, y); CM.sel = h ? h.p : null; CM.selB = h && h.b || null;
+    const [x, y] = at(e), h = pageHit(x, y); CM.selX = h && h.x || null; if (!CM.selX) { CM.sel = h ? h.p : null; CM.selB = h && h.b || null; }
     if (h && h.b) { pv.drag = {b: h.b, p: h.p, x, y, bx: h.b.x, by: h.b.y}; pv.cv.setPointerCapture(e.pointerId); }
+    else if (h && h.x) { pv.drag = {sfx: h.x, x, y, bx: h.x.x, by: h.x.y}; pv.cv.setPointerCapture(e.pointerId); }
     drawPage(); syncComicUI();
   });
   pv.cv.addEventListener('pointermove', e => { if (!pv.drag) return; const [x, y] = at(e), d = pv.drag, p = d.p;
+    if (d.sfx) { d.sfx.x = d.bx + (x - d.x) / pv.k; d.sfx.y = d.by + (y - d.y) / pv.k; drawPage(); return; }
     d.b.x = clamp(d.bx + (x - d.x) / (p.w * pv.k), .05, .95); d.b.y = clamp(d.by + (y - d.y) / (p.h * pv.k), .05, .95); drawPage(); });
   pv.cv.addEventListener('pointerup', () => { if (pv.drag) { pv.drag = null; comicSaved(); } });
   pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.p && !h.b) editPanel(h.p); else if (h && h.b) { CM.selB = h.b; syncComicUI(); const t = $('#cmText'); if (t) t.focus(); } });
@@ -90,22 +92,30 @@ async function filmToComic(o = {}) {
   for (let i = c.pages.length - 1; i >= 0; i--) if (c.pages[i].panels.every(p => !panelShot(p) && !p.balloons.length)) c.pages.splice(i, 1);
   const bench = benchSave(); let made = 0;
   try {
-    for (let i = 0; i < ANIM.shots.length; i += per) {
-      const group = ANIM.shots.slice(i, i + per), pg = addPage(tplFor(group.length)), slots = readingOrder(pg, c);
+    // the shots in pages: by the script's scenes (a comic script's PAGE), or six a page
+    const groups = []; if (o.byScene) { let cur = null, key = null; for (const s of ANIM.shots) { const k = (s.name.match(/^(\d+)/) || [0, ''])[1]; if (k !== key || cur.length >= 9) { cur = []; groups.push(cur); key = k; } cur.push(s); } }
+    else for (let i = 0; i < ANIM.shots.length; i += per) groups.push(ANIM.shots.slice(i, i + per));
+    for (const group of groups) {
+      const pg = addPage(group.length > 6 ? 'p6' : tplFor(group.length)), slots = readingOrder(pg, c);
+      if (group.length > 6) { pg.panels = layoutGrid(group.length, c); }
+      const order = readingOrder(pg, c);
       for (const [j, s] of group.entries()) {
-        const p = slots[j]; if (!p) break;
+        const p = order[j]; if (!p) break; void slots;
         ANIM.focus = s; await stageShot(s, null);
         const keys = shotKeyPoses(s, false), mid = keys.length > 2 ? keys[Math.floor(keys.length / 2)].f : Math.floor(s.len / 2);
         p.link = {shotId: s.id, f: mid};
+        // where the speakers' heads will be in the panel: each balloon goes above its speaker, in reading order
+        await stagePanel(p); const anchors = panelAnchors(p.w / p.h);
         // the panel's camera: the shot's, turned to the panel's shape (the same lens, the same aim)
         // balloons from the lines said in the shot, in order, each one by its speaker
         const L = s.lines.filter(l => l.text && l.text.trim()).slice(0, 3);
-        L.forEach((l, n) => p.balloons.push({id: newId('b'), kind: /!$/.test(l.text.trim()) && /[A-ZÁÉÍÓÚÑ]{3,}/.test(l.text) ? 'shout' : 'speech', text: l.text.trim(), ci: l.c, x: c.rtl ? .78 - n * .3 : .22 + n * .3, y: .16 + n * .1, size: 9}));
+        L.forEach((l, n) => { const a = anchors[l.c], x = a ? clamp(a.x + (a.x > .5 ? -.12 : .12), .18, .82) : (c.rtl ? .78 - n * .3 : .22 + n * .3), y = a ? clamp(Math.min(a.top, a.y) - .16 - n * .04, .1, .4) : .16 + n * .1;
+          p.balloons.push({id: newId('b'), kind: /!\s*$/.test(l.text.trim()) && (/[A-ZÁÉÍÓÚÑ]{3,}/.test(l.text) || /^¡/.test(l.text.trim())) ? 'shout' : 'speech', text: l.text.trim(), ci: l.c, x, y, size: 9}); });
         made++;
       }
     }
   } finally { await benchRestore(bench); }
-  CM.page = Math.max(0, c.pages.length - Math.ceil(ANIM.shots.length / per)); comicChanged(); comicSaved();
+  CM.page = 0; comicChanged(); comicSaved();
   return made;
 }
 
@@ -136,6 +146,7 @@ function syncComicUI() {
     chips(who, [['', tr('Nadie (cartela)')], ...cast.map((x, i) => [String(i), `${i + 1} · ${x.body.name || tr('Personaje')}`])], b && b.ci != null ? String(b.ci) : '', v => { if (!CM.selB) return; CM.selB.ci = v === '' ? null : +v; drawPage(); comicSaved(); });
   }
   $('#cmBalloonEdit').hidden = !b;
+  if (typeof syncComicExtraUI === 'function') syncComicExtraUI();
   if (b) { setPressed($('#cmKind'), b.kind); if (document.activeElement !== $('#cmText')) $('#cmText').value = b.text || ''; $('#cmSize').value = b.size || 9; }
 }
 function buildComicUI() {
@@ -160,10 +171,11 @@ function buildComicUI() {
   $('#cmDelB').onclick = () => { const p = CM.sel, b = CM.selB; if (!p || !b) return; p.balloons.splice(p.balloons.indexOf(b), 1); CM.selB = null; drawPage(); syncComicUI(); comicSaved(); };
   $('#cmText').oninput = e => { if (CM.selB) { CM.selB.text = e.target.value; drawPage(); } }; $('#cmText').onchange = comicSaved;
   $('#cmSize').oninput = e => { if (CM.selB) { CM.selB.size = +e.target.value; drawPage(); } };
+  $('#cmFromScript').onclick = () => { SC.target = 'both'; store.set('cdp.scTarget', 'both'); openScript(); setPressed($('#scTarget'), 'both'); };
   $('#cmFromFilm').onclick = async () => { const n = await filmToComic(); if (n) toast(tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n})); };
   $('#cmExport').onclick = () => exportComicPages('page', +$('#cmDpi').value || 300);
   $('#cmExportAll').onclick = () => exportComicPages('all', +$('#cmDpi').value || 300);
   $('#cmBack').onclick = () => { finishPanelEdit(); goTab('comic'); };
   $('#cmCancel').onclick = () => { finishPanelEdit(true); goTab('comic'); };
-  syncComicUI();
+  buildComicExtraUI(); syncComicUI();
 }

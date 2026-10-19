@@ -873,7 +873,7 @@ const SUITES = {
     ok(await A(() => document.body.dataset.ws) === 'static' && await vis() === 'pose,dibujo,escena,luz,camara,comic', `starts in Static: ${await vis()}`);
     await page.click('#wsChars'); await page.waitForTimeout(400);
     const c = await vis(), top = await A(() => ['#sketchBtn', '#practiceBtn', '#openIn', '#exportBtn'].map(s => getComputedStyle(document.querySelector(s)).display !== 'none'));
-    ok(c === 'cuerpo,ropa,escena' && !top[0] && !top[1] && top[2] && top[3], `Characters & places: ${c}; sketch and practice belong to Static`);
+    ok(c === 'cuerpo,ropa,escena,biblia' && !top[0] && !top[1] && top[2] && top[3], `Characters & places: ${c}; sketch and practice belong to Static`);
     await page.click('#animBtn'); await page.waitForTimeout(600);
     ok(await A(() => window.__cdp.ANIM.open && document.body.dataset.ws === 'anim' && !document.querySelector('#timeline').hidden), 'Animation opens the timeline');
     await page.click('#animBtn'); await page.waitForTimeout(500);
@@ -895,7 +895,7 @@ const SUITES = {
     for (const w of ['chars', 'static', 'anim']) {
       await ph.evaluate(w => window.__cdp.spaces.setWorkspace(w), w); await ph.waitForTimeout(600);
       const m = await P(() => ({h: document.querySelector('header.top').getBoundingClientRect().height, x: document.documentElement.scrollWidth - innerWidth, tabs: [...document.querySelectorAll('.tabs .tab')].filter(t => !t.hidden).length}));
-      ok(m.h < 60 && m.x <= 0 && m.tabs === {chars: 3, static: 6, anim: 5}[w], `phone, ${w}: top bar ${Math.round(m.h)} px, no sideways scroll, ${m.tabs} tabs`);
+      ok(m.h < 60 && m.x <= 0 && m.tabs === {chars: 4, static: 6, anim: 6}[w], `phone, ${w}: top bar ${Math.round(m.h)} px, no sideways scroll, ${m.tabs} tabs`);
       await ph.screenshot({path: path.join(OUT, `spaces-phone-${w}.png`)});
     }
     await ph.context().close();
@@ -949,6 +949,47 @@ const SUITES = {
     ok(m.view && m.x <= 0 && m.h > 150, `phone: the page shows (${Math.round(m.h)} px tall), no sideways scroll`);
     await ph.screenshot({path: path.join(OUT, 'comic-phone.png')});
     await ph.context().close();
+  },
+  // the project shared by the three spaces: a cast and places kept once (and used by the script), changes carried to
+  // every shot; the film's format; a comic script made into its film and its pages; the comic's print formats
+  async project(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    // the cast: the active character into the bible as «Ana»; a film from a script that names her uses her design
+    await goTab(page, 'biblia'); await page.waitForTimeout(400);
+    const c0 = await A(() => { const C = window.__cdp; C.chars[0].body.height = .92; C.chars[0].build(C.chars[0].body); const c = C.bible.bibleCastFromActive('Ana'); return {id: c.id, n: C.project.PROJECT.cast.length, cards: document.querySelectorAll('#bbCast .bbcard').length, thumb: !!c.thumb}; });
+    ok(c0.n === 1 && c0.cards === 1 && c0.thumb, 'the active character in the bible as «Ana», with her portrait');
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    const f = await A(async () => { const C = window.__cdp; C.script.VOICE.on = false; await C.script.scriptToFilm(C.script.SC_SAMPLE.es, {cams: true, online: false});
+      const ana = C.ANIM.shots[1].scene.chars.find(x => x.body.castId); return {h: ana && ana.body.height, id: ana && ana.body.castId}; });
+    ok(f.id === c0.id && Math.abs(f.h - .92) < .01, `the script's ANA is the bible's Ana (her height ${f.h})`);
+    // changed in the bible: changed in every shot
+    const pr = await A(() => { const C = window.__cdp, c = C.project.PROJECT.cast[0]; c.body = {...c.body, height: .3}; const n = C.project.propagateCast(c.id); const hs = C.ANIM.shots.flatMap(s => s.scene.chars.filter(x => x.body.castId === c.id).map(x => x.body.height)); return {n, hs}; });
+    ok(pr.n.shots >= 2 && pr.hs.every(h => h === .3), `a change in the bible reaches ${pr.n.shots} shots`);
+    // a place saved with its view, applied again
+    const pl = await A(async () => { const C = window.__cdp; C.setEnv('cafeteria'); await new Promise(r => setTimeout(r, 400)); const l = C.bible.saveLocation('Bar de Ana'); C.setEnv('bosque'); await C.bible.applyLocation(l); return {env: C.state.env, n: C.project.PROJECT.locations.length}; });
+    ok(pl.env === 'cafeteria' && pl.n === 1, 'a place saved in the bible and gone back to');
+    // the film's format: the same picture on any window
+    const fm = await A(() => { const C = window.__cdp; document.querySelector('#fpFormat .chip[data-v="2.39"]').click(); return {aspect: C.camera.aspect, ratio: C.state.ratio, list: document.querySelectorAll('#fpShots .fpshot').length, shots: C.ANIM.shots.length}; });
+    ok(Math.abs(fm.aspect - 2.39) < .01 && fm.ratio === '_film' && fm.list === fm.shots, `the film in cinemascope (camera ${fm.aspect.toFixed(2)}:1); the Película tab lists its ${fm.list} shots`);
+    // a comic script: one shot per panel, a page per PAGE, linked panels with the lines in balloons
+    await page.evaluate(() => document.querySelector('#fpFormat .chip[data-v=""]').click());
+    const txt = fs.readFileSync(path.join(__dirname, 'comic-scripts', 'c01-manga.es.txt'), 'utf8');
+    await page.evaluate(() => document.querySelector('#tlScript').click()); await page.waitForTimeout(400);
+    await page.fill('#scText', txt); await page.dispatchEvent('#scText', 'input'); await page.waitForTimeout(100);
+    const tg = await A(() => window.__cdp.script.SC.target);
+    await page.click('#scGo');
+    await page.waitForFunction(() => window.__cdp.project.PROJECT.comic && window.__cdp.project.PROJECT.comic.pages.some(p => p.panels.some(x => x.link)), null, {timeout: 600000});
+    const cm = await A(() => { const C = window.__cdp, P = C.project.PROJECT.comic.pages; return {shots: C.ANIM.shots.length, pages: P.map(p => p.panels.length), linked: P.every(p => p.panels.every(x => x.link)), balloons: P.flatMap(p => p.panels).reduce((a, x) => a + x.balloons.length, 0), ws: document.body.dataset.ws, tab: C.state.tab}; });
+    ok(tg === 'both' && cm.shots === 7 && cm.pages.join() === '3,4' && cm.linked && cm.balloons === 6 && cm.ws === 'static' && cm.tab === 'comic', `a manga script makes its film (${cm.shots} shots, one per panel) and its pages (${cm.pages.join(' + ')} panels, linked, ${cm.balloons} balloons)`);
+    // a sound on the page, a panel's background, and the pages out: PDF, CBZ, PSD
+    const ex = await A(async () => { const C = window.__cdp, K = C.comic, pg = K.comic().pages[1];
+      K.CM.sel = pg.panels[0]; document.querySelector('#cmBg .chip[data-v="speed"]').click(); document.querySelector('#cmSfxNew').value = 'ZAS'; document.querySelector('#cmSfxAdd').click();
+      const pdf = await C.comicx.comicPDF(72), cbz = await C.comicx.comicCBZ(72), psd = await C.comicx.comicPSD(pg, 72), t = new TextDecoder('latin1');
+      return {bg: pg.panels[0].bg, sfx: (K.comic().pages[K.CM.page].sfx || []).map(x => x.text).join(), pdf: t.decode(pdf.slice(0, 5)), pages: (t.decode(pdf).match(/\/Type \/Page\b/g) || []).length, cbz: t.decode(cbz).includes('ComicInfo.xml') && t.decode(cbz).includes('YesAndRightToLeft'), psd: t.decode(psd.slice(0, 4)), layers: new DataView(psd.buffer, psd.byteOffset).getInt16(26 + 4 + 4 + 4 + 4)}; });
+    ok(ex.bg === 'speed' && ex.sfx === 'ZAS' && ex.pdf === '%PDF-' && ex.pages === 2 && ex.cbz && ex.psd === '8BPS', `speed lines and «${ex.sfx}» on a page; a ${ex.pages}-page PDF, a CBZ read right to left, a PSD in layers`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300));
+    await page.screenshot({path: path.join(OUT, 'project-comic.png')});
+    await page.context().close();
   },
   // the key poses of a film drawn in line: found in the motion, exported with a timing sheet and an exposure sheet; the
   // camera and light of a shot restyled from the timeline

@@ -467,6 +467,7 @@ function trackX(f) { const c = $('#tlTrack'), pad = 12, v = tlView(); return pad
 function trackF(x) { const c = $('#tlTrack'), pad = 12, v = tlView(); return v.a + (x - pad) / Math.max(1, c.clientWidth - pad * 2) * (v.b - v.a); }
 const laneY = i => RULER + i * LANE();
 function renderStrip() {
+  if (typeof renderFilmList === 'function') renderFilmList();
   const box = $('#mvStrip'); if (!box) return; box.innerHTML = '';
   ANIM.shots.forEach((s, i) => {
     const on = i === ANIM.cur, card = document.createElement('div'); card.className = 'mvshot' + (on ? ' on' : ''); card.dataset.id = s.id; card.setAttribute('role', 'listitem');
@@ -595,6 +596,7 @@ function drawTimeline() {
 function openTimeline(on) {
   ANIM.open = on; $('#timeline').hidden = !on; $('#animBtn').setAttribute('aria-pressed', String(on)); document.body.classList.toggle('anim', on);
   if (typeof wsFollowTimeline === 'function') wsFollowTimeline(on);  // the space goes with it (05h-spaces)
+  if (typeof applyFilmFormat === 'function') applyFilmFormat();
   if (on) {
     if (!ANIM.shots.length) { ANIM.shots.push(newShot()); ANIM.cur = 0; ANIM.camBase = camState(); chars.forEach(m => { m._prevPose = m.getPose(); }); }
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();

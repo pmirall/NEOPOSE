@@ -127,7 +127,7 @@ async function exportVideo(range) {
   if (VID.busy) return; storeShot();
   const shots = range === 'movie' ? ANIM.shots.map((_, i) => i) : [ANIM.cur];
   // the part of the view the film shows (its frame, or 16:9 when the frame is free), at 720 or 1080 lines
-  noDockView();
+  if (state.frameAspect) panelFrameView(); else noDockView();  // (the film's own format: the camera is that picture's)
   let f = frameRect(W, Hh); if (!RATIOS[state.ratio || 'libre'][1]) { const r = 16 / 9, fw = W / Hh > r ? Hh * r : W, fh = fw / r; f = {x: (W - fw) / 2, y: (Hh - fh) / 2, w: fw, h: fh}; }
   const lines = +EXK.vres || 1080, H = Math.min(lines, Math.round(4096 * f.h / f.w / 2) * 2), Wv = Math.round(H * f.w / f.h / 2) * 2, k = H / f.h;
   const vcfg = await pickVideoCodec(Wv, H);
@@ -158,7 +158,7 @@ async function exportVideo(range) {
     LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; renderer.setPixelRatio(k); renderer.setSize(W, Hh, false);
     const t0 = performance.now(); let n = 0;
     for (const [si, i] of shots.entries()) {
-      VOICE.started.clear(); await enterShot(i, 0); noDockView();
+      VOICE.started.clear(); await enterShot(i, 0); if (state.frameAspect) panelFrameView(); else noDockView();
       const s = shot();
       for (let j = 0; j < counts[si]; j++) {
         if (VID.cancel || err) break;

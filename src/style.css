@@ -1103,3 +1103,23 @@ body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint{
 .cmeditbar .t{font-size:12.5px;color:var(--ink-soft)}
 #cmText{width:100%;font:inherit;font-family:var(--f-hand);font-size:16px;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:6px 8px;margin:6px 0;resize:vertical}
 @media (max-width:600px){ .cmeditbar{top:auto;bottom:calc(var(--sheetH,0px) + 10px);flex-wrap:wrap} .cmeditbar .t{display:none} }
+/* the bible's cards: a portrait, the name, what can be done */
+.bblist{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.bbcard{border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:6px;display:flex;flex-direction:column;gap:6px}
+.bbcard img{width:100%;height:110px;object-fit:contain;background:var(--page);border-radius:4px}
+.bbcard.place img{object-fit:cover}
+.bbcard .bbn{display:flex;flex-direction:column;line-height:1.2}
+.bbcard .bbn span{font-size:11.5px;color:var(--ink-soft)}
+.bbcard .row{gap:4px;flex-wrap:wrap}
+/* Película: the shots as a list */
+.fplist{display:flex;flex-direction:column;gap:6px}
+.fpshot{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;border:1.5px solid var(--line);border-radius:var(--sketch);padding:4px;background:var(--paper)}
+.fpshot.on{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--red)}
+.fpth{width:96px;height:54px;border:none;padding:0;border-radius:3px;background:var(--stage);cursor:pointer;overflow:hidden}
+.fpth img{width:100%;height:100%;object-fit:cover;display:block}
+.fpm{display:flex;flex-direction:column;min-width:0}
+.fpm b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fpm span{font-size:11.5px;color:var(--ink-soft)}
+.fpbtn{display:flex;flex-direction:column;gap:2px}
+#cmSfxNew,#cmSfxText{font:inherit;font-family:Bangers,var(--f-hand);font-size:18px;letter-spacing:.04em;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:4px 8px;min-width:0;flex:1}
+#cmSfxText{width:100%;margin:6px 0}
