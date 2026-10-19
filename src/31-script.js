@@ -30,30 +30,40 @@ const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
 /* ---------- places and times ---------- */
 const SC_PLACES = [
   // (before the plain studio and workshop: «ESTUDIO DE PINTURA» is the painter's)
-  ['laboratorio', 'laboratorio|laboratory|lab|laboratoire|laboratori|labor|laboratorium|clinica|clinic|hospital|consulta medica|quirofano|farmacia|pharmacy|clinique|hopital|krankenhaus|ospedale|investigacion|research center|centro de investigacion'],
+  ['laboratorio', 'laboratorio|laboratory|lab|laboratoire|laboratori|labor|laboratorium|clinica|clinic|hospital|consulta medica|quirofano|farmacia|pharmacy|clinique|hopital|krankenhaus|ospedale|investigacion|research center|centro de investigacion|nave espacial|nave|spaceship|starship|space ship|vaisseau|vaisseau spatial|passerelle|raumschiff|astronave|nave estelar|estacion espacial|space station|station spatiale|puente de mando|cockpit|cabina de mando|sala de control|control room|salle de controle|centro de mando'],
   ['atelier', 'estudio de pintura|estudio de arte|estudio del pintor|taller de pintura|taller del pintor|atelier|art studio|painting studio|painters studio|estudi de pintura|galeria de arte|art gallery|studio de peinture|atelie|atelier de pintura|malerstudio|atelier di pittura'],
   ['cocina', 'cocina|kitchen|comedor|dining|cuina|cuisine|cozinha|kuche|cucina|menjador|salle a manger'], ['dormitorio', 'dormitorio|habitacion|cuarto|bedroom|alcoba|dormitori|chambre|quarto|schlafzimmer|camera da letto'],
   ['habitacion', 'salon|living|sala de estar|casa|house|home|piso|apartamento|apartment|flat|hogar|sala|lounge|menjador|maison|casa|wohnzimmer|soggiorno'], ['oficina', 'oficina|office|despacho|trabajo|empresa|bureau|escritorio|ufficio|buro|oficina'],
   ['aula', 'aula|clase|classroom|colegio|escuela|instituto|school|universidad|universitat|ecole|salle de classe|escola|schule|scuola'], ['biblioteca', 'biblioteca|library|libreria|bibliotheque|bibliothek'],
   ['cafeteria', 'cafeteria|cafe|coffee|restaurante|restaurant|cafetaria|caffe|ristorante'], ['taberna', 'taberna|bar|pub|tavern|posada|inn|cantina|bodega|saloon|taverne|kneipe|osteria'],
   ['taller', 'taller|workshop|garaje|garage|fabrica|factory|almacen|warehouse|atelier|oficina mecanica|werkstatt|officina'], ['castillo', 'castillo|castle|palacio|palace|trono|throne|fortaleza|castell|chateau|castelo|schloss|castello'],
-  ['teatro', 'teatro|theatre|theater|escenario|stage|auditorio|teatre|theatre|theater'], ['ring', 'ring|boxeo|boxing|gimnasio|gym|cuadrilatero|gimnas|salle de sport|ginasio|turnhalle|palestra'],
+  ['teatro', 'teatro|theatre|theater|escenario|stage|auditorio|teatre|theatre|theater|scene vide|palco|buhne|palcoscenico|spotlight|foco'], ['ring', 'ring|boxeo|boxing|gimnasio|gym|cuadrilatero|gimnas|salle de sport|ginasio|turnhalle|palestra'],
   ['dojo', 'dojo|tatami|artes marciales|martial|templo de lucha'], ['callejon', 'callejon|alley|alleyway|carrer estret|ruelle|beco|gasse|vicolo'],
-  ['calle', 'calle|street|avenida|avenue|ciudad|city|town|pueblo|barrio|acera|carrer|rue|rua|strasse|via|centro'], ['parque', 'parque|park|jardin|garden|plaza|square|parc|jardi|praca|garten|giardino|piazza'],
-  ['bosque', 'bosque|forest|woods|selva|jungle|arboleda|bosc|foret|floresta|wald|bosco'], ['campamento', 'campamento|camp|acampada|hoguera|campfire|tienda de campana|campament|camping|lagerfeuer|accampamento'],
+  ['calle', 'calle|street|avenida|avenue|ciudad|city|town|pueblo|barrio|acera|carrer|rue|rua|strasse|via|centro|coche|car|auto|taxi|autobus|bus|furgoneta|van|camion|truck|voiture|carro|wagen|macchina|cotxe|carretera|road|highway|autopista|route|estrada|landstrasse|strada'], ['parque', 'parque|park|jardin|garden|plaza|square|parc|jardi|praca|garten|giardino|piazza'],
+  ['bosque', 'bosque|forest|woods|selva|jungle|arboleda|bosc|foret|floresta|wald|bosco|montana|montanas|mountain|mountains|montagne|montanha|berg|berge|gebirge|montagna|muntanya|nieve|snow|neige|neve|schnee|neu|nevado|enneigee'], ['campamento', 'campamento|camp|acampada|hoguera|campfire|tienda de campana|campament|camping|lagerfeuer|accampamento'],
   ['playa', 'playa|beach|muelle|pier|puerto|harbour|harbor|costa|coast|mar|sea|platja|plage|praia|strand|spiaggia|porto'], ['desierto', 'desierto|desert|dunas|desert|deserto|wuste'],
   ['ruinas', 'ruinas|ruins|templo|temple|ruines|ruinas|ruinen|rovine'], ['escalinata', 'escalinata|escaleras|stairs|staircase|escalera|escales|escalier|escadaria|treppe|scalinata'],
-  ['azotea', 'azotea|rooftop|roof|tejado|terraza|terrat|toit|telhado|dach|tetto'], ['estudio', 'estudio|studio|plato|set de rodaje|estudi'], ['pano_noche', 'ciudad de noche|city at night|noche en la ciudad'],
+  ['azotea', 'azotea|rooftop|rooftops|roof|roofs|tejado|tejados|terraza|terrat|teulades|toit|toits|telhado|telhados|dach|dacher|tetto|tetti'], ['estudio', 'estudio|studio|plato|set de rodaje|estudi'], ['pano_noche', 'ciudad de noche|city at night|noche en la ciudad'],
   ['pano_prado', 'prado|meadow|campo|field|pradera|prat|prairie|wiese|prato'], ['pano_loft', 'loft|nave|ventanales'], ['pano_chimenea', 'chimenea|fireplace|cabana|cabin']
 ];
 const SC_PLACE_PATS = SC_PLACES.map(([id, w]) => [id, scPats(w)]);
 const SC_TIMES = [['noche', 'noche|night|nit|nuit|noite|nacht|notte|madrugada|midnight|medianoche|dawn of night'], ['atardecer', 'atardecer|anochecer|sunset|dusk|evening|crepusculo|amanecer|dawn|sunrise|alba|aube|soir|vespre|capvespre|abenddammerung|tramonto|sera'],
   ['dia', 'dia|day|manana|morning|mediodia|noon|afternoon|tarde|jour|matin|dia|tag|morgen|giorno|mattina|continuo|continuous']];
+// the place a heading names: the most specific match wins («SALÓN DEL TRONO» is the throne's, not a living room's), and
+// an exterior is outside («EXT. CASTILLO» is in front of it, among stones)
+const SC_GENERIC = new Set('salon sala casa house home piso apartamento apartment flat hogar centro trabajo empresa edificio building interior exterior lugar place calle street ciudad city town pueblo plaza'.split(' '));
+const SC_OUTSIDE = {castillo: 'ruinas', teatro: 'calle', laboratorio: 'calle', oficina: 'calle', habitacion: 'calle', dormitorio: 'calle', cocina: 'parque', aula: 'parque', biblioteca: 'escalinata', cafeteria: 'calle', taberna: 'calle', taller: 'calle', ring: 'calle', dojo: 'ruinas', atelier: 'calle', estudio: 'parque'};
 function placeOf(head) {
-  const w = scWords(head.place || head.text || '');
-  for (const [id, pats] of SC_PLACE_PATS) if (scFind(w, pats) && SCENES[id]) return id;
-  return null;
+  const w = scWords(head.place || head.text || ''); let best = null, bs = 0;
+  // (two places said: the head noun wins — the one before «de» in «AZOTEA DEL INSTITUTO», the last in «SCHOOL ROOFTOP»;
+  const ofAt = w.findIndex(x => /^(de|del|di|du|des|do|da|dos|das|of|della|dello|dels|von|vom|der)$/.test(x)), head1 = i => ofAt >= 0 ? (i < ofAt ? .2 : 0) : (w.length <= 4 ? i : -i) * .01;  // (in a sentence, the first one said)
+  for (const [id, pats] of SC_PLACE_PATS) { if (!SCENES[id]) continue;
+    for (const pat of pats) { const f = scFind(w, [pat]); if (!f) continue; const sc = pat.length * (pat.length === 1 && pat[0].w && SC_GENERIC.has(pat[0].w) ? .3 : 1) + head1(f.i); if (sc > bs) { bs = sc; best = id; } } }
+  if (best && head.int === false && SCENES[best].group === 'in') best = SC_OUTSIDE[best] || 'calle';
+  return best;
 }
+// a place the script does not name (or NEOPOSE has not got): one of the story's world, inside or out
+const SC_WORLD_PLACE = {fantasy: ['castillo', 'ruinas'], scifi: ['laboratorio', 'desierto'], western: ['taberna', 'desierto'], horror: ['dormitorio', 'bosque'], superhero: ['oficina', 'azotea'], modern: ['habitacion', 'calle']};
 function timeOf(head) { const w = scWords(head.time || head.text || ''); for (const [id, v] of SC_TIMES) if (scFind(w, scPats(v))) return id; return null; }
 // a place NEOPOSE has not got: a Poly Haven panorama that matches the words (with its light), if online
 async function placeOnline(head) {
@@ -85,56 +95,45 @@ function genderOf(name, text) {
 }
 function ageOf(name) {
   const k = scNorm(name);
-  if (/\b(nino|nina|nene|nena|chaval|crio|boy|girl|kid|child|baby|bebe|enfant|garcon|fille|menino|menina|kind|junge|madchen|bambino|bambina)\b/.test(k)) return 10;
-  if (/\b(abuelo|abuela|anciano|anciana|viejo|vieja|old|grandpa|grandma|grandfather|grandmother|elder|avi|avia|grand-pere|grand-mere|avo|opa|oma|nonno|nonna)\b/.test(k)) return 75;
+  if (/\b(nino|nina|nene|nena|chaval|crio|boy|girl|kid|child|baby|bebe|enfant|garcon|fille|menino|menina|kind|junge|madchen|bambino|bambina)\b/.test(k)) return .3;
+  if (/\b(abuelo|abuela|anciano|anciana|viejo|vieja|old|grandpa|grandma|grandfather|grandmother|elder|avi|avia|grand-pere|grand-mere|avo|opa|oma|nonno|nonna)\b/.test(k)) return 1.85;
   return null;
 }
 function castOf(P, text) {
-  const out = [], seen = new Set(); let alt = 0;
+  const out = [], seen = new Set(); let alt = 0; const genre = genreOf(text), lang = scLang(text), names = [...P.names.values()].map(n => ({name: n.name, aka: n.aka}));
   for (const [key, n] of P.names) {
     if (seen.has(key)) continue; seen.add(key);
     const mine = (SAVED_CHARS || []).find(c => scNorm(c.name) === key || scNorm(c.name).split(/\s+/)[0] === key.split(/\s+/)[0]);
-    if (mine) { out.push({key, name: n.name, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(mine.body)), name: n.name}, preset: mine.preset || null, outfit: mine.outfit || [], mine: true}); continue; }
-    const g = genderOf(n.name, text) || (alt++ % 2 ? 'mujer' : 'hombre'), age = ageOf(n.name), sp = speciesOf(n.name, text);
-    const body = {...bodyOf(g), name: n.name}; if (age) body.age = age; if (sp) body.species = sp;
-    const look = lookOf(n.name, P.scenes.flatMap(s => s.beats.filter(b => b.k === 'act').map(b => b.text)).join('\n'), g, body, out.length);  // (what the action says about them, not what anyone says)
-    if (look.hair !== undefined && (!sp || sp === 'humano')) { body.hair = look.hair; body.hairCol = look.col; }
-    out.push({key, name: n.name, body, preset: g, outfit: look.outfit});
+    if (mine) { out.push({key, name: n.name, aka: n.aka, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(mine.body)), name: n.name}, preset: mine.preset || null, outfit: mine.outfit || [], mine: true}); continue; }
+    // what the action says about them (their introduction, what they wear), not what anyone says
+    // (a name that is what they are, said with an article — «Um FANTASMA», «Un HOMBRE», «the GUARD» — is read as words)
+    const kw = scNorm(n.name).replace(/\s+\d+$/, ''), kind = (SC_PERSON.has(kw) || SC_SPECIES.some(([, l]) => l.includes(kw)) || SCL_ROLE_PATS.some(([, pats]) => scFind([kw], pats))) &&
+      new RegExp(`\\b(un|una|el|la|a|an|the|um|uma|o|ein|eine|einen|der|die|das|il|lo|une|le|l'|two|dos|deux|zwei|due|dois|tres|three|trois|drei|tre|unos|unas|some|des|alguns|einige|degli|dei)\\s+${kw}`).test(scNorm(text));
+    const desc = descOf(names.find(c => c.name === n.name), names, P, kind), g0 = genderOf(n.name, text), look = lookFrom(n.name, desc, {lang, g: kind ? null : g0, kind});
+    const g = look.body.gender != null ? (look.body.gender < .5 ? 'mujer' : 'hombre') : (kind ? look.gWeak || g0 : g0 || look.gWeak) || (alt++ % 2 ? 'mujer' : 'hombre'), fem = g === 'mujer';
+    const age = look.body.age ?? ageOf(n.name), sp = look.body.species || speciesOf(n.name, text);
+    const body = {...bodyOf(g), name: n.name}; if (age != null) body.age = age; if (sp) body.species = sp;
+    for (const k of ['height', 'muscle', 'weight', 'headStyle', 'kemo', 'feet']) if (look.body[k] !== undefined) body[k] = look.body[k];
+    if (look.roles.includes('robot') || look.roles.includes('ghost')) look.hair = '';
+    // an animal's coat in the colour said («una gata blanca», «a brown dog»); a kemonomimi's ears and tail
+    if (sp && sp !== 'humano') { const base = coatOf({...BODY_BASE, species: sp}), col = look.furCol || look.tailCol || (body.kemo === 1 ? look.hairCol : null);
+      if (base && col) body.coat = body.kemo === 1 ? {...base, c: [col, mixHex(col, '#ffffff', .5), mixHex(col, '#000000', .25)], m: {}, tip: 0} : {...base, c: [col, mixHex(col, '#ffffff', .55), shadeHex(col, .45)]}; }
+    // hair (people, and the half-human, who have a human head)
+    const h = Math.abs(Math.sin((scWords(n.name)[0].length + out.length * 7.1) * 12.9898) * 43758.5453) % 1, old = (body.age ?? 1) > 1.55, kid = (body.age ?? 1) < .5;
+    if (!sp || sp === 'humano' || body.kemo === 1) {
+      body.hair = look.hair === '' ? '' : look.cut ? SCL_CUT_STYLE[look.cut][fem ? 0 : 1] : (fem ? ['h-bob01', 'h-long01', 'h-ponytail01', 'h-elvs_daisy_hair', 'h-culturalibre_hair_06', 'h-o4saken_long01'] : ['h-short01', 'h-short02', 'h-short03', 'h-short04', 'h-culturalibre_hair_05', 'h-elvs_grump_hair'])[Math.floor(h * 6)];
+      body.hairCol = look.hairCol || (old ? '#8f8a84' : HAIR_COLORS[Math.floor(h * 5)][0]);
+    }
+    // clothes: what is said, on the role's or the story world's; else everyday clothes, different for each one
+    // a beast (a dragon, «a giant wolf», «une bête sauvage») wears what it is said to and nothing else
+    const beast = sp && sp !== 'humano' && body.kemo !== 1 && (sp === 'dragon' || /\b(gigante|giant|geant|geante|riesig\w*|salvaje|wild|feral|sauvage|selvatico|feroz|ferocious|feroce|bestia|beast|bete|monstruo|monster|monstre|mostro|criatura|creature|kreatur)\b/.test(scNorm(desc)));
+    const outfit = beast ? (look.wear.length ? dressOf({...look, roles: []}, {g, genre: null, h}) : []) :
+      dressOf(look, {g, genre, h}) || (OUTFITS[kid ? 'camiseta' : fem ? ['mujer', 'mujer2', 'falda', 'verano'][Math.floor(h * 4)] : ['casual', 'casual2', 'camiseta', 'jersey'][Math.floor(h * 4)]][1]).map(x => ({...x}));
+    out.push({key, name: n.name, aka: n.aka, body, preset: g, outfit, desc, genre});
   }
   return out;
 }
 
-/* ---------- how the cast looks: clothes and hair from what the script says about them ----------
-   «El científico DANIEL lleva una bata blanca» puts Daniel in a lab coat; «ANA, pelirroja, con coleta» gives Ana red
-   hair in a ponytail. Whatever is not said is filled in so nobody is a bare mannequin: everyday clothes and a haircut,
-   different for each one, grey with age. */
-const SC_DRESS = [
-  ['medico', 'bata|bata blanca|bata de laboratorio|cientific*|investigador*|quimic*|biolog*|doctor|doctora|medic*|enfermer*|farmaceutic*|cirujan*|lab coat|labcoat|scientist|chemist|researcher|nurse|physician|surgeon|blouse blanche|scientifique|bata|metge|cientista|arzt|arztin|wissenschaftler*|camice|scienziat*'],
-  ['detective', 'detective|gabardina|inspector*|comisari*|trench|trenchcoat|sherlock'],
-  ['traje', 'traje|corbata|ejecutiv*|abogad*|empresari*|banquer*|politic*|director*|jefe|jefa|suit|tie|lawyer|businessman|businesswoman|executive|banker|boss|costume|avocat|anzug|vestito'],
-  ['trabajo', 'mecanic*|obrer*|fontaner*|albanil*|peto|mono de trabajo|granjer*|mechanic|plumber|overalls|worker|builder|farmer|mecanicien|mechaniker'],
-  ['deporte', 'chandal|deportiv*|atleta|corredor*|entrenador*|tracksuit|athlete|runner|coach|jogger'],
-  ['militar', 'soldad*|militar|sargento|capitan|soldier|army|sergeant|marine|soldat'],
-  ['pijama', 'pijama|pyjama*|pajama*|camison'], ['gala', 'vestido de noche|vestido largo|de gala|gown|evening dress'], ['verano', 'vestido|dress|robe|kleid'],
-  ['caballero', 'caballero|armadura|templari*|knight|armor|armour|chevalier|ritter'], ['vikingo', 'vikingo|viking*|wikinger'], ['monje', 'monje|fraile|monk|friar|moine|monch'],
-  ['kimono', 'kimono|samurai|geisha'], ['espacio', 'astronaut*|traje espacial|spacesuit|cosmonaut*'], ['escolar', 'uniforme escolar|colegial*|school uniform|schoolgirl|schoolboy'],
-  ['jersey', 'jersey|sueter|sweater|pullover|pintor|pintora|pintando|caballete|pincel|artista|painter|painting|easel|artist|peintre|maler*|pittor*|profesor*|teacher']
-];
-const SC_HAIRDO = [['', 'calv*|rapad*|bald|shaved head|chauve|glatze'], ['h-afro01', 'afro|pelo afro|melena afro|cabello afro'], ['h-ponytail01', 'coleta|ponytail|queue de cheval'], ['h-braid01', 'trenza|braid*|tresse'],
-  ['h-elvs_inverted_curly_bob', 'rizad*|rizos|curly|curls|boucle*'], ['h-long01', 'melena|pelo largo|cabello largo|long hair|cheveux longs'], ['h-rehmanpolanski_hair_bun_brown', 'mono|mono alto|bun|chignon'], ['h-elvs_maxwell_hair', 'tupe|pompadour|quiff']];
-const SC_HAIRCOL = [['#c7a066', 'rubi*|blond*|blonde'], ['#8a3a1c', 'pelirroj*|redhead*|red hair|red-haired|ginger|roux|rousse'], ['#8f8a84', 'canos*|gris|grey hair|gray hair|grey-haired|gray-haired|silver hair'], ['#e6e3dd', 'pelo blanco|white hair|white-haired|cheveux blancs'], ['#1b1512', 'moren*|pelo negro|dark hair|black hair|brune|brun']];
-const SC_DRESS_PATS = SC_DRESS.map(([k, w]) => [k, scPats(w)]), SC_HAIRDO_PATS = SC_HAIRDO.map(([k, w]) => [k, scPats(w)]), SC_HAIRCOL_PATS = SC_HAIRCOL.map(([k, w]) => [k, scPats(w)]);
-function lookOf(name, text, g, body, i) {
-  const nm = scWords(name)[0], said = text.split(/(?<=[.!?])\s+|\n+/).filter(t => scWords(t).includes(nm));  // the sentences about them
-  const w = scWords(said.join(' ')), find = P => { for (const [k, pats] of P) if (scFind(w, pats)) return k; return null; };
-  const fem = g === 'mujer', old = (body.age ?? 1) > 1.55, kid = (body.age ?? 1) < .5, h = Math.abs(Math.sin((nm.length + i * 7.1) * 12.9898) * 43758.5453) % 1;
-  let dress = find(SC_DRESS_PATS); if (dress === 'traje' && fem) dress = 'oficina';
-  if (!dress) dress = kid ? 'camiseta' : fem ? ['mujer', 'mujer2', 'falda', 'verano'][Math.floor(h * 4)] : ['casual', 'casual2', 'camiseta', 'jersey'][Math.floor(h * 4)];
-  const hairdo = find(SC_HAIRDO_PATS), col = find(SC_HAIRCOL_PATS);
-  const hair = hairdo ?? (fem ? ['h-bob01', 'h-long01', 'h-ponytail01', 'h-elvs_daisy_hair', 'h-culturalibre_hair_06', 'h-o4saken_long01'] : ['h-short01', 'h-short02', 'h-short03', 'h-short04', 'h-culturalibre_hair_05', 'h-elvs_grump_hair'])[Math.floor(h * 6)];
-  const hcol = col || (old ? '#8f8a84' : HAIR_COLORS[Math.floor(h * 5)][0]);
-  return {outfit: (OUTFITS[dress] ? OUTFITS[dress][1] : []).map(x => ({...x})), hair: hair || '', col: hcol};
-}
 // a furry cast: the animal in the name (ZORRO, Mr. Wolf) or said right after it (REX, un lobo gris; Mia (gata))
 function speciesOf(name, text) {
   const words = t => scNorm(t).split(/[^a-z\u00df]+/).filter(Boolean), find = ws => { for (const w of ws) for (const [sp, list] of SC_SPECIES) if (list.includes(w)) return sp; return null; };
@@ -161,17 +160,62 @@ function pronounTo(p, cast, ctx, not, object) {
   for (const c of [ctx.lastOther, ctx.last]) if (c != null && cand.includes(c)) return c;
   return cand[0];
 }
+// the pronouns that stand for a person in each language (not the articles that look like them: Spanish «el», Italian «il»)
+const SC_PRON_BY = {es: ['ella', 'ellos', 'ellas'], en: ['he', 'she', 'they', 'him', 'her'], fr: ['il', 'elle', 'ils', 'elles'], ca: ['ell', 'ella', 'ells', 'elles'], pt: ['ele', 'ela', 'eles', 'elas'], de: ['er', 'sie'], it: ['lui', 'lei', 'loro', 'egli']};
+/* ---------- what the place does, and the camera, in the action ----------
+   A sentence about no one is the place or the camera: «Rayos violetas atraviesan el cielo» flashes violet light,
+   «Una explosión sacude el salón» is a flash, the camera shaken and everyone ducking, «La luna roja ilumina…» tints
+   the night red, «Rain hammers the street» darkens it; «La cámara se eleva hacia el cielo» is a crane up. */
+const SC_FX = [
+  ['blast', 'explosion|explosiones|explota*|estalla*|detona*|revienta|deflagracion|explode*|explosion*|blast|blows up|kaboom|boom|explose*|detonation|explosao|explodiert|esplode|esplosione|esclata|explosio'],
+  ['lightning', 'rayo|rayos|relampago*|trueno*|tormenta|lightning|thunder*|storm|eclair*|tonnerre|orage|trovao|trovoada|blitz*|donner|gewitter|fulmine|fulmini|tuono|lampo|llamp*|tempesta|tempestad'],
+  ['fire', 'fuego|llamas|incendio|hoguera|arde|ardiendo|en llamas|fire|flames|burning|blaze|ablaze|feu|flammes|brule|incendie|fogo|chamas|incendio|feuer|flammen|brennt|fuoco|fiamme|brucia|foc|flames'],
+  ['smoke', 'humo|niebla|neblina|bruma|polvareda|smoke|fog|mist|haze|dust cloud|fumee|brouillard|brume|fumaca|nevoeiro|rauch|nebel|dunst|fumo|nebbia|foschia|fum|boira'],
+  ['rain', 'lluvia|llueve|lloviendo|lluvios*|aguacero|tormenta de lluvia|rain|raining|rainy|downpour|pluvieu*|chuvos*|regnerisch*|piovos*|plujos*|pluie|pleut|chuva|chove|regen|regnet|pioggia|piove|pluja|plou'],
+  ['moon', 'luna|moon|lune|lua|mond|lluna|luna llena|full moon'], ['sun', 'sol|sun|soleil|sonne|sole'],
+  ['lights', 'las luces|luces de emergencia|luces rojas|luz roja|the lights|emergency lights|red lights|warning lights|les lumieres|as luzes|die lichter|le luci|els llums|alarma|alarm|alarme|sirena|sirenas|siren|sirens|neon|neones|neons|leuchtreklame']
+];
+const SC_FX_PATS = SC_FX.map(([k, w]) => [k, scPats(w)]);
+function fxOf(cl, skip) {
+  const w = scWords(cl).filter(x => !skip.has(x)), out = [];
+  // (the colour said of it: right after it, or right before it in English and German — «explosión azul», «red moon»)
+  for (const [k, pats] of SC_FX_PATS) { const f = scFind(w, pats); if (!f) continue; const near = [w[f.j + 1], w[f.j + 2], w[f.i - 1]].map(x => SCL_COLOR_OF.get(x)).find(Boolean); out.push({fx: k, col: near || null}); }
+  return out;
+}
+const SC_CAM_W = new Set('camara camera kamera camaras cameras'.split(' '));
+const SC_CAM_MOVES = [['rise', 'eleva|sube|asciende|se alza|rises|cranes up|crane up|pulls up and|lifts|moves up|tilts up|eleve|monte|sobe|steigt|hebt sich|si alza|sale verso|puja'], ['descend', 'baja|desciende|cranes down|descends|tilts down|descend|desce|senkt sich|scende|baixa'],
+  ['push', 'se acerca|acerca|avanza|moves in|pushes in|push in|zooms in|dollies in|approche|avance|aproxima|nahert|fahrt heran|si avvicina|acosta'], ['pull', 'se aleja|aleja|retrocede|pulls back|pulls out|pull back|zooms out|dollies out|recule|eloigne|afasta|entfernt sich|fahrt zuruck|si allontana|allunya'],
+  ['orbit', 'gira alrededor|da vueltas alrededor|rodea|circles|orbits|circle around|tourne autour|gira em torno|kreist|gira intorno|gira al voltant'], ['track', 'sigue|sigue a|follows|suit|segue|folgt|segueix']];
+const SC_CAM_MOVE_PATS = SC_CAM_MOVES.map(([k, w]) => [k, scPats(w)]);
+function camOf(cl) {
+  const w = scWords(cl.replace(SC_SLOW_RX, ' ')); if (!w.slice(0, 4).some(x => SC_CAM_W.has(x))) return null;
+  for (const [k, pats] of SC_CAM_MOVE_PATS) if (scFind(w, pats)) return {move: k};
+  // (the camera doing something not a move — «la cámara muestra…» — is just a note; looking up to the sky is a crane up)
+  return {move: w.some(x => /^(cielo|sky|ciel|ceu|himmel|cel|cielo|arriba|upwards|up|vers le haut|oben|alto|amunt)$/.test(x)) ? 'rise' : null};
+}
+const SC_SHOT_RX = /\b(extreme |very |medium |big )?(wide|close|closer|medium|long|full|establishing|tracking|two|aerial|overhead|reverse|insert|low[- ]angle|high[- ]angle|master|cowboy|over[- ]the[- ]shoulder|pov|dutch|crane|drone|group|single|split) shot(s)?( of| on| from)?\b|\bclose[- ]?ups?( of| on)?\b/i;
+// «A cámara lenta, los dos se separan»: the speed, and what happens
+const SC_SLOW_RX = /(^|[\s,(])(a |en |in |au |em |al |in )?(c[aá]mara lenta|slow[- ]?motion|slow-?mo|super slow|ralent[ií]|c[aâ]mera lenta|zeitlupe|rallentatore|c[aá]mara r[aá]pida|fast[- ]motion|acc[eé]l[eé]r[eé])\b[,.:]?/i;
+const SC_MAGIC = new Set('esfera bola orbe rayo rayos energia fuego llamas hechizo magia magico magica poder ataque dragon ki laser energy blast beam fireball orb bolt magic power spell flames energie boule sort foudre fogo feitico poder feuerball strahl magie zauber energia palla raggio incantesimo potere encanteri'.split(' '));
+const SC_CHAINS = new Set('cadenas cadena cuerdas cuerda grilletes esposas chains chain ropes rope shackles handcuffs chaines chaine cordes correntes corrente cordas algemas ketten kette seile fesseln catene catena corde manette cadenes'.split(' '));
+const SC_FROM = new Set('de del desde from out du des da do dos aus dal dalla dallo dai dels'.split(' '));
 const SC_LINK = 'y|e|and|then|luego|despues|entonces|et|puis|und|dann|poi|i|tambien|also'.split('|');
 const SC_ALL = 'todos|todas|ambos|ambas|los dos|las dos|everyone|everybody|both|all|tous|toutes|tots|totes|todos|alle|beide|tutti|entrambi'.split('|');
 const SC_TOGETHER = 'mientras|a la vez|al mismo tiempo|while|meanwhile|at the same time|pendant que|alors que|enquanto|wahrend|mentre'.split('|');
 // a sentence into clauses: "se levanta y sale", "he stands, then leaves"
 const scClauses = s => s.split(/(?<=[.;!?])\s+|,\s*(?:y |and |then |luego |despues |entonces |et |e |und |poi )|\s+(?:y luego|y despues|y entonces|and then|then|luego|despues|et puis|e depois|und dann|e poi)\s+|\s+y\s+(?=(?:se\s+)?[a-z]+(?:a|e|an|en)\b)|\s+and\s+(?=[a-z]+s\b)/i).map(x => x && x.trim()).filter(Boolean);
 function readAction(text, cast, lang, ctx) {
-  const out = [], names = cast.map((c, i) => [scWords(c.name)[0], i]);
-  for (const cl of scClauses(text)) {
+  const out = [], names = castKeys(cast), keys = new Set(names.map(n => n[0])), prons = SC_PRON_BY[lang] || SC_PRON_BY.en;
+  for (let cl of scClauses(text)) {
+    // a shot named in the action («Wide shot of a rainy street», «Close-up on her hand»): how it is seen, not a gunshot
+    const sh = cl.match(SC_SHOT_RX); if (sh) { const sd = shotDirection(sh[0]); if (sd) out.push({dir: sd, text: cl}); cl = cl.replace(SC_SHOT_RX, ' ').trim(); if (scWords(cl).length < 2) continue; }
+    // the speed first («A cámara lenta, …»), then the rest of the clause
+    const sl = cl.match(SC_SLOW_RX); if (sl) { out.push({dir: {speed: /r[aá]pida|fast|acc[eé]l/i.test(sl[3]) ? 2 : .4}, text: cl}); cl = cl.replace(SC_SLOW_RX, '$1').trim(); if (scWords(cl).length < 2) continue; }
     const w = scWords(cl);
+    // the camera's own sentence
+    const cam = camOf(cl); if (cam) { out.push({cam, text: cl}); continue; }
     // who: names in the clause (in order), "everyone", or a pronoun for the last one spoken of
-    const who = []; for (let i = 0; i < w.length; i++) { const n = names.find(x => x[0] === w[i]); if (n && !who.some(o => o.c === n[1])) who.push({c: n[1], at: i}); }
+    const who = []; for (let i = 0; i < w.length; i++) for (const n of names.filter(x => x[0] === w[i])) if (!who.some(o => o.c === n[1])) who.push({c: n[1], at: i});  // («the THUGS»: all of them)
     const all = w.some((x, i) => SC_ALL.includes(x) || SC_ALL.includes(x + ' ' + w[i + 1]));
     // what: every intention the clause holds, in the order written
     const found = [];
@@ -180,10 +224,25 @@ function readAction(text, cast, lang, ctx) {
     const kept = found.filter((f, k) => !found.some((g, l) => l !== k && g.i <= f.i && g.j >= f.j && (g.j - g.i > f.j - f.i)));  // the longer phrase wins ("se sienta" over "sienta", "walks to" over "walks")
     const neg = i => w.slice(Math.max(0, i - 2), i).some(x => ['no', 'not', "doesn't", 'never', 'nunca', 'ne', 'pas', 'nao', 'nicht', 'non'].includes(x));
     const verbs = kept.filter(v => !neg(v.i));
+    // what the place does (an explosion, lightning, fire, rain, a red moon), unless it is what someone throws
+    const fx = fxOf(cl, keys).filter(f => !(['blast', 'fire'].includes(f.fx) && verbs.some(v => ['shoot', 'spell', 'throw', 'aim', 'raise', 'unleash'].includes(v.id))));
+    if (fx.length) out.push({fx, text: cl});
+    // magic: firing or letting loose a sphere, a ray, energy, fire, a dragon is a spell, not a gun
+    const magic = w.some(x => SC_MAGIC.has(x));
+    for (const v of verbs) if ((magic && ['shoot', 'throw', 'free'].includes(v.id) && !w.some(x => SC_CHAINS.has(x)) && !(v.id === 'free' && who.some(o => o.at > v.i))) || v.id === 'unleash') v.id = 'spell';
+    // coming out of somewhere is coming on, outdoors («sale de la oficina» into the street)
+    for (const v of verbs) if (v.id === 'exit' && ctx.int === false && SC_FROM.has(w[v.j + 1])) v.id = 'enter';
     if (!verbs.length && kept.length) continue;  // "Ana no se sienta": nothing happens, and nothing to warn about
     // running with a way in or out of the scene: a fast entrance or exit ("sale corriendo", "runs out")
     for (const m of verbs.filter(v => ['enter', 'exit', 'approach'].includes(v.id))) { const r = verbs.find(v => v.id === 'run' && Math.abs(v.i - m.i) <= 3); if (r) { m.fast = true; verbs.splice(verbs.indexOf(r), 1); } }
-    if (!verbs.length) { const emo = emotionOf(cl); if (emo && (who.length || ctx.last != null)) out.push({who: who.length ? who.map(o => o.c) : [ctx.last], id: 'emo', e: emo, text: cl}); else if (!shotDirection(cl) && w.length > 2 && (who.length || w.some(x => SC_PRON.includes(x)))) out.push({unknown: cl}); continue; }  // (a sentence about nobody describes the place)
+    if (!verbs.length) {
+      const emo = emotionOf(cl); if (emo && (who.length || ctx.last != null)) { out.push({who: who.length ? who.map(o => o.c) : [ctx.last], id: 'emo', e: emo, text: cl}); continue; }
+      // (a sentence about nobody describes the place; one that introduces someone — «KAEL, un joven…» — describes them)
+      const intro = who.length && /[,(]/.test(cl) && who[0].at <= 2;
+      if (who.length) { ctx.last = who[0].c; }  // (whoever is introduced is who the rest of the sentence is about: «…, está atrapada»)
+      if (!fx.length && !intro && !shotDirection(cl) && w.length > 2 && (who.length || w.some(x => prons.includes(x)))) out.push({unknown: cl});
+      continue;
+    }
     let prevSubj = null, prevObj = null;
     verbs.forEach((v, vi) => {
       const from = vi ? verbs[vi - 1].j + 1 : 0, to = vi < verbs.length - 1 ? verbs[vi + 1].i : w.length;
@@ -200,8 +259,12 @@ function readAction(text, cast, lang, ctx) {
       let target = who.filter(o => o.at > v.j - (v.j - v.i) && o.at > v.i && o.at < to).map(o => o.c)[0];
       if (target == null && !things) { const ob = w.slice(v.i, Math.min(to, v.j + 4)).find(x => SC_OBJ.includes(x)); if (ob) target = pronounTo(ob, cast, ctx, subj, true); }
       if (target != null && subj.includes(target)) target = undefined;
+      // a spell or a shot at no one named: at the one they face (the other one in the scene)
+      if (target == null && ['spell', 'shoot', 'throw', 'free', 'tie', 'give', 'follow', 'embrace'].includes(v.id)) { const others = ctx.present.filter(i => !subj.includes(i)); target = v.id === 'free' ? others.find(i => ctx.bound && ctx.bound.has(i)) ?? (ctx.lastOther != null && others.includes(ctx.lastOther) ? ctx.lastOther : others[0]) : ctx.lastOther != null && others.includes(ctx.lastOther) ? ctx.lastOther : others[0]; }
       const last = out[out.length - 1]; if (last && last.id === v.id && last.who.join() === subj.join() && last.text === cl) return;  // said twice in one go
       if (spec.t === 'none') { prevSubj = subj; return; }
+      if (spec.t === 'state') { (ctx.bound = ctx.bound || new Set()); for (const c of subj) ctx.bound.add(c); }
+      if (spec.t === 'free' && target != null && ctx.bound) ctx.bound.delete(target);
       if (target == null && ['approach', 'face', 'group'].includes(spec.t)) { const others = ctx.present.filter(i => !subj.includes(i)); target = ctx.lastOther != null && !subj.includes(ctx.lastOther) && ctx.present.includes(ctx.lastOther) ? ctx.lastOther : others[0]; }
       out.push({who: subj, id: v.id, target, together: SC_TOGETHER.some(t => scNorm(cl).includes(t)), text: cl, fast: v.fast || /corr|run|rapid|deprisa|quick|fast/.test(scNorm(w.slice(from, to).join(' ')))});
       ctx.last = subj[subj.length - 1]; prevSubj = subj; prevObj = target; if (target != null) ctx.lastOther = target;
@@ -211,13 +274,14 @@ function readAction(text, cast, lang, ctx) {
 }
 
 /* ---------- one scene: staging, actions, timing ---------- */
-const SC_SLOTS = {1: [[0, 0, 0]], 2: [[-.62, 0, 62], [.62, 0, -62]], 3: [[-.85, .1, 55], [.85, .1, -55], [0, -.75, 180]], 4: [[-1.2, .15, 50], [-.4, -.35, 20], [.4, -.35, -20], [1.2, .15, -50]]};
+const SC_SLOTS = {1: [[0, 0, 0]], 2: [[-.62, 0, 62], [.62, 0, -62]], 3: [[-.85, .1, 55], [.85, .1, -55], [0, -.75, 0]], 4: [[-1.2, .15, 50], [-.4, -.35, 20], [.4, -.35, -20], [1.2, .15, -50]]};
 function directScene(sc, idx, cast, lang, o) {
   const present = [], add = i => { if (i != null && !present.includes(i) && present.length < MAX_CHARS) present.push(i); };
-  const ctx = {last: null, lastOther: null, present};
+  const ctx = {last: null, lastOther: null, present, int: sc.head.int};
   // who is in the scene: whoever speaks or is named, in order of appearance (four at most)
-  for (const b of sc.beats) { if (b.who) add(cast.findIndex(c => c.name === b.who)); if (b.k === 'act') for (const [k, i] of cast.map((c, i) => [scWords(c.name)[0], i])) if (scWords(b.text).includes(k)) add(i); }
-  if (!present.length && cast.length) present.push(0);
+  for (const b of sc.beats) { if (b.who) add(cast.findIndex(c => c.name === b.who)); if (b.k === 'act' || b.k === 'shot') for (const i of scWho(b.text, cast)) add(i); }
+  // nobody named, but «ambos», «everyone», «they»: those of the scene before (still standing); nobody at all: the place alone
+  if (!present.length && (o.prev || []).length && sc.beats.some(b => b.k === 'act' && scWords(b.text).some((x, i, A) => SC_ALL.includes(x) || SC_ALL.includes(x + ' ' + A[i + 1]) || ['ellos', 'ellas', 'they', 'ils', 'elles', 'eles', 'elas', 'sie', 'loro'].includes(x)))) for (const i of o.prev) add(i);
   present.sort((a, b) => a - b);  // always in the cast's order: from scene to scene each one keeps their figure (no rebuilding at the cut)
   const local = ci => present.indexOf(ci), N = present.length;
   // where each one starts: in place, or off to one side if their first action is to come in
@@ -228,18 +292,22 @@ function directScene(sc, idx, cast, lang, o) {
     for (const a of acts) if (a.who) for (const c of a.who) if (!firstAct.has(c)) firstAct.set(c, a.id);
   }
   const slot = SC_SLOTS[Math.min(4, N)] || SC_SLOTS[1];
-  const st = present.map((ci, i) => { const [x, z, yawDeg] = slot[i] || [i * .9 - 1, 0, 0], enter = firstAct.get(ci) === 'enter';
+  const st = present.map((ci, i) => { const [x, z, yawDeg] = slot[i] || [i * .9 - 1, 0, 0], enter = firstAct.get(ci) === 'enter', land = firstAct.get(ci) === 'land';
     const x0 = enter ? (x < 0 || (x === 0 && i % 2) ? -4.5 : 4.5) : x, z0 = enter ? z + .3 : z, y0 = enter ? (x0 < 0 ? Math.PI / 2 : -Math.PI / 2) : yawDeg * DEG;
-    return {ci, home: {x, z, yaw: yawDeg * DEG}, x: x0, z: z0, yaw: y0, mode: enter ? 'off' : 'stand', initX: x0, initZ: z0, initYaw: y0, initMode: enter ? 'off' : 'stand', segs: [], expr: [{t: 0, e: null}], gaze: []}; });
+    return {ci, home: {x, z, yaw: yawDeg * DEG}, x: x0, z: z0, yaw: y0, mode: enter || land ? 'off' : 'stand', landing: land, initX: x0, initZ: z0, initYaw: y0, initMode: enter || land ? 'off' : 'stand', segs: [], expr: [{t: 0, e: null}], gaze: []}; });
   const S = ci => st[local(ci)];
-  const seg = (s, t0, t1, kind, d) => { s.segs.push({t0, t1, kind, ...d}); };
+  // (a state held — kneeling in chains — lasts until the next thing that person does)
+  const seg = (s, t0, t1, kind, d) => { for (const g of s.segs) if (g.open && t0 >= g.t0) { g.t1 = Math.max(g.t0 + .1, t0); g.open = false; } s.segs.push({t0, t1, kind, ...d}); };
+  const fxs = []; let slowK = 1;
+  // when someone is free to do the next thing (a state held — kneeling in chains — does not keep them busy)
+  const endOf = s => s.segs.reduce((a, g) => Math.max(a, g.open || g.kind === 'gone' && g.t1 > 1e5 ? g.t0 + .3 : g.t1), 0);
   const lines = [], events = [], chairs = [], warn = [];
   let T = 0;
-  const free = s => Math.max(T, ...(s.segs.length ? [s.segs[s.segs.length - 1].t1] : [0]));
+  const free = s => Math.max(T, endOf(s));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   const walkTo = (s, x, z, t0, kind = 'walk', stopAt = 0) => {
     const dx = x - s.x, dz = z - s.z, L = Math.hypot(dx, dz) - stopAt; if (L < .15) return t0;
-    const yaw = Math.atan2(dx, dz), v = paceOf(kind) * (chars[local(s.ci)] ? chars[local(s.ci)].size : 1), dur = L / v, ex = s.x + dx / Math.hypot(dx, dz) * L, ez = s.z + dz / Math.hypot(dx, dz) * L;
+    const yaw = Math.atan2(dx, dz), v = paceOf(kind) * (chars[local(s.ci)] ? chars[local(s.ci)].size : 1) * slowK, dur = L / v, ex = s.x + dx / Math.hypot(dx, dz) * L, ez = s.z + dz / Math.hypot(dx, dz) * L;
     seg(s, t0, t0 + dur, 'walk', {clip: SC_CLIP[kind], from: {x: s.x, z: s.z}, to: {x: ex, z: ez}, yaw}); s.x = ex; s.z = ez; s.yaw = yaw; if (s.mode === 'off') s.mode = 'stand';
     events.push({t0, t1: t0 + dur, kind: 'move', c: s.ci, shot: takeShot()}); return t0 + dur;
   };
@@ -247,8 +315,11 @@ function directScene(sc, idx, cast, lang, o) {
   const intensity = (b) => { let k = .25; if (/!/.test(b.text)) k += .25; if (/!{2,}|[A-ZÁÉÍÓÚÑ]{4,}/.test(b.text)) k += .25; if (b.emo && !['sonrisa', 'concentrado'].includes(b.emo)) k += .3; return Math.min(1, k); };
   let pendingShot = null; const takeShot = () => { const x = pendingShot; pendingShot = null; return x; };
   for (const b of sc.beats) {
-    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: cast.map((c, i) => scWords(b.text).includes(scWords(c.name)[0]) ? i : -1).filter(i => i >= 0 && present.includes(i)), t: T}; continue; }
-    if (b.k === 'trans') continue;
+    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: scWho(b.text, cast).filter(i => present.includes(i)), t: T}; continue; }
+    if (b.k === 'trans') { const tw = scNorm(b.text);
+      if (/fade in|fundido de entrada|desde negro|fondu d'ouverture|abblende auf|aufblende|dissolvenza in apertura|fos d'entrada/.test(tw)) fxs.push({t: T, fx: 'fadein'});
+      else if (/fade out|fade to black|fundido a negro|fundido en negro|fundido|fondu au noir|fondu|abblende|dissolvenza|fos a negre|escurecimento/.test(tw)) fxs.push({t: null, fx: 'fadeout'});
+      continue; }
     if (b.k === 'line') {
       const ci = cast.findIndex(c => c.name === b.who); if (ci < 0 || !present.includes(ci)) continue;
       const s = S(ci), prev = lines[lines.length - 1];
@@ -263,12 +334,29 @@ function directScene(sc, idx, cast, lang, o) {
       l.dur = estimateLen(b.text, lang); T = t0 + l.dur;
       continue;
     }
-    // action, and actions inside a speech
+    // action, and actions inside a speech (in slow motion if the camera said so just before)
+    slowK = pendingShot && pendingShot.dir && pendingShot.dir.speed ? pendingShot.dir.speed : 1;
     for (const a of b.acts || []) {
-      if (a.unknown) { warn.push(tr('No he entendido: «{x}»', {x: a.unknown})); continue; }
+      if (a.unknown) {
+        // what a camera direction shows («PRIMER PLANO: la mano de Billy junto al revólver»): the shot's subject, not an action
+        if (pendingShot && pendingShot.t === T) { const who = scWho(a.unknown, cast).filter(i => present.includes(i)); if (who.length) pendingShot.who = who;
+          if (/\b(mano|manos|hand|hands|main|mains|mao|maos|hande|mani|ma|mans)\b/.test(scNorm(a.unknown))) pendingShot.dir = {...pendingShot.dir, size: 'ecu', insert: true}; continue; }
+        warn.push(tr('No he entendido: «{x}»', {x: a.unknown})); continue;
+      }
+      if (a.cam) { pendingShot = {dir: {...(pendingShot && pendingShot.dir || {}), move: a.cam.move}, who: [], t: T}; continue; }
+      if (a.dir) { pendingShot = {dir: {...(pendingShot && pendingShot.dir || {}), ...a.dir}, who: [], t: T}; slowK = a.dir.speed || slowK; continue; }
+      if (a.fx) {
+        for (const f of a.fx) {
+          fxs.push({t: T, fx: f.fx, col: f.col});
+          // a blast: everyone free at that moment ducks, the camera shakes (see fxApply), a wide shot
+          if (f.fx === 'blast') { for (const ci of present) { const s = S(ci); if (s.mode !== 'stand' || (endOf(s) > T + .05)) continue; seg(s, T + .05, T + 1.2, 'pose', {pose: 'cubrirse', at: {x: s.x, z: s.z}, yaw: s.yaw}); s.expr.push({t: T, e: 'miedo'}); }
+            events.push({t0: T, t1: T + 1.6, kind: 'fx', fx: 'blast', c: present[0], shot: takeShot()}); T += 1.3; }
+        }
+        continue;
+      }
       const start = a.together ? Math.max(0, T - 1) : T; let end = start;
       for (const ci of a.who) {
-        if (!present.includes(ci)) continue; const s = S(ci), t0 = Math.max(start, s.segs.length ? s.segs[s.segs.length - 1].t1 : 0), spec = VERBS[a.id] || {}, tgt = a.target != null && present.includes(a.target) ? S(a.target) : null;
+        if (!present.includes(ci)) continue; const s = S(ci), t0 = Math.max(start, endOf(s)), spec = VERBS[a.id] || {}, tgt = a.target != null && present.includes(a.target) ? S(a.target) : null;
         let t1 = t0;
         if (a.id === 'emo') { s.expr.push({t: t0, e: a.e}); continue; }
         switch (spec.t) {
@@ -288,36 +376,60 @@ function directScene(sc, idx, cast, lang, o) {
           case 'turn': s.yaw = wrapA(s.yaw + Math.PI); seg(s, t0, t0 + .6, 'turn', {yaw: s.yaw}); t1 = t0 + .6; break;
           case 'face': if (tgt) { faceTo(s, tgt, t0); s.gaze.push({t0, t1: t0 + 3, c: tgt.ci}); } t1 = t0 + .6; break;
           case 'clip': case 'loop': { if (s.mode === 'sit' && !/sit/i.test(spec.c[0])) { /* gestures seated: the upper body only would be ideal; stand them up first */ const c = clipById(SC_CLIP.stand); seg(s, t0, t0 + c.len, 'clip', {clip: c.id, at: {x: s.sx ?? s.x, z: s.sz ?? s.z}, yaw: s.yaw, root: true, seated: true}); s.mode = 'stand'; }
-            const t00 = s.segs.length ? Math.max(t0, s.segs[s.segs.length - 1].t1) : t0;
+            const t00 = Math.max(t0, endOf(s));
             if (tgt) { if (['punch', 'kick', 'sword', 'push', 'shoot', 'aim', 'throw', 'spell'].includes(a.id) && dist(s, tgt) > 1.4 && ['punch', 'kick', 'push'].includes(a.id)) { const tt = walkTo(s, tgt.x, tgt.z, t00, 'walk', .75); faceTo(s, tgt, tt); } else faceTo(s, tgt, t00); }
-            const tA = s.segs.length ? Math.max(t00, s.segs[s.segs.length - 1].t1) : t00;
+            const tA = Math.max(t00, endOf(s)); if (a.id === 'wake') s.expr.push({t: tA, e: 'sorpresa'});
             const ids = spec.c.filter(clipById); if (!ids.length) { warn.push(tr('No tengo animación para «{x}»', {x: a.text})); break; }
-            const c = clipById(ids[(ctx.n = (ctx.n || 0) + 1) % ids.length]), dur = spec.t === 'loop' ? (spec.dur || 2.5) : c.len * (spec.loops || 1);
-            seg(s, tA, tA + dur, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw, loop: spec.t === 'loop' || (spec.loops || 1) > 1, root: !c.loop && c.id !== 'np-saltar'});
+            const c = clipById(ids[(ctx.n = (ctx.n || 0) + 1) % ids.length]), dur = (spec.t === 'loop' ? (spec.dur || 2.5) : c.len * (spec.loops || 1)) / slowK;
+            seg(s, tA, tA + dur, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw, loop: spec.t === 'loop' || (spec.loops || 1) > 1, root: !c.loop && c.id !== 'np-saltar', speed: slowK});
             if (!c.loop && c.id !== 'np-saltar') { const e2 = c.frames[c.frames.length - 1].p, s0 = c.frames[0].p, k = chars[local(ci)] ? chars[local(ci)].rootY / clipRig().rootY : 1, dd = new V3(e2[0] - s0[0], 0, e2[2] - s0[2]).multiplyScalar(k).applyAxisAngle(new V3(0, 1, 0), s.yaw); s.x += dd.x; s.z += dd.z; }
             if (spec.down) s.mode = 'down';
             t1 = tA + dur; events.push({shot: takeShot(), t0: tA, t1, kind: ['punch', 'kick', 'sword', 'shoot', 'hurt', 'knock', 'block', 'dodge', 'throw', 'spell'].includes(a.id) ? 'fight' : ['jump', 'climb', 'roll', 'fall'].includes(a.id) ? 'big' : 'gesture', c: ci, target: a.target, act: a.id});
             // the one hit reacts
             if (tgt && ['punch', 'kick', 'sword', 'shoot', 'throw', 'spell'].includes(a.id) && !(b.acts || []).some(x => x.who && x.who.includes(tgt.ci) && ['hurt', 'knock', 'block', 'dodge', 'fall'].includes(x.id))) {
-              const hc = clipById(a.id === 'shoot' ? 'ual1-Death01' : 'ual1-Hit_Chest'); if (hc) { const th = tA + Math.min(dur * .45, .5); seg(tgt, Math.max(th, tgt.segs.length ? tgt.segs[tgt.segs.length - 1].t1 : 0), th + hc.len, 'clip', {clip: hc.id, at: {x: tgt.x, z: tgt.z}, yaw: tgt.yaw}); if (a.id === 'shoot') tgt.mode = 'down'; tgt.expr.push({t: th, e: 'miedo'}); } }
+              const hc = clipById(a.id === 'shoot' ? 'ual1-Death01' : 'ual1-Hit_Chest'); if (hc) { const th = tA + Math.min(dur * .45, .5); seg(tgt, Math.max(th, endOf(tgt)), th + hc.len, 'clip', {clip: hc.id, at: {x: tgt.x, z: tgt.z}, yaw: tgt.yaw}); if (a.id === 'shoot') tgt.mode = 'down'; tgt.expr.push({t: th, e: 'miedo'}); } }
             break; }
-          case 'pose': { if (tgt) faceTo(s, tgt, t0); const tA = s.segs.length ? Math.max(t0, s.segs[s.segs.length - 1].t1) : t0; seg(s, tA, tA + (spec.dur || 1.2) + .3, 'pose', {pose: spec.pose, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = tA + (spec.dur || 1.2) + .3;
+          case 'pose': { if (tgt) faceTo(s, tgt, t0); const tA = Math.max(t0, endOf(s)), pose = a.id === 'raise' && /(desenfund|pistol|revolver|gun|colt|rifle|fusil|escopeta|arma de fuego|pistole|fucile|arme a feu)/.test(scNorm(a.text)) ? 'apuntar' : spec.pose; seg(s, tA, tA + (spec.dur || 1.2) + .3, 'pose', {pose, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = tA + (spec.dur || 1.2) + .3;
             events.push({t0: tA, t1, kind: a.id === 'kick' || a.id === 'block' || a.id === 'dodge' ? 'fight' : 'gesture', c: ci, shot: takeShot(), act: a.id}); break; }
           case 'group': { if (!tgt) { warn.push(tr('«{x}»: ¿con quién?', {x: a.text})); break; }
             let tA = t0; if (dist(s, tgt) > 1.3) tA = walkTo(s, tgt.x, tgt.z, t0, 'walk', .9);
-            const tB = Math.max(tA, tgt.segs.length ? tgt.segs[tgt.segs.length - 1].t1 : 0), d = spec.dur || 1.6;
+            const tB = Math.max(tA, endOf(tgt)), d = spec.dur || 1.6;
             const mid = {x: (s.x + tgt.x) / 2, z: (s.z + tgt.z) / 2}, yaw = Math.atan2(tgt.x - s.x, tgt.z - s.z);
             seg(s, tB, tB + d + .4, 'group', {g: spec.g, who: 0, mid, yaw}); seg(tgt, tB, tB + d + .4, 'group', {g: spec.g, who: 1, mid, yaw});
             events.push({t0: tB, t1: tB + d + .4, kind: 'group', c: ci, target: tgt.ci, shot: takeShot()}); t1 = tB + d + .4; break; }
           case 'expr': s.expr.push({t: t0, e: spec.e}); t1 = t0; break;
+          // a state held until the next thing they do (or until someone frees them)
+          case 'state': if (spec.sleep) s.expr.push({t: t0, e: 'dormido'}); if (spec.sleep && s.mode === 'sit') { t1 = t0 + .6; break; }  // (asleep in a chair: the eyes shut, still seated)
+            seg(s, t0, 1e6, 'pose', {pose: spec.pose, at: {x: s.x, z: s.z}, yaw: s.yaw, open: true}); if (spec.pose === 'cautivo') s.expr.push({t: t0, e: 'miedo'}); t1 = t0 + .6; break;
+          case 'free': { if (tgt) { t1 = walkTo(s, tgt.x, tgt.z, t0, a.fast ? 'run' : 'walk', .8); faceTo(s, tgt, t1); t1 += .45; }
+            const armed = (cast[ci].outfit || []).some(g => g.id === 'c428'), c = clipById(armed ? 'ual1-Sword_Attack' : 'ual1-Interact') || clipById('ual1-Interact');
+            if (c) { seg(s, t1, t1 + c.len, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 += c.len; }
+            if (tgt) { for (const g of tgt.segs) if (g.open) { g.t1 = Math.max(g.t0 + .1, t1 - .2); g.open = false; } tgt.expr.push({t: t1, e: 'sonrisa'}); events.push({t0, t1, kind: 'gesture', c: ci, target: tgt.ci, shot: takeShot(), act: 'free'}); }
+            break; }
+          case 'vanish': fxs.push({t: t0 + .1, fx: 'blast', col: '#c9b9a0', k: .35}); seg(s, t0 + .35, 1e6, 'gone', {at: {x: s.x, z: s.z}, yaw: s.yaw}); s.mode = 'off'; s.offAt = t0 + .35; t1 = t0 + .8; break;
+          case 'fly': { const c = clipById('np-saltar'); const tA = Math.max(t0, endOf(s)); if (c) seg(s, tA, tA + c.len * .55, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = tA + (c ? c.len * .55 : .5);
+            seg(s, t1, 1e6, 'gone', {at: {x: s.x, z: s.z}, yaw: s.yaw, rise: true}); s.mode = 'off'; s.offAt = t1 + 1.2; t1 += 1.6; break; }
+          case 'land': { if (s.landing) { s.landing = false; seg(s, 0, t0, 'gone', {at: {x: s.home.x, z: s.home.z}, yaw: s.home.yaw}); s.x = s.home.x; s.z = s.home.z; s.yaw = s.home.yaw; s.onAt = t0; }
+            const c = clipById('np-saltar'); s.mode = 'stand'; if (c) { seg(s, t0, t0 + c.len, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = t0 + c.len; } events.push({t0, t1, kind: 'big', c: ci, shot: takeShot(), act: 'land'}); break; }
+          case 'apart': { const os = present.filter(o => o !== ci && S(o).mode !== 'off').map(S); if (!os.length) break;
+            const cx = os.reduce((a, o) => a + o.x, 0) / os.length, cz = os.reduce((a, o) => a + o.z, 0) / os.length, d = Math.hypot(s.x - cx, s.z - cz) || 1;
+            t1 = walkTo(s, s.x + (s.x - cx) / d * 1.4, s.z + (s.z - cz) / d * 1.4, t0, a.fast ? 'run' : 'walk'); faceTo(s, os[0], t1); t1 += .4; break; }
+          case 'float': case 'follow': if (tgt) t1 = walkTo(s, tgt.x, tgt.z, t0, a.fast || /corr|run|chase|persig|poursui|verfolg|insegu|rennt/.test(scNorm(a.text)) ? 'run' : 'walk', 1.3); else t1 = walkTo(s, s.x + Math.sin(s.yaw) * 2.4, s.z + Math.cos(s.yaw) * 2.4, t0); break;
+          case 'tie': if (tgt) { t1 = walkTo(s, tgt.x, tgt.z, t0, 'walk', .75); faceTo(s, tgt, t1); const c = clipById('ual1-Interact'); if (c) { seg(s, t1 + .4, t1 + .4 + c.len, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 += .4 + c.len; }
+            seg(tgt, Math.max(t1 - .3, endOf(tgt)), 1e6, 'pose', {pose: 'cautivo', at: {x: tgt.x, z: tgt.z}, yaw: tgt.yaw, open: true}); } break;
+          case 'give': if (tgt) { t1 = walkTo(s, tgt.x, tgt.z, t0, 'walk', .8); faceTo(s, tgt, t1); seg(s, t1 + .4, t1 + 1.6, 'pose', {pose: 'senalar', at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 += 1.6; events.push({t0, t1, kind: 'gesture', c: ci, target: tgt.ci, shot: takeShot(), act: 'show'}); } break;
+          case 'facing': for (const o of present) if (o !== ci) { const so = S(o); faceTo(s, so, t0); s.gaze.push({t0, t1: t0 + 3, c: o}); } t1 = t0 + 1.8; break;
         }
         end = Math.max(end, t1);
       }
       if (!a.together || end > T) T = Math.max(T, end);
     }
   }
-  const len = Math.max(T + .9, 3);
-  return {sc, idx, present, st, lines, events, chairs, warn, len, lang};
+  // the camera moving at the end («La cámara se eleva hacia el cielo»): a last shot of its own
+  if (pendingShot && pendingShot.dir && pendingShot.dir.move) { events.push({t0: T, t1: T + 3.5, kind: 'cam', c: present[0], shot: takeShot()}); T += 3.5; }
+  const len = present.length ? Math.max(T + .9, 3) : Math.max(3.5, T + .5, Math.min(8, 1.3 * sc.beats.filter(b => b.k === 'act').reduce((a, b) => a + b.text.split(/(?<=[.!?])\s+/).length, 0)));
+  for (const f of fxs) if (f.t == null) f.t = len - 1.2;
+  return {sc, idx, present, st, lines, events, chairs, warn, len, lang, fx: fxs};
 }
 
 /* ---------- timing with the voices ---------- */
@@ -571,18 +683,20 @@ function bakeScene(D) {
         const c = clipById(SC_CLIP.idle), pv = full[i - 1], y0 = pv ? (pv.yaw ?? (pv.at && pv.at.yaw) ?? g.yaw) : g.yaw, u = easeIO(clamp(tl / Math.max(.1, g.t1 - g.t0), 0, 1));
         return clipPose(m, sampleClip(c, tt + phase), at, y0 + wrapA(g.yaw - y0) * u, true, k, keep);
       }
-      if (g.kind === 'clip') { const c = clipById(g.clip); return c ? clipPose(m, sampleClip(c, g.loop ? tl : Math.min(tl, c.len)), at, g.yaw, !g.root, k, keep) : null; }
+      if (g.kind === 'clip') { const c = clipById(g.clip), tc = tl * (g.speed || 1); return c ? clipPose(m, sampleClip(c, g.loop ? tc : Math.min(tc, c.len)), at, g.yaw, !g.root, k, keep) : null; }
+      if (g.kind === 'gone') { const p = g._still || m.getPose();  // out of the world (gone, or not come yet); flying off: up and out of the frame first
+        if (g.rise && tl < 2.2) return {...p, pos: [p.pos[0], p.pos[1] + 1.6 * tl * tl, p.pos[2]]}; return {...p, pos: [p.pos[0], -60, p.pos[2]]}; }
       if (g.kind === 'pose') return g._pose || (g._pose = stillPose(m, g));
       if (g.kind === 'group') return g._pose || (g._pose = groupPose(D, li, g));
       return null;
     };
     for (let f = 0; f < n; f++) {
       const tt = f / fps; let i = full.findIndex(g => tt >= g.t0 && tt < g.t1); if (i < 0) i = full.length - 1;
-      const g = full[i]; if (i !== cur) { from = cur; cur = i; if (g.kind === 'idle' && g.mode === 'down') g._still = prevPose || m.getPose(); }
+      const g = full[i]; if (i !== cur) { from = cur; cur = i; if ((g.kind === 'idle' && g.mode === 'down') || g.kind === 'gone') g._still = prevPose || m.getPose(); }
       let pose = partPose(i, tt) || prevPose || m.getPose();
       // each part takes over from the last one still moving, not from a frozen frame of it
       const tl = tt - g.t0;
-      if (from >= 0 && tl < .35) { const was = partPose(from, tt); if (was) pose = mixPose(was, pose, easeIO(tl / .35)); }
+      if (from >= 0 && tl < .35 && g.kind !== 'gone' && full[from].kind !== 'gone') { const was = partPose(from, tt); if (was) pose = mixPose(was, pose, easeIO(tl / .35)); }
       keys.push({f, pose, lin: true}); prevPose = pose;
     }
     tracks.push({ci: s.ci, keys});
@@ -648,7 +762,9 @@ function planShots(D) {
       if (e.shot) spec = shotFromDirection(e.shot, spec, D);
       // no jump cuts: the same person again changes size by at least two steps or comes from over the shoulder
       if (lastSubj === spec.subj.join() && units.length && units[units.length - 1].type === spec.type) { const i = SC_LADDER.indexOf(spec.size), j = SC_LADDER.indexOf(lastSize); if (Math.abs(i - j) < 2) spec.size = SC_LADDER[clamp(j + (j >= 5 ? -2 : 2), 2, 6)]; }
-    } else if (e.kind === 'move') spec = {type: 'track', size: 'fs', subj: [e.c]};
+    } else if (e.kind === 'cam') spec = N ? {type: 'master', size: 'ws', subj: D.present.slice()} : {type: 'est', size: 'ws', subj: []};
+    else if (e.kind === 'fx') spec = {type: 'master', size: 'ws', subj: D.present.slice(), shake: true};
+    else if (e.kind === 'move') spec = {type: 'track', size: 'fs', subj: [e.c]};
     else if (e.kind === 'fight') spec = {type: 'fight', size: units.length % 2 ? 'mfs' : 'fs', subj: e.target != null ? [e.c, e.target] : [e.c]};
     else if (e.kind === 'big') spec = {type: 'single', size: 'fs', subj: [e.c], angle: 'low'};
     else if (e.kind === 'group') spec = {type: 'two', size: 'ms', subj: [e.c, e.target]};
@@ -673,7 +789,8 @@ function planShots(D) {
 }
 function shotFromDirection(sd, spec, D) {
   const d = sd.dir, out = {...spec, fixed: true};
-  if (d.size === 'two') { out.type = 'two'; out.subj = D.present.slice(0, 2); out.size = 'ms'; }
+  if (d.insert) { out.type = 'insert'; out.size = 'cu'; }
+  else if (d.size === 'two') { out.type = 'two'; out.subj = D.present.slice(0, 2); out.size = 'ms'; }
   else if (d.size === 'ots') out.type = 'ots';
   else if (d.size === 'pov') { out.type = 'pov'; }
   else if (d.size) { out.size = d.size === 'ws' || d.size === 'ews' ? d.size : d.size; if (['ws', 'ews'].includes(d.size)) { out.type = 'master'; out.subj = D.present.slice(); } else if (out.type === 'ots' || out.type === 'two' || out.type === 'master') out.type = 'single'; }
@@ -692,8 +809,10 @@ function styleShots(units, D) {
   const emoOf = u => { const L = D.lines.find(l => l.c === u.subj[0] && l.t0 < u.t1 && l.t0 + l.dur > u.t0); return L ? [L.emo, L.inten] : [null, 0]; };
   units.forEach((u, i) => {
     const h = hashF(i * 7.31 + D.idx * 101.7), h2 = hashF(i * 3.17 + D.idx * 57.1 + 9), [emo, inten] = emoOf(u);
+    if (u.move && ['rise', 'descend', 'push', 'pull', 'orbit'].includes(u.move)) { u.cam = {kind: u.move, amt: .5}; return; }
     if (u.fixed && u.move) return;
-    if (u.type === 'est') u.cam = {kind: 'crane', amt: .5};
+    if (u.shake) u.cam = {kind: 'hand', amt: .02};
+    else if (u.type === 'est') u.cam = {kind: 'crane', amt: .5};
     else if (u.type === 'master' || u.type === 'two') u.cam = {kind: 'drift', amt: (h > .5 ? 1 : -1) * .06};
     else if (u.type === 'fight') u.cam = {kind: 'hand', amt: .012};
     else if (u.type === 'react') u.cam = {kind: 'push', amt: .1};
@@ -716,6 +835,11 @@ function camMove(c, mv, len, fps) {
   if (mv.kind === 'push') return [{f: 0, c}, {f: end, c: mk2(T.clone().addScaledVector(d, 1 - a), T, c.f * (1 + a * .25))}];
   if (mv.kind === 'drift') return [{f: 0, c: mk2(P.clone().addScaledVector(right, -r * a / 2), T.clone().addScaledVector(right, -r * a / 3))}, {f: end, c: mk2(P.clone().addScaledVector(right, r * a / 2), T.clone().addScaledVector(right, r * a / 3))}];
   if (mv.kind === 'crane') return [{f: 0, c: mk2(P.clone().add(new V3(0, r * a * .35, 0)).addScaledVector(d, a * .15), T.clone().add(new V3(0, r * a * .08, 0)))}, {f: end, c}];
+  // what the script asks of the camera: up and looking up to the sky, down, closer, back, round
+  if (mv.kind === 'rise') return [{f: 0, c}, {f: end, c: mk2(P.clone().add(new V3(0, r * .9 + 1.5, 0)).addScaledVector(d, .2), T.clone().add(new V3(0, r * 1.3 + 4, 0)).addScaledVector(d, -1.2), c.f * .9)}];
+  if (mv.kind === 'descend') return [{f: 0, c: mk2(P.clone().add(new V3(0, r * .9 + 1.5, 0)), T.clone().add(new V3(0, r * .6 + 1, 0)))}, {f: end, c}];
+  if (mv.kind === 'pull') return [{f: 0, c}, {f: end, c: mk2(T.clone().addScaledVector(d, 1.9).add(new V3(0, r * .25, 0)), T, c.f * .85)}];
+  if (mv.kind === 'orbit') { const K = []; for (let i = 0; i <= 4; i++) { const ang = (i / 4 - .5) * 1.2; K.push({f: Math.round(end * i / 4), c: mk2(T.clone().add(d.clone().applyAxisAngle(new V3(0, 1, 0), ang)), T)}); } return K; }
   if (mv.kind === 'hand') {  // a held camera: small, slow wanders and a hint of roll, a key every half second
     const K = [], step = Math.max(2, Math.round(fps * .55));
     for (let f = 0, i = 0; f <= end; f = Math.min(end, f + step), i++) { const w = (n, s) => (hashF(i * 5.7 + n + len) - .5) * 2 * s; K.push({f, c: mk2(P.clone().add(new V3(w(1, r * a), w(2, r * a * .7), w(3, r * a * .5))), T.clone().add(new V3(w(4, r * a * .5), w(5, r * a * .5), 0)), c.f, c.r + w(6, a * 60))}); if (f === end) break; }
@@ -731,12 +855,16 @@ function lineOfInterest(D, at) {
 }
 function camFor(spec, t, D, sample, side) {
   const W = sample(t), vfovOf = f => 2 * Math.atan(.5 * camera.filmGauge / Math.max(camera.aspect, 1) / f), k = W.size;
-  const subj = spec.subj.map(c => W.of[c]).filter(Boolean); if (!subj.length) return null;
+  const subj = spec.subj.map(c => W.of[c]).filter(x => x && x.hips.y > -10);  // (not who has gone)
+  if (!subj.length) {  // nobody there: the place itself, from in front and low, looking up a little (a sky, a building, a hall)
+    if (!['est', 'master'].includes(spec.type) || Object.values(W.of).some(x => x.hips.y > -10)) return null;
+    return {p: [0, 1.15 * k, 6.8 * k], t: [0, 2.1 * k, -1.5 * k], f: 22, r: 0};
+  }
   const eye = s => s.eye.clone(), mid = subj.reduce((a, s) => a.add(s.eye), new V3()).multiplyScalar(1 / subj.length);
   let size = spec.size || 'ms', H = SC_H[size] * k, focal = SC_F[size], pos, tgt;
   const n = side.n.clone();
   if (spec.type === 'est' || spec.type === 'master' || spec.type === 'two' || spec.type === 'fight') {
-    const all = spec.type === 'est' ? Object.values(W.of) : subj, xs = all.map(s => s.hips);
+    const all = spec.type === 'est' ? Object.values(W.of).filter(x => x.hips.y > -10) : subj, xs = all.map(s => s.hips);
     const c = xs.reduce((a, p) => a.add(p), new V3()).multiplyScalar(1 / xs.length); let spread = 0; for (const p of xs) spread = Math.max(spread, p.distanceTo(c));
     H = Math.max(H, (spread * 2 + 1.1 * k) / Math.max(1, camera.aspect) * 1.15, spec.type === 'est' ? 3.4 * k : 0);
     focal = spec.type === 'est' ? 24 : focal; const vf = vfovOf(focal), d = H / 2 / Math.tan(vf / 2);
@@ -756,7 +884,9 @@ function camFor(spec, t, D, sample, side) {
     pos = W.of[spec.other].eye.clone(); tgt = subj[0].eye.clone(); focal = 32;
   } else {  // a single (or a reaction, or a follow): in front of the subject, a little towards whoever they face, on the camera's side
     const S = subj[0], O = spec.other != null ? W.of[spec.other] : null, look = O ? O.eye.clone().sub(S.eye).setY(0).normalize() : S.fwd.clone();
-    const toCam = look.clone().multiplyScalar(.55).add(n.clone().multiplyScalar(n.dot(S.fwd) < -.3 && !O ? -1 : 1)).normalize();
+    // (the line is the one between these two — the 180° rule of the exchange —, on the side the scene is seen from)
+    let np = n.clone(); if (O) { np.set(-look.z, 0, look.x); if (np.dot(n) < 0) np.negate(); }
+    const toCam = look.clone().multiplyScalar(.55).add(np.multiplyScalar(np.dot(S.fwd) < -.3 && !O ? -1 : 1)).normalize();
     const vf = vfovOf(focal), d = H / 2 / Math.tan(vf / 2);
     tgt = S.eye.clone().add(new V3(0, -H / 6, 0)).addScaledVector(look, H * .12);  // looking room on the side they look to
     if (spec.type === 'track') tgt.addScaledVector(S.vel, .6);
@@ -785,18 +915,27 @@ async function scriptToFilm(text, o = {}) {
     await loadClipLibrary(); clipRig();
     if (VOICE.on) { msg(tr('Preparando las voces…')); await espeak().catch(() => {}); }
     storeShot(); SC.last = JSON.stringify({shots: ANIM.shots, cur: ANIM.cur});  // for "Undo" (the shot being edited included)
-    const film = [];
+    const film = [], genre = genreOf(text); let prevPresent = [], lastTime = null, lastEnv = null;
     for (const [idx, sc] of P.scenes.entries()) {
       if (!sc.beats.length) continue;
       msg(tr('Escena {n} de {t}: {p}', {n: idx + 1, t: P.scenes.length, p: sc.head.place || sc.head.text || ''}));
       // the scene's people on stage, with their bodies
-      const D0 = directScene(sc, idx, cast, lang, o), present = D0.present;
+      o.prev = prevPresent; const D0 = directScene(sc, idx, cast, lang, o), present = D0.present; prevPresent = present.filter(ci => { const s = D0.st[D0.present.indexOf(ci)]; return s && s.mode !== 'off' && s.mode !== 'down'; });
       ensureCount(Math.max(1, present.length));
       for (const [li, ci] of present.entries()) { const m = chars[li], want = {...BODY_BASE, ...cast[ci].body}; if (JSON.stringify(want) !== JSON.stringify(m.body)) m.build(want); m.bodyPreset = cast[ci].preset; }
       // the set and its time of day
-      let env = placeOf(sc.head); if (!env && sc.head.place && o.online !== false) { msg(tr('Buscando un escenario para «{p}»…', {p: sc.head.place})); env = await placeOnline(sc.head); }
-      if (!env) env = sc.head.int === false ? 'parque' : 'estudio';
-      await setEnv(env); const tm = timeOf(sc.head), amb = tm === 'noche' ? (sc.head.int ? 'interior' : 'noche') : tm === 'atardecer' ? 'atardecer' : tm === 'dia' && sc.head.int === false ? 'dia' : null;
+      // (a scene with no heading — a play, a monologue — is placed by its first stage directions: «Sala de uma casa
+      // antiga. Noite.», «on an empty stage»)
+      // (the first sentence that names a place: «Un hombre entra en un bar vacío» is a bar, whatever is served later)
+      const firstActs = sc.beats.filter(b => b.k === 'act').slice(0, 2).map(b => b.text).join(' '), head = sc.head.place ? sc.head : {...sc.head, place: firstActs, time: firstActs};
+      let env = sc.head.place ? placeOf(head) : null;
+      if (!sc.head.place) for (const sent of firstActs.split(/(?<=[.!?])\s+/)) { env = placeOf({...sc.head, place: sent}); if (env) break; } if (!env && sc.head.place && o.online !== false) { msg(tr('Buscando un escenario para «{p}»…', {p: sc.head.place})); env = await placeOnline(sc.head); }
+      if (!env && !sc.head.place && lastEnv) env = lastEnv;  // (a page or an act that does not say where: where we were)
+      if (!env) { const outside = sc.head.int === false || (sc.head.int == null && /\b(cielo|sky|ciel|ceu|himmel|sol|sun|soleil|luna|moon|lune|lua|mond|calle|street|bosque|forest|wald|jardin|garden)\b/.test(scNorm(firstActs))); env = SC_WORLD_PLACE[genre][outside ? 1 : 0]; }
+      // (a street of the West is a dusty plain, a street of a fantasy among old stones)
+      if (genre === 'western' && ['calle', 'callejon', 'parque', 'escalinata'].includes(env)) env = 'desierto'; else if (genre === 'fantasy' && ['calle', 'callejon', 'escalinata'].includes(env)) env = 'ruinas';
+      lastEnv = env; await setEnv(env); const tm0 = timeOf(head), tm = tm0 || (/(later|mas tarde|continu|plus tard|mais tarde|spater|piu tardi|mismo|same)/.test(scNorm(sc.head.time || '')) ? lastTime : null); lastTime = tm || lastTime;
+      const amb = tm === 'noche' ? (SCENES[env] && SCENES[env].group === 'in' ? 'interior' : 'noche') : tm === 'atardecer' ? 'atardecer' : tm === 'dia' && SCENES[env] && SCENES[env].group !== 'in' ? 'dia' : null;
       if (amb) { state.amb = amb; applyAmbient(); setPressed($('#ambChips'), amb); }
       clearProps();
       // laid out again now that the bodies exist (sizes), timed with the voices, baked, shot
@@ -809,7 +948,7 @@ async function scriptToFilm(text, o = {}) {
       for (const [ui, u] of units.entries()) film.push(makeShot(D, B, u, ui, sample, side, cast));
       report.warn.push(...D.warn.map(w => `${idx + 1}: ${w}`)); report.scenes++;
     }
-    ANIM.shots = film; ANIM.cur = -1; report.shots = film.length;
+    ANIM.shots = film; ANIM.cur = -1; report.shots = film.length; report.cast = cast;
     await enterShot(0, 0); renderStrip(); renderLabels();
     msg(filmReady(report));
     return report;
@@ -843,14 +982,18 @@ function makeShot(D, B, u, ui, sample, side, cast) {
     return {body, preset: m.bodyPreset, outfit: (cast[ci].outfit || []).map(x => ({...x})), pose: B.tracks[li].keys[Math.min(f0, B.n - 1)].pose}; });
   s.faces = D.present.map((ci, li) => { const E = D.st[li].expr.filter(x => x.t < u.t1), out = []; for (const x of E) { const f = Math.round((x.t - u.t0) * fps); if (f <= 0 && out.length) out.length = 0; out.push({f: Math.max(f, -1000), e: x.e || 'neutra'}); } return out; });
   s.keys = B.tracks.map(tr2 => { const K = []; for (let f = f0; f < Math.min(f1, B.n); f++) K.push({f: f - f0, pose: tr2.keys[f].pose, lin: true}); return K; });
+  // a place with nobody in it: the figure the app always has stays, hidden (see sceneTicks), so the set is what is seen
+  if (!D.present.length) { const m = chars[0]; s.empty = true; s.scene.chars = [{body: {...m.body}, preset: m.bodyPreset, outfit: (m.outfit || []).map(x => ({...x})), pose: m.getPose()}]; s.keys = [[]]; s.faces = [[]]; }
   // anthros say it with their ears and tail: the moment's feeling as body language, over the baked keys (the jaw is the voice's)
   D.present.forEach((ci, li) => { const m = chars[li]; if (!m || m.body.species === 'humano' || !s.keys[li]) return;
     const e = [...D.st[li].expr].filter(x => x.t <= (u.t0 + u.t1) / 2).pop(), J = exprJoints(m, ANTHRO_OF[e && e.e] || 'neutra'); if (!J) return; delete J.jaw;
     const Qs = Object.fromEntries(Object.entries(J).map(([n, r]) => [n, new Q().setFromEuler(new THREE.Euler(r[0], r[1], r[2])).toArray()]));
     s.keys[li] = s.keys[li].map(k => ({...k, pose: {...k.pose, q: {...k.pose.q, ...Qs}}})); });
-  const c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move ? camFor(u, u.t1 - .05, D, sample, side) : null;
+  const c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move === 'track' ? camFor(u, u.t1 - .05, D, sample, side) : null;
   if (c0) { s.cam = c1 ? [{f: 0, c: c0}, {f: len - 1, c: c1}] : camMove(c0, u.cam, len, fps); s.scene.cam = s.cam[0].c; }
   s.key = u.type === 'est' ? .5 : 1;
+  // the place's effects in this shot, in its frames (a blast only while it lasts; light, rain, fire, a fade, all through)
+  s.fx = (D.fx || []).filter(x => x.t < u.t1 && (x.fx !== 'blast' || x.t > u.t0 - 2.5) && (x.fx !== 'fadein' || x.t > u.t0 - 1.5) && (x.fx !== 'fadeout' || x.t < u.t1)).map(x => ({f: Math.round((x.t - u.t0) * fps), kind: x.fx, col: x.col || undefined, k: x.k || undefined}));
   s.lines = D.lines.filter(l => l.t0 < u.t1 && l.t0 + l.dur > u.t0).map(l => ({c: D.present.indexOf(l.c), f: Math.round((l.t0 - u.t0) * fps), len: Math.max(2, Math.round(l.dur * fps)), text: l.text, lang: l.lang, voice: l.voice,
     w: lineWords(l.words, l.text, l.dur), cont: l.t0 < u.t0 - .01 || undefined}));
   return s;

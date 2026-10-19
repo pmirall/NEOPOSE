@@ -22,7 +22,8 @@ const VOICE_SPECIES = {lobo: -6, perro: -4, zorro: 2, coyote: -3, hiena: -2, gat
 // the voice of a character: from their body unless chosen (body.voice = {g: 'f'|'m', v: 1..5, p: pitch 0..99, r: words a minute})
 const VOICE_LANGS = {es: 'es', en: 'en-gb', ca: 'ca', fr: 'fr', pt: 'pt', de: 'de', it: 'it'};
 function voiceOf(m, i = 0) {
-  const b = (m && m.body) || {}, own = b.voice || {}, woman = b.preset === 'mujer' || b.gender < .5 || (m && m.bodyPreset === 'mujer'), age = b.age || 30;
+  // (the body's age is 0 a child, 1 an adult, 2 an old person: in years for the voice)
+  const b = (m && m.body) || {}, own = b.voice || {}, woman = b.preset === 'mujer' || b.gender < .5 || (m && m.bodyPreset === 'mujer'), a = b.age ?? 1, age = a > 2.5 ? a : a < 1 ? a * 25 : 25 + (a - 1) * 55;
   const g = own.g || (woman ? 'f' : 'm'), base = g === 'f' ? 62 : 42;
   const p = own.p ?? clamp(base + (age < 15 ? 22 : age < 20 ? 8 : age > 60 ? -8 : 0) + (VOICE_SPECIES[b.species] || 0) + ((i % 3) - 1) * 5, 5, 95);
   return {g, v: own.v || 1 + (i % 4), p: Math.round(p), r: own.r || (age > 65 ? 150 : 168)};

@@ -14,7 +14,8 @@ function loadHairList() {
 }
 // why this character cannot wear the hair, or null
 function hairBlock(m) {
-  if (m.body.species !== 'humano') return tr('Las cabezas de especie traen su propio pelaje y peinado.');
+  // (a kemonomimi — a human head with the animal's ears — has human hair)
+  if (m.body.species !== 'humano' && !((m.body.kemo ?? 3) <= 1 && !m.body.headModel)) return tr('Las cabezas de especie traen su propio pelaje y peinado.');
   if (m.avatar) return tr('Los avatares importados traen su propio pelo.');
   return null;
 }

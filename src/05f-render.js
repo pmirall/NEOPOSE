@@ -53,7 +53,8 @@ function frame() {
 // what the scene does every frame besides the animation (also run by the video export, frame by frame)
 function sceneTicks() {
   updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
-  for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; if (ANIM.rec && m.lib && m.lib.uHi) m.lib.uHi.value = -1; }
+  const gone = sk.hideFig || (ANIM.open && ANIM.shots.length && shot() && shot().empty);  // (a film's shot of a place with nobody in it)
+  for (const m of chars) { m.group.visible = !gone; if (gone) m.stoolMesh.visible = false; if (ANIM.rec && m.lib && m.lib.uHi) m.lib.uHi.value = -1; }
 }
 // with the animation dock open, the shot is framed in the part of the canvas above it (what the film will show)
 function dockView() {

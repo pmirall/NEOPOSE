@@ -166,6 +166,7 @@ async function exportVideo(range) {
         ANIM.t = t; ANIM.f = Math.floor(t); applyFrame(t); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); sceneTicks();
         renderer.render(scene, camera);
         cx.drawImage(renderer.domElement, f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, Wv, H);
+        if (FX.fade > .001) { cx.fillStyle = `rgba(0,0,0,${FX.fade})`; cx.fillRect(0, 0, Wv, H); }  // a fade to or from black
         if (EXK.subs) burnSubs(cv, Math.floor(t));
         const vf = new VideoFrame(cv, {timestamp: Math.round(n * 1e6 / VID.fps), duration: Math.round(1e6 / VID.fps)});
         enc.encode(vf, {keyFrame: j === 0 || n % (VID.fps * 2) === 0}); vf.close(); n++;

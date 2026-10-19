@@ -136,6 +136,7 @@ const POSES = [
     {stool:true, ik: [{e:'handL', t:'kneeL', o:[-.11,.05,.13]}, {e:'handR', t:'kneeR', o:[.11,.07,.13]}]}),
   P('rodilla', 'Rodilla en tierra', 'suelo', {chest:[5,0,0], head:[5,0,0], hipL:[-88,0,6], kneeL:[90], hipR:[8,0,-4], kneeR:[100], shoulderL:[-30,0,12], elbowL:[-70], shoulderR:[5,0,-8], elbowR:[-15]}),
   P('derodillas', 'De rodillas', 'suelo', {...sym({hipL:[0,0,4], kneeL:[90], ankleL:[40], shoulderL:[0,0,8], elbowL:[-15]}), head:[5,0,0]}),
+  P('cautivo', 'Cautivo (de rodillas, manos atrás)', 'suelo', {...sym({hipL:[0,0,4], kneeL:[90], ankleL:[40], shoulderL:[18,-90,10,'ZXY'], elbowL:[-80]}), chest:[-4,0,0], head:[14,0,0]}),
   P('rezar', 'Rezar', 'suelo', {...sym({hipL:[0,0,4], kneeL:[90], ankleL:[40], shoulderL:[-30,-50,10,'ZXY'], elbowL:[-110]}), head:[15,0,0]},
     {hands:{L:'plana', R:'plana'}, ik: [{e:'handL', t:'chest', o:[.025,.14,.2]}, {e:'handR', t:'chest', o:[-.025,.14,.2]}]}),
   P('agachado', 'En cuclillas', 'suelo', {hips:[25,0,0], waist:[10,0,0], chest:[12,0,0], neck:[-15,0,0], head:[-12,0,0],

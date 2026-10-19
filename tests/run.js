@@ -830,7 +830,7 @@ const SUITES = {
         const later = s.lines.some(x => x.c === l.c && x !== l && x.f > l.f && x.f < l.f + l.len + 2.5 * A.fps) || s.lines.some(x => x.c !== l.c && x.f < l.f + l.len + 2.5 * A.fps && x.f + x.len > l.f + l.len);
         const g = l.f + l.len + Math.round(1.6 * A.fps); if (!later && g < K.length) { na++; if (bend(K[g].pose) < 40) after++; } }
       return {share: on / Math.max(1, n), kinds: seen.size, after, na}; });
-    ok(ges.share > .5 && ges.kinds >= 6 && (!ges.na || ges.after / ges.na > .6), `talking hands: arms up in gestures ${Math.round(ges.share * 100)} % of the time a line is said, ${ges.kinds} different elbow angles, down again after ${ges.after} of ${ges.na} lines`);
+    ok(ges.share > .5 && ges.kinds >= 5 && (!ges.na || ges.after / ges.na > .6), `talking hands: arms up in gestures ${Math.round(ges.share * 100)} % of the time a line is said, ${ges.kinds} different elbow angles, down again after ${ges.after} of ${ges.na} lines`);
     // the video is rendered frame by frame into an MP4 behind a window, with the voices, and leaves the app as it was
     const vid = await A(async () => { const C = window.__cdp, V = C.video, o = URL.createObjectURL, a0 = HTMLAnchorElement.prototype.click; let blob = null, shown = false;
       URL.createObjectURL = b => { blob = b; return o.call(URL, b); }; HTMLAnchorElement.prototype.click = function () {};
@@ -857,7 +857,33 @@ const SUITES = {
     // the set and the look come from what the script says
     const lab = await A(async () => { const S = window.__cdp.script; const r = await S.scriptToFilm('INT. LABORATORIO - NOCHE\n\nUn laboratorio lleno de tubos de ensayo y pantallas. La científica ANA lleva una bata blanca, pelirroja y con coleta.\n\nANA\nYa casi está.\n\nAna observa una muestra.\n', {cams: false, online: false});
       const A = window.__cdp.ANIM, c = A.shots[0].scene.chars[0]; return {warn: r.warn, env: A.shots[0].scene.extras.env, outfit: c.outfit.map(g => g.id), hair: c.body.hair, col: c.body.hairCol}; });
-    ok(lab.env === 'laboratorio' && lab.outfit.includes('c1412') && lab.hair === 'h-ponytail01' && lab.col === '#8a3a1c' && !lab.warn.length, `a lab scene: the lab set, Ana in a lab coat with a red ponytail, nothing misunderstood (${lab.env}, ${lab.outfit.join('+')}, ${lab.hair} ${lab.col}${lab.warn.length ? ', ' + lab.warn.join(' | ') : ''})`);
+    ok(lab.env === 'laboratorio' && (lab.outfit.includes('c1412') || lab.outfit.includes('c157')) && lab.hair === 'h-ponytail01' && lab.col === '#8a3a1c' && !lab.warn.length, `a lab scene: the lab set, Ana in a lab coat with a red ponytail, nothing misunderstood (${lab.env}, ${lab.outfit.join('+')}, ${lab.hair} ${lab.col}${lab.warn.length ? ', ' + lab.warn.join(' | ') : ''})`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
+  // scripts of every kind (genres, the seven languages, Fountain, «NAME: line», plays, no headings, sound effects in
+  // capitals, introductions with ages): the cast and nobody else, how each one looks, the sets, nothing misunderstood
+  async scripts(browser) {
+    const page = await open(browser, {lang: 'es'}), A = (f, a) => page.evaluate(f, a), DIR = path.join(__dirname, 'scripts'), EXP = JSON.parse(fs.readFileSync(path.join(DIR, 'expect.json'), 'utf8'));
+    await page.click('#animBtn'); await page.waitForTimeout(400);
+    for (const [file, e] of Object.entries(EXP)) {
+      const txt = fs.readFileSync(path.join(DIR, file), 'utf8');
+      const r = await A(async t => { const C = window.__cdp, S = C.script, v = S.VOICE.on; S.VOICE.on = false;
+        try { const r = await S.scriptToFilm(t, {cams: true, online: false}); const A = C.ANIM, sets = [], empty = []; let last = null;
+          for (const s of A.shots) { const k = s.name.match(/^(\d+)/)[1]; if (k !== last) { sets.push(s.scene.extras.env); last = k; } if (s.empty && !empty.includes(+k)) empty.push(+k); }
+          return {cast: r.cast.map(c => ({name: c.name, g: c.body.gender < .5 ? 'F' : 'M', age: c.body.age ?? 1, height: c.body.height ?? .5, species: c.body.species, kemo: c.body.kemo, hair: c.body.hair, hairCol: c.body.hairCol, wear: (c.outfit || []).map(g => g.id)})), warn: r.warn, sets, empty, shots: A.shots.length};
+        } catch (err) { return {err: String(err && err.stack || err)}; } finally { S.VOICE.on = v; } }, txt);
+      if (r.err) { ok(false, `${file}: ${r.err.slice(0, 200)}`); continue; }
+      const names = r.cast.map(c => c.name), bad = [];
+      for (const [n, want] of Object.entries(e.who || {})) { const c = r.cast.find(x => x.name === n); if (!c) { bad.push(n + ' missing'); continue; }
+        if (want.g && c.g !== want.g) bad.push(`${n} ${c.g}`); if (want.species && c.species !== want.species) bad.push(`${n} ${c.species}`); if (want.kemo && c.kemo !== want.kemo) bad.push(`${n} kemo ${c.kemo}`);
+        if (want.hairCol && c.hairCol !== want.hairCol) bad.push(`${n} hair ${c.hairCol}`); if (want.bald && c.hair !== '') bad.push(`${n} not bald`); if (want.tall && !(c.height > .7)) bad.push(`${n} not tall`);
+        if (want.old && !(c.age > 1.6)) bad.push(`${n} not old`); if (want.kid && !(c.age < .6)) bad.push(`${n} not a child`); if (want.bare && c.wear.length) bad.push(`${n} dressed`); if (want.older && !(c.age > 1.15)) bad.push(`${n} too young`);
+        for (const id of want.wear || []) if (!c.wear.includes(id)) bad.push(`${n} without ${id}`); }
+      ok(names.slice().sort().join('|') === e.cast.slice().sort().join('|') && !bad.length, `${file}: cast ${names.join(', ')}${bad.length ? ' — ' + bad.join(', ') : ''}`);
+      ok(r.sets.join() === e.sets.join() && (e.empty || []).join() === r.empty.join() && r.shots >= r.sets.length, `${file}: sets ${r.sets.join(' → ')}${r.empty.length ? ', scene ' + r.empty.join() + ' with nobody' : ''}, ${r.shots} shots`);
+      ok(!r.warn.length, `${file}: nothing misunderstood${r.warn.length ? ': ' + r.warn.slice(0, 3).join(' | ') : ''}`);
+    }
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

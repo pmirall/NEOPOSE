@@ -50,12 +50,41 @@ function placeFilmKey(s) {
   filmKey.position.copy(P).addScaledVector(right, -r * .45).add(new V3(0, r * .35 + .3, 0)).addScaledVector(d, -.15);
   filmKey.target.position.copy(T); filmKey.target.updateMatrixWorld(); filmKey.distance = r * 3 + 4; filmKey.intensity = s.key * (state.amb === 'noche' ? .8 : 1.1);
 }
-// everything at frame f: poses, camera, mouths, subtitles
+// a film's effects (from a script: a blast, lightning, fire, a red moon, rain, a fade): lights over the set, the camera
+// shaken by a blast, black for a fade; worked out from the shot's frame, so they play, scrub and export the same
+const fxLight = new THREE.PointLight(0xffb070, 0, 30, 1.4); fxLight.castShadow = false;
+const fxFill = new THREE.HemisphereLight(0xffffff, 0x101010, 0); scene.add(fxLight, fxFill);
+const FX = {fade: 0};
+function fxApply(s, f) {
+  let li = 0, fill = 0, shake = 0, fade = 0; const lc = new THREE.Color(0xffb070), fc = new THREE.Color(0xffffff);
+  for (const x of (ANIM.open && s && s.fx) || []) {
+    const t = (f - x.f) / ANIM.fps;
+    if (x.kind === 'fadeout') { if (t > -1e-3) fade = Math.max(fade, clamp(t / 1.1, 0, 1)); continue; }
+    if (t < 0) continue;
+    if (x.kind === 'fadein') fade = Math.max(fade, 1 - clamp(t / 1.1, 0, 1));
+    else if (x.kind === 'blast') { const k = (x.k || 1) * (t < .05 ? t / .05 : Math.exp(-(t - .05) * 3)); li += 5 * k; fill += .9 * k; fc.set(x.col || '#ffd2a0'); lc.set(x.col || '#ffb070'); shake += .07 * k; }
+    else if (x.kind === 'lightning') { const p = (t + 1.3) % 3.1, on = p < .08 ? 1 : p > .16 && p < .22 ? .55 : 0; fill += on * 2.2; fc.set(x.col || '#c9d6ff'); }
+    else if (x.kind === 'fire') { li += 1.2 * Math.max(.25, Math.exp(-t / 5)) * (1 + .22 * Math.sin(t * 17.3) + .14 * Math.sin(t * 7.1)); lc.set(x.col || '#ff8a3a'); }  // (flaring, then a glow)
+    else if (x.kind === 'moon') { fill += .22; fc.set(x.col || '#b8c6ff'); }
+    else if (x.kind === 'sun') { fill += .18; fc.set(x.col || '#ffe2b0'); }
+    else if (x.kind === 'lights') { fill += .25 * (.75 + .25 * Math.sin(t * 5)); fc.set(x.col || '#ff5a4a'); }  // (an alarm, a siren: pulsing)
+    else if (x.kind === 'rain') { fill += .1; fc.set('#8fa3c0'); }
+    else if (x.kind === 'smoke') { fill += .08; fc.set('#9a9a9a'); }
+  }
+  fill = Math.min(fill, 2.4);  // (a flash of lightning may be bright; the lasting tints never add up to daylight)
+  fxLight.intensity = li; fxFill.intensity = fill;
+  if (li > 0) { fxLight.color.copy(lc); fxLight.position.copy(controls.target).add(new V3(0, 1.6, 0)).addScaledVector(camera.position.clone().sub(controls.target).setY(0).normalize(), -1.5); }  // (above and behind whoever is in the shot)
+  if (fill > 0) { fxFill.color.copy(fc); fxFill.groundColor.copy(fc).multiplyScalar(.25); }
+  if (shake > 1e-3) { const h = n => { const x = Math.sin(f * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x) - .5; }; camera.position.add(new V3(h(1), h(2), h(3)).multiplyScalar(shake)); }
+  FX.fade = fade; let el = $('#filmFade'); if (!el && fade > 0) { el = document.createElement('div'); el.id = 'filmFade'; vp.appendChild(el); } if (el) el.style.opacity = fade;
+}
+function fxOff() { fxLight.intensity = fxFill.intensity = 0; FX.fade = 0; const el = $('#filmFade'); if (el) el.style.opacity = 0; }
+// everything at frame f: poses, camera, mouths, subtitles, the place's effects
 function applyFrame(f) {
   const s = shot(); if (!s) return; padKeys(s);
   chars.forEach((m, i) => { const p = poseAt(i, f); if (p) m.setPose(p); applySquash(m, i, f); });
   const c = camAt(f); if (c) applyCam(c);
-  placeFilmKey(s); applyMouths(f); showSubs(f);
+  placeFilmKey(s); fxApply(s, f); applyMouths(f); showSubs(f);
 }
 function setFrame(f, apply = true) {
   const s = shot(); if (!s) return;
@@ -493,7 +522,7 @@ function openTimeline(on) {
     if (!ANIM.shots.length) { ANIM.shots.push(newShot()); ANIM.cur = 0; ANIM.camBase = camState(); chars.forEach(m => { m._prevPose = m.getPose(); }); }
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();
     chars.forEach(m => { m._prevPose = basePose(m); }); pushHistory();  // undo can take the first keys back off
-  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); }
+  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); filmKey.intensity = 0; fxOff(); }
   reframeSoon();  // the dock takes the bottom of the canvas (or gives it back)
 }
 

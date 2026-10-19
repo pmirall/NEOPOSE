@@ -1,0 +1,587 @@
+{
+  "01-yuki-fantasia.es.txt": {
+    "cast": [
+      "Rey Sombra",
+      "Yuki",
+      "Kael"
+    ],
+    "sets": [
+      "ruinas",
+      "castillo",
+      "ruinas"
+    ],
+    "empty": [
+      1
+    ],
+    "who": {
+      "Yuki": {
+        "g": "F",
+        "species": "zorro",
+        "kemo": 1,
+        "hairCol": "#c9ccd2"
+      },
+      "Kael": {
+        "g": "M",
+        "hairCol": "#15110f",
+        "wear": [
+          "c2128",
+          "c428"
+        ]
+      },
+      "Rey Sombra": {
+        "g": "M",
+        "wear": [
+          "c2015",
+          "c428"
+        ],
+        "tall": true
+      }
+    }
+  },
+  "02-noir.en.fountain": {
+    "cast": [
+      "Jack Morgan",
+      "Veronica Lane"
+    ],
+    "sets": [
+      "calle",
+      "oficina"
+    ],
+    "who": {
+      "Jack Morgan": {
+        "g": "M",
+        "older": true,
+        "wear": [
+          "m_fedora01"
+        ]
+      },
+      "Veronica Lane": {
+        "g": "F",
+        "hairCol": "#e8e0c8",
+        "wear": [
+          "c1855"
+        ]
+      }
+    }
+  },
+  "03-scifi.fr.txt": {
+    "cast": [
+      "Unit-7",
+      "Capitaine Élise Durand"
+    ],
+    "sets": [
+      "laboratorio"
+    ],
+    "who": {
+      "Unit-7": {
+        "wear": [
+          "c2880"
+        ]
+      },
+      "Capitaine Élise Durand": {
+        "g": "F",
+        "older": true,
+        "hairCol": "#9a958e"
+      }
+    }
+  },
+  "04-sitcom.ca.txt": {
+    "cast": [
+      "Pere",
+      "Marta"
+    ],
+    "sets": [
+      "cocina"
+    ]
+  },
+  "05-horror.de.txt": {
+    "cast": [
+      "Lena",
+      "Mann"
+    ],
+    "sets": [
+      "bosque"
+    ],
+    "who": {
+      "Lena": {
+        "g": "F",
+        "hairCol": "#a8231c",
+        "wear": [
+          "c20"
+        ]
+      },
+      "Mann": {
+        "g": "M",
+        "wear": [
+          "c134"
+        ]
+      }
+    }
+  },
+  "06-romance.it.txt": {
+    "cast": [
+      "Marco",
+      "Giulia"
+    ],
+    "sets": [
+      "cafeteria"
+    ],
+    "who": {
+      "Marco": {
+        "g": "M",
+        "tall": true,
+        "wear": [
+          "c2953"
+        ]
+      },
+      "Giulia": {
+        "g": "F",
+        "hairCol": "#5a3a22",
+        "wear": [
+          "c1730"
+        ]
+      }
+    }
+  },
+  "07-western.es.txt": {
+    "cast": [
+      "Sheriff Carter",
+      "Billy"
+    ],
+    "sets": [
+      "desierto"
+    ],
+    "who": {
+      "Sheriff Carter": {
+        "g": "M",
+        "old": true,
+        "wear": [
+          "c24"
+        ]
+      },
+      "Billy": {
+        "g": "M",
+        "wear": [
+          "c24",
+          "c1849"
+        ]
+      }
+    }
+  },
+  "08-cuento.es.txt": {
+    "cast": [
+      "Luna",
+      "Tobi"
+    ],
+    "sets": [
+      "bosque"
+    ],
+    "who": {
+      "Luna": {
+        "g": "F",
+        "species": "gato"
+      },
+      "Tobi": {
+        "g": "M",
+        "species": "perro"
+      }
+    }
+  },
+  "09-monologo.en.txt": {
+    "cast": [
+      "Sarah"
+    ],
+    "sets": [
+      "teatro"
+    ]
+  },
+  "10-heroes.en.fountain": {
+    "cast": [
+      "Dr. Krane",
+      "Captain Nova"
+    ],
+    "sets": [
+      "azotea"
+    ],
+    "who": {
+      "Captain Nova": {
+        "g": "F",
+        "wear": [
+          "c2145",
+          "c2048"
+        ]
+      },
+      "Dr. Krane": {
+        "g": "M",
+        "bald": true
+      }
+    }
+  },
+  "11-teatro.pt.txt": {
+    "cast": [
+      "João",
+      "Maria"
+    ],
+    "sets": [
+      "habitacion"
+    ]
+  },
+  "12-novela.es.txt": {
+    "cast": [
+      "Marta",
+      "Julio"
+    ],
+    "sets": [
+      "cocina"
+    ],
+    "who": {
+      "Marta": {
+        "g": "F",
+        "hairCol": "#5a3a22"
+      },
+      "Julio": {
+        "g": "M"
+      }
+    },
+    "lines": 3
+  },
+  "13-markdown.en.md": {
+    "cast": [
+      "Host",
+      "Lily"
+    ],
+    "sets": [
+      "estudio"
+    ],
+    "who": {
+      "Host": {
+        "g": "M",
+        "older": true,
+        "wear": [
+          "m_male_elegantsuit01"
+        ]
+      },
+      "Lily": {
+        "g": "F",
+        "hairCol": "#e48ab0",
+        "wear": [
+          "c2953"
+        ]
+      }
+    },
+    "lines": 3
+  },
+  "14-sin-nombres.es.txt": {
+    "cast": [
+      "Hombre",
+      "Camarera"
+    ],
+    "sets": [
+      "taberna"
+    ],
+    "who": {
+      "Hombre": {
+        "g": "M"
+      },
+      "Camarera": {
+        "g": "F"
+      }
+    }
+  },
+  "15-thriller.es.txt": {
+    "cast": [
+      "Tomás",
+      "Carmen Ruiz",
+      "Hombre"
+    ],
+    "sets": [
+      "calle",
+      "playa"
+    ],
+    "who": {
+      "Carmen Ruiz": {
+        "g": "F",
+        "older": true,
+        "wear": [
+          "c157"
+        ]
+      },
+      "Tomás": {
+        "g": "M",
+        "wear": [
+          "c928"
+        ]
+      },
+      "Hombre": {
+        "g": "M",
+        "wear": [
+          "c2100"
+        ]
+      }
+    }
+  },
+  "16-hospital.en.fountain": {
+    "cast": [
+      "Mr. Hollis",
+      "Benny",
+      "Dr. Amy Chen",
+      "Nurse Pat"
+    ],
+    "sets": [
+      "laboratorio"
+    ],
+    "who": {
+      "Mr. Hollis": {
+        "g": "M",
+        "old": true,
+        "wear": [
+          "c2626"
+        ]
+      },
+      "Benny": {
+        "g": "M",
+        "kid": true
+      },
+      "Dr. Amy Chen": {
+        "g": "F",
+        "tall": true
+      },
+      "Nurse Pat": {
+        "g": "M"
+      }
+    }
+  },
+  "17-dragon.fr.txt": {
+    "cast": [
+      "Élodie",
+      "Flamèche"
+    ],
+    "sets": [
+      "bosque"
+    ],
+    "who": {
+      "Élodie": {
+        "g": "F",
+        "hairCol": "#d2b06a"
+      },
+      "Flamèche": {
+        "species": "dragon",
+        "bare": true
+      }
+    }
+  },
+  "18-buero.de.fountain": {
+    "cast": [
+      "Klaus",
+      "Anna"
+    ],
+    "sets": [
+      "oficina"
+    ],
+    "who": {
+      "Klaus": {
+        "g": "M",
+        "bald": true,
+        "older": true,
+        "wear": [
+          "m_male_elegantsuit01"
+        ]
+      },
+      "Anna": {
+        "g": "F",
+        "wear": [
+          "c928",
+          "c1158"
+        ]
+      }
+    }
+  },
+  "19-inseguimento.it.txt": {
+    "cast": [
+      "Marco",
+      "Luca"
+    ],
+    "sets": [
+      "azotea"
+    ],
+    "who": {
+      "Marco": {
+        "g": "M",
+        "wear": [
+          "c2953"
+        ]
+      },
+      "Luca": {
+        "g": "M"
+      }
+    }
+  },
+  "20-classe.ca.txt": {
+    "cast": [
+      "Núria",
+      "Laia",
+      "Pol"
+    ],
+    "sets": [
+      "aula"
+    ],
+    "who": {
+      "Núria": {
+        "g": "F",
+        "tall": true
+      },
+      "Laia": {
+        "g": "F",
+        "kid": true
+      },
+      "Pol": {
+        "g": "M",
+        "kid": true
+      }
+    }
+  },
+  "21-prosa.es.txt": {
+    "cast": [
+      "Hugo",
+      "Lucía"
+    ],
+    "sets": [
+      "parque"
+    ],
+    "who": {
+      "Hugo": {
+        "g": "M",
+        "kid": true
+      },
+      "Lucía": {
+        "g": "F",
+        "old": true
+      }
+    }
+  },
+  "22-nave.en.fountain": {
+    "cast": [
+      "Zed",
+      "Captain Reyes"
+    ],
+    "sets": [
+      "laboratorio",
+      "laboratorio"
+    ],
+    "who": {
+      "Zed": {
+        "bald": true,
+        "wear": [
+          "c2880"
+        ]
+      },
+      "Captain Reyes": {
+        "g": "F",
+        "older": true,
+        "wear": [
+          "c1327"
+        ]
+      }
+    }
+  },
+  "23-terror.pt.txt": {
+    "cast": [
+      "Joana",
+      "Fantasma"
+    ],
+    "sets": [
+      "habitacion"
+    ],
+    "who": {
+      "Joana": {
+        "g": "F",
+        "hairCol": "#8a3a1c",
+        "wear": [
+          "c157"
+        ]
+      },
+      "Fantasma": {
+        "bald": true,
+        "wear": [
+          "c3515"
+        ]
+      }
+    }
+  },
+  "24-teatro.es.txt": {
+    "cast": [
+      "Doña Rosa",
+      "Don Fernando",
+      "Elena"
+    ],
+    "sets": [
+      "habitacion"
+    ],
+    "who": {
+      "Doña Rosa": {
+        "g": "F"
+      },
+      "Don Fernando": {
+        "g": "M",
+        "old": true
+      },
+      "Elena": {
+        "g": "F",
+        "wear": [
+          "c1730"
+        ]
+      }
+    }
+  },
+  "25-anime.es.txt": {
+    "cast": [
+      "Hana",
+      "Akira"
+    ],
+    "sets": [
+      "azotea"
+    ],
+    "who": {
+      "Hana": {
+        "g": "F",
+        "species": "gato",
+        "kemo": 1,
+        "wear": [
+          "c428"
+        ]
+      },
+      "Akira": {
+        "g": "M",
+        "hairCol": "#15110f",
+        "wear": [
+          "c181"
+        ]
+      }
+    }
+  },
+  "26-comic.en.txt": {
+    "cast": [
+      "Violet",
+      "Thug 1",
+      "Thug 2"
+    ],
+    "sets": [
+      "pano_noche"
+    ],
+    "who": {
+      "Violet": {
+        "g": "F",
+        "hairCol": "#6a3a9a",
+        "wear": [
+          "c2953"
+        ]
+      },
+      "Thug 1": {
+        "g": "M",
+        "wear": [
+          "m_male_elegantsuit01"
+        ]
+      }
+    }
+  }
+}

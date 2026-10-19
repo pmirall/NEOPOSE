@@ -401,9 +401,14 @@ class Mannequin {
       const d = FIG.hdeltas[FIG.setIdx[name]], q = meta.q * w; for (let i = 0; i < H.length; i++) H[i] += d[i] * q;
     }
     const swapId = headModelFor(this.body), swapReady = swapId && HEADS[swapId];
+    // a kemonomimi's hair sits on the human scalp, and the animal's ears come up through it (the ears' morph is kept
+    // apart for the hair's anchors)
+    const kemoHair = this.body.species !== 'humano' && (this.body.kemo ?? 3) <= 1 && !this.body.headModel && typeof HEAD_RECIPES !== 'undefined', rec = kemoHair && HEAD_RECIPES[headSp(this.body)];
+    const earSet = rec ? new Set((((this.body.headStyle === 'kemono' && rec.kemonoEars) || rec.ears) || []).map(e => e[0])) : null, earP = earSet ? new Float32Array(P.length) : null;
     for (const [name, w] of Object.entries({...(swapId ? {} : speciesMorphs(this.body)), ...(this.body.morphs || {}), ...extMorphs(this.body), ...bodyMorphs(this.body)})) {
       const x = FIG.xsets[name]; if (!x || Math.abs(w) < 1e-4) continue; const q = meta.q * w;
       for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; P[o] += x.dv[k * 3] * q; P[o + 1] += x.dv[k * 3 + 1] * q; P[o + 2] += x.dv[k * 3 + 2] * q; }
+      if (earP && earSet.has(name)) for (let k = 0; k < x.iv.length; k++) { const o = x.iv[k] * 3; earP[o] += x.dv[k * 3] * q; earP[o + 1] += x.dv[k * 3 + 1] * q; earP[o + 2] += x.dv[k * 3 + 2] * q; }
       for (let k = 0; k < x.ih.length; k++) { const o = x.ih[k] * 3; H[o] += x.dh[k * 3] * q; H[o + 1] += x.dh[k * 3 + 1] * q; H[o + 2] += x.dh[k * 3 + 2] * q; }
       for (let i = 0; i < J.length; i++) J[i] += x.dj[i] * w;
     }
@@ -420,6 +425,7 @@ class Mannequin {
     shiftAnthro(this, minY);
     this.J = J;
     limbStumps(this, P, H, J); this.anchors.set(P); this.anchors.set(H, nV * 3);  // limb differences: the skin closes over the stump
+    if (earP) { this.anchorsHair = this.anchors.slice(); for (let i = 0; i < earP.length; i++) this.anchorsHair[i] -= earP[i]; } else this.anchorsHair = null;
     const jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
     this.bones.forEach((b, i) => {
       const p = meta.parents[i];

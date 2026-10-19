@@ -9,6 +9,7 @@ const SNOUT_BY_LEVEL = [0, .45, .6, .75, .88, 1];
 function headModelFor(b) {
   // only sculpted (downloaded) heads: the species' own sculpt first, or the one chosen in the panel
   if (!b || b.species === 'humano') return null;
+  if ((b.kemo ?? 3) <= 1 && !b.headModel) return null;  // a kemonomimi: a human face with the animal's ears
   if (b.headModel && HEAD_CATALOG[b.headModel]) return b.headModel;  // any sculpt, even another species' (a hybrid)
   const sp = (SPECIES[b.species] || {}).head || b.species, list = Object.entries(HEAD_CATALOG).filter(([, c]) => c.species.includes(sp));
   return list.length ? list[0][0] : null;

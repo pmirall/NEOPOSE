@@ -1067,3 +1067,5 @@ a{color:var(--blue);text-underline-offset:2px}
   .librow .filter{margin:0!important}
   .librow .filter > span{display:none}
 }
+
+#filmFade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:2}
