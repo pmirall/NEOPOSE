@@ -353,6 +353,24 @@ const SUITES = {
     });
     ok(walk.speed > 1 && walk.speed < 1.8 && walk.slide < .35 && walk.bob > .02 && walk.bob < .12, `the walk cycle travels at ${walk.speed.toFixed(2)} m/s, rising and falling ${Math.round(walk.bob * 100)} cm, its foot on the ground sliding ${walk.slide.toFixed(2)} m/s`);
     ok(walk.seam < .03 && walk.ual > .7 && walk.ual < 1.5, `a loop runs on into its next lap (${(walk.seam * 100).toFixed(1)} cm), and an on-the-spot walk is paced by its feet (${walk.ual.toFixed(2)} m/s)`);
+    // every one of NEOPOSE's own clips keeps its feet: a foot on the ground does not slide or sink, and the run and the jump leave it
+    const own = await A(() => {
+      const C = window.__cdp, K = C.clips, m = C.mq, V = THREE.Vector3, out = {};
+      m.setPose({q: Object.fromEntries(Object.keys(m.getPose().q).map(k => [k, [0, 0, 0, 1]])), pos: [0, m.rootY, 0], hands: m.getPose().hands}); m.group.updateMatrixWorld(true);
+      const rest = m.joints.ankleL.getWorldPosition(new V()).y;
+      for (const c of K.allClips().filter(c => c.src === 'neopose' && c.kit !== 'silla' && c.id !== 'acc-muletas')) {
+        const n = c.frames.length, st = [0, 2].map(i => (c.frames[n - 1].p[i] - c.frames[0].p[i]) * (c.loop ? n / (n - 1) : 1)), fps = 60, P = [];
+        for (let i = 0; i <= fps * c.len * (c.loop ? 2 : 1); i++) { const t = i / fps, lap = c.loop ? Math.floor(t / c.len + 1e-9) : 0; m.setPose(K.clipPose(m, K.sampleClip(c, t), new V(st[0] * lap, 0, st[1] * lap), 0, false, 1)); m.group.updateMatrixWorld(true); P.push(['ankleL', 'ankleR'].map(j => m.joints[j].getWorldPosition(new V()))); }
+        let slide = 0, low = 1, air = 0;
+        for (let i = 1; i < P.length; i++) for (const s of [0, 1]) { const a = P[i - 1][s], b = P[i][s]; low = Math.min(low, b.y - rest); if (a.y - rest < .012 && b.y - rest < .012) slide = Math.max(slide, Math.hypot(b.x - a.x, b.z - a.z) * fps); }
+        for (const f of P) if (Math.min(f[0].y, f[1].y) - rest > .04) air++;
+        out[c.id] = {slide, low, air: air / fps / (c.loop ? 2 : 1)};
+      }
+      return out;
+    });
+    const bad = Object.entries(own).filter(([, o]) => o.slide > .3 || o.low < -.015).map(([k, o]) => `${k} ${o.slide.toFixed(2)} m/s, ${(o.low * 100).toFixed(1)} cm`);
+    ok(!bad.length, `NEOPOSE's own clips keep their feet: none slides or goes through the floor${bad.length ? ' — ' + bad.join(', ') : ` (worst ${Object.entries(own).sort((a, b) => b[1].slide - a[1].slide)[0].map(x => x.slide != null ? x.slide.toFixed(2) + ' m/s' : x).join(' ')})`}`);
+    ok(own['np-correr'].air > .1 && own['np-saltar'].air > .3 && own['np-andar'].air < .01, `the run is off the ground ${Math.round(own['np-correr'].air * 1000)} ms a stride, the jump ${Math.round(own['np-saltar'].air * 1000)} ms (on its toes and in the air), the walk never`);
     await page.screenshot({path: path.join(OUT, 'clips.png')});
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
@@ -786,14 +804,14 @@ const SUITES = {
     ok(film.lines === 4 && film.timed && film.cams && film.keys, `every line is said with its voice and timed word by word; every shot has its camera and every frame its pose`);
     ok(film.names.some(n => /hombro|Plano medio|primer plano/i.test(n)) && film.names.some(n => /dos|general/i.test(n)) && film.chairs, 'the camera follows film grammar (establishing, over the shoulder or singles, two-shots) and Luis has a chair to sit on');
     ok(!film.warn, 'the sample is understood without warnings' + (film.warn ? ': ' + film.warn : ''));
-    // no pops: no arm or head jumps in one frame while it hardly moves in the frames around (as they did when someone
-    // started or stopped talking); a fast move such as a jump for joy turns as much over several frames
+    // no pops: no arm or head turns in one frame while it is all but still in the frames either side (as they did when
+    // someone started or stopped talking); a fast move such as a jump for joy turns a lot over several frames running
     const jump = await A(() => { const A = window.__cdp.ANIM, Q = THREE.Quaternion; let w = 0;
       for (const s of A.shots) for (const K of s.keys) for (const j of ['shoulderL', 'elbowL', 'shoulderR', 'elbowR', 'head']) {
         const v = []; for (let i = 1; i < K.length; i++) { const a = new Q().fromArray(K[i - 1].pose.q[j] || [0, 0, 0, 1]), b = new Q().fromArray(K[i].pose.q[j] || [0, 0, 0, 1]); v.push(2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 / Math.PI); }
-        for (let i = 1; i < v.length - 1; i++) w = Math.max(w, v[i] - Math.max(v[i - 1], v[i + 1])); }
+        for (let i = 1; i < v.length - 1; i++) if (Math.max(v[i - 1], v[i + 1]) < v[i] * .3) w = Math.max(w, v[i]); }
       return w; });
-    ok(jump < 25, `the film flows: no arm or head jumps in a frame (at most ${Math.round(jump)}° more than the frames around)`);
+    ok(jump < 20, `the film flows: no arm or head jumps in a frame between still ones (${Math.round(jump)}°)`);
     const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
     ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));

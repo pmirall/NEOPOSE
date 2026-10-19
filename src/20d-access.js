@@ -73,12 +73,6 @@ const ACCESS_POSES = [
 for (const [id, label, j, kit, hands] of ACCESS_POSES) { const p = P(id, label, 'movilidad', j, {kit, ...(hands ? {hands} : {})}); POSES.push(p); POSE[id] = p; }
 
 /* ---------- animations (put in the gallery at start: see 26-clips) ---------- */
-const WALK = POSE.caminar ? POSE.caminar.j : {};
-// the passing positions of a walk and a run: the leg that stood is under the body, the other swings past it, bent
-const mirrorJ = j => Object.fromEntries(Object.entries(j).map(([k, e]) => [swapSide(k), mirrorRot(e)]));
-const WALK_PASS = {hipL: [2, 0, 2], kneeL: [5], ankleL: [-3], hipR: [-16, 0, -2], kneeR: [46], ankleR: [-10], shoulderL: [2, 0, 6], elbowL: [-16], shoulderR: [-4, 0, -6], elbowR: [-20], head: [0, 0, 0]};
-const RUN_PASS = {hips: [12, 0, 0], waist: [5, 0, 0], chest: [4, 0, 0], neck: [-8, 0, 0], head: [-6, 0, 0], hipL: [6, 0, 4], kneeL: [38], ankleL: [-12], hipR: [-42, 0, -4], kneeR: [110], ankleR: [-15],
-  shoulderL: [6, 0, 12], elbowL: [-92], shoulderR: [-8, 0, -12], elbowR: [-90]};
 const ACCESS_CLIPS = [
   {id: 'acc-silla', name: 'Impulsar la silla de ruedas', cat: 'movilidad', loop: true, dur: 1.2, kit: 'silla', keys: [
     [0, {...SIT, waist: [4, 0, 0], chest: [6, 0, 0], ...sym({shoulderL: [35, 0, 22], elbowL: [-75]})}, 'agarre', 0, 0],
@@ -90,10 +84,5 @@ const ACCESS_CLIPS = [
     [.45, {hips: [-4, 0, 0], chest: [2, 0, 0], ...sym({shoulderL: [5, 0, 14], elbowL: [-8]}), hipL: [-30, 0, 3], hipR: [-30, 0, -3], kneeL: [10], kneeR: [10]}, 'agarre', .03, .45],
     [.7, {hips: [2, 0, 0], chest: [4, 0, 0], ...sym({shoulderL: [20, 0, 14], elbowL: [-20]}), hipL: [-10, 0, 3], hipR: [-10, 0, -3], kneeL: [20], kneeR: [20]}, 'agarre', -.03, .7],
     [1, {hips: [6, 0, 0], chest: [10, 0, 0], ...sym({shoulderL: [-35, 0, 14], elbowL: [-10]}), hipL: [12, 0, 3], hipR: [12, 0, -3], kneeL: [15], kneeR: [15]}, 'agarre', 0, .85]]},
-  {id: 'acc-baston', name: 'Andar con bastón', cat: 'movilidad', loop: true, dur: 1.2, kit: 'baston', feet: true, keys: [
-    [0, {...WALK, shoulderR: [-22, 0, -12], elbowR: [-28]}],
-    [.3, {...WALK_PASS, shoulderR: [-8, 0, -12], elbowR: [-26]}],
-    [.6, {...mirrorJ(WALK), shoulderR: [6, 0, -12], elbowR: [-24]}],
-    [.9, {...mirrorJ(WALK_PASS), shoulderR: [-8, 0, -12], elbowR: [-26]}],
-    [1.2, {...WALK, shoulderR: [-22, 0, -12], elbowR: [-28]}]]}
+  {id: 'acc-baston', name: 'Andar con bastón', cat: 'movilidad', loop: true, kit: 'baston', gait: 'cane'}
 ];

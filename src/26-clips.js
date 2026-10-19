@@ -88,6 +88,16 @@ function clipRig() {
   if (!CLIPS.rig) { CLIPS.rig = new Mannequin(makeCharMats(), 'volumen'); CLIPS.rig.noMuscles = true; CLIPS.rig.build(bodyOf('hombre')); }
   return CLIPS.rig;
 }
+// a limb (shoulder, elbow, wrist or hip, knee, ankle) laid along two directions: d1 from its root to its middle joint,
+// d2 from there on; the hinge bends by the angle between them (sign: which way it bends) and the root twists so it bends
+// the right way
+function aimLimb(m, ja, jb, jc, d1, d2, sign) {
+  const J = m.joints;
+  turnBone(m, J[ja], wposOf(J[jb]).sub(wposOf(J[ja])), d1);
+  const H = HINGE[jb]; J[jb].rotation.set(clamp(sign * d1.angleTo(d2), H[0] * DEG, H[1] * DEG), 0, 0, 'XYZ'); m.group.updateMatrixWorld(true);
+  const ax = d1.clone().normalize(), cur = wposOf(J[jc]).sub(wposOf(J[jb])), pc = cur.addScaledVector(ax, -cur.dot(ax)), pw = d2.clone().addScaledVector(ax, -d2.dot(ax));
+  if (pc.lengthSq() > 1e-8 && pw.lengthSq() > 1e-8) { let t = pc.angleTo(pw); if (new V3().crossVectors(pc, pw).dot(ax) < 0) t = -t; setWorldQ(m, J[ja], new Q().setFromAxisAngle(ax, t).multiply(J[ja].getWorldQuaternion(new Q()))); }
+}
 // K: world positions in our frame (x left, y up, z forward): hipL/R kneeL/R ankleL/R toeL/R shL/R elL/R wrL/R tipL/R idxL/R pkyL/R neck head;
 // headQ: the head's turn from its rest (world, our frame); curls: 10 values or null
 function poseFromJoints(m, K, headQ, curls) {
@@ -100,14 +110,7 @@ function poseFromJoints(m, K, headQ, curls) {
   J.waist.quaternion.copy(half); J.chest.quaternion.copy(half); m.group.updateMatrixWorld(true);
   if (headQ) { const d = J.chest.getWorldQuaternion(new Q()).invert().multiply(headQ); J.neck.quaternion.copy(new Q().slerp(d, .4)); J.head.quaternion.copy(J.neck.quaternion.clone().invert().multiply(d)); m.group.updateMatrixWorld(true); }
   else if (has('neck', 'head')) { turnBone(m, J.neck, wposOf(J.head).sub(wposOf(J.neck)), K.head.clone().sub(K.neck)); }
-  const limb = (a, b, c, ja, jb, jc, sign) => {
-    if (!has(a, b, c)) return;
-    const d1 = K[b].clone().sub(K[a]), d2 = K[c].clone().sub(K[b]);
-    turnBone(m, J[ja], wposOf(J[jb]).sub(wposOf(J[ja])), d1);
-    const H = HINGE[jb]; J[jb].rotation.set(clamp(sign * d1.angleTo(d2), H[0] * DEG, H[1] * DEG), 0, 0, 'XYZ'); m.group.updateMatrixWorld(true);
-    const ax = d1.clone().normalize(), cur = wposOf(J[jc]).sub(wposOf(J[jb])), pc = cur.addScaledVector(ax, -cur.dot(ax)), pw = d2.clone().addScaledVector(ax, -d2.dot(ax));
-    if (pc.lengthSq() > 1e-8 && pw.lengthSq() > 1e-8) { let t = pc.angleTo(pw); if (new V3().crossVectors(pc, pw).dot(ax) < 0) t = -t; setWorldQ(m, J[ja], new Q().setFromAxisAngle(ax, t).multiply(J[ja].getWorldQuaternion(new Q()))); }
-  };
+  const limb = (a, b, c, ja, jb, jc, sign) => { if (has(a, b, c)) aimLimb(m, ja, jb, jc, K[b].clone().sub(K[a]), K[c].clone().sub(K[b]), sign); };
   for (const s of ['L', 'R']) {
     limb('sh' + s, 'el' + s, 'wr' + s, 'shoulder' + s, 'elbow' + s, 'wrist' + s, -1);
     limb('hip' + s, 'knee' + s, 'ankle' + s, 'hip' + s, 'knee' + s, 'ankle' + s, 1);
@@ -218,22 +221,57 @@ function framesFromBVH(text, fps) {
 }
 
 /* ---------- NEOPOSE's own clips: key poses, on a smooth curve ---------- */
-// a key: [time, pose (a library pose, or joints), hands (true: the library pose mirrored), dy, dz]
-// feet: the clip is a step cycle made on the spot: it is stood on the ground and travels as its feet push (see plantFeet);
-// 'air' for a run, which leaves the ground between steps
+// a key: [time, pose (a library pose, or joints), hands (true: the library pose mirrored), dy, dz]; or a gait (26b-gait)
+// a key: [time, pose (a library pose, or joints), hands (true: the library pose mirrored), dy, dz, dx]; or a gait (26b-gait).
+// plant: the feet stay where they stand (the legs give, see lockFeet); air: [from, to] spans in the air, on a parabola;
+// still: no breathing on top
+const STAND = {...ARMS_DOWN, ...LEGS_STAND};
+const GUARD = POSE.guardia ? POSE.guardia.j : {};
 const OWN_CLIPS = [
-  {id: 'np-andar', name: 'Andar (ciclo)', cat: 'mov', loop: true, dur: 1, feet: true, keys: [[0, 'caminar'], [.25, WALK_PASS], [.5, 'caminar', true], [.75, mirrorJ(WALK_PASS)], [1, 'caminar']]},
-  {id: 'np-correr', name: 'Correr (ciclo)', cat: 'mov', loop: true, dur: .7, feet: 'air', keys: [[0, 'correr'], [.175, RUN_PASS, 'agarre'], [.35, 'correr', true], [.525, mirrorJ(RUN_PASS), 'agarre'], [.7, 'correr']]},
-  {id: 'np-respirar', name: 'Respirar', cat: 'reposo', loop: true, dur: 3, keys: [[0, {chest: [-2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.5, {chest: [-6, 0, 0], neck: [2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [3, {chest: [-2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}]]},
-  {id: 'np-saludar', name: 'Saludar con la mano', cat: 'gestos', loop: true, dur: 1.2, keys: [[0, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-60], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta'], [.6, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-100], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta'], [1.2, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-60], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta']]},
-  {id: 'np-si', name: 'Asentir', cat: 'gestos', dur: 1.2, keys: [[0, {head: [0, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.3, {head: [18, 0, 0], neck: [6, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.6, {head: [-4, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.9, {head: [15, 0, 0], neck: [5, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.2, {...ARMS_DOWN, ...LEGS_STAND}]]},
-  {id: 'np-no', name: 'Negar con la cabeza', cat: 'gestos', dur: 1.2, keys: [[0, {...ARMS_DOWN, ...LEGS_STAND}], [.25, {head: [0, 28, 0], neck: [0, 8, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.55, {head: [0, -28, 0], neck: [0, -8, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.85, {head: [0, 22, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.2, {...ARMS_DOWN, ...LEGS_STAND}]]},
-  {id: 'np-aplaudir', name: 'Aplaudir', cat: 'gestos', loop: true, dur: .5, keys: [[0, {...sym({shoulderL: [-45, -30, 18, 'ZXY'], elbowL: [-100]}), ...LEGS_STAND}, 'plana'], [.25, {...sym({shoulderL: [-45, -50, 8, 'ZXY'], elbowL: [-90]}), ...LEGS_STAND}, 'plana'], [.5, {...sym({shoulderL: [-45, -30, 18, 'ZXY'], elbowL: [-100]}), ...LEGS_STAND}, 'plana']]},
-  {id: 'np-mirar', name: 'Mirar alrededor', cat: 'reposo', dur: 3, keys: [[0, {...ARMS_DOWN, ...LEGS_STAND}], [.8, {head: [0, 55, 0], neck: [0, 15, 0], chest: [0, 10, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.6, {head: [0, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [2.4, {head: [0, -55, 0], neck: [0, -15, 0], chest: [0, -10, 0], ...ARMS_DOWN, ...LEGS_STAND}], [3, {...ARMS_DOWN, ...LEGS_STAND}]]},
-  {id: 'np-reverencia', name: 'Reverencia', cat: 'gestos', dur: 2, keys: [[0, 'pie'], [.8, 'reverencia'], [1.3, 'reverencia'], [2, 'pie']]},
-  {id: 'np-saltar', name: 'Salto en el sitio', cat: 'salto', dur: 1.2, keys: [[0, 'pie'], [.3, {hips: [20, 0, 0], ...sym({hipL: [-60, 0, 6], kneeL: [90], ankleL: [-25], shoulderL: [30, 0, 15], elbowL: [-20]})}, null, -.2], [.6, 'salto', null, .28], [.9, {hips: [15, 0, 0], ...sym({hipL: [-45, 0, 6], kneeL: [70], ankleL: [-20], shoulderL: [-20, 0, 25], elbowL: [-20]})}, null, -.14], [1.2, 'pie']]},
-  {id: 'np-sentarse', name: 'Sentarse', cat: 'reposo', dur: 1.6, keys: [[0, 'pie'], [.8, {hips: [30, 0, 0], waist: [10, 0, 0], ...sym({hipL: [-60, 0, 6], kneeL: [70], ankleL: [-15], shoulderL: [-30, 0, 10], elbowL: [-30]})}, null, -.18], [1.6, 'sentado', null, -.43]]},
-  {id: 'np-boxeo', name: 'Combinación de puñetazos', cat: 'combate', dur: 1.4, keys: [[0, 'guardia'], [.25, 'jab'], [.5, 'guardia'], [.8, 'cross'], [1.1, 'guardia'], [1.4, 'guardia']]}
+  {id: 'np-andar', name: 'Andar (ciclo)', cat: 'mov', loop: true, gait: 'walk'},
+  {id: 'np-correr', name: 'Correr (ciclo)', cat: 'mov', loop: true, gait: 'run'},
+  // standing about: the weight going from one foot to the other, a glance one way and the other, breathing
+  {id: 'np-respirar', name: 'Respirar', cat: 'reposo', loop: true, dur: 7.2, plant: true, keys: [
+    [0, {...STAND, head: [2, 0, 0]}],
+    [1.8, {...STAND, hips: [0, 3, 2], waist: [0, -1, -1], chest: [0, -1, -1.5], head: [0, 7, -2], neck: [1, 3, 0], hipL: [0, 0, 1], hipR: [0, 0, -5], kneeR: [6]}, null, -.006, 0, .018],
+    [3.6, {...STAND, head: [3, -2, 1]}],
+    [5.4, {...STAND, hips: [0, -3, -2], waist: [0, 1, 1], chest: [0, 1, 1.5], head: [1, -8, 2], neck: [0, -3, 0], hipL: [0, 0, 5], kneeL: [6], hipR: [0, 0, -1]}, null, -.006, 0, -.018],
+    [7.2, {...STAND, head: [2, 0, 0]}]]},
+  // a wave: the forearm swings to and fro about the upper arm, the wrist flapping after it; the body leans away a touch
+  {id: 'np-saludar', name: 'Saludar con la mano', cat: 'gestos', loop: true, dur: 1.2, plant: true, keys: [0, .3, .6, .9, 1.2].map((t, i) =>
+    [t, {...LEGS_STAND, shoulderR: [0, i % 2 ? -114 : -66, -102, 'ZXY'], elbowR: [i % 2 ? -88 : -66], shoulderL: [0, 0, 8], elbowL: [-15], chest: [0, -4, -3], head: [0, -6, 5], hips: [0, 0, 1.5]}, 'abierta'])},
+  {id: 'np-si', name: 'Asentir', cat: 'gestos', dur: 1.4, plant: true, keys: [[0, STAND], [.14, {...STAND, head: [-6, 0, 0]}], [.4, {...STAND, head: [21, 0, 0], neck: [7, 0, 0]}], [.64, {...STAND, head: [-3, 0, 0]}],
+    [.88, {...STAND, head: [15, 0, 0], neck: [5, 0, 0]}], [1.12, {...STAND, head: [1, 0, 0]}], [1.4, STAND]]},
+  {id: 'np-no', name: 'Negar con la cabeza', cat: 'gestos', dur: 1.5, plant: true, keys: [[0, STAND], [.12, {...STAND, head: [2, -7, 0]}], [.36, {...STAND, head: [3, 31, 4], neck: [0, 9, 0], chest: [0, -3, 0]}],
+    [.64, {...STAND, head: [3, -30, -4], neck: [0, -9, 0], chest: [0, 3, 0]}], [.9, {...STAND, head: [2, 19, 2], neck: [0, 5, 0]}], [1.14, {...STAND, head: [1, -7, -1]}], [1.5, STAND]]},
+  // a clap: the hands meet quickly and part slowly, the chest giving a little at each one
+  {id: 'np-aplaudir', name: 'Aplaudir', cat: 'gestos', loop: true, dur: .5, plant: true, keys: [[0, {...sym({shoulderL: [-45, -28, 18, 'ZXY'], elbowL: [-100]}), ...LEGS_STAND}, 'plana'],
+    [.16, {...sym({shoulderL: [-46, -50, 8, 'ZXY'], elbowL: [-90]}), chest: [3, 0, 0], head: [2, 0, 0], ...LEGS_STAND}, 'plana'], [.5, {...sym({shoulderL: [-45, -28, 18, 'ZXY'], elbowL: [-100]}), ...LEGS_STAND}, 'plana']]},
+  // looking round: the eyes and head go first, the chest follows, the weight goes onto the foot on that side
+  {id: 'np-mirar', name: 'Mirar alrededor', cat: 'reposo', dur: 4, plant: true, keys: [[0, STAND], [.5, {...STAND, head: [0, 46, 0], neck: [0, 12, 0]}],
+    [.95, {...STAND, head: [2, 54, -3], neck: [0, 15, 0], chest: [0, 13, 0], waist: [0, 6, 0], hips: [0, 4, 0]}, null, 0, 0, .012], [1.6, {...STAND, head: [5, 51, -2], neck: [0, 15, 0], chest: [0, 13, 0], waist: [0, 6, 0], hips: [0, 4, 0]}, null, 0, 0, .012],
+    [2.05, {...STAND, head: [0, -38, 0], neck: [0, -10, 0], chest: [0, 6, 0], waist: [0, 3, 0]}], [2.5, {...STAND, head: [2, -55, 3], neck: [0, -15, 0], chest: [0, -13, 0], waist: [0, -6, 0], hips: [0, -4, 0]}, null, 0, 0, -.012],
+    [3.2, {...STAND, head: [4, -52, 2], neck: [0, -15, 0], chest: [0, -12, 0], waist: [0, -6, 0], hips: [0, -4, 0]}, null, 0, 0, -.012], [4, STAND]]},
+  // a bow: a breath in and up first, down from the waist, held a moment a little deeper, up again with the head last
+  {id: 'np-reverencia', name: 'Reverencia', cat: 'gestos', dur: 2.8, plant: true, keys: [[0, 'pie'], [.35, {...STAND, chest: [-4, 0, 0], head: [-5, 0, 0]}], [1, 'reverencia'],
+    [1.6, {...(POSE.reverencia ? POSE.reverencia.j : {}), waist: [29, 0, 0], chest: [28, 0, 0], neck: [7, 0, 0], head: [15, 0, 0]}], [2.2, {...STAND, waist: [3, 0, 0], chest: [5, 0, 0], head: [8, 0, 0]}], [2.8, 'pie']]},
+  // a jump: down and arms back to load, up through the toes with the arms flung up, a tuck in the air (a true parabola),
+  // landing on the balls of the feet and sinking to soak it up, then up again
+  {id: 'np-saltar', name: 'Salto en el sitio', cat: 'salto', dur: 1.9, plant: true, air: [[.58, 1.02]], keys: [[0, 'pie'],
+    [.38, {hips: [22, 0, 0], waist: [6, 0, 0], head: [-6, 0, 0], ...sym({hipL: [-65, 0, 6], kneeL: [95], ankleL: [-28], shoulderL: [38, 0, 12], elbowL: [-25]})}, null, -.22],
+    [.58, {chest: [-4, 0, 0], head: [-8, 0, 0], ...sym({hipL: [2, 0, 4], kneeL: [4], ankleL: [35], shoulderL: [-115, 0, 14], elbowL: [-14]})}, 'abierta', .02],
+    [.8, {chest: [-8, 0, 0], head: [-12, 0, 0], ...sym({hipL: [-28, 0, 12], kneeL: [48], ankleL: [20], shoulderL: [-158, 0, 18], elbowL: [-10]})}, 'abierta'],
+    [1.02, {...sym({hipL: [-12, 0, 5], kneeL: [14], ankleL: [15], shoulderL: [-60, 0, 30], elbowL: [-20]})}, 'abierta', .02],
+    [1.18, {hips: [18, 0, 0], head: [4, 0, 0], ...sym({hipL: [-55, 0, 6], kneeL: [80], ankleL: [-25], shoulderL: [-30, 0, 25], elbowL: [-30]})}, null, -.17],
+    [1.5, {hips: [6, 0, 0], ...sym({hipL: [-15, 0, 4], kneeL: [20], ankleL: [-6], shoulderL: [-5, 0, 12], elbowL: [-15]})}, null, -.03], [1.9, 'pie']]},
+  // sitting down: knees unlock, the hips go back and down with the arms forward to balance, a soft landing on the seat
+  {id: 'np-sentarse', name: 'Sentarse', cat: 'reposo', dur: 2, plant: true, keys: [[0, 'pie'], [.35, {...STAND, hips: [8, 0, 0], head: [4, 0, 0], ...sym({hipL: [-10, 0, 5], kneeL: [14], ankleL: [-6]})}, null, -.03],
+    [.9, {hips: [38, 0, 0], waist: [8, 0, 0], chest: [6, 0, 0], head: [-10, 0, 0], ...sym({hipL: [-75, 0, 7], kneeL: [85], ankleL: [-22], shoulderL: [-78, 0, 10], elbowL: [-18]})}, null, -.25, -.18],
+    [1.35, {hips: [20, 0, 0], head: [-4, 0, 0], ...sym({hipL: [-88, 0, 7], kneeL: [90], ankleL: [-5], shoulderL: [-45, 0, 10], elbowL: [-35]})}, null, -.43, -.32],
+    [1.6, {...(POSE.sentado ? POSE.sentado.j : {}), hips: [6, 0, 0]}, null, -.445, -.32], [2, 'sentado', null, -.43, -.32]]},
+  // a jab and a cross: a little load before each, the fist snapping out and coming back slower, the hips turning into the cross
+  {id: 'np-boxeo', name: 'Combinación de puñetazos', cat: 'combate', dur: 1.6, plant: true, keys: [[0, 'guardia'], [.14, {...GUARD, hips: [0, -34, 0], chest: [9, 14, 0]}, 'puno'], [.24, 'jab'], [.44, 'guardia'],
+    [.62, {...GUARD, hips: [0, -40, 0], waist: [0, 6, 0], chest: [8, 4, 0]}, 'puno'], [.74, 'cross'], [.98, 'guardia'], [1.18, 'guardia', null, -.02], [1.6, 'guardia']]}
 ];
 /* A curve through key values that never stops between them: at each key the slope comes from its neighbours (the
    shape-keeping Hermite of Fritsch and Carlson), flat only where a move turns back or holds, so nothing overshoots a
@@ -263,26 +301,93 @@ function keyCurve(ts, vs, loop, wrap) {
     return a.map((x, c) => (2 * s3 - 3 * s2 + 1) * x + (s3 - 2 * s2 + s) * h * slope[i][c] + (-2 * s3 + 3 * s2) * b[c] + (s3 - s2) * h * slope[i + 1][c] * flip);
   };
 }
+const mirrorJ = j => Object.fromEntries(Object.entries(j).map(([k, e]) => [swapSide(k), mirrorRot(e)]));
 // a quaternion on the same side as another (q and -q are the same turn: the curve must not go the long way round)
 const sameSide = (q, ref) => q[0] * ref[0] + q[1] * ref[1] + q[2] * ref[2] + q[3] * ref[3] < 0 ? q.map(x => -x) : q;
+/* Follow-through and overlapping action: each joint of the upper body chases the pose it is given through a damped
+   spring, stiff near the trunk and looser out to the head and the hands, so the extremities arrive a moment late, go
+   a little past and settle (Thomas & Johnston's "follow through"; Williams' "successive breaking of joints"). The
+   hips and legs keep their keys exactly: the feet stay where they are. A loop is run round until it repeats itself.
+   SPRING: joint -> [natural frequency (rad/s), damping ratio] */
+const SPRING = {waist: [34, .7], chest: [28, .62], neck: [24, .58], head: [19, .52], shoulderL: [26, .6], shoulderR: [26, .6], elbowL: [21, .55], elbowR: [21, .55], wristL: [16, .5], wristR: [16, .5]};
+const rotVec = q => { const w = clamp(q[3], -1, 1), s = w < 0 ? -1 : 1, a = 2 * Math.acos(Math.abs(w)), n = Math.sqrt(Math.max(0, 1 - w * w)); return n < 1e-6 ? [0, 0, 0] : [q[0], q[1], q[2]].map(v => v * s * a / n); };
+function followThrough(frames, fps, loop) {
+  const n = frames.length, sub = 4, dt = 1 / fps / sub, laps = loop ? 3 : 1;
+  for (const [j, [om, ze]] of Object.entries(SPRING)) {
+    let x = new Q().fromArray(frames[0].q[j]), w = new V3();
+    const out = [], qt = new Q(), qi = new Q(), y = new Q();
+    for (let lap = 0; lap < laps; lap++) for (let i = 0; i < n; i++) {
+      const a = frames[i].q[j], b = frames[loop ? (i + 1) % n : Math.min(i + 1, n - 1)].q[j];
+      for (let k = 0; k < sub; k++) {
+        y.fromArray(a).slerp(qt.fromArray(b), k / sub);
+        const e = rotVec(y.clone().multiply(qi.copy(x).invert()).toArray());  // how far it is from where it should be
+        w.x += (om * om * e[0] - 2 * ze * om * w.x) * dt; w.y += (om * om * e[1] - 2 * ze * om * w.y) * dt; w.z += (om * om * e[2] - 2 * ze * om * w.z) * dt;
+        const ang = w.length() * dt; if (ang > 1e-9) x.premultiply(qt.setFromAxisAngle(w.clone().normalize(), ang)); x.normalize();
+      }
+      if (lap === laps - 1) out.push(x.toArray());
+    }
+    out.forEach((q, i) => frames[i].q[j] = q);
+  }
+}
+// breathing under everything a standing figure does (not in a quick loop, where it would pant)
+function breathe(frames, fps, loop) {
+  const len = frames.length / fps; if (loop && len < 2.4) return;
+  const per = loop ? len / Math.max(1, Math.round(len / 3.6)) : 3.6, E = new THREE.Euler(), d = new Q();
+  frames.forEach((f, i) => { const b = Math.sin(2 * Math.PI * i / fps / per);
+    for (const [j, a] of [['chest', -1.6], ['neck', .7], ['shoulderL', .8], ['shoulderR', .8]]) f.q[j] = new Q().fromArray(f.q[j]).multiply(d.setFromEuler(E.set(a * b * DEG, 0, j === 'shoulderL' ? b * .6 * DEG : j === 'shoulderR' ? -b * .6 * DEG : 0))).toArray(); });
+}
+/* Feet that stay put: wherever the keys take the hips, the legs give (a two-bone IK, the knee kept in the plane the keys
+   bend it in) so each foot stays where it stood in the first frame, turned as the keys turn it and never through the
+   floor: a foot pointed on its toes stands on them. Not in the air. */
+function lockFeet(frames) {
+  const m = clipRig(), g = gaitRig(m), J = m.joints, save = m.getPose(), pose = f => { m.setPose(clipPose(m, f, new V3(), 0, false, 1)); m.group.updateMatrixWorld(true); };
+  pose(frames[0]); const home = {L: wposOf(J.ankleL), R: wposOf(J.ankleR)}, T = m.J, toeOff = s => { const i = FIG.jIdx['ankle' + s], t = FIG.jIdx['toe' + s]; return new V3(T[t * 3] - T[i * 3], T[t * 3 + 1] - T[i * 3 + 1], T[t * 3 + 2] - T[i * 3 + 2]); };
+  const target = s => { const aq = J['ankle' + s].getWorldQuaternion(new Q()), toe = toeOff(s).applyQuaternion(aq); return {aq, A: new V3(home[s].x, Math.max(g.floor + g.ank.y, g.floor + g.toe.y - toe.y), home[s].z)}; };
+  // where a leg cannot reach its foot (a wide stance), the hips come down as far as it needs, smoothly
+  const drop = frames.map(f => { if (f.air) return 0; pose(f); let d = 0;
+    for (const s of ['L', 'R']) { const {A} = target(s), H = wposOf(J['hip' + s]), h = Math.hypot(H.x - A.x, H.z - A.z), r = g.L * .99; d = Math.max(d, H.y - A.y - Math.sqrt(Math.max(0, r * r - h * h))); }
+    return d; });
+  frames.forEach((f, i) => { let a = 0, c = 0; for (let k = -3; k <= 3; k++) { const v = drop[clamp(i + k, 0, frames.length - 1)]; a = Math.max(a, v * (1 - Math.abs(k) / 4)); c++; } if (!f.air) f.p[1] -= Math.max(drop[i], a); });
+  for (const f of frames) {
+    if (f.air) continue;
+    pose(f);
+    for (const s of ['L', 'R']) {
+      const {aq, A} = target(s), H = wposOf(J['hip' + s]), K0 = wposOf(J['knee' + s]);  // the foot turned as the keys turn it
+      const d = Math.min(H.distanceTo(A), g.L * .999), u = A.clone().sub(H).normalize(), w = K0.clone().sub(H); w.addScaledVector(u, -w.dot(u)); if (w.lengthSq() < 1e-8) w.set(0, 0, 1).addScaledVector(u, -u.z); w.normalize();
+      const al = Math.acos(clamp((g.a * g.a + d * d - g.b * g.b) / (2 * g.a * d), -1, 1)), K = H.clone().addScaledVector(u, g.a * Math.cos(al)).addScaledVector(w, g.a * Math.sin(al));
+      aimLimb(m, 'hip' + s, 'knee' + s, 'ankle' + s, K.clone().sub(H), H.clone().addScaledVector(u, d).sub(K), 1);
+      setWorldQ(m, J['ankle' + s], aq);
+    }
+    const p = m.getPose(); for (const j of ['hipL', 'kneeL', 'ankleL', 'hipR', 'kneeR', 'ankleR']) f.q[j] = p.q[j];
+  }
+  m.setPose(save); m.group.updateMatrixWorld(true);
+}
 function buildOwnClip(def) {
+  if (def.gait) { const fps = 30, frames = gaitClip(def, fps); return {id: def.id, name: tr(def.name), cat: def.cat, src: 'neopose', fps, loop: true, frames, len: frames.length / fps, kit: def.kit}; }
   const m = clipRig(), fps = 24, n = Math.round(def.dur * fps) + 1, Ks = [];
-  for (const [t, p, hands, dy, dz] of def.keys) {
+  for (let [t, p, hands, dy, dz, dx] of def.keys) {
     const pose = typeof p === 'string' ? POSE[p] : {j: p, hands: hands ? {L: hands, R: hands} : undefined};
     m.joints.hips.position.set(0, m.rootY, 0); applyPreset(m, hands === true ? {j: mirrorJ(pose.j), hands: pose.hands} : pose, {ground: false});
     const g = m.getPose(), q = {}; for (const j of CLIP_J) q[j] = g.q[j];
-    Ks.push({t, q, dy: dy || 0, dz: dz || 0, h: [...m.hands.L.c, ...m.hands.R.c]});
+    // a key that does not say how high stands on the ground: its lower foot where a foot stands at rest
+    if (dy == null) { const f = footPoints(m, {q, p: [0, 0, 0]}), r = footPoints(m, {q: {hips: [0, 0, 0, 1]}, p: [0, 0, 0]}); dy = Math.min(r[0].y, r[1].y) - Math.min(f[0].y, f[1].y); }
+    Ks.push({t, q, dy: dy || 0, dz: dz || 0, dx: dx || 0, h: [...m.hands.L.c, ...m.hands.R.c]});
   }
   const ts = Ks.map(k => k.t), Q4 = {};
   for (const j of CLIP_J) Q4[j] = keyCurve(ts, Ks.map(k => k.q[j]), def.loop, (i, v) => sameSide(v, Ks[i].q[j]));
-  const rest = keyCurve(ts, Ks.map(k => [k.dy, k.dz, ...k.h]), def.loop), frames = [];
+  const rest = keyCurve(ts, Ks.map(k => [k.dy, k.dz, k.dx, ...k.h]), def.loop), frames = [];
+  // in the air the hips fly on a parabola from where they leave the ground to where they land
+  const airY = t => { for (const [a, b] of def.air || []) if (t > a && t < b) { const ya = rest(a)[0], yb = rest(b)[0], T = b - a; return ya + (yb - ya) * (t - a) / T + 4.9 * (t - a) * (b - t); } return null; };
   for (let i = 0; i < n; i++) {
-    const t = i / fps, q = {}, r = rest(t);
+    const t = i / fps, q = {}, r = rest(t), ay = airY(t);
     for (const j of CLIP_J) { const v = Q4[j](t), l = Math.hypot(...v) || 1; q[j] = v.map(x => x / l); }
-    frames.push({q, p: [0, r[0], r[1]], h: r.slice(2).map(v => clamp(v, 0, 1))});
+    frames.push({q, p: [r[2], ay ?? r[0], r[1]], h: r.slice(3).map(v => clamp(v, 0, 1)), air: ay != null});
   }
   if (def.loop) frames.pop();  // the last key repeats the first
-  if (def.feet) plantFeet(frames, fps, def.loop, def.feet === 'air');
+  if (!def.still) breathe(frames, fps, def.loop);
+  followThrough(frames, fps, def.loop);
+  if (def.plant) lockFeet(frames);
+  frames.forEach(f => delete f.air);
   return {id: def.id, name: tr(def.name), cat: def.cat, src: 'neopose', fps, loop: !!def.loop, frames, len: (def.loop ? frames.length : n - 1) / fps, kit: def.kit};
 }
 // the feet of the figure posed with frame f on the spot: for each side the lower of the ankle and the toes (where the
@@ -296,35 +401,6 @@ function footPoints(m, f) {
     const an = wposOf(a), toe = a.localToWorld(new V3(T[t * 3] - T[i * 3], T[t * 3 + 1] - T[i * 3 + 1], T[t * 3 + 2] - T[i * 3 + 2]));
     const low = an.y < toe.y ? an.clone() : toe; low.ankle = an; return low;
   });
-}
-// a step cycle made on the spot, stood on the ground: the hips drop as far as the lower foot is off the floor (they go
-// down as the legs open and up as they pass), and the whole body travels so that the foot on the ground stays put.
-// A run (air) also leaves the ground: where both feet are up, the hips fly on the arc gravity gives them, at the speed
-// they took off with
-function plantFeet(frames, fps, loop, air) {
-  const m = clipRig(), save = m.getPose(), floor = footPoints(m, {q: {hips: [0, 0, 0, 1]}, p: [0, 0, 0]})[0].y;
-  const P = frames.map(f => footPoints(m, f)), n = frames.length, low = P.map(([l, r]) => Math.min(l.y, r.y)), lowest = Math.min(...low);
-  const down = low.map(y => !air || y - lowest < .05), dy = low.map(y => floor - y);
-  // each flight, from the last frame down to the next one (round the loop: start counting from a frame down)
-  const d0 = down.indexOf(true), end = loop ? d0 + n : n;
-  for (let u = d0 + 1; u < end; u++) {
-    if (down[u % n]) continue;
-    let b = u; while (b < end && !down[b % n]) b++;
-    if (b >= end && !loop) break;
-    const a = u - 1, T = (b - a) / fps, ya = dy[a % n], yb = dy[b % n];
-    for (let j = u; j < b; j++) { const t = (j - a) / fps; dy[j % n] = ya + (yb - ya) * t / T + 4.9 * t * (T - t); }
-    u = b;
-  }
-  frames.forEach((f, i) => f.p[1] += dy[i]);
-  const step = [], j1 = i => loop ? (i + 1) % n : Math.min(i + 1, n - 1);
-  for (let i = 0; i < n; i++) {  // from each frame to the next, the foot lower over both pushes the body on by as much as it moves back
-    const j = j1(i), s = P[i][0].y + P[j][0].y <= P[i][1].y + P[j][1].y ? 0 : 1;
-    step.push(i === j ? null : down[i] && down[j] ? [P[i][s].ankle.x - P[j][s].ankle.x, P[i][s].ankle.z - P[j][s].ankle.z] : null);
-  }
-  const on = step.filter(Boolean), mean = on.length ? [0, 1].map(c => on.reduce((a, v) => a + v[c], 0) / on.length) : [0, 0];
-  let x = 0, z = 0;
-  frames.forEach((f, i) => { f.p[0] = x; f.p[2] = z; if (j1(i) !== i) { const v = step[i] || mean; x += v[0]; z += v[1]; } });
-  m.setPose(save); m.group.updateMatrixWorld(true);
 }
 
 /* ---------- the library: own clips, Quaternius (bundled), yours (this browser) ---------- */
