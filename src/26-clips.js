@@ -271,7 +271,15 @@ const OWN_CLIPS = [
     [1.6, {...(POSE.sentado ? POSE.sentado.j : {}), hips: [6, 0, 0]}, null, -.445, -.32], [2, 'sentado', null, -.43, -.32]]},
   // a jab and a cross: a little load before each, the fist snapping out and coming back slower, the hips turning into the cross
   {id: 'np-boxeo', name: 'Combinación de puñetazos', cat: 'combate', dur: 1.6, plant: true, keys: [[0, 'guardia'], [.14, {...GUARD, hips: [0, -34, 0], chest: [9, 14, 0]}, 'puno'], [.24, 'jab'], [.44, 'guardia'],
-    [.62, {...GUARD, hips: [0, -40, 0], waist: [0, 6, 0], chest: [8, 4, 0]}, 'puno'], [.74, 'cross'], [.98, 'guardia'], [1.18, 'guardia', null, -.02], [1.6, 'guardia']]}
+    [.62, {...GUARD, hips: [0, -40, 0], waist: [0, 6, 0], chest: [8, 4, 0]}, 'puno'], [.74, 'cross'], [.98, 'guardia'], [1.18, 'guardia', null, -.02], [1.6, 'guardia']]},
+  // painting at an easel: the palette held low in the left hand, the brush in short strokes and dabs, the head tilting to judge it
+  {id: 'np-pintar', name: 'Pintar', cat: 'trabajo', loop: true, dur: 2.4, plant: true, keys: [0, .3, .6, .9, 1.2, 1.5, 1.8, 2.1, 2.4].map((t, i) => {
+    const k = i % 8, st = [[-58, 10, -14, -62, 0], [-63, 15, -12, -54, 9], [-54, 6, -16, -68, -7], [-61, 11, -14, -50, 4], [-56, 8, -15, -64, 0], [-60, 4, -11, -58, -8], [-52, 12, -17, -70, 6], [-59, 9, -14, -53, 2]][k];
+    return [t, {...LEGS_STAND, hipL: [-6, 0, 4], kneeL: [8], chest: [4, -8, 0], head: [6, k > 3 ? -2 : -8, k > 3 ? -5 : 5], neck: [3, -4, 0], shoulderL: [-12, -35, 14, 'ZXY'], elbowL: [-88],
+      shoulderR: [st[0], st[1], st[2]], elbowR: [st[3]], wristR: [st[4], 0, st[4] * .6]}, 'agarre']; })},
+  // looking closely at something: leaning in, a hand to the chin, the head turning a little to see better
+  {id: 'np-observar', name: 'Observar con atención', cat: 'gestos', loop: true, dur: 3.3, plant: true, keys: [[0, -2, 0], [1.1, 6, 5], [2.2, -5, -4], [3.3, -2, 0]].map(([t, y, z]) =>
+    [t, {...LEGS_STAND, hips: [5, 0, 0], waist: [6, 0, 0], chest: [8, 0, 0], neck: [8, y * .4, 0], head: [15, y, z], shoulderR: [-30, -32, -6, 'ZXY'], elbowR: [-112], shoulderL: [-8, -62, 12, 'ZXY'], elbowL: [-95]}])}
 ];
 /* A curve through key values that never stops between them: at each key the slope comes from its neighbours (the
    shape-keeping Hermite of Fritsch and Carlson), flat only where a move turns back or holds, so nothing overshoots a

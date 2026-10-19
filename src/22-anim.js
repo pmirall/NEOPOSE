@@ -181,24 +181,76 @@ function visemes(text) {
 }
 // how long a line takes to say: about 14 characters a second, with a short floor
 const lineLen = text => Math.max(Math.round(ANIM.fps * .8), Math.round(ANIM.fps * (text.trim().length / 14 + .25)));
-function mouthAt(line, f) {
-  const u = (f - line.f) / line.len; if (u < 0 || u >= 1 || !line.text.trim()) return null;
+/* The mouth on a smooth curve: the jaw and the lips go from vowel to vowel and only the sounds that need the lips have
+   shapes of their own (m, b, p close them, f and v bite the lip, o and u round them); every other consonant is carried
+   by the vowels around it (coarticulation), and the result is softened over about a twentieth of a second, so the mouth
+   never chatters from letter to letter. Words stressed by their accent or their length open it more. */
+const MOUTH_KEEP = new Set(['A', 'G', 'F', 'E', 'D', 'C', 'X']);
+const mouthCache = new Map();
+function mouthTargets(text) {
+  if (mouthCache.has(text)) return mouthCache.get(text);
+  const V = visemes(text), T = [];
+  for (const x of V) {
+    const c = (x.a + x.b) / 2;
+    if (MOUTH_KEEP.has(x.v)) T.push({u: c, v: x.v, k: x.v === 'X' ? 0 : 1});
+    else if (x.v === 'B' && x.b - x.a > .04) T.push({u: c, v: 'B', k: .8});  // an i or a long consonant cluster: a narrow, spread mouth
+  }
+  if (!T.length || T[0].u > .02) T.unshift({u: 0, v: 'X', k: 0});
+  T.push({u: 1, v: 'X', k: 0});
+  mouthCache.set(text, T); return T;
+}
+function mouthIn(text, u, amp = 1) {
+  if (u < 0 || u > 1) return null;
+  const T = mouthTargets(text); let i = 0; while (i < T.length - 2 && T[i + 1].u <= u) i++;
+  const a = T[i], b = T[i + 1], s = b.u > a.u ? clamp((u - a.u) / (b.u - a.u), 0, 1) : 0, k = s * s * (3 - 2 * s), A = VIS[a.v], B = VIS[b.v];
+  return {w: A[0].map((x, n) => (x + (B[0][n] - x) * k) * amp), jaw: (A[1] + (B[1] - A[1]) * k) * amp};
+}
+const stressed = t => /[áéíóúàèòâêôãõäöü]/i.test(t) || t.replace(/[^\p{L}]/gu, '').length >= 6;
+function mouthRaw(line, u) {
+  if (u < 0 || u >= 1 || !line.text.trim()) return null;
   // with the voice's timing (32-voice): each word's shapes inside the time that word takes, the mouth at rest between them
-  if (line.w) { const w = line.w.find(x => u >= x[2] && u < x[3]); return w ? mouthIn(line.text.slice(w[0], w[1]), (u - w[2]) / Math.max(1e-6, w[3] - w[2])) : null; }
+  if (line.w) { const w = line.w.find(x => u >= x[2] && u < x[3]); if (!w) return null; const t = line.text.slice(w[0], w[1]); return mouthIn(t, (u - w[2]) / Math.max(1e-6, w[3] - w[2]), stressed(t) ? 1.08 : .88); }
   return mouthIn(line.text, u);
 }
-function mouthIn(text, u) {
-  const V = visemes(text), i = V.findIndex(x => u < x.b); if (i < 0) return null;
-  const cur = V[i], nxt = V[i + 1], span = cur.b - cur.a, blend = nxt ? clamp((u - (cur.b - span * .35)) / (span * .35), 0, 1) : 0;
-  const A = VIS[cur.v], B = nxt ? VIS[nxt.v] : A;
-  return {w: A[0].map((x, k) => x + (B[0][k] - x) * blend), jaw: A[1] + (B[1] - A[1]) * blend};
+function mouthAt(line, f) {
+  const dur = line.len / (ANIM.fps || 12), d = .045 / Math.max(.2, dur), u = (f - line.f) / line.len;
+  if (u < -d || u >= 1 + d) return null;
+  let w = null, jaw = 0;
+  for (const [o, k] of [[-d, .25], [0, .5], [d, .25]]) { const m = mouthRaw(line, u + o); if (!m) continue; if (!w) w = m.w.map(() => 0); m.w.forEach((x, n) => w[n] += x * k); jaw += m.jaw * k; }
+  return w ? {w, jaw} : null;
+}
+/* The rest of the face: everyone blinks every few seconds (each at their own rhythm, a little more often while they
+   talk), and the brows lift with a question, with a stressed word or as a line starts with feeling; a worried or sad
+   face lifts their inner ends. Worked out from the frame alone, like the mouth. */
+const hash01 = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function blinkAt(ci, t, talking) {
+  let b = .6 + hash01(ci * 7.3) * 1.8, k = 0;
+  while (b < t + .3 && k < 4000) {
+    if (t >= b && t < b + .26) { const s = (t - b) / .26; return s < .28 ? Math.pow(s / .28, 1.5) : s < .5 ? 1 : Math.pow(1 - (s - .5) / .5, 2); }  // down fast, shut a moment, up slower
+    b += (talking ? 2 : 2.8) + hash01(ci * 13.1 + k * 1.7) * 3.4; k++;
+  }
+  return 0;
+}
+function browsAt(line, u) {
+  if (u < 0 || u > 1) return [0, 0];
+  const dur = line.len / (ANIM.fps || 12), t = u * dur, pulse = (t0, a) => { const x = (t - t0) / .45; return x < 0 || x > 1 ? 0 : a * Math.sin(Math.PI * Math.pow(x, .6)); };
+  let up = pulse(0, line.inten > .5 ? .55 : .25), inner = 0;
+  if (/\?\s*$/.test(line.text)) up = Math.max(up, .55 * smoothR(.55, .85, u) * (1 - smoothR(.95, 1, u)));
+  if (line.w) for (const w of line.w) { const tx = line.text.slice(w[0], w[1]); if (stressed(tx) && /[!¡]/.test(line.text) || tx.length >= 9) up = Math.max(up, pulse(w[2] * dur, .3)); }
+  if (['triste', 'miedo', 'preocupado'].includes(line.emo)) inner = .5;
+  return [up, inner];
 }
 function applyMouths(f) {
-  const s = shot();
+  const s = shot(), nv = mouthCount(), t = f / (ANIM.fps || 12);
   chars.forEach((m, i) => {
-    let mo = null; for (const l of s.lines) if (l.c === i) { mo = mouthAt(l, f); if (mo) break; }
+    let mo = null, br = [0, 0], talk = false; for (const l of s.lines) if (l.c === i) { const lm = mouthAt(l, f); if (lm) { mo = lm; talk = true; br = browsAt(l, (f - l.f) / l.len); break; } }
     const human = m.body.species === 'humano' && !m.headSwap && !m.avatar, inf = m.body3.morphTargetInfluences;
-    if (inf) for (let k = 0; k < mouthCount() && k < inf.length; k++) { const v = mo && human ? mo.w[k] : 0; inf[k] = v; for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences[k] = v; }
+    if (inf && nv) {
+      const bl = human ? blinkAt(i, t + (s.t0 || 0), talk) : 0, W = new Array(nv).fill(0);
+      if (mo && human) mo.w.forEach((v, k) => W[k] = v);
+      if (nv > 7) { W[7] = W[8] = bl; W[9] = W[10] = br[0]; W[11] = W[12] = br[1]; }
+      for (let k = 0; k < nv && k < inf.length; k++) { inf[k] = W[k]; for (const h of m.hulls) if (h.morphTargetInfluences) h.morphTargetInfluences[k] = W[k]; }
+    }
     const jaw = mo ? mo.jaw * (human ? .55 : 1.4) * DEG : 0, q = m.joints.jaw.quaternion;  // take the last shape off, put this one on
     if (m._visJaw) q.multiply(new Q().setFromAxisAngle(JAW_AXIS, -m._visJaw));
     if (jaw) q.multiply(new Q().setFromAxisAngle(JAW_AXIS, jaw)); m._visJaw = jaw;

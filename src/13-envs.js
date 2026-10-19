@@ -181,6 +181,80 @@ Object.assign(SCENES, {
         L(e, x, 2.92, z, {to: [x, 0, z], ang: 75, pen: 1, i: .9, d: 7, c: 0xf4f8ff, sh: x > 2});
       }
     }},
+  // a science lab: benches with black tops along the wall and in the middle, glassware with coloured liquids, racks of
+  // test tubes, a microscope, screens, steel shelving and fluorescent light
+  laboratorio: {label: 'Laboratorio', group: 'in', amb: 'interior', assets: ['Television_01', 'classic_laptop', 'steel_frame_shelves_02', 'cardboard_box_01', 'binder_notebook', 'metal_stool_01', 'mounted_fluorescent_lights', 'wall_clock', 'potted_plant_04', 'industrial_storage_cart', 'office_notepads'],
+    build(e) {
+      const r = room(e, {w: 9.5, d: 8, h: 3, floor: 'floor_tiles_06', ftint: 0xf4f6f6, ft: .7, wall: 'painted_plaster_wall', wtint: 0xf1f4f4, wt: 2.6, window: [-.6, 3.2, 1, 1.4]});
+      const glass = M(0xd9e7ee, {r: .08, t: .35}), liq = [M(0x3f8fd0, {r: .3, t: .75}), M(0x5fbf6a, {r: .3, t: .75}), M(0xe0a43a, {r: .3, t: .75}), M(0xc85a8a, {r: .3, t: .75})];
+      const cyl = (mat, rad, h, x, y, z) => { const m = mk(G.cyl(16), mat, x, y + h / 2, z, rad, h, rad); m.userData.noOutline = rad < .03; e.add(m); return m; };
+      const bench = (x, z, w, ry = 0) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; e.add(g); box(g, EM.white, w, .86, .72, 0, 0, 0); box(g, EM.black, w + .04, .05, .76, 0, .86, 0); box(g, EM.metal, w - .1, .04, .02, 0, .5, .37); return g; };
+      const glassware = (g, x, z, seed) => {
+        const at = (dx, dz) => new V3(dx, 0, dz).applyAxisAngle(new V3(0, 1, 0), g.rotation.y).add(g.position);
+        // round flasks: a bulb of liquid in a glass bulb, a neck
+        for (let i = 0; i < 3; i++) { const p = at(x + i * .16, z + (i % 2) * .08), y = .91, b = mk(G.sph(), glass, p.x, y + .07, p.z, .07, .07, .07); e.add(b); const l = mk(G.sph(), liq[(i + seed) % 4], p.x, y + .055, p.z, .055, .045, .055); e.add(l); cyl(glass, .016, .12, p.x, y + .12, p.z); }
+        // a rack of test tubes
+        const q = at(x + .62, z), rack = box(e, EM.wood, .3, .05, .09, q.x, .95, q.z, g.rotation.y); rack.castShadow = false;
+        for (let i = 0; i < 6; i++) { const t = at(x + .5 + i * .05, z), c = liq[(i + seed) % 4]; cyl(glass, .011, .15, t.x, .93, t.z); cyl(c, .009, .05 + (i % 3) * .02, t.x, .935, t.z); }
+        // a beaker
+        const k = at(x - .3, z + .05); cyl(glass, .05, .13, k.x, .91, k.z); cyl(liq[(seed + 1) % 4], .046, .06, k.x, .915, k.z);
+      };
+      const microscope = (x, z, ry) => {
+        const g = new THREE.Group(); g.position.set(x, .91, z); g.rotation.y = ry; e.add(g);
+        box(g, EM.black, .16, .03, .22, 0, 0, 0); box(g, EM.white, .05, .2, .05, 0, .03, -.08); box(g, EM.black, .12, .015, .1, 0, .1, .01);
+        const t = mk(G.cyl(16), EM.white, 0, .3, -.02, .028, .2, .028); t.rotation.x = -.35; g.add(t); const o = mk(G.cyl(12), EM.black, 0, .42, -.06, .018, .07, .018); o.rotation.x = -.35; g.add(o);
+      };
+      // along the back wall, and an island the cast can stand round
+      const b1 = bench(-.6, r.back + .42, 6.4), b2 = bench(.2, -.6, 2.6);
+      glassware(b1, -2.6, .05, 0); glassware(b1, .6, .05, 2); glassware(b2, -1.1, -.1, 1);
+      microscope(-.2 - .9, r.back + .45, .2); microscope(.9, -.62, -.3);
+      A(e, 'Television_01', 2.15, r.back + .38, 0, {y: .91, s: .8}); A(e, 'classic_laptop', -1.9, r.back + .45, .1, {y: .91, node: ['classic_laptop', 'classic_laptop_screen'], s: .9});
+      A(e, 'Television_01', 3.95, -1.6, -Math.PI / 2, {y: 1.05, s: .7}); box(e, EM.metal, .5, 1.05, .5, 3.95, 0, -1.6);
+      A(e, 'office_notepads', 1, -.55, .3, {y: .91, node: 'office_notepads_a4_stack'});
+      A(e, 'steel_frame_shelves_02', -4.25, -1.2, Math.PI / 2); A(e, 'cardboard_box_01', -4.3, -1.6, Math.PI / 2, {y: 1.2, s: .7}); A(e, 'binder_notebook', -4.3, -.9, Math.PI / 2, {y: .45, node: 'binder_notebook_closed'});
+      A(e, 'industrial_storage_cart', 3.6, .9, -Math.PI / 2, {s: .9});
+      for (const x of [-1.8, -.2, 1.6]) A(e, 'metal_stool_01', x, r.back + 1.15, 0);
+      A(e, 'potted_plant_04', 4.3, r.back + .5, 0, {s: 1.8}); A(e, 'wall_clock', 1, r.back + .03, 0, {y: 2.4, node: /wall_clock/});
+      for (const [x, z] of [[-2.2, -2.2], [1.8, -2.2], [-.2, .6]]) { A(e, 'mounted_fluorescent_lights', x, z, 0, {top: 3, node: 'mounted_fluorescent_lights_a', s: 1.6}); L(e, x, 2.92, z, {to: [x, 0, z], ang: 75, pen: 1, i: 1, d: 7, c: 0xf2f8ff, sh: x > 1}); }
+    }},
+  // a painter's studio: a window, an easel with a landscape on it, a little table with the palette and jars of brushes,
+  // paintings on the walls and leaning against them
+  atelier: {label: 'Estudio de pintura', group: 'in', amb: 'interior', assets: ['WoodenTable_02', 'wooden_stool_01', 'ArmChair_01', 'potted_plant_02', 'standing_picture_frame_01', 'hanging_picture_frame_02', 'fancy_picture_frame_01', 'jug_01', 'ceramic_vase_02', 'wooden_crate_01', 'desk_lamp_arm_01'],
+    build(e) {
+      const r = room(e, {w: 9, d: 7.5, h: 3.2, floor: 'weathered_planks', ftint: 0xcdb898, ft: 1.4, wall: 'plastered_wall', wtint: 0xf0e6d6, wt: 2.6, window: [-.5, 3.6, .7, 1.9]});
+      // a happy little landscape, painted when the set is built: sky, snowy mountains, a lake and some trees
+      const paint = (w, h, seed) => {
+        const c = document.createElement('canvas'); c.width = 512; c.height = Math.round(512 * h / w); const x = c.getContext('2d'), H = c.height, rnd = (i => () => (i = (i * 16807) % 2147483647) / 2147483647)(seed * 7919 + 1);
+        const sky = x.createLinearGradient(0, 0, 0, H * .6); sky.addColorStop(0, '#f4c98a'); sky.addColorStop(.5, '#b8d4e8'); sky.addColorStop(1, '#6f9cc4'); x.fillStyle = sky; x.fillRect(0, 0, 512, H);
+        for (const [col, base, amp] of [['#5d6f8f', .58, .32], ['#3f5571', .66, .22]]) { x.fillStyle = col; x.beginPath(); x.moveTo(0, H); let px = 0; while (px <= 512) { x.lineTo(px, H * (base - amp * rnd())); px += 40 + rnd() * 60; } x.lineTo(512, H); x.fill(); }
+        x.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 4; i++) { const cx = 60 + rnd() * 390, cy = H * (.28 + rnd() * .12); x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx - 26, cy + 22); x.lineTo(cx + 26, cy + 22); x.fill(); }
+        x.fillStyle = '#3b6b4a'; x.fillRect(0, H * .68, 512, H * .32); x.fillStyle = '#5b8fb0'; x.fillRect(0, H * .76, 512, H * .1);
+        for (let i = 0; i < 14; i++) { const tx = rnd() * 512, ty = H * (.68 + rnd() * .3), s = 18 + rnd() * 26; x.fillStyle = i % 3 ? '#1f4630' : '#2c5a3a'; x.beginPath(); x.moveTo(tx, ty - s * 2.2); x.lineTo(tx - s * .6, ty); x.lineTo(tx + s * .6, ty); x.fill(); }
+        const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return patchEnv(new THREE.MeshStandardMaterial({map: t, roughness: .8}));
+      };
+      // the easel: three legs, a ledge, the canvas
+      const easel = (x, z, ry) => {
+        const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; e.add(g);
+        for (const [lx, lz, rx, rz] of [[-.32, .1, -.1, .12], [.32, .1, -.1, -.12], [0, -.38, .38, 0]]) { const l = mk(G.box(), EM.wood, lx, .85, lz, .04, 1.75, .04); l.rotation.set(rx, 0, rz); g.add(l); }
+        box(g, EM.wood, .8, .04, .09, 0, .82, .1); box(g, EM.wood, .06, .05, .06, 0, 1.6, .02);
+        const cv = mk(G.box(), paint(.9, .66, 3), 0, 1.2, .11, .9, .66, .025); cv.rotation.x = -.1; g.add(cv);
+        return g;
+      };
+      easel(-.4, -1.3, .35);
+      const tb = A(e, 'WoodenTable_02', -1.7, -.6, .3, {h: .74}), ty = topOf(tb, -1.7, -.6) || .74;
+      box(e, EM.wood, .32, .01, .22, -1.7, ty, -.6, .2);
+      for (const [k, c] of [[0, 0xe9e2d2], [1, 0x2b5aa8], [2, 0xd9a521], [3, 0x2d6b3f], [4, 0x9a3b2a], [5, 0x1f1d1b]]) { const d = mk(G.sph(), M(c, {r: .4}), -1.82 + (k % 3) * .1, ty + .015, -.66 + Math.floor(k / 3) * .1, .025, .008, .025); e.add(d); }
+      A(e, 'jug_01', -1.5, -.5, 0, {y: ty, s: .7}); A(e, 'ceramic_vase_02', -1.95, -.45, 0, {y: ty, s: .6});
+      A(e, 'wooden_stool_01', .3, -.8, .4);
+      // paintings: hung, and leaning against the walls
+      const hang = (x, y, z, w, h, ry, seed) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; e.add(g); box(g, EM.dark, w + .08, h + .08, .04, 0, -h / 2 - .04, 0); const p = mk(G.box(), paint(w, h, seed), 0, 0, .025, w, h, .01); g.add(p); };
+      hang(-1.6, 1.95, r.back + .05, 1.1, .75, 0, 5); hang(.8, 1.85, r.back + .05, .7, .9, 0, 9); hang(2.3, 2.05, r.back + .05, .9, .6, 0, 13);
+      hang(4.42, 1.8, -.5, 1, .7, -Math.PI / 2, 17);
+      for (const [x, z, ry, seed] of [[3.6, r.back + .35, -.2, 21], [3.9, r.back + .7, -.5, 23]]) { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.set(0, ry, 0); e.add(g); const p = mk(G.box(), paint(.8, .6, seed), 0, .32, 0, .8, .6, .03); p.rotation.x = -.15; g.add(p); }
+      A(e, 'ArmChair_01', 2.8, .6, -2.2); A(e, 'potted_plant_02', -3.8, r.back + .5, 0, {s: 1.4}); A(e, 'wooden_crate_01', 3.9, 1.6, .3, {s: .8});
+      L(e, -3.5, 2.6, -.5, {to: [-.4, 1, -1.3], ang: 55, pen: .9, i: 1.1, d: 8, c: 0xfff4e2, sh: true});
+      L(e, 1.5, 2.9, .5, {i: .6, d: 8, c: 0xffe2bc});
+    }},
   aula: {label: 'Aula', group: 'in', amb: 'dia', assets: ['SchoolDesk_01', 'SchoolChair_01', 'standing_chalkboard_01', 'wall_clock', 'mounted_fluorescent_lights', 'metal_office_desk', 'binder_notebook', 'wooden_bookshelf_worn', 'potted_plant_04'],
     build(e) {
       const r = room(e, {w: 10, d: 9, h: 3.1, floor: 'laminate_floor_02', ftint: 0xcfc3ad, ft: 1.4, wall: 'painted_plaster_wall', wtint: 0xe8e4c8, wt: 2.6, window: [-.6, 5, 1, 1.5], z0: 0});

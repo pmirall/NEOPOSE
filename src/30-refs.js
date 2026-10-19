@@ -42,6 +42,10 @@ const REF_WORDS = {correr: 'running', corriendo: 'running', andar: 'walking', ca
   guerrero: 'warrior', escultura: 'sculpture', estatua: 'statue', figura: 'figure', retrato: 'portrait', manos: 'hands', mano: 'hand', cara: 'face', pie: 'standing', depie: 'standing',
   yoga: 'yoga', gimnasia: 'gymnastics', futbol: 'football', baloncesto: 'basketball', tenis: 'tennis', nadar: 'swimming', ciclista: 'cyclist', escalar: 'climbing', patinar: 'skating',
   bosque: 'forest', ciudad: 'city', calle: 'street', playa: 'beach', montana: 'mountain', interior: 'interior', cocina: 'kitchen', salon: 'living room', dormitorio: 'bedroom',
+  laboratorio: 'laboratory', hospital: 'hospital', museo: 'museum', estacion: 'station', aeropuerto: 'airport', tienda: 'shop', mercado: 'market', puerto: 'harbour', granja: 'farm',
+  cueva: 'cave', lago: 'lake', rio: 'river', jardin: 'garden', carretera: 'road', puente: 'bridge', fabrica: 'factory', almacen: 'warehouse', garaje: 'garage', gimnasio: 'gym',
+  piscina: 'pool', estadio: 'stadium', teatro: 'theatre', cine: 'cinema', restaurante: 'restaurant', escuela: 'school', universidad: 'university', biblioteca: 'library',
+  pintura: 'art', galeria: 'gallery', taller: 'workshop', sotano: 'basement', atico: 'attic', tejado: 'roof', pasillo: 'hallway', bano: 'bathroom', terraza: 'terrace', patio: 'courtyard',
   noche: 'night', atardecer: 'sunset', nieve: 'snow', desierto: 'desert', iglesia: 'church', castillo: 'castle', parque: 'park', oficina: 'office', estudio: 'studio', campo: 'field',
   courir: 'running', marcher: 'walking', danse: 'dance', foret: 'forest', ville: 'city', plage: 'beach', laufen: 'running', tanzen: 'dancing', wald: 'forest', stadt: 'city',
   correre: 'running', ballare: 'dancing', bosco: 'forest', citta: 'city', spiaggia: 'beach', correndo: 'running', floresta: 'forest', cidade: 'city', praia: 'beach', corrent: 'running', ballar: 'dancing'};

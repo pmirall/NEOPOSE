@@ -812,8 +812,21 @@ const SUITES = {
         for (let i = 1; i < v.length - 1; i++) if (Math.max(v[i - 1], v[i + 1]) < v[i] * .3) w = Math.max(w, v[i]); }
       return w; });
     ok(jump < 20, `the film flows: no arm or head jumps in a frame between still ones (${Math.round(jump)}°)`);
+    // talking like people: the turn to whoever speaks is shared down the spine (no owl necks), everyone blinks, the mouth
+    // goes from vowel to vowel instead of chattering letter by letter
+    const talk = await A(() => { const C = window.__cdp, A = C.ANIM, Q = THREE.Quaternion, ys = []; let n = 0, d = 0;
+      for (const s of A.shots) for (const K of s.keys) for (const k of K) ys.push(Math.abs(new THREE.Euler().setFromQuaternion(new Q().fromArray(k.pose.q.neck).multiply(new Q().fromArray(k.pose.q.head)), 'YXZ').y) * 180 / Math.PI);
+      ys.sort((a, b) => a - b); const neck = ys[Math.floor(ys.length * .9)];  // (most of the time: a look around turns the head further for a moment)
+      for (const s of A.shots) for (const l of s.lines) { let p = null; for (let f = l.f; f < l.f + l.len; f++) { const m = C.mouthAt(l, f), j = m ? m.jaw : 0; if (p != null) { d += Math.abs(j - p); n++; } p = j; } }
+      let blinks = 0; for (let t = 0; t < 20; t += 1 / 24) if (C.blinkAt(0, t, false) > .99) blinks++;
+      return {neck, step: d / Math.max(1, n), blinks}; });
+    ok(talk.neck < 35 && talk.step < 4.5 && talk.blinks >= 3, `talking: the head is turned ${Math.round(talk.neck)}° or less on the chest 90% of the time, the jaw moves ${talk.step.toFixed(1)}° a frame, ${talk.blinks} frames of closed eyes in 20 s`);
     const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
     ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
+    // the set and the look come from what the script says
+    const lab = await A(async () => { const S = window.__cdp.script; const r = await S.scriptToFilm('INT. LABORATORIO - NOCHE\n\nUn laboratorio lleno de tubos de ensayo y pantallas. La científica ANA lleva una bata blanca, pelirroja y con coleta.\n\nANA\nYa casi está.\n\nAna observa una muestra.\n', {cams: false, online: false});
+      const A = window.__cdp.ANIM, c = A.shots[0].scene.chars[0]; return {warn: r.warn, env: A.shots[0].scene.extras.env, outfit: c.outfit.map(g => g.id), hair: c.body.hair, col: c.body.hairCol}; });
+    ok(lab.env === 'laboratorio' && lab.outfit.includes('c1412') && lab.hair === 'h-ponytail01' && lab.col === '#8a3a1c' && !lab.warn.length, `a lab scene: the lab set, Ana in a lab coat with a red ponytail, nothing misunderstood (${lab.env}, ${lab.outfit.join('+')}, ${lab.hair} ${lab.col}${lab.warn.length ? ', ' + lab.warn.join(' | ') : ''})`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

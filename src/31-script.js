@@ -29,6 +29,9 @@ const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 /* ---------- places and times ---------- */
 const SC_PLACES = [
+  // (before the plain studio and workshop: «ESTUDIO DE PINTURA» is the painter's)
+  ['laboratorio', 'laboratorio|laboratory|lab|laboratoire|laboratori|labor|laboratorium|clinica|clinic|hospital|consulta medica|quirofano|farmacia|pharmacy|clinique|hopital|krankenhaus|ospedale|investigacion|research center|centro de investigacion'],
+  ['atelier', 'estudio de pintura|estudio de arte|estudio del pintor|taller de pintura|taller del pintor|atelier|art studio|painting studio|painters studio|estudi de pintura|galeria de arte|art gallery|studio de peinture|atelie|atelier de pintura|malerstudio|atelier di pittura'],
   ['cocina', 'cocina|kitchen|comedor|dining|cuina|cuisine|cozinha|kuche|cucina|menjador|salle a manger'], ['dormitorio', 'dormitorio|habitacion|cuarto|bedroom|alcoba|dormitori|chambre|quarto|schlafzimmer|camera da letto'],
   ['habitacion', 'salon|living|sala de estar|casa|house|home|piso|apartamento|apartment|flat|hogar|sala|lounge|menjador|maison|casa|wohnzimmer|soggiorno'], ['oficina', 'oficina|office|despacho|trabajo|empresa|bureau|escritorio|ufficio|buro|oficina'],
   ['aula', 'aula|clase|classroom|colegio|escuela|instituto|school|universidad|universitat|ecole|salle de classe|escola|schule|scuola'], ['biblioteca', 'biblioteca|library|libreria|bibliotheque|bibliothek'],
@@ -94,11 +97,44 @@ function castOf(P, text) {
     if (mine) { out.push({key, name: n.name, body: {...BODY_BASE, ...JSON.parse(JSON.stringify(mine.body)), name: n.name}, preset: mine.preset || null, outfit: mine.outfit || [], mine: true}); continue; }
     const g = genderOf(n.name, text) || (alt++ % 2 ? 'mujer' : 'hombre'), age = ageOf(n.name), sp = speciesOf(n.name, text);
     const body = {...bodyOf(g), name: n.name}; if (age) body.age = age; if (sp) body.species = sp;
-    out.push({key, name: n.name, body, preset: g, outfit: []});
+    const look = lookOf(n.name, P.scenes.flatMap(s => s.beats.filter(b => b.k === 'act').map(b => b.text)).join('\n'), g, body, out.length);  // (what the action says about them, not what anyone says)
+    if (look.hair !== undefined && (!sp || sp === 'humano')) { body.hair = look.hair; body.hairCol = look.col; }
+    out.push({key, name: n.name, body, preset: g, outfit: look.outfit});
   }
   return out;
 }
 
+/* ---------- how the cast looks: clothes and hair from what the script says about them ----------
+   «El científico DANIEL lleva una bata blanca» puts Daniel in a lab coat; «ANA, pelirroja, con coleta» gives Ana red
+   hair in a ponytail. Whatever is not said is filled in so nobody is a bare mannequin: everyday clothes and a haircut,
+   different for each one, grey with age. */
+const SC_DRESS = [
+  ['medico', 'bata|bata blanca|bata de laboratorio|cientific*|investigador*|quimic*|biolog*|doctor|doctora|medic*|enfermer*|farmaceutic*|cirujan*|lab coat|labcoat|scientist|chemist|researcher|nurse|physician|surgeon|blouse blanche|scientifique|bata|metge|cientista|arzt|arztin|wissenschaftler*|camice|scienziat*'],
+  ['detective', 'detective|gabardina|inspector*|comisari*|trench|trenchcoat|sherlock'],
+  ['traje', 'traje|corbata|ejecutiv*|abogad*|empresari*|banquer*|politic*|director*|jefe|jefa|suit|tie|lawyer|businessman|businesswoman|executive|banker|boss|costume|avocat|anzug|vestito'],
+  ['trabajo', 'mecanic*|obrer*|fontaner*|albanil*|peto|mono de trabajo|granjer*|mechanic|plumber|overalls|worker|builder|farmer|mecanicien|mechaniker'],
+  ['deporte', 'chandal|deportiv*|atleta|corredor*|entrenador*|tracksuit|athlete|runner|coach|jogger'],
+  ['militar', 'soldad*|militar|sargento|capitan|soldier|army|sergeant|marine|soldat'],
+  ['pijama', 'pijama|pyjama*|pajama*|camison'], ['gala', 'vestido de noche|vestido largo|de gala|gown|evening dress'], ['verano', 'vestido|dress|robe|kleid'],
+  ['caballero', 'caballero|armadura|templari*|knight|armor|armour|chevalier|ritter'], ['vikingo', 'vikingo|viking*|wikinger'], ['monje', 'monje|fraile|monk|friar|moine|monch'],
+  ['kimono', 'kimono|samurai|geisha'], ['espacio', 'astronaut*|traje espacial|spacesuit|cosmonaut*'], ['escolar', 'uniforme escolar|colegial*|school uniform|schoolgirl|schoolboy'],
+  ['jersey', 'jersey|sueter|sweater|pullover|pintor|pintora|pintando|caballete|pincel|artista|painter|painting|easel|artist|peintre|maler*|pittor*|profesor*|teacher']
+];
+const SC_HAIRDO = [['', 'calv*|rapad*|bald|shaved head|chauve|glatze'], ['h-afro01', 'afro|pelo afro|melena afro|cabello afro'], ['h-ponytail01', 'coleta|ponytail|queue de cheval'], ['h-braid01', 'trenza|braid*|tresse'],
+  ['h-elvs_inverted_curly_bob', 'rizad*|rizos|curly|curls|boucle*'], ['h-long01', 'melena|pelo largo|cabello largo|long hair|cheveux longs'], ['h-rehmanpolanski_hair_bun_brown', 'mono|mono alto|bun|chignon'], ['h-elvs_maxwell_hair', 'tupe|pompadour|quiff']];
+const SC_HAIRCOL = [['#c7a066', 'rubi*|blond*|blonde'], ['#8a3a1c', 'pelirroj*|redhead*|red hair|red-haired|ginger|roux|rousse'], ['#8f8a84', 'canos*|gris|grey hair|gray hair|grey-haired|gray-haired|silver hair'], ['#e6e3dd', 'pelo blanco|white hair|white-haired|cheveux blancs'], ['#1b1512', 'moren*|pelo negro|dark hair|black hair|brune|brun']];
+const SC_DRESS_PATS = SC_DRESS.map(([k, w]) => [k, scPats(w)]), SC_HAIRDO_PATS = SC_HAIRDO.map(([k, w]) => [k, scPats(w)]), SC_HAIRCOL_PATS = SC_HAIRCOL.map(([k, w]) => [k, scPats(w)]);
+function lookOf(name, text, g, body, i) {
+  const nm = scWords(name)[0], said = text.split(/(?<=[.!?])\s+|\n+/).filter(t => scWords(t).includes(nm));  // the sentences about them
+  const w = scWords(said.join(' ')), find = P => { for (const [k, pats] of P) if (scFind(w, pats)) return k; return null; };
+  const fem = g === 'mujer', old = (body.age ?? 1) > 1.55, kid = (body.age ?? 1) < .5, h = Math.abs(Math.sin((nm.length + i * 7.1) * 12.9898) * 43758.5453) % 1;
+  let dress = find(SC_DRESS_PATS); if (dress === 'traje' && fem) dress = 'oficina';
+  if (!dress) dress = kid ? 'camiseta' : fem ? ['mujer', 'mujer2', 'falda', 'verano'][Math.floor(h * 4)] : ['casual', 'casual2', 'camiseta', 'jersey'][Math.floor(h * 4)];
+  const hairdo = find(SC_HAIRDO_PATS), col = find(SC_HAIRCOL_PATS);
+  const hair = hairdo ?? (fem ? ['h-bob01', 'h-long01', 'h-ponytail01', 'h-elvs_daisy_hair', 'h-culturalibre_hair_06', 'h-o4saken_long01'] : ['h-short01', 'h-short02', 'h-short03', 'h-short04', 'h-culturalibre_hair_05', 'h-elvs_grump_hair'])[Math.floor(h * 6)];
+  const hcol = col || (old ? '#8f8a84' : HAIR_COLORS[Math.floor(h * 5)][0]);
+  return {outfit: (OUTFITS[dress] ? OUTFITS[dress][1] : []).map(x => ({...x})), hair: hair || '', col: hcol};
+}
 // a furry cast: the animal in the name (ZORRO, Mr. Wolf) or said right after it (REX, un lobo gris; Mia (gata))
 function speciesOf(name, text) {
   const words = t => scNorm(t).split(/[^a-z\u00df]+/).filter(Boolean), find = ws => { for (const w of ws) for (const [sp, list] of SC_SPECIES) if (list.includes(w)) return sp; return null; };
@@ -125,6 +161,7 @@ function pronounTo(p, cast, ctx, not, object) {
   for (const c of [ctx.lastOther, ctx.last]) if (c != null && cand.includes(c)) return c;
   return cand[0];
 }
+const SC_LINK = 'y|e|and|then|luego|despues|entonces|et|puis|und|dann|poi|i|tambien|also'.split('|');
 const SC_ALL = 'todos|todas|ambos|ambas|los dos|las dos|everyone|everybody|both|all|tous|toutes|tots|totes|todos|alle|beide|tutti|entrambi'.split('|');
 const SC_TOGETHER = 'mientras|a la vez|al mismo tiempo|while|meanwhile|at the same time|pendant que|alors que|enquanto|wahrend|mentre'.split('|');
 // a sentence into clauses: "se levanta y sale", "he stands, then leaves"
@@ -146,7 +183,7 @@ function readAction(text, cast, lang, ctx) {
     if (!verbs.length && kept.length) continue;  // "Ana no se sienta": nothing happens, and nothing to warn about
     // running with a way in or out of the scene: a fast entrance or exit ("sale corriendo", "runs out")
     for (const m of verbs.filter(v => ['enter', 'exit', 'approach'].includes(v.id))) { const r = verbs.find(v => v.id === 'run' && Math.abs(v.i - m.i) <= 3); if (r) { m.fast = true; verbs.splice(verbs.indexOf(r), 1); } }
-    if (!verbs.length) { const emo = emotionOf(cl); if (emo && (who.length || ctx.last != null)) out.push({who: who.length ? who.map(o => o.c) : [ctx.last], id: 'emo', e: emo, text: cl}); else if (!shotDirection(cl) && w.length > 2) out.push({unknown: cl}); continue; }
+    if (!verbs.length) { const emo = emotionOf(cl); if (emo && (who.length || ctx.last != null)) out.push({who: who.length ? who.map(o => o.c) : [ctx.last], id: 'emo', e: emo, text: cl}); else if (!shotDirection(cl) && w.length > 2 && (who.length || w.some(x => SC_PRON.includes(x)))) out.push({unknown: cl}); continue; }  // (a sentence about nobody describes the place)
     let prevSubj = null, prevObj = null;
     verbs.forEach((v, vi) => {
       const from = vi ? verbs[vi - 1].j + 1 : 0, to = vi < verbs.length - 1 ? verbs[vi + 1].i : w.length;
@@ -154,12 +191,16 @@ function readAction(text, cast, lang, ctx) {
       let subj = who.filter(o => o.at >= from && o.at < v.i && !(prevObj != null && o.c === prevObj && o.at <= from + 1)).map(o => o.c);  // "mira a Ana y sonríe": Ana is looked at, Luis smiles
       if (!subj.length) { const pr = w.slice(from, v.i).find(x => SC_PRON.includes(x)); if (pr) subj = [pronounTo(pr, cast, ctx, prevSubj)]; }
       if (!subj.length && all) subj = cast.map((_, i) => i).filter(i => ctx.present.includes(i));
+      // something appearing or going («en la pantalla aparece una imagen») is not somebody coming in or out
+      if (!subj.length && !prevSubj && ['enter', 'exit'].includes(v.id) && w.slice(from, v.i).filter(x => !SC_LINK.includes(x)).length >= 2) return;
       if (!subj.length) subj = prevSubj || (ctx.last != null ? [ctx.last] : [ctx.present[0] ?? 0]);
-      // the object: the first name after the verb (before the next one), or "him / her / lo / la / le"
+      // the object: the first name after the verb (before the next one), or "him / her / lo / la / le" (people only for
+      // what is done with things: «mira los resultados» looks at the results, not at «los»)
+      const spec = VERBS[v.id], things = ['study', 'paint', 'show', 'point', 'pick', 'touch', 'throw'].includes(v.id);
       let target = who.filter(o => o.at > v.j - (v.j - v.i) && o.at > v.i && o.at < to).map(o => o.c)[0];
-      if (target == null) { const ob = w.slice(v.i, Math.min(to, v.j + 4)).find(x => SC_OBJ.includes(x)); if (ob) target = pronounTo(ob, cast, ctx, subj, true); }
+      if (target == null && !things) { const ob = w.slice(v.i, Math.min(to, v.j + 4)).find(x => SC_OBJ.includes(x)); if (ob) target = pronounTo(ob, cast, ctx, subj, true); }
       if (target != null && subj.includes(target)) target = undefined;
-      const spec = VERBS[v.id];
+      const last = out[out.length - 1]; if (last && last.id === v.id && last.who.join() === subj.join() && last.text === cl) return;  // said twice in one go
       if (spec.t === 'none') { prevSubj = subj; return; }
       if (target == null && ['approach', 'face', 'group'].includes(spec.t)) { const others = ctx.present.filter(i => !subj.includes(i)); target = ctx.lastOther != null && !subj.includes(ctx.lastOther) && ctx.present.includes(ctx.lastOther) ? ctx.lastOther : others[0]; }
       out.push({who: subj, id: v.id, target, together: SC_TOGETHER.some(t => scNorm(cl).includes(t)), text: cl, fast: v.fast || /corr|run|rapid|deprisa|quick|fast/.test(scNorm(w.slice(from, to).join(' ')))});
@@ -230,7 +271,7 @@ function directScene(sc, idx, cast, lang, o) {
         let t1 = t0;
         if (a.id === 'emo') { s.expr.push({t: t0, e: a.e}); continue; }
         switch (spec.t) {
-          case 'enter': s.onAt = t0; t1 = walkTo(s, s.home.x, s.home.z, t0, a.fast ? 'run' : 'walk'); break;
+          case 'enter': s.onAt = t0; t1 = walkTo(s, s.home.x, s.home.z, t0, a.fast ? 'run' : 'walk'); if (Math.abs(wrapA(s.home.yaw - s.yaw)) > .2) { s.yaw = s.home.yaw; seg(s, t1, t1 + .55, 'turn', {yaw: s.yaw}); t1 += .55; } break;  // there, they turn to the others
           case 'exit': { const side = s.x <= 0 ? -1 : 1; t1 = walkTo(s, side * 5.5, s.z + .5, t0, a.fast ? 'run' : 'walk'); s.mode = 'off'; s.offAt = t1 - .6; break; }
           case 'approach': if (tgt) t1 = walkTo(s, tgt.x, tgt.z, t0, a.fast ? 'run' : 'walk', .85); else t1 = walkTo(s, s.x + Math.sin(s.yaw) * 2, s.z + Math.cos(s.yaw) * 2, t0); if (tgt) faceTo(tgt, s, t1 - .4); break;
           case 'run': case 'walk': case 'sneak': { const k = spec.t === 'run' && /huy|escap|flee|sprint|dash/.test(scNorm(a.text)) ? 'sprint' : spec.t;
@@ -296,6 +337,44 @@ async function timeLines(D, cast) {
   for (const l of D.lines) { const s = D.st[D.present.indexOf(l.c)]; if (s && l.to != null) for (const o of D.st) if (o.ci !== l.c && o.mode !== 'off') o.gaze.push({t0: l.t0 - .2, t1: l.t0 + l.dur + .3, c: l.c}); if (s && l.to != null) s.gaze.push({t0: l.t0, t1: l.t0 + l.dur, c: l.to}); }
 }
 
+/* ---------- talking and listening bodies ----------
+   People do not talk with a loop of gestures (McNeill's beats; Cassell's BEAT): the hands come up into the space in front
+   of the body and give a small stroke with the words that carry the stress, one hand or the other or both, a moment
+   later the head dips with it; a listener nods now and then as a sentence ends. All from the line's word timings. */
+function talkBeats(D, ci) {
+  const out = []; let last = -9;
+  for (const l of D.lines) {
+    if (l.c !== ci) continue;
+    const words = l.words && l.words.length ? l.words.map((w, i) => [l.text.slice(w[0], l.words[i + 1] ? l.words[i + 1][0] : l.text.length), w[2]])
+      : l.text.split(/\s+/).map((w, i, A) => [w, l.dur * A.slice(0, i).join(' ').length / Math.max(1, l.text.length)]);
+    words.forEach(([w, t], i) => {
+      const tb = l.t0 + t + .04, strong = /[!¡]/.test(w) || (i === 0 && l.inten > .45);
+      if (tb - last < .55 || !(strong || /[áéíóú]/i.test(w) || w.replace(/[^\p{L}]/gu, '').length >= 6)) return;
+      const h = Math.sin((tb + ci) * 91.7) * 43758.5; last = tb;
+      out.push({t: tb, a: (.55 + .45 * l.inten) * (strong ? 1.25 : 1), side: (h - Math.floor(h)) < .45 ? 'R' : (h - Math.floor(h)) < .8 ? 'L' : 'B'});
+    });
+  }
+  return out;
+}
+function listenNods(D, ci) {
+  const out = [];
+  for (const l of D.lines) if (l.c !== ci && l.to === ci && l.dur > 1.6) { const h = Math.sin((l.t0 + ci) * 57.3) * 43758.5; if (h - Math.floor(h) < .7) out.push(l.t0 + l.dur * (.55 + .3 * (h - Math.floor(h)))); }
+  return out;
+}
+const beatAt = x => x <= 0 ? 0 : x * Math.exp(1 - x);  // a stroke: up quickly, down slowly (x in units of its rise)
+function talkLayer(pose, w, beats, nods, t, sit) {
+  let bL = 0, bR = 0, nod = 0;
+  for (const b of beats) { const v = beatAt((t - b.t) / .17) * b.a; if (v < .005) continue; if (b.side !== 'L') bR += v * (b.side === 'B' ? .75 : 1); if (b.side !== 'R') bL += v * (b.side === 'B' ? .75 : 1); nod += v * .5; }
+  for (const n of nods) nod += beatAt((t - n) / .22) * .9;
+  if (w < .005 && bL + bR + nod < .005) return pose;
+  const q = {...pose.q}, E = new THREE.Euler(), add = (j, x, y, z) => { if (Math.abs(x) + Math.abs(y) + Math.abs(z) > 1e-4) q[j] = new Q().fromArray(q[j] || [0, 0, 0, 1]).multiply(new Q().setFromEuler(E.set(x * DEG, y * DEG, z * DEG))).toArray(); };
+  const up = sit ? .6 : 1;
+  add('shoulderR', (-12 * w - 14 * bR) * up, 0, -4 * w - 3 * bR); add('elbowR', (-30 * w - 20 * bR) * up, 0, 0); add('wristR', 0, 0, 6 * bR);
+  add('shoulderL', (-9 * w - 14 * bL) * up, 0, 4 * w + 3 * bL); add('elbowL', (-26 * w - 20 * bL) * up, 0, 0); add('wristL', 0, 0, -6 * bL);
+  add('chest', 1.5 * (bL + bR) * .5 + w, 0, 0); add('head', 4 * nod, 0, 0); add('neck', 1.5 * nod, 0, 0);
+  return {...pose, q};
+}
+
 /* ---------- baking: every frame of every character ---------- */
 function bakeScene(D) {
   const fps = ANIM.fps, n = Math.max(2, Math.round(D.len * fps)), tracks = [];
@@ -318,6 +397,7 @@ function bakeScene(D) {
     const phase = li * .83, keys = []; let prevPose = null, cur = -1, from = -1;
     // talking or not, eased in and out over a third of a second (the hands do not snap into a gesture)
     const talkW = t => { let w = 0; for (const l of D.lines) if (l.c === s.ci) { const a = l.t0 - .1, b = l.t0 + l.dur + .2, d = t < a ? a - t : t > b ? t - b : 0; w = Math.max(w, 1 - d / .35); } return easeIO(clamp(w, 0, 1)); };
+    const beats = talkBeats(D, s.ci), nods = listenNods(D, s.ci);
     // how far along a walk is at tl: it speeds up over its first steps and slows down over its last
     const walked = (g, tl) => {
       const L = Math.hypot(g.to.x - g.from.x, g.to.z - g.from.z), T = g.t1 - g.t0, r = Math.min(.45, T / 3), v = L / Math.max(1e-6, T - r), t = clamp(tl, 0, T);
@@ -328,9 +408,9 @@ function bakeScene(D) {
       const g = full[i], tl = tt - g.t0, at = new V3(g.at.x, 0, g.at.z);
       if (g.kind === 'idle') {
         if (g.mode === 'down') return g._still;
-        const sit = g.mode === 'sit', w = talkW(tt), a = clipById(sit ? SC_CLIP.sitIdle : SC_CLIP.idle) || clipById(SC_CLIP.idle2), b = clipById(sit ? SC_CLIP.sitTalk : SC_CLIP.talk) || a;
-        const one = c => clipPose(m, sampleClip(c, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep);
-        const pose = w <= 0 ? one(a) : w >= 1 ? one(b) : mixPose(one(a), one(b), w);
+        // talking is not a gesture loop: the idle goes on, the hands come up ready, and they beat with the stressed words
+        const sit = g.mode === 'sit', a = clipById(sit ? SC_CLIP.sitIdle : SC_CLIP.idle) || clipById(SC_CLIP.idle2);
+        const pose = talkLayer(clipPose(m, sampleClip(a, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep), talkW(tt), beats, nods, tt, sit);
         return sit ? seatPose(m, pose, g) : pose;
       }
       if (g.kind === 'walk') {  // the steps go with the ground covered, so the feet do not slide
@@ -362,9 +442,10 @@ function bakeScene(D) {
     const K = tracks[li].keys; let gy = 0;
     for (let f = 0; f < n; f++) {
       const tt = f / fps, gz = s.gaze.filter(x => tt >= x.t0 && tt < x.t1).pop(), o = gz && tracks.find(x => x.ci === gz.c); let want = 0;
-      if (o) { const p = K[f].pose, op = o.keys[f].pose.pos; want = clamp(wrapA(Math.atan2(op[0] - p.pos[0], op[2] - p.pos[2]) - facingOf(p.q)), -75 * DEG, 75 * DEG); }
+      if (o) { const p = K[f].pose, op = o.keys[f].pose.pos; want = clamp(wrapA(Math.atan2(op[0] - p.pos[0], op[2] - p.pos[2]) - facingOf(p.q)), -70 * DEG, 70 * DEG); }
       gy += (want - gy) * Math.min(1, 6 / fps);
-      if (Math.abs(gy) > .01) { const p = K[f].pose, q = {...p.q}; for (const [j, w] of [['neck', .4], ['head', .6]]) q[j] = new Q().fromArray(q[j] || [0, 0, 0, 1]).premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), gy * w)).toArray(); K[f].pose = {...p, q}; }
+      // the turn is shared down the spine (the head leads, the chest follows), never all in the neck
+      if (Math.abs(gy) > .01) { const p = K[f].pose, q = {...p.q}; for (const [j, w] of [['waist', .12], ['chest', .2], ['neck', .28], ['head', .4]]) q[j] = new Q().fromArray(q[j] || [0, 0, 0, 1]).premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), gy * w)).toArray(); K[f].pose = {...p, q}; }
     }
   }
   return {tracks, n};
