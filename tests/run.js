@@ -950,6 +950,69 @@ const SUITES = {
     await ph.screenshot({path: path.join(OUT, 'comic-phone.png')});
     await ph.context().close();
   },
+  // the shapes of comics: slanted pages, panels split straight and slanted, set into others, bled off the paper, broken
+  // out of; every kind of border and balloon; joined balloons drawn as one outline
+  async comicshapes(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    await goTab(page, 'comic'); await page.waitForTimeout(600);
+    // slanted templates: polygons inside the live area, none over another, the gutter between them
+    const t = await A(() => { const K = window.__cdp.comic, c = K.comic(), P = c.page, out = {};
+      for (const k of ['s3', 's4', 's5', 'big', 'p4']) { const L = K.layoutPanels(k, c), pts = L.map(p => K.panelPts(p)); let over = 0, outside = 0;
+        for (const [i, a] of pts.entries()) { for (const [x, y] of a) if (x < P.margin[3] - .05 || x > P.w - P.margin[1] + .05 || y < P.margin[0] - .05 || y > P.h - P.margin[2] + .05) outside++;
+          for (const [j, b] of pts.entries()) if (i !== j) { const cx = b.reduce((s, q) => s + q[0], 0) / b.length, cy = b.reduce((s, q) => s + q[1], 0) / b.length; if (K.inPoly(a, cx, cy)) over++; for (const [x, y] of b) { const m = (x0, y0) => K.inPoly(a, x0, y0); if (m(x, y)) over++; } } }
+        out[k] = {n: L.length, slanted: L.filter(p => p.poly).length, over, outside}; }
+      return out; });
+    ok(t.s3.n === 3 && t.s4.n === 4 && t.s5.n === 5 && t.big.n === 3 && t.s5.slanted >= 4 && t.p4.slanted === 0 && Object.values(t).every(x => !x.over && !x.outside), `slanted pages: ${t.s3.n}, ${t.s4.n}, ${t.s5.n} and ${t.big.n} panels (${t.s5.slanted} of 5 slanted), inside the margins, none over another; the straight ones stay rectangles`);
+    // a panel split across, down and slanted: the halves apart by the gutter; the first keeps the shot
+    const sp = await A(() => { const K = window.__cdp.comic, c = K.comic(), pg = c.pages[0]; pg.panels = K.layoutPanels('p1', c); const p = pg.panels[0]; K.CM.sel = p;
+      document.querySelector('#cmFromStage').click(); const a0 = Math.abs(K.polyArea(K.panelPts(p)));
+      document.querySelector('#cmCuts [data-v="s1"]').click(); const n1 = pg.panels.length, q = pg.panels[1];
+      const gap = (() => { const A = K.panelPts(p), B = K.panelPts(q); let d = 1e9; for (const [x, y] of A) for (const [u, v] of B) d = Math.min(d, Math.hypot(x - u, y - v)); return d; })();
+      K.CM.sel = q; document.querySelector('#cmCuts [data-v="v"]').click(); const n2 = pg.panels.length;
+      const tot = pg.panels.reduce((s, x) => s + Math.abs(K.polyArea(K.panelPts(x))), 0);
+      // the one under a point is the one drawn there
+      const m = K.panelBox(pg.panels[2]), at = K.panelAt(pg, m.x + m.w / 2, m.y + m.h * .6);
+      return {n1, n2, slanted: !!p.poly && !!q.poly, kept: !!p.shot && !q.shot, gap, ratio: tot / a0, at: at === pg.panels[2] || at === pg.panels[1]}; });
+    ok(sp.n1 === 2 && sp.n2 === 3 && sp.slanted && sp.kept && sp.gap > 2 && sp.ratio > .9 && sp.ratio < 1 && sp.at, `a panel split slanted, then one half split down: ${sp.n2} panels, the gutter between them (${sp.gap.toFixed(1)} mm), ${(sp.ratio * 100).toFixed(0)} % of the panel kept; the first keeps the picture`);
+    // borders, inset, bleed, breaking out: all drawn
+    const bd = await A(async () => { const K = window.__cdp.comic, c = K.comic(), pg = c.pages[0], p = pg.panels[0];
+      const res = {}; for (const [v] of K.PANEL_BORDERS) { p.border = v || undefined; const cv = document.createElement('canvas'); cv.width = 400; cv.height = 560; const g = cv.getContext('2d'); K.composePage(g, pg, 400 / c.page.w, 0, 0, {part: 'borders'});
+        const d = g.getImageData(0, 0, 400, 560).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++; res[v || 'ink'] = n; }
+      delete p.border;
+      K.CM.sel = p; document.querySelector('#cmInset').click(); const ins = pg.panels.find(x => x.inset), pb = K.panelBox(p), ib = K.panelBox(ins);
+      p.bleed = true; const bb = K.panelBox(p); delete p.bleed;
+      p.breakout = true; K.CM.cache.clear(); await K.pageImage(pg, 60); const hit = [...K.CM.cache.values()].find(h => h.out);
+      return {res, inset: ib.x > pb.x && ib.x + ib.w < pb.x + pb.w + .01 && ib.y + ib.h < pb.y + pb.h + .01 && K.panelAt(pg, ib.x + ib.w / 2, ib.y + ib.h / 2) === ins, bleed: bb.y < 0 || bb.x < 0, out: hit && Math.round(hit.out.width / hit.img.width * 100) / 100}; });
+    const r = bd.res;
+    for (const k in r) if (k !== 'none') r[k] -= r.none;  // (the page's other panels keep their ink border)
+    ok(r.ink > 0 && r.thick > r.ink * 1.5 && r.rough > 0 && r.round > 0 && r.cloud > r.ink && r.dashed < r.ink && bd.inset && bd.bleed && bd.out === 1.35, `borders: ink ${r.ink}, thick ${r.thick}, by hand ${r.rough}, rounded ${r.round}, cloud ${r.cloud}, dashed ${r.dashed} px; an inset panel on top in its corner; bled to the paper; the figures ${bd.out}× wider to break out`);
+    // every kind of balloon, and joined ones: one outline, a neck, no line between them
+    const bl = await A(() => { const K = window.__cdp.comic, kinds = Object.keys(K.BALLOON_KINDS), cv = document.createElement('canvas'); cv.width = 900; cv.height = 300; const g = cv.getContext('2d'), R = {x: 0, y: 0, w: 900, h: 300};
+      const drawn = kinds.map(kind => { g.clearRect(0, 0, 900, 300); K.drawBalloons(g, [{id: 'b' + kind, kind, text: 'Hola, ¿qué tal?', ci: 0, x: .5, y: .5, size: 9}], R, [{x: .5, y: .95}], 5, null); const d = g.getImageData(0, 0, 900, 300).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++; return n; });
+      const two = (join) => { g.clearRect(0, 0, 900, 300); const a = {id: 'a', kind: 'speech', text: 'Uno', ci: null, x: .3, y: .5, size: 9}, b = {id: 'b', kind: 'speech', text: 'Dos', ci: null, x: .62, y: .5, size: 9, ...(join ? {join: 'a'} : {})};
+        const hits = K.drawBalloons(g, [a, b], R, null, 5, null), A0 = hits[0].box, B0 = hits[1].box, mid = g.getImageData(Math.round((A0.x + A0.w + B0.x) / 2), 150, 1, 1).data, edge = g.getImageData(Math.round(A0.x + A0.w) - 3, 150, 7, 1).data;
+        let ink = false; for (let i = 0; i < edge.length; i += 4) if (edge[i + 3] > 100 && edge[i] < 100) ink = true;
+        return {mid: mid[3] > 0 && mid[0] > 200, edgeInk: ink}; };
+      return {drawn, kinds, apart: two(false), joined: two(true)}; });
+    ok(bl.drawn.every(n => n > 500) && bl.kinds.length >= 9 && !bl.apart.mid && bl.apart.edgeInk && bl.joined.mid && !bl.joined.edgeInk, `${bl.kinds.length} kinds of balloon drawn (${bl.kinds.map((k, i) => k + ' ' + bl.drawn[i]).join(', ')}); two joined balloons are one outline with a neck, no line between`);
+    // in the tab: a joined balloon added, its tail off the panel, taken out again
+    const ui = await A(() => { const K = window.__cdp.comic, pg = K.comic().pages[0], p = pg.panels[0]; K.CM.sel = p; document.querySelector('#cmAddB').click(); const b = K.CM.selB;
+      document.querySelector('#cmTail .chip[data-v="off"]').click(); document.querySelector('#cmJoinAdd').click(); const j = K.CM.selB;
+      const r = {tail: b.tail, join: j.join === b.id && j.tail === 'none', unjoin: !document.querySelector('#cmUnjoin').hidden};
+      K.CM.selB = b; document.querySelector('#cmDelB').click(); r.after = p.balloons.length === 1 && !p.balloons[0].join; return r; });
+    ok(ui.tail === 'off' && ui.join && ui.unjoin && ui.after, 'in the tab: a tail out of the panel, a balloon joined to it (no tail of its own); the first taken out, the second stands alone');
+    // saved and back, then right to left: the outlines mirrored
+    const sv = await A(async () => { const C = window.__cdp, K = C.comic, pg = K.comic().pages[0], before = JSON.stringify(pg.panels.map(p => p.poly || null));
+      const bytes = await C.file.neoposeBytes('t'); C.project.applyProjectState(null); await C.file.openNeopose(new File([bytes], 't.neopose'));
+      const pg2 = K.comic().pages[0], back = JSON.stringify(pg2.panels.map(p => p.poly || null)) === before; const p = pg2.panels.find(x => x.poly), x0 = p.poly[0][0];
+      const rtl = document.querySelector('#cmRtl'); rtl.checked = !rtl.checked; rtl.dispatchEvent(new Event('change')); const x1 = p.poly[p.poly.length - 1][0];
+      return {back, mirrored: Math.abs(x1 - (K.comic().page.w - x0)) < .01}; });
+    ok(sv.back && sv.mirrored, 'slanted panels come back from the .neopose file, and mirror when the page reads the other way');
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
+    await A(() => { const K = window.__cdp.comic; K.CM.sel = null; document.querySelector('#cmTemplates .chip[data-v="s5"]').click(); });
+    await page.waitForTimeout(800); await page.screenshot({path: path.join(OUT, 'comic-shapes.png')});
+    await page.context().close();
+  },
   // the project shared by the three spaces: a cast and places kept once (and used by the script), changes carried to
   // every shot; the film's format; a comic script made into its film and its pages; the comic's print formats
   async project(browser) {
@@ -977,10 +1040,10 @@ const SUITES = {
     await page.evaluate(() => document.querySelector('#tlScript').click()); await page.waitForTimeout(400);
     await page.fill('#scText', txt); await page.dispatchEvent('#scText', 'input'); await page.waitForTimeout(100);
     const tg = await A(() => window.__cdp.script.SC.target);
-    await page.click('#scGo');
+    await page.click('#scGo'); await page.waitForTimeout(300); if (await A(() => window.__cdp.script.SC.armed)) await page.click('#scGo');  // (a film is there: the second click replaces it)
     await page.waitForFunction(() => window.__cdp.project.PROJECT.comic && window.__cdp.project.PROJECT.comic.pages.some(p => p.panels.some(x => x.link)), null, {timeout: 600000});
     const cm = await A(() => { const C = window.__cdp, P = C.project.PROJECT.comic.pages; return {shots: C.ANIM.shots.length, pages: P.map(p => p.panels.length), linked: P.every(p => p.panels.every(x => x.link)), balloons: P.flatMap(p => p.panels).reduce((a, x) => a + x.balloons.length, 0), ws: document.body.dataset.ws, tab: C.state.tab}; });
-    ok(tg === 'both' && cm.shots === 7 && cm.pages.join() === '3,4' && cm.linked && cm.balloons === 6 && cm.ws === 'static' && cm.tab === 'comic', `a manga script makes its film (${cm.shots} shots, one per panel) and its pages (${cm.pages.join(' + ')} panels, linked, ${cm.balloons} balloons)`);
+    ok(tg === 'both' && cm.shots === 7 && cm.pages.join() === '3,4' && cm.linked && cm.balloons === 5 && cm.ws === 'static' && cm.tab === 'comic', `a manga script makes its film (${cm.shots} shots, one per panel) and its pages (${cm.pages.join(' + ')} panels, linked, ${cm.balloons} balloons)`);
     // a sound on the page, a panel's background, and the pages out: PDF, CBZ, PSD
     const ex = await A(async () => { const C = window.__cdp, K = C.comic, pg = K.comic().pages[1];
       K.CM.sel = pg.panels[0]; document.querySelector('#cmBg .chip[data-v="speed"]').click(); document.querySelector('#cmSfxNew').value = 'ZAS'; document.querySelector('#cmSfxAdd').click();

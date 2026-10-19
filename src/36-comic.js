@@ -9,8 +9,9 @@
      comic   {v, format, rtl, page: {w, h, bleed, margin: [t, r, b, l], gutter: [x, y]}, look: {tone, set, line}, pages}
      page    {id, panels: [panel]}
      panel   {id, x, y, w, h (mm), shot | link: {shotId, f}, f, cam?, balloons: [balloon]}
-     balloon {id, kind: speech|thought|shout|whisper|caption, text, ci (who speaks: a character of the panel's shot),
-              x, y (its centre, 0..1 of the panel), size (pt)} */
+     balloon {id, kind: speech|thought|shout|whisper|radio|wavy|black|caption|narration, text, ci (who speaks: a
+              character of the panel's shot), x, y (its centre, 0..1 of the panel), size (pt)}
+   (the shapes, slanted and split panels, borders, joined balloons: 36d-comic-shapes) */
 const COMIC_FORMATS = {
   manga: {label: 'Manga (B5)', w: 182, h: 257, margin: [20, 16, 20, 16], gutter: [3, 6], rtl: true},
   comic: {label: 'Cómic americano', w: 168, h: 260, margin: [13, 13, 16, 13], gutter: [4, 4]},
@@ -28,9 +29,14 @@ const PANEL_TEMPLATES = {
   p5: {label: '5', rows: [[1.2, [1]], [1, [1, 1.4]], [1, [1.4, 1]]]},
   p6: {label: '6', rows: [[1, [1, 1]], [1, [1, 1]], [1, [1, 1]]]},
   koma4: {label: '4 koma', rows: [[1, [1]], [1, [1]], [1, [1]], [1, [1]]]},
-  tira3: {label: '3 en tira', rows: [[1, [1, 1, 1]]]}
+  tira3: {label: '3 en tira', rows: [[1, [1, 1, 1]]]},
+  // slanted: the gutters between rows tilt (tilt, mm per mm, turning each row), and those between panels (vtilt)
+  s3: {label: '3 inclinadas', rows: [[1, [1]], [1, [1]], [1, [1]]], tilt: .1},
+  s4: {label: '4 en acción', rows: [[1, [1.3, 1]], [1, [1, 1.3]]], tilt: .08, vtilt: .14},
+  s5: {label: '5 en acción', rows: [[1.1, [1]], [1, [1, 1]], [1, [1, 1]]], tilt: .12, vtilt: .16},
+  big: {label: 'Grande + 2', rows: [[2.2, [1]], [1, [1, 1]]], tilt: .06, vtilt: .1}
 };
-const BALLOON_KINDS = {speech: 'Habla', thought: 'Pensamiento', shout: 'Grito', whisper: 'Susurro', caption: 'Cartela'};
+const BALLOON_KINDS = {speech: 'Habla', thought: 'Pensamiento', shout: 'Grito', whisper: 'Susurro', radio: 'Radio / teléfono', wavy: 'Tembloroso', black: 'Monstruo', caption: 'Cartela', narration: 'Narración'};
 tValues(BALLOON_KINDS);
 const CM = {sel: null, selB: null, page: 0, edit: null, cache: new Map(), view: null, busy: false, queue: Promise.resolve()};
 const mmPx = (mm, dpi) => mm / 25.4 * dpi;
@@ -42,19 +48,28 @@ function newComic(fmt = 'manga') {
 }
 const comic = () => PROJECT.comic || (PROJECT.comic = newComic());
 const curPage = () => comic().pages[CM.page];
-// the panels of a template laid in the page's live area (right to left when the comic reads that way)
+// the panels of a template laid in the page's live area (right to left when the comic reads that way): each the live
+// area cut by the lines through its gutters (straight, or slanted when the template tilts them)
 function layoutPanels(tpl, c = comic()) {
   const T = PANEL_TEMPLATES[tpl] || PANEL_TEMPLATES.p4, P = c.page, [mt, mr, mb, ml] = P.margin, [gx, gy] = P.gutter;
-  const W = P.w - ml - mr, H = P.h - mt - mb, hs = T.rows.reduce((a, r) => a + r[0], 0), out = [];
-  let y = mt;
-  T.rows.forEach(([rh, cols]) => {
-    const h = (H - gy * (T.rows.length - 1)) * rh / hs, ws = cols.reduce((a, x) => a + x, 0); let x = ml;
-    const row = cols.map(cw => { const w = (W - gx * (cols.length - 1)) * cw / ws, r = {x, y, w, h}; x += w + gx; return r; });
-    if (c.rtl) row.forEach(r => { r.x = P.w - (r.x + r.w); });  // (mirrored: the first panel at the right)
-    out.push(...row);
-    y += h + gy;
+  const W = P.w - ml - mr, H = P.h - mt - mb, hs = T.rows.reduce((a, r) => a + r[0], 0), live = rectPts({x: ml, y: mt, w: W, h: H}), cxL = ml + W / 2, out = [];
+  const half = (pts, p0, dir, g) => { const L = Math.hypot(...dir), n = [-dir[1] / L, dir[0] / L]; return clipHalf(pts, n, n[0] * p0[0] + n[1] * p0[1] + g); };
+  let y = mt; const rows = T.rows.map(([rh, cols]) => { const h = (H - gy * (T.rows.length - 1)) * rh / hs, r = {y, h, cols}; y += h + gy; return r; });
+  rows.forEach((r, ri) => {
+    const s0 = (T.tilt || 0) * ((ri - 1) % 2 ? -1 : 1), s1 = (T.tilt || 0) * (ri % 2 ? -1 : 1), ws = r.cols.reduce((a, x) => a + x, 0), cy = r.y + r.h / 2;
+    let x = ml; const xs = r.cols.map(cw => { const w = (W - gx * (r.cols.length - 1)) * cw / ws, q = [x, w]; x += w + gx; return q; });
+    xs.forEach(([x0, w], j) => {
+      let pts = live;
+      if (ri > 0) pts = half(pts, [cxL, r.y - gy / 2], [1, s0], gy / 2);  // (below the gutter above)
+      if (ri < rows.length - 1) pts = half(pts, [cxL, r.y + r.h + gy / 2], [-1, -s1], gy / 2);
+      const t0 = (T.vtilt || 0) * ((ri + j - 1) % 2 ? -1 : 1), t1 = (T.vtilt || 0) * ((ri + j) % 2 ? -1 : 1);
+      if (j > 0) pts = half(pts, [x0 - gx / 2, cy], [-t0, -1], gx / 2);
+      if (j < xs.length - 1) pts = half(pts, [x0 + w + gx / 2, cy], [t1, 1], gx / 2);
+      if (c.rtl) pts = pts.map(([px, py]) => [P.w - px, py]).reverse();  // (mirrored: the first panel at the right)
+      if (pts.length >= 3) out.push(setPanelPoly({id: newId('p'), x: 0, y: 0, w: 1, h: 1, shot: null, link: null, f: 0, balloons: []}, pts));
+    });
   });
-  return out.map(r => ({id: newId('p'), x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.w.toFixed(2), h: +r.h.toFixed(2), shot: null, link: null, f: 0, balloons: []}));
+  return out;
 }
 // n panels in rows of up to three (a page with more than a template holds)
 function layoutGrid(n, c = comic()) {
@@ -89,7 +104,7 @@ async function stagePanel(p, prev) {
   ANIM.focus = s; await stageShot(s, prev || null);
   const f = Math.min(panelFrame(p), s.len - 1); applyFrame(f); if (p.cam) applyCam(p.cam);
   chars.forEach(m => m.group.updateMatrixWorld(true));
-  if (!p.cam && p.link && p.autoCam !== false) { const c = panelAutoCam(p.w / p.h, s); if (c) applyCam(c); }
+  if (!p.cam && p.link && p.autoCam !== false) { const B = panelBox(p), c = panelAutoCam(B.w / B.h, s); if (c) applyCam(c); }
   return true;
 }
 // a film shot's framing turned to a panel's shape: the camera stays where it is and looks the same way; it turns to
@@ -131,9 +146,16 @@ async function drawPanelOnStage(p, w, h) {
   if (set && !['speed', 'focus', 'flash', 'black', 'white'].includes(p.bg)) g.drawImage(set, 0, 0); if (tone) g.drawImage(tone, 0, 0);
   if (p.bg && p.bg !== 'set') panelEffect(g, p.bg, w, h, anchors.find(Boolean));
   g.drawImage(recolor(ink, p.bg === 'black' ? '#f4f1ea' : '#141210', 1), 0, 0);
-  return {img: out, anchors};
+  // breaking out of the panel: the figures drawn again in a wider picture (the same camera, a wider lens), white
+  // under their ink, to be laid over the page round the panel
+  let out2 = null;
+  if (p.breakout) { const E = BREAKOUT, W = Math.round(w * E), H = Math.round(h * E), f0 = state.focal; state.focal = f0 / E;
+    try { const big = renderView({w: W, h: H, bg: 'lines'}), sil = renderView({w: W, h: H, bg: 'alpha'}); out2 = document.createElement('canvas'); out2.width = W; out2.height = H; const g2 = out2.getContext('2d');
+      g2.drawImage(sil, 0, 0); g2.globalCompositeOperation = 'source-in'; g2.fillStyle = '#fff'; g2.fillRect(0, 0, W, H); g2.globalCompositeOperation = 'source-over'; g2.drawImage(recolor(big, '#141210', 1), 0, 0); }
+    finally { state.focal = f0; } }
+  return {img: out, anchors, out: out2};
 }
-const panelKey = (p, w, h) => { const s = panelShot(p), c = comic(); return [p.id, s ? s.id : '-', s ? s.rev || 0 : 0, panelFrame(p), w, h, JSON.stringify(p.cam || null), p.bg || '', c.look.tone, c.look.set, PROJECT.film.aspect || ''].join('|'); };
+const panelKey = (p, w, h) => { const s = panelShot(p), c = comic(); return [p.id, s ? s.id : '-', s ? s.rev || 0 : 0, panelFrame(p), w, h, JSON.stringify(p.cam || null), p.bg || '', p.breakout ? 'B' : '', c.look.tone, c.look.set, PROJECT.film.aspect || ''].join('|'); };
 // several panels drawn in one go (the workbench put back once at the end); cached by what they show
 function drawPanels(list, pxOf) {
   CM.queue = CM.queue.then(async () => {
@@ -177,54 +199,38 @@ function wrapText(g, text, maxW) {
   const rows = []; for (const para of String(text || '').split('\n')) { let row = ''; for (const w of para.split(/\s+/).filter(Boolean)) { const t = row ? row + ' ' + w : w; if (row && g.measureText(t).width > maxW) { rows.push(row); row = w; } else row = t; } rows.push(row); }
   return rows;
 }
-const balloonFont = (px, b) => `${b.kind === 'shout' ? 700 : 400} ${px}px "Comic Neue", ${css('--f-hand')}, sans-serif`;
+const balloonFont = (px, b) => `${b.kind === 'narration' ? 'italic ' : ''}${b.kind === 'shout' || b.kind === 'black' ? 700 : 400} ${px}px "Comic Neue", ${css('--f-hand')}, sans-serif`;
 const SFX_FONT = px => `400 ${px}px Bangers, "Comic Neue", ${css('--f-hand')}, sans-serif`;
 // the lettering fonts come with the app, loaded the first time a page is drawn
 const comicFonts = () => CM.fonts || (CM.fonts = Promise.all(['700 20px "Comic Neue"', '400 20px "Comic Neue"', '400 20px Bangers'].map(f => document.fonts.load(f).catch(() => {}))));
-// one balloon in a panel rectangle R (px): its body round the text, its tail to the speaker; k = px per mm
-function drawBalloon(g, b, R, anchor, k, sel) {
-  const fs = (b.size || 9) / 72 * 25.4 * k, pad = fs * .7; g.font = balloonFont(fs, b);
-  const maxW = Math.min(R.w * .62, fs * 14), rows = wrapText(g, b.text || '…', maxW), tw = Math.max(fs * 2, ...rows.map(r => g.measureText(r).width)), th = rows.length * fs * 1.12;
-  const cap = b.kind === 'caption', rx = cap ? tw / 2 + pad : (tw / 2 + pad) * 1.18, ry = cap ? th / 2 + pad * .7 : (th / 2 + pad) * 1.18, mg = k * 1.5;
-  // (kept inside its panel, whatever its text grew to)
-  const cx = clamp(R.x + b.x * R.w, R.x + rx + mg, Math.max(R.x + rx + mg, R.x + R.w - rx - mg)), cy = clamp(R.y + b.y * R.h, R.y + ry + mg, Math.max(R.y + ry + mg, R.y + R.h - ry - mg));
-  g.save(); g.lineWidth = Math.max(1, k * .3); g.strokeStyle = '#141210'; g.fillStyle = '#fff'; g.lineJoin = 'round';
-  // the tail first (its base under the body), to the speaker's mouth, stopping short of it
-  if (!cap && anchor && b.kind !== 'thought') {
-    const ax = R.x + anchor.x * R.w, ay = R.y + anchor.y * R.h, dx = ax - cx, dy = ay - cy, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
-    const tipD = Math.max(Math.min(d * .72, d - fs * 1.2), Math.min(rx, ry) * 1.1), tip = [cx + ux * tipD, cy + uy * tipD], wb = Math.min(rx, ry) * .32;
-    g.beginPath(); g.moveTo(cx - uy * wb, cy + ux * wb); g.lineTo(tip[0], tip[1]); g.lineTo(cx + uy * wb, cy - ux * wb); g.closePath(); g.fill(); g.stroke();
-  }
-  g.beginPath();
-  if (cap) g.rect(cx - rx, cy - ry, rx * 2, ry * 2);
-  else if (b.kind === 'shout') { const n = 18; for (let i = 0; i <= n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, r = i % 2 ? 1 : 1.24, j = 1 + .06 * Math.sin(i * 7.3); const x = cx + Math.cos(a) * rx * r * j, y = cy + Math.sin(a) * ry * r * j; i ? g.lineTo(x, y) : g.moveTo(x, y); } }
-  else if (b.kind === 'thought') { const n = 11; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, x = cx + Math.cos(a) * rx * .92, y = cy + Math.sin(a) * ry * .92, r = Math.min(rx, ry) * .42; g.moveTo(x + r, y); g.arc(x, y, r, 0, Math.PI * 2); } }
-  else g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-  g.fill(); if (b.kind === 'whisper') g.setLineDash([fs * .35, fs * .3]); g.stroke(); g.setLineDash([]);
-  if (b.kind === 'thought') { g.fill(); if (anchor) { const ax = R.x + anchor.x * R.w, ay = R.y + anchor.y * R.h; for (const [t, r] of [[.55, .16], [.75, .1]]) { g.beginPath(); g.arc(cx + (ax - cx) * t, cy + (ay - cy) * t, Math.min(rx, ry) * r, 0, Math.PI * 2); g.fill(); g.stroke(); } } }
-  g.fillStyle = '#141210'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  rows.forEach((r, i) => g.fillText(r, cx, cy - th / 2 + fs * 1.12 * (i + .5)));
-  if (sel) { g.strokeStyle = '#2b5a9e'; g.lineWidth = 2; g.setLineDash([5, 4]); g.strokeRect(cx - rx - 4, cy - ry - 4, rx * 2 + 8, ry * 2 + 8); g.setLineDash([]); }
-  g.restore();
-  return {x: cx - rx, y: cy - ry, w: rx * 2, h: ry * 2};
-}
 
 /* ---------- a page drawn: on screen, or for print ---------- */
-// panels into a 2D context at k px per mm (offset ox, oy); cached panel pictures where there are, a note where not
+// panels into a 2D context at k px per mm (offset ox, oy); cached panel pictures where there are, a note where not.
+// In layers (o.part): the panels' pictures, their borders, the figures breaking out of them, balloons, sounds
 function composePage(g, pg, k, ox, oy, o = {}) {
   const c = comic(), P = c.page, part = o.part, want = x => !part || part === x; if (!part) { g.fillStyle = '#fff'; g.fillRect(ox, oy, P.w * k, P.h * k); }
-  const hits = [];
-  for (const [i, p] of readingOrder(pg, c).entries()) {
-    const R = {x: ox + p.x * k, y: oy + p.y * k, w: p.w * k, h: p.h * k}, w = Math.round(R.w * (o.px || 1)), h = Math.round(R.h * (o.px || 1)), hit = CM.cache.get(panelKey(p, w, h));
-    g.save(); g.beginPath(); g.rect(R.x, R.y, R.w, R.h); g.clip();
-    if (hit && want('panels')) g.drawImage(hit.img, R.x, R.y, R.w, R.h);
+  const hits = [], num = new Map(readingOrder(pg, c).map((p, i) => [p, i + 1]));
+  const L = drawOrder(pg).map(p => { const B = panelBox(p), R = {x: ox + B.x * k, y: oy + B.y * k, w: B.w * k, h: B.h * k}, w = Math.round(R.w * (o.px || 1)), h = Math.round(R.h * (o.px || 1));
+    return {p, R, path: panelPath(p, k, ox, oy), hit: CM.cache.get(panelKey(p, w, h))}; });
+  for (const {p, R, path, hit} of L) {
+    // (a panel set into another: a white edge round it, the page's gutter)
+    if (p.inset && want('panels')) { g.save(); g.strokeStyle = '#fff'; g.lineJoin = 'round'; g.lineWidth = c.page.gutter[0] * k * 2; g.stroke(path); g.restore(); }
+    g.save(); g.clip(path);
+    if (hit && want('panels')) { if (p.inset) { g.fillStyle = '#fff'; g.fillRect(R.x, R.y, R.w, R.h); } g.drawImage(hit.img, R.x, R.y, R.w, R.h); }
     else if (o.screen) { g.fillStyle = '#f4f1ea'; g.fillRect(R.x, R.y, R.w, R.h); g.fillStyle = '#8a8170'; const fs = Math.max(10, Math.min(k * 3.2, R.w / 9)); g.font = `600 ${fs}px ${css('--f-body')}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       const rows = wrapText(g, panelShot(p) ? tr('Dibujando…') : tr('Viñeta vacía: doble clic para montarla'), R.w * .82); rows.forEach((r, j) => g.fillText(r, R.x + R.w / 2, R.y + R.h / 2 + (j - (rows.length - 1) / 2) * fs * 1.25)); g.textBaseline = 'alphabetic'; }
-    if (want('balloons')) for (const b of p.balloons) { const box = drawBalloon(g, b, R, hit && b.ci != null ? hit.anchors[b.ci] : null, k, o.screen && CM.selB === b); hits.push({b, p, box}); }
     g.restore();
-    if (want('borders') && p.border !== 'none') { g.lineWidth = Math.max(1, k * .5); g.strokeStyle = '#141210'; g.strokeRect(R.x, R.y, R.w, R.h); }
-    if (o.screen) { if (CM.sel === p) { g.strokeStyle = '#2b5a9e'; g.lineWidth = 3; g.strokeRect(R.x - 2, R.y - 2, R.w + 4, R.h + 4); }
-      g.fillStyle = '#8a8170'; g.font = `600 ${Math.max(10, k * 2.4)}px ${css('--f-mono')}`; g.textAlign = 'left'; g.fillText(String(i + 1), R.x + 4, R.y + Math.max(12, k * 3)); }
+    if (want('borders')) strokePanel(g, p, path, k, ox, oy);
+  }
+  // the figures that break out of their panels, over the borders round them (inside, the panel is already drawn)
+  if (want('breakout')) for (const {p, R, path, hit} of L) if (p.breakout && hit && hit.out) {
+    const W = R.w * BREAKOUT, H = R.h * BREAKOUT, outside = new Path2D(); outside.rect(ox - P.w * k, oy - P.h * k, P.w * k * 3, P.h * k * 3); outside.addPath(path);
+    g.save(); g.clip(outside, 'evenodd'); g.drawImage(hit.out, R.x + R.w / 2 - W / 2, R.y + R.h / 2 - H / 2, W, H); g.restore(); }
+  for (const {p, R, hit} of L) {
+    if (want('balloons')) for (const h of drawBalloons(g, p.balloons, R, hit && hit.anchors, k, o.screen && CM.selB)) hits.push({...h, p});
+    if (o.screen) { if (CM.sel === p) { g.save(); g.strokeStyle = '#2b5a9e'; g.lineWidth = 3; g.setLineDash([]); g.stroke(panelPath(p, k, ox, oy)); g.restore(); }
+      g.fillStyle = '#8a8170'; g.font = `600 ${Math.max(10, k * 2.4)}px ${css('--f-mono')}`; g.textAlign = 'left'; const pt = panelPts(p).reduce((a, q) => q[0] + q[1] < a[0] + a[1] ? q : a);
+      g.fillText(String(num.get(p)), ox + Math.max(0, pt[0]) * k + 4, oy + Math.max(0, pt[1]) * k + Math.max(12, k * 3)); }
   }
   if (want('sfx')) for (const x of pg.sfx || []) { const b = drawSfx(g, x, k, ox, oy, o.screen && CM.selX === x); hits.push({x, box: {x: ox + x.x * k - b.w / 2, y: oy + x.y * k - b.h / 2, w: b.w, h: b.h}}); }
   return hits;
@@ -232,7 +238,7 @@ function composePage(g, pg, k, ox, oy, o = {}) {
 // the page at print size (dpi): the panels drawn for it first
 async function pageImage(pg, dpi = 300, part) {
   const c = comic(), k = mmPx(1, dpi); await comicFonts();
-  await drawPanels(pg.panels, p => [Math.round(p.w * k), Math.round(p.h * k)]);
+  await drawPanels(pg.panels, p => { const B = panelBox(p); return [Math.round(B.w * k), Math.round(B.h * k)]; });
   const cv = document.createElement('canvas'); cv.width = Math.round(c.page.w * k); cv.height = Math.round(c.page.h * k);
   composePage(cv.getContext('2d'), pg, k, 0, 0, {part});
   return cv;

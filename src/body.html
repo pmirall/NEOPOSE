@@ -505,6 +505,13 @@
               <p class="note" id="cmPanelInfo"></p>
               <div class="row"><button class="btn small primary" id="cmEdit">Editar en 3D</button><button class="btn small" id="cmFromStage">Poner lo del lienzo</button><button class="btn small" id="cmClearPanel">Vaciar</button></div>
               <div id="cmBgRow"><p class="lbl">Fondo</p><div class="chips" id="cmBg"></div></div>
+              <p class="lbl">Forma <span class="note">partir en dos (recto o inclinado)</span></p>
+              <div class="row" id="cmCuts"></div>
+              <div class="row"><button class="btn small" id="cmInset" title="Una viñeta pequeña dentro de esta, en su esquina">Viñeta insertada</button><button class="btn small" id="cmDelPanel">Quitar la viñeta</button></div>
+              <p class="lbl">Borde</p>
+              <div class="chips" id="cmBorder"></div>
+              <label class="check"><input type="checkbox" id="cmBleed"> A sangre (hasta el borde del papel)</label>
+              <label class="check"><input type="checkbox" id="cmBreak"> Los personajes se salen de la viñeta</label>
             </div>
           </details>
           <details class="sec" data-sec="cmbocadillos" open>
@@ -516,6 +523,9 @@
                 <textarea id="cmText" rows="3" placeholder="Lo que dice…"></textarea>
                 <p class="lbl">Quién habla (la cola le apunta)</p>
                 <div class="chips" id="cmWho"></div>
+                <p class="lbl">Cola</p>
+                <div class="chips" id="cmTail"></div>
+                <div class="row"><button class="btn small" id="cmJoinAdd" title="Otro bocadillo de la misma frase, unido a este">Añadir unido</button><button class="btn small" id="cmJoin" hidden>Unir al anterior</button><button class="btn small" id="cmUnjoin" hidden>Separar</button></div>
                 <label class="lbl">Tamaño del texto <input type="range" id="cmSize" min="6" max="18" step="1" value="9"></label>
                 <div class="row"><button class="btn small" id="cmDelB">Borrar el bocadillo</button></div>
               </div>

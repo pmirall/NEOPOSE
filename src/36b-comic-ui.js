@@ -26,15 +26,14 @@ function drawPage() {
   g.fillStyle = '#6d6555'; g.font = `600 ${12 * dpr}px ${css('--f-body')}`; g.textAlign = 'center';
   g.fillText(tr('Página {n} de {t}', {n: CM.page + 1, t: c.pages.length}) + (c.rtl ? ' · ' + tr('se lee de derecha a izquierda') : ''), cv.width / 2, pv.oy + c.page.h * k + 20 * dpr);
   // the panels not yet drawn (or changed) are drawn now, then the page again
-  const missing = pg.panels.filter(p => panelShot(p) && !CM.cache.has(panelKey(p, Math.round(p.w * k), Math.round(p.h * k))));
-  if (missing.length && !CM.busy) drawPanels(missing, p => [Math.round(p.w * k), Math.round(p.h * k)]);
+  const px = p => { const B = panelBox(p); return [Math.round(B.w * k), Math.round(B.h * k)]; }, missing = pg.panels.filter(p => panelShot(p) && !CM.cache.has(panelKey(p, ...px(p))));
+  if (missing.length && !CM.busy) drawPanels(missing, px);
 }
 // what is under a point of the page view (device px): a balloon first, then a panel
 function pageHit(x, y) {
   for (let i = pv.hits.length - 1; i >= 0; i--) { const h = pv.hits[i], B = h.box; if (x >= B.x && x <= B.x + B.w && y >= B.y && y <= B.y + B.h) return h.x ? {x: h.x} : {b: h.b, p: h.p}; }
   const pg = curPage(); if (!pg) return null;
-  for (const p of pg.panels) { const X = pv.ox + p.x * pv.k, Y = pv.oy + p.y * pv.k; if (x >= X && x <= X + p.w * pv.k && y >= Y && y <= Y + p.h * pv.k) return {p}; }
-  return null;
+  const p = panelAt(pg, (x - pv.ox) / pv.k, (y - pv.oy) / pv.k); return p ? {p} : null;
 }
 function initPageView() {
   const vp = $('#viewport'); if (!vp || $('#pageView')) return;
@@ -51,7 +50,7 @@ function initPageView() {
   });
   pv.cv.addEventListener('pointermove', e => { if (!pv.drag) return; const [x, y] = at(e), d = pv.drag, p = d.p;
     if (d.sfx) { d.sfx.x = d.bx + (x - d.x) / pv.k; d.sfx.y = d.by + (y - d.y) / pv.k; drawPage(); return; }
-    d.b.x = clamp(d.bx + (x - d.x) / (p.w * pv.k), .05, .95); d.b.y = clamp(d.by + (y - d.y) / (p.h * pv.k), .05, .95); drawPage(); });
+    const B = panelBox(p); d.b.x = clamp(d.bx + (x - d.x) / (B.w * pv.k), .05, .95); d.b.y = clamp(d.by + (y - d.y) / (B.h * pv.k), .05, .95); drawPage(); });
   pv.cv.addEventListener('pointerup', () => { if (pv.drag) { pv.drag = null; comicSaved(); } });
   pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.p && !h.b) editPanel(h.p); else if (h && h.b) { CM.selB = h.b; syncComicUI(); const t = $('#cmText'); if (t) t.focus(); } });
 }
@@ -67,7 +66,7 @@ async function editPanel(p) {
   if (p.link && !p.shot) { const s = panelShot(p); p.shot = JSON.parse(JSON.stringify(s)); p.shot.id = ++shotSeq; p.f = p.link.f; p.link = null; toast(tr('Esta viñeta tiene ahora su propia escena: los cambios en la película ya no la cambian.')); }
   CM.edit = {p, bench}; $('#pageView').hidden = true; document.body.classList.remove('paging'); document.body.classList.add('panelEdit');
   await stagePanel(p);
-  RATIOS._panel = ['Viñeta', p.w / p.h]; state.ratio = '_panel'; applyFrameAspect(p.w / p.h);
+  const B = panelBox(p); RATIOS._panel = ['Viñeta', B.w / B.h]; state.ratio = '_panel'; applyFrameAspect(B.w / B.h);
   ANIM.focus = null;  // (the stage is free to pose: the panel's shot is written back on leaving)
   $('#cmEditBar').hidden = false; $('#cmEditBar .t').textContent = tr('Viñeta {n} · página {p}: posa, ilumina y encuadra; luego «Volver a la página».', {n: readingOrder(curPage()).indexOf(p) + 1, p: CM.page + 1});
   showTab('pose');
@@ -105,7 +104,7 @@ async function filmToComic(o = {}) {
         const keys = shotKeyPoses(s, false), mid = keys.length > 2 ? keys[Math.floor(keys.length / 2)].f : Math.floor(s.len / 2);
         p.link = {shotId: s.id, f: mid};
         // where the speakers' heads will be in the panel: each balloon goes above its speaker, in reading order
-        await stagePanel(p); const anchors = panelAnchors(p.w / p.h);
+        await stagePanel(p); const B = panelBox(p), anchors = panelAnchors(B.w / B.h);
         // the panel's camera: the shot's, turned to the panel's shape (the same lens, the same aim)
         // balloons from the lines said in the shot, in order, each one by its speaker
         const L = s.lines.filter(l => l.text && l.text.trim()).slice(0, 3);
@@ -146,7 +145,7 @@ function syncComicUI() {
     chips(who, [['', tr('Nadie (cartela)')], ...cast.map((x, i) => [String(i), `${i + 1} · ${x.body.name || tr('Personaje')}`])], b && b.ci != null ? String(b.ci) : '', v => { if (!CM.selB) return; CM.selB.ci = v === '' ? null : +v; drawPage(); comicSaved(); });
   }
   $('#cmBalloonEdit').hidden = !b;
-  if (typeof syncComicExtraUI === 'function') syncComicExtraUI();
+  if (typeof syncComicExtraUI === 'function') syncComicExtraUI(); if (typeof syncComicShapeUI === 'function') syncComicShapeUI();
   if (b) { setPressed($('#cmKind'), b.kind); if (document.activeElement !== $('#cmText')) $('#cmText').value = b.text || ''; $('#cmSize').value = b.size || 9; }
 }
 function buildComicUI() {
@@ -154,10 +153,10 @@ function buildComicUI() {
   const sec = $('section[data-tab=comic]'); if (!sec) return;
   chips($('#cmFormat'), Object.entries(COMIC_FORMATS).map(([k, v]) => [k, v.label]), (PROJECT.comic || {format: 'manga'}).format, k => {
     const c = comic(), F = COMIC_FORMATS[k], sx = F.w / c.page.w, sy = F.h / c.page.h;
-    for (const pg of c.pages) for (const p of pg.panels) { p.x *= sx; p.w *= sx; p.y *= sy; p.h *= sy; }  // (the panels keep their places, scaled)
+    for (const pg of c.pages) for (const p of pg.panels) { p.x *= sx; p.w *= sx; p.y *= sy; p.h *= sy; if (p.poly) p.poly = p.poly.map(([x, y]) => [x * sx, y * sy]); }  // (the panels keep their places, scaled)
     Object.assign(c, {format: k}); Object.assign(c.page, {w: F.w, h: F.h, margin: [...F.margin], gutter: [...F.gutter]}); CM.cache.clear(); comicChanged(); comicSaved();
   });
-  $('#cmRtl').onchange = e => { const c = comic(); c.rtl = e.target.checked; for (const pg of c.pages) for (const p of pg.panels) p.x = c.page.w - (p.x + p.w); comicChanged(); comicSaved(); };
+  $('#cmRtl').onchange = e => { const c = comic(); c.rtl = e.target.checked; for (const pg of c.pages) for (const p of pg.panels) { p.x = c.page.w - (p.x + p.w); if (p.poly) p.poly = p.poly.map(([x, y]) => [c.page.w - x, y]).reverse(); } CM.cache.clear(); comicChanged(); comicSaved(); };
   $('#cmTone').onchange = e => { comic().look.tone = e.target.checked; CM.cache.clear(); comicChanged(); comicSaved(); };
   $('#cmSet').onchange = e => { comic().look.set = e.target.checked; CM.cache.clear(); comicChanged(); comicSaved(); };
   chips($('#cmTemplates'), Object.entries(PANEL_TEMPLATES).map(([k, v]) => [k, v.label]), null, k => { addPage(k); drawPage(); comicSaved(); });
@@ -168,7 +167,7 @@ function buildComicUI() {
   chips($('#cmKind'), Object.entries(BALLOON_KINDS), 'speech', k => { if (CM.selB) { CM.selB.kind = k; drawPage(); comicSaved(); } });
   $('#cmAddB').onclick = () => { const p = CM.sel; if (!p) return; const s = panelShot(p), b = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .75 : .25, y: .18 + p.balloons.length * .12, size: 9};
     p.balloons.push(b); CM.selB = b; drawPage(); syncComicUI(); comicSaved(); const t = $('#cmText'); t.focus(); t.select(); };
-  $('#cmDelB').onclick = () => { const p = CM.sel, b = CM.selB; if (!p || !b) return; p.balloons.splice(p.balloons.indexOf(b), 1); CM.selB = null; drawPage(); syncComicUI(); comicSaved(); };
+  $('#cmDelB').onclick = () => { const p = CM.sel, b = CM.selB; if (!p || !b) return; removeBalloon(p, b); CM.selB = null; drawPage(); syncComicUI(); comicSaved(); };
   $('#cmText').oninput = e => { if (CM.selB) { CM.selB.text = e.target.value; drawPage(); } }; $('#cmText').onchange = comicSaved;
   $('#cmSize').oninput = e => { if (CM.selB) { CM.selB.size = +e.target.value; drawPage(); } };
   $('#cmFromScript').onclick = () => { SC.target = 'both'; store.set('cdp.scTarget', 'both'); openScript(); setPressed($('#scTarget'), 'both'); };
@@ -177,5 +176,5 @@ function buildComicUI() {
   $('#cmExportAll').onclick = () => exportComicPages('all', +$('#cmDpi').value || 300);
   $('#cmBack').onclick = () => { finishPanelEdit(); goTab('comic'); };
   $('#cmCancel').onclick = () => { finishPanelEdit(true); goTab('comic'); };
-  buildComicExtraUI(); syncComicUI();
+  buildComicExtraUI(); buildComicShapeUI(); syncComicUI();
 }

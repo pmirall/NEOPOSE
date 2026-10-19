@@ -41,7 +41,7 @@ async function comicPSD(pg, dpi = 300) {
   const c = comic(), k = mmPx(1, dpi), w = Math.round(c.page.w * k), h = Math.round(c.page.h * k);
   await pageImage(pg, dpi);  // (draws the panels for this size)
   const layer = (name, part, o = {}) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); if (part === 'paper') { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); } else if (part) composePage(g, pg, k, 0, 0, {part}); return {name, canvas: cv, ...o}; };
-  return psdBytes(w, h, [layer(tr('Papel'), 'paper'), layer(tr('Viñetas'), 'panels'), layer(tr('Entintado'), null), layer(tr('Bordes'), 'borders'), layer(tr('Bocadillos'), 'balloons'), layer(tr('Onomatopeyas'), 'sfx')]);
+  return psdBytes(w, h, [layer(tr('Papel'), 'paper'), layer(tr('Viñetas'), 'panels'), layer(tr('Entintado'), null), layer(tr('Bordes'), 'borders'), layer(tr('Fuera de viñeta'), 'breakout'), layer(tr('Bocadillos'), 'balloons'), layer(tr('Onomatopeyas'), 'sfx')]);
 }
 const exportProgress = p => { const b = $('#cmProg'); if (b) { b.hidden = p >= 1; b.querySelector('i').style.width = Math.round(p * 100) + '%'; } };
 async function exportComic(kind) {
@@ -64,7 +64,7 @@ function syncComicExtraUI() {
 function buildComicExtraUI() {
   if (!$('#cmBg')) return;
   chips($('#cmBg'), PANEL_BGS, 'set', v => { const p = CM.sel; if (!p) return; p.bg = v === 'set' ? undefined : v; drawPage(); comicSaved(); });
-  $('#cmSfxAdd').onclick = () => { const c = comic(), pg = curPage(); if (!pg) return; pg.sfx = pg.sfx || []; const p = CM.sel, x = {id: newId('s'), text: ($('#cmSfxNew').value || '').trim() || tr('¡BAM!'), x: p ? p.x + p.w * .6 : c.page.w / 2, y: p ? p.y + p.h * .35 : c.page.h / 3, size: 16, rot: -8};
+  $('#cmSfxAdd').onclick = () => { const c = comic(), pg = curPage(); if (!pg) return; pg.sfx = pg.sfx || []; const p = CM.sel, x = {id: newId('s'), text: ($('#cmSfxNew').value || '').trim() || tr('¡BAM!'), x: p ? panelBox(p).x + panelBox(p).w * .6 : c.page.w / 2, y: p ? panelBox(p).y + panelBox(p).h * .35 : c.page.h / 3, size: 16, rot: -8};
     pg.sfx.push(x); CM.selX = x; drawPage(); syncComicUI(); comicSaved(); };
   $('#cmSfxText').oninput = e => { if (CM.selX) { CM.selX.text = e.target.value; drawPage(); } }; $('#cmSfxText').onchange = comicSaved;
   $('#cmSfxSize').oninput = e => { if (CM.selX) { CM.selX.size = +e.target.value; drawPage(); } };
