@@ -11,7 +11,7 @@ function resize() {
 }
 new ResizeObserver(resize).observe(vp);
 function updateHandles() {
-  const show = !practice.active && !sk.hideFig && !sk.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  const show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const n of DOT_JOINTS) {
     const d = jointDots[n], j = mq.joints[n];
     d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n.startsWith('ear') && !mq.hasEars) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
@@ -47,9 +47,13 @@ const resting = now => state.quality !== 'alta' && now - REST.last > 2500 && !AN
 function frame() {
   if (!mq) return;
   const now = performance.now(); if (resting(now) && now - REST.drawn < 250) return; REST.drawn = now;
-  glideTick(); camGlideTick(); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
-  for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; }
+  glideTick(); camGlideTick(); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); sceneTicks();
   animTick(); dockView(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
+}
+// what the scene does every frame besides the animation (also run by the video export, frame by frame)
+function sceneTicks() {
+  updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  for (const m of chars) { m.group.visible = !sk.hideFig; if (sk.hideFig) m.stoolMesh.visible = false; if (ANIM.rec && m.lib && m.lib.uHi) m.lib.uHi.value = -1; }
 }
 // with the animation dock open, the shot is framed in the part of the canvas above it (what the film will show)
 function dockView() {

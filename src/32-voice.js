@@ -93,18 +93,24 @@ function voiceStream() { const ctx = voiceCtx(); if (!ctx || !ctx.createMediaStr
 function voiceStreamEnd() { VOICE.dest = null; }
 
 /* ---------- the whole dialogue as a WAV ---------- */
-async function dialogueWav() {
-  if (ANIM.open) storeShot();
+// the voices of these shots, one after the other, mixed into one track at SR_TTS (pad: seconds of silence at the end)
+async function dialoguePcm(shots = ANIM.shots, pad = .5, onLine) {
   let t0 = 0; const parts = [];
-  for (const s of ANIM.shots) {
+  for (const s of shots) {
     for (const l of s.lines) if (l.text.trim()) { const m = chars[l.c]; parts.push({t: t0 + l.f / ANIM.fps, l, vo: l.voice || voiceOf(m, l.c), lang: l.lang || LANG.slice(0, 2)}); }
     t0 += s.len / ANIM.fps;
   }
-  const out = new Float32Array(Math.ceil((t0 + .5) * SR_TTS));
-  for (const p of parts) {
+  const out = new Float32Array(Math.ceil((t0 + pad) * SR_TTS));
+  for (const [n, p] of parts.entries()) {
     const r = await sayLine(p.l.text, p.lang, p.vo), a = Math.max(0, Math.round(p.t * SR_TTS)), from = p.l.f < 0 ? Math.round(-p.l.f / ANIM.fps * SR_TTS) : 0;
     for (let i = from; i < r.pcm.length && a + i - from < out.length; i++) out[a + i - from] += r.pcm[i];
+    if (onLine) onLine(n + 1, parts.length);
   }
+  return out;
+}
+async function dialogueWav() {
+  if (ANIM.open) storeShot();
+  const out = await dialoguePcm();
   // 16-bit PCM WAV
   const n = out.length, buf = new ArrayBuffer(44 + n * 2), d = new DataView(buf), str = (o, s) => { for (let i = 0; i < s.length; i++) d.setUint8(o + i, s.charCodeAt(i)); };
   str(0, 'RIFF'); d.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true);

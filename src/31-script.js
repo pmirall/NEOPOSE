@@ -339,41 +339,190 @@ async function timeLines(D, cast) {
 }
 
 /* ---------- talking and listening bodies ----------
-   People do not talk with a loop of gestures (McNeill's beats; Cassell's BEAT): the hands come up into the space in front
-   of the body and give a small stroke with the words that carry the stress, one hand or the other or both, a moment
-   later the head dips with it; a listener nods now and then as a sentence ends. All from the line's word timings. */
-function talkBeats(D, ci) {
-  const out = []; let last = -9;
-  for (const l of D.lines) {
-    if (l.c !== ci) continue;
-    const words = l.words && l.words.length ? l.words.map((w, i) => [l.text.slice(w[0], l.words[i + 1] ? l.words[i + 1][0] : l.text.length), w[2]])
-      : l.text.split(/\s+/).map((w, i, A) => [w, l.dur * A.slice(0, i).join(' ').length / Math.max(1, l.text.length)]);
-    words.forEach(([w, t], i) => {
-      const tb = l.t0 + t + .04, strong = /[!¡]/.test(w) || (i === 0 && l.inten > .45);
-      if (tb - last < .55 || !(strong || /[áéíóú]/i.test(w) || w.replace(/[^\p{L}]/gu, '').length >= 6)) return;
-      const h = Math.sin((tb + ci) * 91.7) * 43758.5; last = tb;
-      out.push({t: tb, a: (.55 + .45 * l.inten) * (strong ? 1.25 : 1), side: (h - Math.floor(h)) < .45 ? 'R' : (h - Math.floor(h)) < .8 ? 'L' : 'B'});
-    });
-  }
-  return out;
+   People talk with their hands in phrases (Kendon, McNeill): the hands rise from rest into the space in front of the
+   body (preparation), strike on the word that carries the stress (stroke), hold it a moment and go on to the next
+   stroke or sink back to rest when the sentence is done. What a stroke looks like depends on what is said, as BEAT and
+   Greta pick it from the words: small beats, an open palm offered, both hands spread for "everything", a hand to the
+   chest for "I", palms up for a question, a palm-down sweep for "no", a blade chop for an exclamation, a pinch for "a
+   little". Mostly one hand (each person leads with one), sometimes both, and on a long sentence the other hand comes up
+   to wait. The hands are placed in the space in front of the body and the arms reach them (two-bone IK), with
+   minimum-jerk timing, so hands travel along paths, speed up and settle like hands do instead of joints turning in
+   step. The head nods with the strokes, shakes on "no", tilts on a question and never stands quite still while
+   talking; listeners nod as a sentence ends and, on a long listen, fold their hands in front or bring one to the chin.
+   All from the line's word timings, the same every time for the same script. */
+const GW = {  // words that call for a kind of gesture (lowercase, without accents), the app's seven languages
+  self: /^(yo|me|mi|mis|mio|mia|conmigo|nosotros|nosotras|nos|i|my|mine|myself|we|us|our|jo|em|meu|meva|nosaltres|je|moi|mon|ma|mes|nous|eu|minha|ich|mich|mir|mein|meine|wir|uns|io|noi)$/,
+  you: /^(tu|te|ti|usted|ustedes|vosotros|os|you|your|yours|teu|teva|vos|vostes|vous|toi|ton|ta|tes|voce|voces|seu|sua|du|dich|dir|dein|deine|ihr|euch|tuo|tua|voi)$/,
+  no: /^(no|nunca|nada|jamas|ni|not|never|nothing|no|mai|res|non|jamais|rien|nao|nein|nicht|nie|nichts|niente)$/,
+  big: /^(todo|todos|toda|todas|mundo|grande|enorme|muchos|muchas|mucho|siempre|everything|all|world|big|huge|many|much|always|tot|tots|totes|gran|tout|tous|toute|monde|grand|tudo|alles|welt|gross|viele|immer|tutto|tutti|mondo|molti|sempre)$/,
+  small: /^(poco|poquito|pequeno|pequena|pequenos|pequenas|exacto|exactamente|preciso|little|small|tiny|bit|exactly|precise|petit|petite|peu|exactement|pouco|exato|klein|bisschen|genau|piccolo|esatto|mica)$/
+};
+// where the wrist goes, from its own shoulder, in arm lengths: x away from the body's middle, y up, z forward;
+// palm: its turn about the forearm (0 thumb up, 90 palm up, -90 palm down); shape: a hand of GESTURES
+const G_HOME = {x: -.06, y: -.68, z: .38, palm: 18, shape: 'relajada'};
+const G_WAIT = {x: -.1, y: -.78, z: .3, palm: 10, shape: 'relajada'};  // the other hand, up and waiting
+const GKIND = {
+  beat: {prep: {x: .02, y: -.5, z: .48, palm: 28}, hit: {x: .03, y: -.69, z: .52, palm: 22}},
+  offer: {prep: {x: -.04, y: -.62, z: .36, palm: 45}, hit: {x: .2, y: -.54, z: .64, palm: 88}, shape: 'abierta'},
+  spread: {both: true, prep: {x: -.1, y: -.56, z: .44, palm: 55}, hit: {x: .44, y: -.56, z: .46, palm: 82}, shape: 'abierta'},
+  self: {prep: {x: -.12, y: -.52, z: .4, palm: 5}, hit: {x: -.26, y: -.4, z: .34, palm: -5}, shape: 'plana', pole: 'front'},
+  you: {prep: {x: -.02, y: -.56, z: .44, palm: 55}, hit: {x: .06, y: -.46, z: .74, palm: 78}, shape: 'abierta'},
+  shrug: {both: true, prep: {x: 0, y: -.66, z: .34, palm: 60}, hit: {x: .32, y: -.56, z: .42, palm: 98}, shape: 'abierta'},
+  no: {prep: {x: -.18, y: -.5, z: .5, palm: -78}, hit: {x: .36, y: -.53, z: .52, palm: -86}, shape: 'plana'},
+  chop: {prep: {x: .03, y: -.3, z: .44, palm: 0}, hit: {x: .03, y: -.68, z: .58, palm: 0}, shape: 'plana'},
+  pinch: {prep: {x: -.05, y: -.46, z: .5, palm: 32}, hit: {x: -.02, y: -.54, z: .56, palm: 36}, shape: 'pinza'}
+};
+const LISTEN = {
+  clasp: {L: {x: -.26, y: -.84, z: .26, palm: 0, shape: 'agarre'}, R: {x: -.26, y: -.86, z: .28, palm: 0, shape: 'agarre'}},
+  chin: {R: {x: -.29, y: -.03, z: .27, palm: -8, shape: 'puno', pole: 'front'}, L: {x: -.3, y: -.55, z: .3, palm: 70, shape: 'relajada'}}
+};
+const hashF2 = x => { const h = Math.sin(x * 127.1 + 311.7) * 43758.5453; return h - Math.floor(h); };
+const plain = w => w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}]/gu, '');
+// a line's words with their times in the line (from the voice, or spread by length)
+function lineWordTimes(l) {
+  return l.words && l.words.length ? l.words.map((w, i) => [l.text.slice(w[0], l.words[i + 1] ? l.words[i + 1][0] : l.text.length).trim(), w[2]])
+    : l.text.split(/\s+/).map((w, i, A) => [w, l.dur * A.slice(0, i).join(' ').length / Math.max(1, l.text.length)]);
 }
-function listenNods(D, ci) {
-  const out = [];
-  for (const l of D.lines) if (l.c !== ci && l.to === ci && l.dur > 1.6) { const h = Math.sin((l.t0 + ci) * 57.3) * 43758.5; if (h - Math.floor(h) < .7) out.push(l.t0 + l.dur * (.55 + .3 * (h - Math.floor(h)))); }
-  return out;
+function gesturePlan(D, ci) {
+  const arms = {L: [], R: []}, acc = [], lead = hashF2(ci * 3.1 + 1) < .78 ? 'R' : 'L', other = lead === 'R' ? 'L' : 'R';
+  const mine = D.lines.filter(l => l.c === ci).sort((a, b) => a.t0 - b.t0);
+  const last = a => arms[a][arms[a].length - 1], up = a => { const k = last(a); return k && k.w > 0; };
+  const key = (a, t, p, w = 1) => { const k = last(a); if (k && t < k.t + .06) { if (t < k.t - .01) return; arms[a].pop(); } arms[a].push({t, w, x: p.x, y: p.y, z: p.z, palm: p.palm, shape: p.shape || 'relajada', pole: p.pole || 'side'}); };
+  const rest = (a, t) => { if (!up(a)) return; const k = last(a); key(a, Math.max(t, k.t + .1), G_HOME); key(a, Math.max(t, k.t + .1) + .55, {...G_HOME, y: -.86, z: .2}, 0); };
+  for (const [li, l] of mine.entries()) {
+    const next = mine[li + 1], words = lineWordTimes(l), q = /[?¿]/.test(l.text), ex = /[!¡]/.test(l.text), strokes = []; let lastT = -9;
+    words.forEach(([w, t], i) => {
+      const p = plain(w), tb = l.t0 + t + .05, kind = GW.self.test(p) ? 'self' : GW.you.test(p) && l.to != null ? 'you' : GW.no.test(p) ? 'no' : GW.big.test(p) ? 'spread' : GW.small.test(p) ? 'pinch' : null;
+      const stress = /[!¡]/.test(w) || /[áéíóú]/i.test(w) || p.length >= 6 || (i === 0 && l.inten > .45);
+      if (!(kind || stress) || tb - lastT < (kind ? .45 : .62)) return;
+      if (tb > l.t0 + l.dur - .12 && strokes.length) return;  // not on the very last syllable: the hand would still be striking as the voice stops
+      strokes.push({t: tb, kind, w: p, bang: /[!¡]/.test(w)}); lastT = tb;
+    });
+    if (!strokes.length && l.dur > .8) strokes.push({t: l.t0 + Math.min(.35, l.dur * .3), kind: null});
+    if (q && strokes.length && l.dur > 1.1) strokes[strokes.length - 1].kind = 'shrug';
+    // a quiet line has fewer and smaller gestures; a loud one more and bigger
+    const amp = .65 + .5 * (l.inten ?? .5), keep = strokes.filter((x, i) => x.kind || i === 0 || hashF2(x.t * 7.7 + ci) < .45 + .5 * (l.inten ?? .5));
+    const waitOther = keep.length >= 3 && hashF2(l.t0 * 3.3 + ci) < .6;
+    for (const [si, st] of keep.entries()) {
+      const r = hashF2(st.t * 13.1 + ci * 5.3), kind = st.kind || (st.bang || (ex && si === 0) ? 'chop' : r < .5 ? 'beat' : r < .86 ? 'offer' : 'pinch'), G = GKIND[kind];
+      const sides = G.both || (kind === 'beat' && r > .38 && r < .5 && amp > .9) ? ['L', 'R'] : [hashF2(st.t * 3.7 + 9) < .72 ? lead : other];
+      const sc = v => ({...v, x: v.x * amp, z: .3 + (v.z - .3) * amp});
+      for (const a of sides) {
+        const pre = st.t - .2, wasUp = up(a), prev = last(a);
+        if (!wasUp) key(a, Math.max(pre - .4, prev ? prev.t + .1 : -9), {...G.prep, shape: G.shape}, 0);
+        else if (prev && pre - prev.t > .9) key(a, pre - .45, G_HOME);
+        key(a, pre, {...sc(G.prep), shape: G.shape, pole: G.pole});
+        const hit = sc(G.hit), over = {...hit, x: hit.x + (hit.x - G.prep.x) * .08, y: hit.y + (hit.y - G.prep.y) * .08, z: hit.z + (hit.z - G.prep.z) * .08, shape: G.shape, pole: G.pole};
+        // the stroke never snaps: at least a quarter of a second from wherever the hand was
+        const tHit = Math.max(st.t + .06, (last(a) ? last(a).t : -9) + .25);
+        key(a, tHit, over); key(a, tHit + .2, {...hit, shape: G.shape, pole: G.pole});
+        // the hold, ended before the next stroke gets ready
+        const nextPre = keep[si + 1] ? keep[si + 1].t - .28 : l.t0 + l.dur, hold = Math.min(.5, Math.max(.15, ((keep[si + 1] ? keep[si + 1].t : l.t0 + l.dur) - st.t) * .45)), tEnd = Math.min(tHit + .2 + hold, nextPre);
+        if (tEnd > tHit + .32) key(a, tEnd, {x: hit.x * .7 + G_HOME.x * .3, y: hit.y * .7 + G_HOME.y * .3, z: hit.z * .7 + G_HOME.z * .3, palm: hit.palm * .8 + G_HOME.palm * .2, shape: G.shape, pole: G.pole});
+      }
+      acc.push({t: st.t, kind, side: sides.length > 1 ? 0 : sides[0] === 'L' ? 1 : -1, a: amp});
+      if (si === 0 && waitOther && sides.length === 1) { const o = sides[0] === 'L' ? 'R' : 'L'; if (!up(o)) { key(o, st.t - .5, G_WAIT, 0); key(o, st.t, G_WAIT); } }
+    }
+    // the sentence is over: the hands go back down, unless the same person goes on talking soon
+    const end = l.t0 + l.dur + .15;
+    if (!next || next.t0 - end > 1.3) { rest('L', end); rest('R', end + .08); }
+  }
+  // listening: nods as the other's sentence ends; on a long listen, the hands folded in front or one at the chin
+  const nods = [];
+  for (const l of D.lines) {
+    if (l.c === ci) continue;
+    const h = hashF2(l.t0 * 5.9 + ci);
+    if (l.to === ci && l.dur > 1.4 && h < .75) nods.push(l.t0 + l.dur * (.55 + .3 * h));
+    const busy = mine.some(x => x.t0 < l.t0 + l.dur + .8 && x.t0 + x.dur > l.t0 - .8) || ['L', 'R'].some(a => arms[a].some(k => k.w > 0 && k.t > l.t0 - .8 && k.t < l.t0 + l.dur + .8));
+    if (l.dur < 3.2 || busy || h > .55) continue;
+    const P = LISTEN[h < .3 ? 'clasp' : 'chin'], t0 = l.t0 + .5, t1 = l.t0 + l.dur - .2;
+    // (in between the talking, so put in by time, not after it)
+    const mk = (t, p, w) => ({t, w, x: p.x, y: p.y, z: p.z, palm: p.palm, shape: p.shape, pole: p.pole || 'side'});
+    for (const a of ['L', 'R']) if (P[a]) arms[a].push(mk(t0, P[a], 0), mk(t0 + .8, P[a], 1), mk(t1, P[a], 1), mk(t1 + .8, {...P[a], y: -.86, z: .2}, 0));
+  }
+  for (const a of ['L', 'R']) arms[a].sort((x, y) => x.t - y.t);
+  return {arms, acc, nods};
+}
+const minJerk5 = u => u * u * u * (10 - 15 * u + 6 * u * u);
+function armAt(K, t) {
+  if (!K.length || t <= K[0].t) return null;
+  let i = 0; while (i < K.length - 1 && K[i + 1].t <= t) i++;
+  const a = K[i], b = K[i + 1]; if (!b) return a.w > 0 ? a : null;
+  const u = minJerk5(clamp((t - a.t) / (b.t - a.t), 0, 1)), L = (x, y) => x + (y - x) * u;
+  return {w: L(a.w, b.w), x: L(a.x, b.x), y: L(a.y, b.y), z: L(a.z, b.z), palm: L(a.palm, b.palm), shapeA: a.shape, shapeB: b.shape, u, pole: u < .5 ? a.pole : b.pole};
 }
 const beatAt = x => x <= 0 ? 0 : x * Math.exp(1 - x);  // a stroke: up quickly, down slowly (x in units of its rise)
-function talkLayer(pose, w, beats, nods, t, sit) {
-  let bL = 0, bR = 0, nod = 0;
-  for (const b of beats) { const v = beatAt((t - b.t) / .17) * b.a; if (v < .005) continue; if (b.side !== 'L') bR += v * (b.side === 'B' ? .75 : 1); if (b.side !== 'R') bL += v * (b.side === 'B' ? .75 : 1); nod += v * .5; }
-  for (const n of nods) nod += beatAt((t - n) / .22) * .9;
-  if (w < .005 && bL + bR + nod < .005) return pose;
+// the arm of side s reaches the wrist position T (world), the elbow out towards the pole, the palm turned as asked.
+// Only the arm's bones are updated as it goes (the whole figure is not), as this runs for every frame of a film.
+function reachArm(m, s, T, pole, palm, out, fw) {
+  const J = m.joints, sh = J['shoulder' + s], el = J['elbow' + s], wr = J['wrist' + s], S = wposOf(sh), E0 = wposOf(el), W0 = wposOf(wr);
+  const a = E0.distanceTo(S), b = W0.distanceTo(E0), d0 = T.clone().sub(S), d = clamp(d0.length(), Math.abs(a - b) + .01, (a + b) * .985), n = d0.normalize();
+  // the elbow's side: the pole across the arm; when the arm points almost along the pole (a hand straight down), a
+  // second hint (out and back) takes over gradually, so the elbow never swings round from one frame to the next
+  const ca = clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1), across = v => v.clone().normalize().addScaledVector(n, -v.clone().normalize().dot(n));
+  const p1 = across(pole), k1 = p1.length(), pp = p1.addScaledVector(across(out.clone().multiplyScalar(.8).addScaledVector(fw, -.6)), Math.max(0, 1 - k1 / .6) * 1.5); if (pp.lengthSq() < 1e-6) pp.copy(out);
+  const E = S.clone().addScaledVector(n, a * ca).addScaledVector(pp.normalize(), a * Math.sqrt(1 - ca * ca)), Wt = S.clone().addScaledVector(n, d), d1 = E.clone().sub(S), d2 = Wt.clone().sub(E);
+  const setW = (P, qw) => { P.quaternion.copy(P.parent.getWorldQuaternion(new Q()).invert().multiply(qw)); P.updateMatrixWorld(true); };
+  // upper arm along d1, the elbow bent by the angle to d2, then the upper arm turned about itself so the forearm points along d2
+  setW(sh, new Q().setFromUnitVectors(E0.clone().sub(S).normalize(), d1.clone().normalize()).multiply(sh.getWorldQuaternion(new Q())));
+  const H = HINGE['elbow' + s]; el.rotation.set(clamp(-d1.angleTo(d2), H[0] * DEG, H[1] * DEG), 0, 0, 'XYZ'); el.updateMatrixWorld(true);
+  const ax = d1.clone().normalize(), cur = wposOf(wr).sub(wposOf(el)), pc0 = cur.addScaledVector(ax, -cur.dot(ax)), pw0 = d2.clone().addScaledVector(ax, -d2.dot(ax));
+  if (pc0.lengthSq() > 1e-8 && pw0.lengthSq() > 1e-8) { let t = pc0.angleTo(pw0); if (new V3().crossVectors(pc0, pw0).dot(ax) < 0) t = -t; setW(sh, new Q().setFromAxisAngle(ax, t).multiply(sh.getWorldQuaternion(new Q()))); }
+  // the palm: turned about the forearm from thumb-up (palm to the body's middle) towards up or down
+  if (!m.handAxes) return;
+  // (towards the middle and up, across the forearm; with the forearm upright, towards the body instead, gradually)
+  const f = wposOf(wr).sub(wposOf(el)).normalize(), flat = v => v.addScaledVector(f, -v.dot(f));
+  const want = flat(out.clone().multiplyScalar(-Math.cos(palm * DEG)).add(new V3(0, Math.sin(palm * DEG), 0))), kw = want.length();
+  want.addScaledVector(flat(fw.clone().negate()), Math.max(0, 1 - kw / .5) * 1.5); if (want.lengthSq() < 1e-6) return;
+  const wq = wr.getWorldQuaternion(new Q());
+  const pc = m.handAxes[s].n.clone().applyQuaternion(wq), pw = want; pc.addScaledVector(f, -pc.dot(f)); pw.addScaledVector(f, -pw.dot(f)); if (pc.lengthSq() < 1e-8 || pw.lengthSq() < 1e-8) return;
+  let ang = pc.angleTo(pw); if (new V3().crossVectors(pc, pw).dot(f) < 0) ang = -ang;
+  setW(wr, new Q().setFromAxisAngle(f, clamp(ang, -110 * DEG, 110 * DEG)).multiply(wq));
+}
+// the trunk and arms of a pose put on the figure's bones (only those, and only the skeleton updated)
+function setTrunk(m, pose) {
+  const J = m.joints;
+  for (const n of ['hips', 'waist', 'chest', 'shoulderL', 'elbowL', 'wristL', 'shoulderR', 'elbowR', 'wristR']) { J[n].rotation.order = 'XYZ'; J[n].quaternion.fromArray(pose.q[n] || [0, 0, 0, 1]); }
+  if (pose.pos) { J.hips.position.fromArray(pose.pos); J.hips.position.y *= J.hips.scale.y; }
+  J.hips.updateMatrixWorld(true);
+}
+// the talking (or listening) body on top of the pose of the moment: arms, hands, head and chest
+function gestureLayer(m, pose, plan, t, sit, talkw) {
+  const A = {L: armAt(plan.arms.L, t), R: armAt(plan.arms.R, t)};
+  let nod = 0, shake = 0, tilt = 0, lean = 0, twist = 0;
+  for (const c of plan.acc) {
+    const x = t - c.t; if (x < -.3 || x > 1.4) continue;
+    const v = beatAt((x + .05) / .18) * c.a;
+    if (c.kind === 'no') shake += Math.sin(x * 2 * Math.PI * 2.4) * Math.max(0, 1 - Math.abs(x - .2) / .55) * 7;
+    else if (c.kind === 'shrug') { tilt += beatAt((x + .1) / .3) * 6 * (c.side || 1); nod -= beatAt((x + .1) / .3) * 1.5; }
+    else nod += v * (c.kind === 'chop' ? 4.5 : 3);
+    lean += v * (c.kind === 'you' ? 2.5 : c.kind === 'self' ? -1.2 : 1); twist += v * c.side * 3;
+  }
+  for (const n of plan.nods) nod += beatAt((t - n) / .22) * 4.5 + beatAt((t - n - .45) / .2) * 2.2;
+  // talking, the head is never quite still (slow, uneven drifts, a few degrees)
+  const dr = (f1, f2, ph) => Math.sin(t * f1 + ph) * .6 + Math.sin(t * f2 + ph * 1.7) * .4;
+  nod += talkw * 1.6 * dr(2.1, 3.7, .3); const yaw = talkw * 2.2 * dr(1.3, 2.9, 1.1); tilt += talkw * 1.8 * dr(1.1, 2.3, 2.2);
+  const armsOn = (A.L && A.L.w > .002) || (A.R && A.R.w > .002);
+  if (!armsOn && Math.abs(nod) + Math.abs(shake) + Math.abs(tilt) + Math.abs(lean) + Math.abs(twist) + Math.abs(yaw) < .05) return pose;
   const q = {...pose.q}, E = new THREE.Euler(), add = (j, x, y, z) => { if (Math.abs(x) + Math.abs(y) + Math.abs(z) > 1e-4) q[j] = new Q().fromArray(q[j] || [0, 0, 0, 1]).multiply(new Q().setFromEuler(E.set(x * DEG, y * DEG, z * DEG))).toArray(); };
-  const up = sit ? .6 : 1;
-  add('shoulderR', (-12 * w - 14 * bR) * up, 0, -4 * w - 3 * bR); add('elbowR', (-30 * w - 20 * bR) * up, 0, 0); add('wristR', 0, 0, 6 * bR);
-  add('shoulderL', (-9 * w - 14 * bL) * up, 0, 4 * w + 3 * bL); add('elbowL', (-26 * w - 20 * bL) * up, 0, 0); add('wristL', 0, 0, -6 * bL);
-  add('chest', 1.5 * (bL + bR) * .5 + w, 0, 0); add('head', 4 * nod, 0, 0); add('neck', 1.5 * nod, 0, 0);
-  return {...pose, q};
+  add('chest', lean * .8, twist * .6, 0); add('neck', nod * .35, (yaw + shake) * .35, tilt * .3); add('head', nod * .65, (yaw + shake) * .65, tilt * .7);
+  if (!armsOn) return {...pose, q};
+  setTrunk(m, {...pose, q});
+  const yawB = facingOf(q), fw = new V3(Math.sin(yawB), 0, Math.cos(yawB)), left = new V3(fw.z, 0, -fw.x), upv = new V3(0, 1, 0), hands = JSON.parse(JSON.stringify(pose.hands || m.hands));
+  for (const s of ['L', 'R']) {
+    const g = A[s]; if (!g || g.w <= .002) continue;
+    const J = m.joints, S = wposOf(J['shoulder' + s]), La = wposOf(J['elbow' + s]).distanceTo(S) + wposOf(J['wrist' + s]).distanceTo(wposOf(J['elbow' + s]));
+    const out = s === 'L' ? left : left.clone().negate(), y = sit ? g.y * .85 + .08 : g.y;
+    const T = S.clone().addScaledVector(out, g.x * La).addScaledVector(upv, y * La).addScaledVector(fw, g.z * La);
+    const pole = g.pole === 'front' ? upv.clone().negate().addScaledVector(out, .3).addScaledVector(fw, .1) : upv.clone().negate().addScaledVector(out, .22).addScaledVector(fw, -.35);
+    const base = ['shoulder', 'elbow', 'wrist'].map(n => q[n + s]);
+    reachArm(m, s, T, pole, g.palm, out, fw);
+    ['shoulder', 'elbow', 'wrist'].forEach((n, i) => { const j = n + s, b = new Q().fromArray(base[i] || [0, 0, 0, 1]); q[j] = b.slerp(J[j].quaternion, g.w).toArray(); });
+    // the hand's shape, eased between the two keys' shapes and in from its own
+    const sa = gest(g.shapeA), sb = gest(g.shapeB), h = hands[s] || gest('relajada'), mix = (x, y) => x + (y - x) * g.u;
+    h.c = h.c.map((c, k) => c + (mix(sa.c[k], sb.c[k]) - c) * g.w); h.s = h.s + (mix(sa.s, sb.s) - h.s) * g.w; h.t = (h.t || 0) + (mix(sa.t || 0, sb.t || 0) - (h.t || 0)) * g.w; hands[s] = h;
+  }
+  return {...pose, q, hands};
 }
 
 /* ---------- baking: every frame of every character ---------- */
@@ -398,7 +547,7 @@ function bakeScene(D) {
     const phase = li * .83, keys = []; let prevPose = null, cur = -1, from = -1;
     // talking or not, eased in and out over a third of a second (the hands do not snap into a gesture)
     const talkW = t => { let w = 0; for (const l of D.lines) if (l.c === s.ci) { const a = l.t0 - .1, b = l.t0 + l.dur + .2, d = t < a ? a - t : t > b ? t - b : 0; w = Math.max(w, 1 - d / .35); } return easeIO(clamp(w, 0, 1)); };
-    const beats = talkBeats(D, s.ci), nods = listenNods(D, s.ci);
+    const plan = gesturePlan(D, s.ci);
     // how far along a walk is at tl: it speeds up over its first steps and slows down over its last
     const walked = (g, tl) => {
       const L = Math.hypot(g.to.x - g.from.x, g.to.z - g.from.z), T = g.t1 - g.t0, r = Math.min(.45, T / 3), v = L / Math.max(1e-6, T - r), t = clamp(tl, 0, T);
@@ -411,7 +560,7 @@ function bakeScene(D) {
         if (g.mode === 'down') return g._still;
         // talking is not a gesture loop: the idle goes on, the hands come up ready, and they beat with the stressed words
         const sit = g.mode === 'sit', a = clipById(sit ? SC_CLIP.sitIdle : SC_CLIP.idle) || clipById(SC_CLIP.idle2);
-        const pose = talkLayer(clipPose(m, sampleClip(a, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep), talkW(tt), beats, nods, tt, sit);
+        const pose = gestureLayer(m, clipPose(m, sampleClip(a, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep), plan, tt, sit, talkW(tt));
         return sit ? seatPose(m, pose, g) : pose;
       }
       if (g.kind === 'walk') {  // the steps go with the ground covered, so the feet do not slide

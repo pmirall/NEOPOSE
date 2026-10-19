@@ -3,7 +3,7 @@
    AI maps: depth, normals, OpenPose skeleton (body and hands) and white-on-black lines, for ControlNet-style tools.
    3D: the posed scene as a GLB mesh, or the active character's skeleton and pose as BVH.
    Print sizes: A5, A4 or A3 at 300 ppi, with the resolution written into the PNG. */
-const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true};
+const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true, vres: '1080'};
 const PRINT = {a5: ['A5', 1748, 2480], a4: ['A4', 2480, 3508], a3: ['A3', 3508, 4961]};
 const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D', anim: 'Animación'};
 const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', audio: 'Diálogo en audio (WAV)', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
@@ -15,6 +15,12 @@ function exportHide() {
   const list = [...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : [])];
   const vis = list.map(o => o.visible), tcv = tc.visible; list.forEach(o => o.visible = false); tc.visible = false;
   return () => { list.forEach((o, i) => o.visible = vis[i]); tc.visible = tcv; };
+}
+// a film shows only the film: besides the gizmos, no contour rings and no tint on the selected bone (while ANIM.rec is
+// set the frame loop keeps dots, handles, pins and the sun hidden, and the tint off, see sceneTicks)
+function filmHide() {
+  const back = exportHide(), la = LU.uLineA.value; LU.uLineA.value = 0; clearOnion();
+  return () => { back(); LU.uLineA.value = la; for (const m of chars) m.highlight(m.hiJoint); };
 }
 function withPixelRatio(k, fn) {
   const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value;
@@ -336,17 +342,17 @@ function exportKindUI() {
   $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d'; $('#exOptAnim').hidden = k !== 'anim';
   $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic; $('#exSizeRow').hidden = k === 'm3d' || !pic;
   $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim'; $('#exPsd').hidden = k !== 'img'; $('#exOpenIn').hidden = k !== 'img' && k !== 'anim';
-  $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers' && w !== 'gif'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'gif' || w === 'board');
+  $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers' && w !== 'gif'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'gif' || w === 'board' || w === 'video'); $('#exAnimResRow').hidden = w !== 'video';
   $('#exAnimRange').querySelectorAll('.chip').forEach(b => b.disabled = w === 'bvh' && b.dataset.v === 'movie');
   $('#exBg .chip[data-v=paper]').textContent = tr(k === 'turn' ? 'Papel' : 'Con escenario');
   $('#exSave').textContent = k === 'anim' ? tr('Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
 }
 // the choices of the last export come back next time
-const EX_KEEP = ['kind', 'map', 'views', 'fmt3d', 'animWhat', 'animRange', 'animStep'];
+const EX_KEEP = ['kind', 'map', 'views', 'fmt3d', 'animWhat', 'animRange', 'animStep', 'vres'];
 function saveExportPrefs() { store.set('cdp.export', {...Object.fromEntries(EX_KEEP.map(k => [k, EXK[k]])), bg: ex.bg, size: ex.size}); }
 function loadExportPrefs() {
   const p = store.get('cdp.export', null); if (!p) return;
-  const ok = {kind: EX_KINDS, map: EX_MAPS, fmt3d: {glb: 1, bvh: 1}, animWhat: EX_ANIM, animRange: {shot: 1, movie: 1}, animStep: {1: 1, 2: 1, 4: 1, keys: 1}, views: {4: 1, 8: 1}};
+  const ok = {kind: EX_KINDS, map: EX_MAPS, fmt3d: {glb: 1, bvh: 1}, animWhat: EX_ANIM, animRange: {shot: 1, movie: 1}, animStep: {1: 1, 2: 1, 4: 1, keys: 1}, vres: {720: 1, 1080: 1}, views: {4: 1, 8: 1}};
   for (const k of EX_KEEP) if (p[k] != null && ok[k][p[k]]) EXK[k] = p[k];
   if (['paper', 'alpha', 'lines'].includes(p.bg)) ex.bg = p.bg;
   if ([1, 2, 3, 'a5', 'a4', 'a3'].includes(p.size)) ex.size = p.size;
@@ -375,6 +381,7 @@ function saveExport() {
   saveFile(name, bytes, 'image/png');
 }
 function buildExportUI() {
+  initVideoWindow();
   loadExportPrefs();
   chips($('#exKind'), Object.entries(EX_KINDS), EXK.kind, v => { EXK.kind = v; setPressed($('#exKind'), v); renderExportKind(); });
   chips($('#exMap'), Object.entries(EX_MAPS), EXK.map, v => { EXK.map = v; setPressed($('#exMap'), v); renderExportKind(); });
@@ -384,6 +391,7 @@ function buildExportUI() {
   chk('#exNeutral', 'neutral'); chk('#exHeads', 'heads'); chk('#exHands', 'hands'); chk('#exEnvMap', 'envInMap'); chk('#exSubs', 'subs');
   chips($('#exAnimWhat'), Object.entries(EX_ANIM), EXK.animWhat, v => { EXK.animWhat = v; setPressed($('#exAnimWhat'), v); if (v === 'bvh') { EXK.animRange = 'shot'; setPressed($('#exAnimRange'), 'shot'); } renderExportKind(); });
   chips($('#exAnimRange'), [['shot', 'Este plano'], ['movie', 'Toda la película']], EXK.animRange, v => { EXK.animRange = v; setPressed($('#exAnimRange'), v); renderExportKind(); });
+  chips($('#exAnimRes'), [['720', '720p'], ['1080', '1080p']], EXK.vres, v => { EXK.vres = v; setPressed($('#exAnimRes'), v); renderExportKind(); });
   chips($('#exAnimStep'), [['1', 'Cada fotograma'], ['2', 'De 2 en 2'], ['4', 'De 4 en 4'], ['keys', 'Solo claves']], EXK.animStep, v => { EXK.animStep = v; setPressed($('#exAnimStep'), v); renderExportKind(); });
   // the old controls redraw whatever kind is chosen
   bindChipGroup('#exBg', v => { ex.bg = v; renderExportKind(); });
@@ -411,7 +419,7 @@ function animExportPreview() {
   $('#exSave').disabled = false;
   const w = EXK.animWhat, list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], secs = list.reduce((a, s) => a + s.len, 0) / ANIM.fps;
   $('#exAnimNote').textContent = w === 'frames' ? tr('{n} fotogramas en PNG, en carpetas por plano dentro de un archivo ZIP.', {n: countFrames()})
-    : w === 'video' ? tr('Se graba mientras se reproduce: {s} s. Sin subtítulos (van en los fotogramas y el guion gráfico).', {s: dec(secs)})
+    : w === 'video' ? (window.VideoEncoder ? tr('MP4 de {s} s a 30 fotogramas por segundo, renderizado fotograma a fotograma, con las voces.', {s: dec(secs)}) : tr('Se graba mientras se reproduce: {s} s.', {s: dec(secs)}))
     : w === 'board' ? tr('Una viñeta por plano, con su nombre, duración, cámara y diálogo: {n} viñetas.', {n: list.length})
     : tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))});
   if (w === 'frames' || w === 'board') { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
@@ -427,7 +435,7 @@ async function exportAnimation() {
   const w = EXK.animWhat;
   if (w === 'bvh') return saveFile(`animacion-${stamp()}.bvh`, new TextEncoder().encode(animBVH(mq)), 'text/plain');
   storeShot();
-  if (w === 'video') { exportBusy(true, 0); $('#exMsg').textContent = tr('Grabando la animación…'); closeExport(); return recordVideo(EXK.animRange, () => exportBusy(false)); }
+  if (w === 'video') { closeExport(); return exportVideo(EXK.animRange); }
   exportBusy(true, 0);
   try {
     if (w === 'layers') await exportLayerSequences();

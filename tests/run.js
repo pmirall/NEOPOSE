@@ -806,12 +806,12 @@ const SUITES = {
     ok(!film.warn, 'the sample is understood without warnings' + (film.warn ? ': ' + film.warn : ''));
     // no pops: no arm or head turns in one frame while it is all but still in the frames either side (as they did when
     // someone started or stopped talking); a fast move such as a jump for joy turns a lot over several frames running
-    const jump = await A(() => { const A = window.__cdp.ANIM, Q = THREE.Quaternion; let w = 0;
-      for (const s of A.shots) for (const K of s.keys) for (const j of ['shoulderL', 'elbowL', 'shoulderR', 'elbowR', 'head']) {
+    const [jump, where] = await A(() => { const A = window.__cdp.ANIM, Q = THREE.Quaternion; let w = 0, at = '';
+      for (const [si, s] of A.shots.entries()) for (const [ci, K] of s.keys.entries()) for (const j of ['shoulderL', 'elbowL', 'shoulderR', 'elbowR', 'head']) {
         const v = []; for (let i = 1; i < K.length; i++) { const a = new Q().fromArray(K[i - 1].pose.q[j] || [0, 0, 0, 1]), b = new Q().fromArray(K[i].pose.q[j] || [0, 0, 0, 1]); v.push(2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 / Math.PI); }
-        for (let i = 1; i < v.length - 1; i++) if (Math.max(v[i - 1], v[i + 1]) < v[i] * .3) w = Math.max(w, v[i]); }
-      return w; });
-    ok(jump < 20, `the film flows: no arm or head jumps in a frame between still ones (${Math.round(jump)}°)`);
+        for (let i = 1; i < v.length - 1; i++) if (Math.max(v[i - 1], v[i + 1]) < v[i] * .3 && v[i] > w) { w = v[i]; at = `shot ${si + 1}, character ${ci + 1}, ${j}, frame ${i}`; } }
+      return [w, at]; });
+    ok(jump < 20, `the film flows: no arm or head jumps in a frame between still ones (${Math.round(jump)}°${jump >= 20 ? ' at ' + where : ''})`);
     // talking like people: the turn to whoever speaks is shared down the spine (no owl necks), everyone blinks, the mouth
     // goes from vowel to vowel instead of chattering letter by letter
     const talk = await A(() => { const C = window.__cdp, A = C.ANIM, Q = THREE.Quaternion, ys = []; let n = 0, d = 0;
@@ -821,6 +821,28 @@ const SUITES = {
       let blinks = 0; for (let t = 0; t < 20; t += 1 / 24) if (C.blinkAt(0, t, false) > .99) blinks++;
       return {neck, step: d / Math.max(1, n), blinks}; });
     ok(talk.neck < 35 && talk.step < 4.5 && talk.blinks >= 3, `talking: the head is turned ${Math.round(talk.neck)}° or less on the chest 90% of the time, the jaw moves ${talk.step.toFixed(1)}° a frame, ${talk.blinks} frames of closed eyes in 20 s`);
+    // talking with the hands: while a line is said the speaker's arms come up into gestures (elbows bent, hands in front),
+    // in phrases that change (not one movement repeated), and the hands go back down when the talking is over
+    const ges = await A(() => { const A = window.__cdp.ANIM, Q = THREE.Quaternion, bend = p => Math.max(...['elbowL', 'elbowR'].map(j => 2 * Math.acos(Math.min(1, Math.abs((p.q[j] || [0, 0, 0, 1])[3]))) * 180 / Math.PI));
+      let on = 0, n = 0, after = 0, na = 0; const seen = new Set();
+      for (const s of A.shots) for (const l of s.lines) { const K = s.keys[l.c]; if (!K) continue;
+        for (let f = Math.max(0, l.f + 4); f < Math.min(K.length, l.f + l.len - 2); f++) { const b = bend(K[f].pose); n++; if (b > 40) on++; seen.add(Math.round(b / 10)); }
+        const later = s.lines.some(x => x.c === l.c && x !== l && x.f > l.f && x.f < l.f + l.len + 2.5 * A.fps) || s.lines.some(x => x.c !== l.c && x.f < l.f + l.len + 2.5 * A.fps && x.f + x.len > l.f + l.len);
+        const g = l.f + l.len + Math.round(1.6 * A.fps); if (!later && g < K.length) { na++; if (bend(K[g].pose) < 40) after++; } }
+      return {share: on / Math.max(1, n), kinds: seen.size, after, na}; });
+    ok(ges.share > .5 && ges.kinds >= 6 && (!ges.na || ges.after / ges.na > .6), `talking hands: arms up in gestures ${Math.round(ges.share * 100)} % of the time a line is said, ${ges.kinds} different elbow angles, down again after ${ges.after} of ${ges.na} lines`);
+    // the video is rendered frame by frame into an MP4 behind a window, with the voices, and leaves the app as it was
+    const vid = await A(async () => { const C = window.__cdp, V = C.video, o = URL.createObjectURL, a0 = HTMLAnchorElement.prototype.click; let blob = null, shown = false;
+      URL.createObjectURL = b => { blob = b; return o.call(URL, b); }; HTMLAnchorElement.prototype.click = function () {};
+      const obs = new MutationObserver(() => { if (!document.querySelector('#renderModal').hidden) shown = true; }); obs.observe(document.querySelector('#renderModal'), {attributes: true});
+      const talky = C.ANIM.shots.findIndex(x => x.lines.some(l => l.text.trim())); if (talky >= 0 && talky !== C.ANIM.cur) await C.script.enterShot(talky, 0);
+      C.EXK.vres = '720'; const cur = C.ANIM.cur, s = C.ANIM.shots[cur]; await V.exportVideo('shot'); obs.disconnect(); URL.createObjectURL = o; HTMLAnchorElement.prototype.click = a0;
+      if (!blob) return {err: 'no file'};
+      const u = new Uint8Array(await blob.arrayBuffer()), dv = new DataView(u.buffer), top = []; for (let i = 0; i < u.length;) { const n = dv.getUint32(i); top.push(String.fromCharCode(...u.slice(i + 4, i + 8))); if (n < 8) break; i += n; }
+      const txt = new TextDecoder('latin1').decode(u.slice(0, Math.min(u.length, 400000))), stsz = txt.indexOf('stsz'), frames = stsz > 0 ? dv.getUint32(stsz + 12) : 0;
+      return {top: top.join(','), traks: txt.split('trak').length - 1, codec: txt.includes('avcC') ? 'H.264' : txt.includes('vpcC') ? 'VP9' : null, frames, want: Math.round(s.len / C.ANIM.fps * 30), shown, hidden: document.querySelector('#renderModal').hidden, rec: C.ANIM.rec, cur: C.ANIM.cur === cur, busy: V.VID.busy}; });
+    ok(vid.top === 'ftyp,moov,mdat' && vid.traks === 2 && vid.codec && Math.abs(vid.frames - vid.want) <= 1, `video: an MP4 (${vid.top}) with picture (${vid.codec}, ${vid.frames} frames at 30/s for ${vid.want}) and voices${vid.err ? ' ' + vid.err : ''}`);
+    ok(vid.shown && vid.hidden && !vid.rec && vid.cur && !vid.busy, 'video: rendered behind a window that closes when it is done, the film back where it was');
     const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
     ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
     // a film that does not stall at its cuts, and whose shots are not all alike

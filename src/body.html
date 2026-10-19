@@ -497,6 +497,7 @@
       <div id="exOptAnim" hidden>
         <div class="chips" id="exAnimWhat"></div>
         <div class="filter"><span>Alcance</span><div class="chips seg" id="exAnimRange"></div></div>
+        <div class="filter" id="exAnimResRow" hidden><span>Resolución</span><div class="chips seg" id="exAnimRes"></div></div>
         <div class="filter" id="exAnimStepRow"><span>Cadencia</span><div class="chips seg" id="exAnimStep"></div></div>
         <label class="check" id="exSubsRow"><input type="checkbox" id="exSubs" checked> Subtítulos del guion</label>
         <p class="note" id="exAnimNote"></p>
@@ -515,6 +516,15 @@
   </div>
 </div>
 
+<div class="modal rendermodal" id="renderModal" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="rnT">
+    <h2 id="rnT">Exportando el vídeo</h2>
+    <canvas id="rnPrev" width="640" height="360" aria-hidden="true"></canvas>
+    <div class="exprog" id="rnProg" role="progressbar" aria-label="Progreso"><i></i></div>
+    <p class="msg" id="rnMsg" aria-live="polite"></p>
+    <div class="foot"><button class="btn" data-close id="rnCancel">Cancelar</button></div>
+  </div>
+</div>
 <div class="modal" id="practiceModal" hidden>
   <div class="sheet prsheet" role="dialog" aria-labelledby="prT">
     <div class="prhead">

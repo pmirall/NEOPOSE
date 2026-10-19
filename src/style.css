@@ -547,6 +547,11 @@ details.sec > summary h3{white-space:normal;overflow:visible;text-overflow:clip;
 details.sec > summary h3 span{display:inline-block;white-space:normal;line-height:1.3}
 .exprog{height:6px;border-radius:3px;background:var(--rule);overflow:hidden}
 .exprog i{display:block;height:100%;width:0;background:var(--ink);transition:width .15s}
+.rendermodal{z-index:90}
+.rendermodal .sheet{width:min(680px,100%)}
+#rnPrev{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000;border-radius:6px;margin:6px 0 12px}
+#rnProg{height:10px;border-radius:5px}
+#rnMsg{font-variant-numeric:tabular-nums;min-height:1.4em}
 #exOptAnim{display:flex;flex-direction:column;gap:6px}
 #exOptAnim[hidden],#exAnimStepRow[hidden],#exSubsRow[hidden]{display:none}
 

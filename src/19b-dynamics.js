@@ -46,7 +46,7 @@ function pointInPoly([x, y], poly) { let inn = false; for (let i = 0, j = poly.l
 function dynamicsTick() {
   // squash and stretch of a still figure (the film's own squash multiplies it while animating)
   for (const m of chars) { const k0 = m.body.stretch ?? 1; if (!ANIM.open || !shot()) setFigureStretch(m, k0); }
-  const m = mq, show = m && !practice.active && !(typeof sk !== 'undefined' && sk.on);
+  const m = mq, show = m && !practice.active && !(typeof sk !== 'undefined' && sk.on) && !ANIM.rec;
   m && m.group.updateMatrixWorld(true);
   const sig = show ? [m.getPose().pos.join(), JSON.stringify(m.getPose().q.hips), wpo(m, 'wristL').toArray().map(v => v.toFixed(3)).join(), wpo(m, 'ankleR').toArray().map(v => v.toFixed(3)).join(), wpo(m, 'head').toArray().map(v => v.toFixed(3)).join(), chars.indexOf(m)].join('|') : '';
   if (DYN.loaObj) DYN.loaObj.visible = show && DYN.loa;

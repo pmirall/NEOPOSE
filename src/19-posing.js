@@ -26,7 +26,7 @@ function enforcePins(m, jn) {
   if (any) m.group.updateMatrixWorld(true);
 }
 function pinTick() {
-  const P = pinsOf(mq), show = !practice.active && !sk.hideFig && !sk.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  const P = pinsOf(mq), show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const id of PIN_IDS) {
     const r = pinRings[id]; r.visible = show && !!P[id]; if (!r.visible) continue;
     mq.joints[EFFECTOR[id]].getWorldPosition(r.position); r.quaternion.copy(camera.quaternion);

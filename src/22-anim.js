@@ -619,9 +619,12 @@ async function eachFrame(range, step, cb) {
 // subtitles burnt into a rendered frame
 function burnSubs(cv, f) {
   const L = subsAt(f); if (!L.length) return;
-  const c = cv.getContext('2d'), k = cv.width / 900, fs = Math.max(14, 26 * k); c.font = `600 ${fs}px ${css('--f-body')}`; c.textAlign = 'center';
-  L.forEach((l, n) => { const txt = `${speaker(l.c)}: ${l.text}`, y = cv.height - (L.length - n) * fs * 1.5 - fs * .6, w = c.measureText(txt).width;
-    c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(cv.width / 2 - w / 2 - fs * .5, y - fs * 1.05, w + fs, fs * 1.4); c.fillStyle = '#fff'; c.fillText(txt, cv.width / 2, y); });
+  const c = cv.getContext('2d'), k = cv.width / 900, fs = Math.max(14, Math.min(26 * k, cv.height * .042)); c.font = `600 ${fs}px ${css('--f-body')}`; c.textAlign = 'center';
+  // each line broken into rows that fit 86% of the width, the last row of the last line nearest the bottom
+  const max = cv.width * .86, rows = [];
+  for (const l of L) { let row = ''; for (const w of `${speaker(l.c)}: ${l.text}`.split(/\s+/)) { const t = row ? row + ' ' + w : w; if (row && c.measureText(t).width > max) { rows.push(row); row = w; } else row = t; } if (row) rows.push(row); }
+  rows.forEach((txt, n) => { const y = cv.height - (rows.length - n) * fs * 1.5 - fs * .6, w = c.measureText(txt).width;
+    c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(cv.width / 2 - w / 2 - fs * .5, y - fs * 1.05, w + fs, fs * 1.5); c.fillStyle = '#fff'; c.fillText(txt, cv.width / 2, y); });
 }
 // WebM of the shot or the film, recorded from the canvas while it plays
 function recordVideo(range, onDone) {
@@ -631,13 +634,17 @@ function recordVideo(range, onDone) {
   const type = [...(talk ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'] : []), 'video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)), mp4 = /mp4/.test(type || '');
   const start = async () => {
     if (range === 'movie' && ANIM.cur !== 0) await enterShot(0, 0); else setFrame(0);
-    const voice = talk ? voiceStream() : null, stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...(voice ? voice.getAudioTracks() : [])]), rec = new MediaRecorder(stream, type ? {mimeType: type, videoBitsPerSecond: 8e6} : {}), parts = [], hide = exportHide(), all = ANIM.all, loop = ANIM.loop;
+    const voice = talk ? voiceStream() : null, stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...(voice ? voice.getAudioTracks() : [])]), rec = new MediaRecorder(stream, type ? {mimeType: type, videoBitsPerSecond: 8e6} : {}), parts = [], hide = filmHide(), all = ANIM.all, loop = ANIM.loop;
     ANIM.all = range === 'movie'; ANIM.loop = false;
+    // it plays in real time behind a window that shows how far it has got and can cancel
+    const list = range === 'movie' ? ANIM.shots : [shot()], total = list.reduce((a, x) => a + x.len, 0), before = i => list.slice(0, i).reduce((a, x) => a + x.len, 0);
+    let cancelled = false; const tick = setInterval(() => { const at = before(range === 'movie' ? ANIM.cur : 0) + ANIM.t; renderProgress(at / total, tr('Grabando en tiempo real: {a} de {b}', {a: mmss(at / ANIM.fps), b: mmss(total / ANIM.fps)}), canvas); }, 250);
     rec.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
-    rec.onstop = () => { hide(); voiceStreamEnd(); ANIM.rec = null; ANIM.all = all; ANIM.loop = loop; stream.getTracks().forEach(t => t.stop());
+    rec.onstop = () => { clearInterval(tick); if (ANIM.playing) play(false); hide(); voiceStreamEnd(); ANIM.rec = null; ANIM.all = all; ANIM.loop = loop; stream.getTracks().forEach(t => t.stop()); renderWindow(false);
+      if (cancelled) { toast(tr('Exportación cancelada.')); return onDone && onDone(); }
       new Blob(parts, {type: mp4 ? 'video/mp4' : 'video/webm'}).arrayBuffer().then(b => { saveFile(`animacion-${stamp()}.${mp4 ? 'mp4' : 'webm'}`, new Uint8Array(b), mp4 ? 'video/mp4' : 'video/webm'); onDone && onDone(); }); };
-    ANIM.rec = {pause: () => rec.state === 'recording' && rec.pause(), resume: () => rec.state === 'paused' && rec.resume(), done: () => rec.stop()};
-    clearOnion(); rec.start(); play(true);
+    ANIM.rec = {pause: () => rec.state === 'recording' && rec.pause(), resume: () => rec.state === 'paused' && rec.resume(), done: () => rec.stop(), cancel: () => { cancelled = true; rec.stop(); }};
+    clearOnion(); renderWindow(true, tr('Grabando el vídeo')); rec.start(); play(true);
   };
   start();
 }

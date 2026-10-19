@@ -602,7 +602,7 @@ const sunRing = new THREE.Mesh(new THREE.TorusGeometry(1, .004, 4, 64), new THRE
 sunRing.renderOrder = 998; scene.add(sunRing);
 let sunR = 2;
 function updateSun() {
-  const show = $('#sunChk').checked && state.tab === 'escena' && $('#secLuz').open && !practice.active && !sk.on;
+  const show = $('#sunChk').checked && state.tab === 'escena' && $('#secLuz').open && !practice.active && !sk.on && !ANIM.rec;
   sunHandle.visible = sunRing.visible = show; if (!show) return;
   sunR = 1.5 * (chars.reduce((s, m) => s + m.size, 0) / chars.length);
   const az = state.light.az * DEG, el = state.light.el * DEG;
