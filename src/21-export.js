@@ -6,7 +6,7 @@
 const EXK = {kind: 'img', map: 'depth', views: 4, neutral: true, heads: true, hands: true, envInMap: false, fmt3d: 'glb', animWhat: 'frames', animRange: 'movie', animStep: '1', subs: true, vres: '1080'};
 const PRINT = {a5: ['A5', 1748, 2480], a4: ['A4', 2480, 3508], a3: ['A3', 3508, 4961]};
 const EX_KINDS = {img: 'Imagen', turn: 'Hoja de giro', maps: 'Mapas para IA', m3d: 'Modelo 3D', anim: 'Animación'};
-const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', audio: 'Diálogo en audio (WAV)', board: 'Guion gráfico', bvh: 'BVH del personaje activo'};
+const EX_ANIM = {frames: 'Fotogramas (PNG en ZIP)', layers: 'Fotogramas por capas (ZIP)', video: 'Vídeo (MP4 o WebM)', gif: 'GIF animado', audio: 'Diálogo en audio (WAV)', board: 'Guion gráfico', keylines: 'Claves en línea (ZIP)', bvh: 'BVH del personaje activo'};
 const EX_MAPS = {depth: 'Profundidad', normal: 'Normales', openpose: 'Esqueleto OpenPose', lineart: 'Líneas'};
 const TURN_VIEWS = {4: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [180, 'Espalda']], 8: [[0, 'Frente'], [45, 'Tres cuartos'], [90, 'Perfil'], [135, 'Tres cuartos de espalda'], [180, 'Espalda'], [225, 'Tres cuartos de espalda'], [270, 'Perfil'], [315, 'Tres cuartos']]};
 
@@ -338,9 +338,9 @@ const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0');
 /* ---------- the window ---------- */
 function exportKindUI() {
   const k = EXK.kind;
-  const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'layers' || w === 'gif' || w === 'board';
+  const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'layers' || w === 'gif' || w === 'board' || w === 'keylines';
   $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d'; $('#exOptAnim').hidden = k !== 'anim';
-  $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic; $('#exSizeRow').hidden = k === 'm3d' || !pic;
+  $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic || (k === 'anim' && w === 'keylines'); $('#exKeyRow').hidden = k !== 'anim' || w !== 'keylines'; $('#exSizeRow').hidden = k === 'm3d' || !pic;
   $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim'; $('#exPsd').hidden = k !== 'img'; $('#exOpenIn').hidden = k !== 'img' && k !== 'anim';
   $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers' && w !== 'gif'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'gif' || w === 'board' || w === 'video'); $('#exAnimResRow').hidden = w !== 'video';
   $('#exAnimRange').querySelectorAll('.chip').forEach(b => b.disabled = w === 'bvh' && b.dataset.v === 'movie');
@@ -382,7 +382,7 @@ function saveExport() {
 }
 function buildExportUI() {
   initVideoWindow();
-  loadExportPrefs();
+  loadExportPrefs(); buildKeyLinesUI();
   chips($('#exKind'), Object.entries(EX_KINDS), EXK.kind, v => { EXK.kind = v; setPressed($('#exKind'), v); renderExportKind(); });
   chips($('#exMap'), Object.entries(EX_MAPS), EXK.map, v => { EXK.map = v; setPressed($('#exMap'), v); renderExportKind(); });
   chips($('#exViews'), [['4', '4 vistas'], ['8', '8 vistas']], String(EXK.views), v => { EXK.views = +v; setPressed($('#exViews'), v); renderExportKind(); });
@@ -422,6 +422,7 @@ function animExportPreview() {
     : w === 'video' ? (window.VideoEncoder ? tr('MP4 de {s} s a 30 fotogramas por segundo, renderizado fotograma a fotograma, con las voces.', {s: dec(secs)}) : tr('Se graba mientras se reproduce: {s} s.', {s: dec(secs)}))
     : w === 'board' ? tr('Una viñeta por plano, con su nombre, duración, cámara y diálogo: {n} viñetas.', {n: list.length})
     : tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))});
+  if (w === 'keylines') return keyLinesPreview();
   if (w === 'frames' || w === 'board') { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
     $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
   else $('#exMsg').textContent = '';
@@ -439,6 +440,7 @@ async function exportAnimation() {
   exportBusy(true, 0);
   try {
     if (w === 'layers') await exportLayerSequences();
+    else if (w === 'keylines') await exportKeyLines();
     else if (w === 'gif') await exportGIF();
     else if (w === 'audio') { $('#exMsg').textContent = tr('Preparando las voces…'); saveFile(`dialogo-${stamp()}.wav`, await dialogueWav(), 'audio/wav'); $('#exMsg').textContent = tr('Diálogo guardado en WAV.'); }
     else if (w === 'frames') {

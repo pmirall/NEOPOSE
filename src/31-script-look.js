@@ -164,6 +164,8 @@ const SCL_ROLES = [
   ['warrior', 'guerrer*|warrior|guerrier*|krieger*|gladiador*|gladiator*|espartan*|spartan*|barbar*|mercenari*|mercenary|soldado medieval'],
   ['robot', 'robot|robots|androide|android|cyborg|automata|automaton|robo|roboter|robotto|droide|droid|mecha'],
   ['ghost', 'fantasma|ghost|espectro|spectre|specter|fantome|geist|gespenst|spettro'],
+  ['orc', 'orco|orca|orc|orcs|orque|ork|troll|trol|ogro|ogre|oger|orco guerrero'],
+  ['zombie', 'zombi|zombie|zombis|zombies|muerto viviente|mort-vivant|morto-vivo|untoter|morto vivente'],
   ['monk', 'monje|monja|fraile|monk|nun|moine|nonne|monge|freira|monch|monaco|monaca'],
   ['astronaut', 'astronaut*|cosmonaut*|astronauta'],
   ['soldier', 'soldad*|militar|sargento|sergeant|marine|soldat*|soldier|recluta|recruit|comando'],
@@ -172,7 +174,7 @@ const SCL_ROLES = [
   ['detective', 'detective|inspector*|comisari*|investigador privado|private eye|sherlock'],
   ['business', 'ejecutiv*|abogad*|empresari*|banquer*|politic*|businessman|businesswoman|executive|lawyer|banker|avocat*|anwalt|avvocat*'],
   ['worker', 'mecanic*|obrer*|fontaner*|albanil*|granjer*|mechanic|plumber|worker|builder|farmer|mecanicien|mechaniker|operai*'],
-  ['athlete', 'atleta|deportista|corredor*|athlete|runner|jogger|futbolista|footballer|boxeador*|boxer'],
+  ['athlete', 'atleta|deportista|corredor*|athlete|athletic|runner|jogger|futbolista|footballer|boxeador*|boxer|chandal|tracksuit|sweatsuit|survetement|fato de treino|trainingsanzug|jogginganzug|tuta da ginnastica|tuta sportiva|xandall'],
   ['student', 'estudiante|colegial*|alumno|alumna|student|schoolgirl|schoolboy|eleve|etudiant*|aluno|aluna|schuler*|studente|studentessa'],
   ['chef', 'cocinero|cocinera|cook|cuisinier*|cozinheir*|koch|kochin|cuoco|cuoca|chef de cocina|chef de cuisine|head chef'],
   ['captain', 'capitan|capitana|captain|capitaine|capitao|kapitan|capitano|comandante|commander|tripulante|crew|officier|offizier']
@@ -189,6 +191,8 @@ const SCL_ROLE_WEAR = {
   princess: [[['c1157', 'full', '#e7a6c4'], ['c2704', 'head', '#d4af37'], ['c1734', 'feet']]], prince: [[['c1774', 'top', '#e8e0c8'], ['c1756', 'bottom', '#2b2b33'], ['c2548', 'feet'], ['c2128', 'cape', '#4a1a2a']]],
   pirate: [[['c1774', 'top', '#e8e0c8'], ['c1849', 'outer', '#3a2a1a'], ['c27', 'bottom', '#3a3a44'], ['c2548', 'feet', '#2a1e14'], ['c2510', 'eyes']], [['c1158', 'top', '#e8e0c8'], ['c1849', 'outer', '#3a2a1a'], ['c1756', 'bottom', '#2a2a30'], ['c211', 'feet'], ['c2510', 'eyes']]],
   cowboy: [[['c3165', 'top', '#c9b48a'], ['c1849', 'outer', '#4a3020'], ['c807', 'bottom'], ['c2548', 'feet', '#4a3020'], ['c24', 'head', '#5a3e26']], [['c1158', 'top', '#c9b48a'], ['c1849', 'outer', '#4a3020'], ['c807', 'bottom'], ['c1738', 'feet', '#4a3020'], ['c24', 'head', '#5a3e26']]],
+  zombie: [[['c1416', 'top', '#6a6c5a'], ['c807', 'bottom', '#3c3e34']], [['c1158', 'top', '#6a6c5a'], ['c1727', 'bottom', '#3c3e34']]],
+  orc: [[['c2617', 'top', '#4a3a2a'], ['c2618', 'bottom', '#3a3026'], ['c2619', 'feet']]],
   warrior: [[['c2617', 'top', '#5a4a3a'], ['c2618', 'bottom', '#3a3026'], ['c2619', 'feet']], [['c241', 'top', '#5a3a26'], ['c1756', 'bottom', '#2a2420'], ['c2619', 'feet']]],
   robot: [[['c2880', 'full', '#c4c8cf']]], ghost: [[['c3515', 'full']]], monk: [[['c3238', 'full', '#5a4632'], ['c3236', 'head', '#5a4632']]],
   astronaut: [[['c3517', 'full']]], soldier: [[['c2694', 'top'], ['c2798', 'bottom'], ['c11', 'feet']]],
@@ -266,6 +270,9 @@ function descOf(c, cast, P, kind) {
     const firstOther = words.findIndex((x, i) => others.has(x.w) && i > (both ? j0 : at)), firstMention = !words.slice(0, both ? i0 : at).some(x => others.has(x.w));
     const cut = firstOther < 0 ? raw.length : words[firstOther].at, seg = raw.slice(firstMention ? 0 : words[both ? i0 : at].at, cut);
     // an apposition after the name («REX, un lobo…»), or the name the apposition of what it is («Un DRAGON rouge, FLAMÈCHE, dort»)
+    // (or the name said with its apposition later in the sentence: «JOE, un vaquero…, y BILL, un sheriff con bigote»)
+    const own = new RegExp(`^[^a-z0-9]*${words[at].w}\\b\\s*[,(]`).test(normKeep(seg));
+    if (!intro && own) { intro = true; out.push(seg); continue; }
     const apposition = both || new RegExp(`^[^,(]*?\\b${words[at].w}\\b[^,(]*?\\s*[,(]`).test(nk) || new RegExp(`[,(]\\s*${words[at].w}\\s*[,)]`).test(nk);
     if (!intro && firstMention && (apposition || kind || WEAR.test(nk))) { intro = true; out.push(seg); continue; }
     if (firstMention && WEAR.test(normKeep(seg))) out.push(seg);
@@ -360,5 +367,7 @@ function dressOf(look, ctx) {
   }
   if (!has('feet') && !items.some(x => ['c2015', 'c3517', 'c3515', 'c2880'].includes(x[0]))) items.push(ctx.genre === 'fantasy' || ctx.genre === 'western' ? [fem ? 'c1738' : 'c2548', 'feet', '#3a2a20'] : [fem ? 'c1117' : 'm_shoes01', 'feet', null]);
   const seen = new Set();
-  return items.filter(([id]) => !seen.has(id) && seen.add(id)).map(([id, , col, glow]) => { if (glow && !col) col = '#7fd8ff'; return garmentSpec(id, col ? {mode: 'tint', colA: glow ? mixHex(col, '#ffffff', .35) : col, ...(glow ? {glow: 1} : {})} : {}); });
+  // (two of the catalogue's everyday pieces come printed — splashes, flowers —: plain, unless a colour was said)
+  const PLAIN = {c3244: '#3d4150', c1727: '#4a4f6a'};
+  return items.filter(([id]) => !seen.has(id) && seen.add(id)).map(([id, , col, glow]) => { if (glow && !col) col = '#7fd8ff'; if (!col && PLAIN[id]) col = PLAIN[id]; return garmentSpec(id, col ? {mode: 'tint', colA: glow ? mixHex(col, '#ffffff', .35) : col, ...(glow ? {glow: 1} : {})} : {}); });
 }

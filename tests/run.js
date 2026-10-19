@@ -863,6 +863,37 @@ const SUITES = {
   },
   // scripts of every kind (genres, the seven languages, Fountain, «NAME: line», plays, no headings, sound effects in
   // capitals, introductions with ages): the cast and nobody else, how each one looks, the sets, nothing misunderstood
+  // the key poses of a film drawn in line: found in the motion, exported with a timing sheet and an exposure sheet; the
+  // camera and light of a shot restyled from the timeline
+  async keylines(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    await page.click('#animBtn'); await page.waitForTimeout(300);
+    const txt = fs.readFileSync(path.join(__dirname, 'anim-scripts', 'a01-pelea.es.txt'), 'utf8');
+    const r = await page.evaluate(async t => { const C = window.__cdp, S = C.script; S.VOICE.on = false; await S.scriptToFilm(t, {cams: true, online: false});
+      const A = C.ANIM, k = C.keys, out = {fps: A.fps, shots: A.shots.length, lit: A.shots.filter(s => s.light && s.light.auto).length, moods: [...new Set(A.shots.map(s => s.light && s.light.auto))]};
+      await S.enterShot(5, 0); const s = A.shots[5], K = k.shotKeyPoses(s, false), KB = k.shotKeyPoses(s, true);
+      out.keys = K.map(x => x.f); out.len = s.len; out.bd = 0; for (let i = 0; i < A.shots.length; i++) { await S.enterShot(i, 0); out.bd += k.shotKeyPoses(A.shots[i], true).filter(x => x.kind === 'bd').length; } void KB;
+      return out; }, txt);
+    ok(r.fps === 24 && r.lit === r.shots && r.moods.includes('noche'), `a script film at 24 fps, every shot lit with a mood (${r.moods.join(', ')})`);
+    ok(r.keys[0] === 0 && r.keys[r.keys.length - 1] === r.len - 1 && r.keys.length >= 3 && r.keys.length < r.len / 4 && r.bd >= 1, `the keys of a fight shot found in the motion: ${r.keys.length} in ${r.len} frames (${r.keys.join(', ')}), ${r.bd} breakdowns in the film`);
+    // the camera and the light of a shot, restyled and back
+    const c = await A(() => { const C = window.__cdp, s = C.ANIM.shots[3], n0 = s.cam.length, p0 = JSON.stringify(s.cam[0]);
+      document.querySelector('#tlMotion').click(); const pick = (id, v) => document.querySelector(`#${id} .chip[data-v="${v}"]`).click();
+      pick('mvmCam', 'fija'); const fija = C.ANIM.shots[C.ANIM.cur].cam.length; pick('mvmCam', 'mano'); const mano = C.ANIM.shots[C.ANIM.cur].cam.length; pick('mvmCam', 'tal'); const back = JSON.stringify(C.ANIM.shots[C.ANIM.cur].cam[0]);
+      pick('mvmLight', 'drama'); const L = C.ANIM.shots[C.ANIM.cur].light.mood; pick('mvmLight', 'ninguna'); const off = C.ANIM.shots[C.ANIM.cur].key;
+      return {fija, mano, same: back === JSON.stringify(C.ANIM.shots[C.ANIM.cur].camBase[0]), L, off, n0, p0: !!p0}; });
+    ok(c.fija === 1 && c.mano > 2 && c.same && c.L === 'drama' && c.off === 0, `the shot's camera still (1 key), handheld (${c.mano} keys) and back as it was; its light dramatic, then the set's alone`);
+    // the export: a folder of numbered key drawings, the timing sheet and the CSV
+    await page.click('#exportBtn'); await page.waitForTimeout(800);
+    await page.click('#exKind .chip[data-v="anim"]'); await page.click('#exAnimWhat .chip[data-v="keylines"]'); await page.click('#exAnimRange .chip[data-v="shot"]'); await page.waitForTimeout(1500);
+    const note = await A(() => document.querySelector('#exAnimNote').textContent), shown = await A(() => !document.querySelector('#exKeyRow').hidden && document.querySelector('#exImg').naturalWidth > 0);
+    ok(/key/i.test(note) && shown, `the window explains it and shows the first key: «${note.slice(0, 90)}…»`);
+    const [z] = await Promise.all([page.waitForEvent('download', {timeout: 300000}), page.click('#exSave')]);
+    const zb = fs.readFileSync(await z.path()).toString('latin1'), keys = [...zb.matchAll(/(\d\d-[\w-]+\/K\d\d-f\d{4}\.png)/g)].map(m => m[1]);
+    ok(/\.zip$/.test(z.suggestedFilename()) && keys.length >= 2 && /timing-sheet\.png/.test(zb) && /exposure-sheet\.csv/.test(zb), `${z.suggestedFilename()}: ${new Set(keys).size} key drawings, a timing sheet and an exposure sheet`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
+    await page.context().close();
+  },
   async scripts(browser) {
     const page = await open(browser, {lang: 'es'}), A = (f, a) => page.evaluate(f, a), DIR = path.join(__dirname, 'scripts'), EXP = JSON.parse(fs.readFileSync(path.join(DIR, 'expect.json'), 'utf8'));
     await page.click('#animBtn'); await page.waitForTimeout(400);

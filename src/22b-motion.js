@@ -162,6 +162,22 @@ function buildMotionUI() {
   tl.querySelector('input').onchange = e => { TRAIL.on = e.target.checked; motionTrailsDirty(); updateTrails(); };
   const all = document.createElement('button'); all.className = 'btn small'; all.textContent = tr('Aplicar a todo el reparto');
   all.onclick = () => { setMotion(motionOf(shot(), motionTrack()), true); pushHistory(); toast(tr('Misma interpretación para todo el reparto de este plano.')); }; box.appendChild(all);
+  const film = document.createElement('button'); film.className = 'btn small'; film.textContent = tr('A toda la película');
+  film.onclick = () => { const st = motionOf(shot(), motionTrack()); for (const s of ANIM.shots) { s.motion = {}; s.keys.forEach((_, ci) => s.motion[ci] = {...st}); } setFrame(ANIM.f); pushHistory(); toast(tr('Misma interpretación en todos los planos de la película.')); };
+  box.appendChild(film);
+  // the shot's camera and light, here too: what the shot looks like is part of how it plays
+  const camH = document.createElement('p'); camH.className = 'advh'; camH.textContent = tr('Cámara del plano'); box.appendChild(camH);
+  const cam = document.createElement('div'); cam.className = 'chips'; cam.id = 'mvmCam'; box.appendChild(cam);
+  chips(cam, Object.entries(CAM_STYLES), 'tal', k => { if (!setCamStyle(shot(), k)) { toast(tr('Este plano no tiene cámara animada: graba o pon una clave de cámara primero.')); return; } setPressed(cam, k); setFrame(ANIM.f); renderStrip(); pushHistory(); });
+  const camAll = document.createElement('button'); camAll.className = 'btn small'; camAll.textContent = tr('Esta cámara en toda la película');
+  camAll.onclick = () => { const k = shot().camStyle || 'tal'; let n = 0; for (const s of ANIM.shots) if (setCamStyle(s, k)) n++; setFrame(ANIM.f); renderStrip(); pushHistory(); toast(tr('Cámara «{k}» en {n} planos.', {k: CAM_STYLES[k], n})); };
+  box.appendChild(camAll);
+  const litH = document.createElement('p'); litH.className = 'advh'; litH.textContent = tr('Luz del plano'); box.appendChild(litH);
+  const lit = document.createElement('div'); lit.className = 'chips'; lit.id = 'mvmLight'; box.appendChild(lit);
+  chips(lit, [...Object.entries(LIGHT_MOODS).map(([k, v]) => [k, v.label]), ['ninguna', tr('Solo la del escenario')]], 'auto', k => { setShotLight(shot(), k); setPressed(lit, k); setFrame(ANIM.f); pushHistory(); });
+  const litAll = document.createElement('button'); litAll.className = 'btn small'; litAll.textContent = tr('Esta luz en toda la película');
+  litAll.onclick = () => { const k = (shot().light && shot().light.mood) || (shot().key ? 'auto' : 'ninguna'); for (const s of ANIM.shots) setShotLight(s, k); setFrame(ANIM.f); pushHistory(); toast(tr('La misma luz en todos los planos.')); };
+  box.appendChild(litAll);
   syncMotionUI();
 }
 function syncMotionUI() {
@@ -169,6 +185,7 @@ function syncMotionUI() {
   const st = motionOf(shot(), motionTrack());
   for (const [k, el] of Object.entries(motionEls)) el.set(st[k]);
   setPressed($('#mvmStep'), String(st.step || 1)); const who = $('#mvmWho'); if (who) who.textContent = speaker(motionTrack());
+  const s = shot(); if ($('#mvmCam')) setPressed($('#mvmCam'), s.camStyle || 'tal'); if ($('#mvmLight')) setPressed($('#mvmLight'), !s.key ? 'ninguna' : (s.light && s.light.mood) || 'auto');
 }
 
 /* ---------- motion trails: the arcs of the head, hands and feet, a dot per frame (spacing), a bigger one per key ---------- */

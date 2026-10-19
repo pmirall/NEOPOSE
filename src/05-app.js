@@ -239,6 +239,7 @@ function updateLights() {
   rim.target.position.copy(castCenter);
   key.intensity = L.key * A.key; hemi.intensity = L.fill * A.fill; rim.intensity = L.rim * A.fill;
   key.shadow.radius = L.soft; key.castShadow = state.shadows;
+  if (typeof filmMoodLights === 'function') filmMoodLights();
   for (const g of extraLights) {
     const {light} = g.userData.ref;
     if (light.isSpotLight) { light.target.position.copy(castCenter); g.children.find(c => c.userData.aim)?.lookAt(castCenter); }

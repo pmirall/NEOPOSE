@@ -41,14 +41,80 @@ function camAt(f) {
   const r = around(shot().cam, f); if (!r) return null; const [a, b, t] = r, L = (x, y) => x.map((v, i) => v + (y[i] - v) * t);
   return {p: L(a.c.p, b.c.p), t: L(a.c.t, b.c.t), f: a.c.f + (b.c.f - a.c.f) * t, r: a.c.r + (b.c.r - a.c.r) * t};
 }
-// a film's key light: what a crew puts on every shot, a soft light from beside and above the camera on whoever is in
-// it, so faces read even in a set lit from behind (films made from a script turn it on: s.key)
+// a film's lights: what a crew puts on every shot, worked out from the camera each frame so they follow it — a key from
+// beside and above the camera on the side the face is turned to (the face lit, the far cheek modelled), a back light
+// that draws the outline off the set, and a fill for the shadows; their colours and balance are the shot's mood (a
+// moonlit night is blue and rimmed, a dusk is warm and back-lit, a drama keeps the shadows dark, a horror lights from
+// below). Films made from a script turn them on (s.key) and choose the mood (s.light); the user can change it per shot.
 const filmKey = new THREE.SpotLight(0xfff1e0, 0, 14, 32 * DEG, .75, 1.1); filmKey.castShadow = false; scene.add(filmKey, filmKey.target);
+const filmRim = new THREE.SpotLight(0xe8eeff, 0, 14, 38 * DEG, .6, 1.1); filmRim.castShadow = false; scene.add(filmRim, filmRim.target);
+const filmFill = new THREE.HemisphereLight(0xffffff, 0x141414, 0); scene.add(filmFill);
+const LIGHT_MOODS = {
+  auto: {label: 'Automática'},
+  natural: {label: 'Natural', key: 1.1, keyCol: '#fff1e0', el: .35, rim: .45, rimCol: '#fff6ea', fill: 0, hemi: 1, sun: 1},
+  calida: {label: 'Cálida', key: 1.05, keyCol: '#ffd3a2', el: .3, rim: .7, rimCol: '#ffdcb0', fill: .1, fillCol: '#ffcf9a', hemi: .9, sun: .9},
+  atardecer: {label: 'Atardecer', key: .95, keyCol: '#ffac66', el: .12, rim: 1.6, rimCol: '#ffbe78', fill: .1, fillCol: '#ff9f78', hemi: .8, sun: .85, wide: 1.3},
+  noche: {label: 'Noche', key: 1.25, keyCol: '#a9bcff', el: .45, rim: 1.9, rimCol: '#9cc0ff', fill: .45, fillCol: '#5a74bd', hemi: 1, sun: 1},
+  drama: {label: 'Dramática', key: 1.4, keyCol: '#fff0dc', el: .3, rim: 1.25, rimCol: '#e6edff', fill: 0, hemi: .45, sun: .55, wide: 1.6},
+  contraluz: {label: 'Contraluz', key: .45, keyCol: '#fff0dc', el: .25, rim: 2.4, rimCol: '#fff2d8', fill: .12, fillCol: '#d8dcff', hemi: .7, sun: .5},
+  terror: {label: 'Terror', key: 1.2, keyCol: '#b4ccff', el: -.4, rim: 1.5, rimCol: '#9fffd8', fill: 0, hemi: .35, sun: .35, wide: .7},
+  comedia: {label: 'Comedia', key: 1.05, keyCol: '#fff6ea', el: .4, rim: .4, rimCol: '#fffaf0', fill: .3, fillCol: '#fff4e8', hemi: 1.3, sun: 1}
+};
+tLabels(LIGHT_MOODS);
+// the mood of a shot when nobody chose one: the time of day and the place say it
+const autoMood = s => { const a = s && s.scene && s.scene.extras && s.scene.extras.amb, out = s && s.scene && SCENES[s.scene.extras.env] && SCENES[s.scene.extras.env].group !== 'in';
+  return a === 'noche' ? (out ? 'noche' : 'calida') : a === 'atardecer' ? 'atardecer' : a === 'interior' ? 'calida' : 'natural'; };
+const shotMood = s => { const m = s && s.light && s.light.mood; return LIGHT_MOODS[m] && m !== 'auto' ? m : (s && s.light && s.light.auto) || autoMood(s); };
 function placeFilmKey(s) {
-  if (!s || !s.key || !ANIM.open) { filmKey.intensity = 0; return; }
-  const P = camera.position, T = controls.target, d = P.clone().sub(T), r = d.length(), right = new V3(0, 1, 0).cross(d).normalize();
-  filmKey.position.copy(P).addScaledVector(right, -r * .45).add(new V3(0, r * .35 + .3, 0)).addScaledVector(d, -.15);
-  filmKey.target.position.copy(T); filmKey.target.updateMatrixWorld(); filmKey.distance = r * 3 + 4; filmKey.intensity = s.key * (state.amb === 'noche' ? .8 : 1.1);
+  if (!s || !s.key || !ANIM.open) { filmKey.intensity = filmRim.intensity = filmFill.intensity = 0; return; }
+  const L = LIGHT_MOODS[shotMood(s)], side = (s.light && s.light.side) || -1, k = s.key;
+  const P = camera.position, T = controls.target, d = P.clone().sub(T), r = d.length(), dn = d.clone().normalize(), right = new V3(0, 1, 0).cross(d).normalize(), wide = L.wide || 1;
+  filmKey.position.copy(P).addScaledVector(right, side * r * .45 * wide).add(new V3(0, r * L.el + .3 * Math.sign(L.el || 1), 0)).addScaledVector(d, -.15 * wide);
+  filmKey.position.y = Math.max(filmKey.position.y, .12);
+  filmKey.target.position.copy(T); filmKey.target.updateMatrixWorld(); filmKey.distance = r * 3 + 4; filmKey.intensity = k * L.key; filmKey.color.set(L.keyCol);
+  filmRim.position.copy(T).addScaledVector(dn, -(1.4 + r * .3)).addScaledVector(right, -side * (.6 + r * .15)).add(new V3(0, 1.3 + r * .2, 0));
+  filmRim.target.position.copy(T); filmRim.target.updateMatrixWorld(); filmRim.distance = r * 2 + 6; filmRim.intensity = k * L.rim; filmRim.color.set(L.rimCol);
+  filmFill.intensity = k * (L.fill || 0); filmFill.color.set(L.fillCol || '#ffffff');
+}
+// the light of a shot, chosen: a mood (or the automatic one), or none of the film's lights (the set's alone)
+function setShotLight(s, mood) {
+  if (!s) return;
+  if (mood === 'ninguna') { s.key = 0; s.light = {...(s.light || {}), mood}; return; }
+  if (!s.key) s.key = 1; s.light = {...(s.light || {}), mood};
+}
+/* ---------- the camera of a shot, restyled ----------
+   The keys a shot's camera has are kept as they came (from the script or from the user); a style is laid over them:
+   still on the first framing, a single smooth move from the first to the last, held by hand (small slow wanders and a
+   hint of roll), or dynamic (creeping in and sliding a little sideways). Back to «as it is» at any time. */
+const CAM_STYLES = {tal: 'Como está', fija: 'Fija', suave: 'Suave', mano: 'En mano', dinamica: 'Dinámica'};
+tValues(CAM_STYLES);
+function setCamStyle(s, kind) {
+  if (!s || !s.cam.length) return false;
+  if (!s.camBase) s.camBase = JSON.parse(JSON.stringify(s.cam));
+  const B = s.camBase, a = B[0].c, z = B[B.length - 1].c, end = Math.max(1, s.len - 1), fps = ANIM.fps;
+  const mk = (p, t, f, r) => ({p: p.toArray().map(v => +v.toFixed(3)), t: t.toArray().map(v => +v.toFixed(3)), f: +f.toFixed(1), r: +(r || 0).toFixed(2)});
+  const at = u => ({p: new V3().fromArray(a.p).lerp(new V3().fromArray(z.p), u), t: new V3().fromArray(a.t).lerp(new V3().fromArray(z.t), u), f: a.f + (z.f - a.f) * u, r: (a.r || 0) + ((z.r || 0) - (a.r || 0)) * u});
+  s.camStyle = kind;
+  if (kind === 'tal') s.cam = JSON.parse(JSON.stringify(B));
+  else if (kind === 'fija') s.cam = [{f: 0, c: {...a}}];
+  else if (kind === 'suave') s.cam = B.length > 1 ? [{f: 0, c: {...a}}, {f: end, c: {...z}}] : [{f: 0, c: {...a}}];
+  else if (kind === 'mano') {
+    const K = [], step = Math.max(2, Math.round(fps * .5)), h = n => { const x = Math.sin(n * 12.9898 + s.id * 7.7) * 43758.5453; return (x - Math.floor(x) - .5) * 2; };
+    for (let f = 0, i = 0; ; f = Math.min(end, f + step), i++) { const c = at(f / end), r = c.p.distanceTo(c.t), amp = r * .012;
+      c.p.add(new V3(h(i * 3 + 1) * amp, h(i * 3 + 2) * amp * .7, h(i * 3 + 3) * amp * .5)); c.t.add(new V3(h(i * 5 + 4) * amp * .5, h(i * 5 + 5) * amp * .5, 0));
+      K.push({f, c: mk(c.p, c.t, c.f, c.r + h(i * 7 + 6) * .8)}); if (f >= end) break; }
+    s.cam = K;
+  } else if (kind === 'dinamica') {
+    const c0 = at(0), c1 = at(1), d = c1.p.clone().sub(c1.t), right = new V3(0, 1, 0).cross(d).normalize(), r = d.length();
+    const p1 = c1.t.clone().addScaledVector(d, .84).addScaledVector(right, r * .06), p0 = c0.p.clone().addScaledVector(right, -r * .04);
+    s.cam = [{f: 0, c: mk(p0, c0.t, c0.f, c0.r)}, {f: end, c: mk(p1, c1.t, c1.f * 1.05, c1.r)}];
+  }
+  return true;
+}
+// the set's own lights, turned up or down for the mood (after updateLights has set them from the time of day)
+function filmMoodLights() {
+  const s = ANIM.open && shot(); if (!s || !s.key) return;
+  const L = LIGHT_MOODS[shotMood(s)]; hemi.intensity *= L.hemi ?? 1; key.intensity *= L.sun ?? 1; rim.intensity *= L.hemi ?? 1;
 }
 // a film's effects (from a script: a blast, lightning, fire, a red moon, rain, a fade): lights over the set, the camera
 // shaken by a blast, black for a fade; worked out from the shot's frame, so they play, scrub and export the same
@@ -198,6 +264,10 @@ function setFps(fps) {
     s.len = Math.max(2, Math.round(s.len * k));
     for (const K of [...s.keys, s.cam]) { for (const x of K) x.f = Math.min(Math.round(x.f * k), s.len - 1); const seen = new Set(); for (let i = K.length - 1; i >= 0; i--) { if (seen.has(K[i].f)) K.splice(i, 1); else seen.add(K[i].f); } }
     for (const l of s.lines) { l.f = Math.round(l.f * k); l.len = Math.max(2, Math.round(l.len * k)); }
+    // (the faces, the effects and the camera as it came, timed in frames too)
+    for (const F of s.faces || []) for (const x of F) if (x.f > -1000) x.f = Math.round(x.f * k);
+    for (const x of s.fx || []) x.f = Math.round(x.f * k);
+    if (s.camBase) for (const x of s.camBase) x.f = Math.min(Math.round(x.f * k), s.len - 1);
   }
   setFrame(Math.round(ANIM.f * k)); renderStrip();
 }
@@ -522,7 +592,7 @@ function openTimeline(on) {
     if (!ANIM.shots.length) { ANIM.shots.push(newShot()); ANIM.cur = 0; ANIM.camBase = camState(); chars.forEach(m => { m._prevPose = m.getPose(); }); }
     ANIM.track = chars.indexOf(mq); tourEvent('anim'); renderStrip(); renderLabels(); setFrame(ANIM.f, false); thumbLater();
     chars.forEach(m => { m._prevPose = basePose(m); }); pushHistory();  // undo can take the first keys back off
-  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); filmKey.intensity = 0; fxOff(); }
+  } else { play(false); clearOnion(); closeLineEditor(); clearMouths(); $('#subs').hidden = true; storeShot(); chars.forEach(m => setFigureStretch(m, m.body.stretch ?? 1)); filmKey.intensity = filmRim.intensity = filmFill.intensity = 0; fxOff(); }
   reframeSoon();  // the dock takes the bottom of the canvas (or gives it back)
 }
 

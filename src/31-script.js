@@ -81,7 +81,7 @@ async function placeOnline(head) {
 /* ---------- cast ---------- */
 const SC_FEM = 'ella|she|her|herself|elle|ela|sie|lei|la senora|la chica|la mujer|madre|mother|mama|mom|hija|daughter|hermana|sister|abuela|grandma|grandmother|reina|queen|princesa|princess|dona|senora|mrs|miss|ms|nina|girl|chica|mujer|woman|lady'.split('|');
 const SC_MASC = 'el|he|him|his|himself|il|lui|ele|er|ihm|el senor|el chico|el hombre|padre|father|papa|dad|hijo|son|hermano|brother|abuelo|grandpa|grandfather|rey|king|principe|prince|don|senor|mr|sir|nino|boy|chico|hombre|man|guy'.split('|');
-const SC_GIRLS = new Set('sarah emma olivia emily mary lucy anne ann kate jane alice grace sophie chloe ella amy rachel jessica jennifer elizabeth beth claire helen ruth rose lily isabel isabelle carmen raquel ines pilar mercedes dolores consuelo nieves rocio beatriz isabel abigail charlotte megan hannah zoe judith ester esther miriam noemi belen marta sara laura lucia paula elena nuria clara julia alba eva irene noelia silvia susan karen nancy betty sharon carol margaret dorothy marie louise nicole camille chloe manon ingrid'.split(' '));
+const SC_GIRLS = new Set('sue suzy meg liz lynn joan jill jess gwen fran eve ivy joy kay may nell peg pam val viv wendy cindy mandy sandy judy molly holly polly sally kelly daisy maggie annie katie jenny penny abby betsy dolly ellie evie gabby izzy josie lizzie mabel maisie millie olive phoebe rosie ruby sadie tilly winnie yvonne astrid sigrid brigitte colette odette juliette mireille nathalie sylvie aurelie elodie amelie margot lou chantal agnes beatrix carmen ines isabel mercedes nieves consuelo pilar rocio raquel sol luz paz flor mar dulce noor zainab aiko yuki hana sakura mei ling jade hope faith grace rose claire jane kate anne alice beth ruth helen sarah emma olivia emily mary lucy anne ann kate jane alice grace sophie chloe ella amy rachel jessica jennifer elizabeth beth claire helen ruth rose lily isabel isabelle carmen raquel ines pilar mercedes dolores consuelo nieves rocio beatriz isabel abigail charlotte megan hannah zoe judith ester esther miriam noemi belen marta sara laura lucia paula elena nuria clara julia alba eva irene noelia silvia susan karen nancy betty sharon carol margaret dorothy marie louise nicole camille chloe manon ingrid'.split(' '));
 const SC_BOYS = new Set('luca andrea elias jonas tobias nicola mattia borja garcia josema jose joshua matthias isaiah jeremiah zacharias ezra'.split(' '));
 function genderOf(name, text) {
   const k = scNorm(name).split(/\s+/)[0];
@@ -115,6 +115,7 @@ function castOf(P, text) {
     const body = {...bodyOf(g), name: n.name}; if (age != null) body.age = age; if (sp) body.species = sp;
     for (const k of ['height', 'muscle', 'weight', 'headStyle', 'kemo', 'feet']) if (look.body[k] !== undefined) body[k] = look.body[k];
     if (look.roles.includes('robot') || look.roles.includes('ghost')) look.hair = '';
+    if (look.roles.includes('orc')) { if (look.body.muscle == null) body.muscle = .95; if (look.body.weight == null) body.weight = .72; if (look.body.height == null) body.height = .92; look.hair = look.hair ?? ''; }  // an orc, a troll, an ogre: big
     // an animal's coat in the colour said («una gata blanca», «a brown dog»); a kemonomimi's ears and tail
     if (sp && sp !== 'humano') { const base = coatOf({...BODY_BASE, species: sp}), col = look.furCol || look.tailCol || (body.kemo === 1 ? look.hairCol : null);
       if (base && col) body.coat = body.kemo === 1 ? {...base, c: [col, mixHex(col, '#ffffff', .5), mixHex(col, '#000000', .25)], m: {}, tip: 0} : {...base, c: [col, mixHex(col, '#ffffff', .55), shadeHex(col, .45)]}; }
@@ -199,6 +200,7 @@ const SC_SLOW_RX = /(^|[\s,(])(a |en |in |au |em |al |in )?(c[aá]mara lenta|slo
 const SC_MAGIC = new Set('esfera bola orbe rayo rayos energia fuego llamas hechizo magia magico magica poder ataque dragon ki laser energy blast beam fireball orb bolt magic power spell flames energie boule sort foudre fogo feitico poder feuerball strahl magie zauber energia palla raggio incantesimo potere encanteri'.split(' '));
 const SC_CHAINS = new Set('cadenas cadena cuerdas cuerda grilletes esposas chains chain ropes rope shackles handcuffs chaines chaine cordes correntes corrente cordas algemas ketten kette seile fesseln catene catena corde manette cadenes'.split(' '));
 const SC_FROM = new Set('de del desde from out du des da do dos aus dal dalla dallo dai dels'.split(' '));
+const SC_THING_ART = new Set('the el la los las le les der die das il lo gli o os as a un una une um uma ein eine'.split(' '));
 const SC_LINK = 'y|e|and|then|luego|despues|entonces|et|puis|und|dann|poi|i|tambien|also'.split('|');
 const SC_ALL = 'todos|todas|ambos|ambas|los dos|las dos|everyone|everybody|both|all|tous|toutes|tots|totes|todos|alle|beide|tutti|entrambi'.split('|');
 const SC_TOGETHER = 'mientras|a la vez|al mismo tiempo|while|meanwhile|at the same time|pendant que|alors que|enquanto|wahrend|mentre'.split('|');
@@ -252,6 +254,8 @@ function readAction(text, cast, lang, ctx) {
       if (!subj.length && all) subj = cast.map((_, i) => i).filter(i => ctx.present.includes(i));
       // something appearing or going («en la pantalla aparece una imagen») is not somebody coming in or out
       if (!subj.length && !prevSubj && ['enter', 'exit'].includes(v.id) && w.slice(from, v.i).filter(x => !SC_LINK.includes(x)).length >= 2) return;
+      // a thing doing it («The cake flies», «La puerta se abre», «Le vase tombe»): an article and a noun before the verb, no one named
+      if (!subj.length && SC_THING_ART.has(w[from]) && v.i - from >= 2 && v.i - from <= 4 && !all) return;
       if (!subj.length) subj = prevSubj || (ctx.last != null ? [ctx.last] : [ctx.present[0] ?? 0]);
       // the object: the first name after the verb (before the next one), or "him / her / lo / la / le" (people only for
       // what is done with things: «mira los resultados» looks at the results, not at «los»)
@@ -266,7 +270,7 @@ function readAction(text, cast, lang, ctx) {
       if (spec.t === 'state') { (ctx.bound = ctx.bound || new Set()); for (const c of subj) ctx.bound.add(c); }
       if (spec.t === 'free' && target != null && ctx.bound) ctx.bound.delete(target);
       if (target == null && ['approach', 'face', 'group'].includes(spec.t)) { const others = ctx.present.filter(i => !subj.includes(i)); target = ctx.lastOther != null && !subj.includes(ctx.lastOther) && ctx.present.includes(ctx.lastOther) ? ctx.lastOther : others[0]; }
-      out.push({who: subj, id: v.id, target, together: SC_TOGETHER.some(t => scNorm(cl).includes(t)), text: cl, fast: v.fast || /corr|run|rapid|deprisa|quick|fast/.test(scNorm(w.slice(from, to).join(' ')))});
+      out.push({who: subj, id: v.id, target, together: SC_TOGETHER.some(t => scNorm(cl).includes(t)), text: cl, fast: v.fast || spec.fast || /corr|run|rapid|deprisa|quick|fast/.test(scNorm(w.slice(from, to).join(' ')))});
       ctx.last = subj[subj.length - 1]; prevSubj = subj; prevObj = target; if (target != null) ctx.lastOther = target;
     });
   }
@@ -374,6 +378,7 @@ function directScene(sc, idx, cast, lang, o) {
           case 'stand': if (s.mode === 'sit') { const c = clipById(SC_CLIP.stand); seg(s, t0, t0 + c.len, 'clip', {clip: c.id, at: {x: s.sx ?? s.x, z: s.sz ?? s.z}, yaw: s.yaw, root: true, seated: true}); t1 = t0 + c.len; s.mode = 'stand'; }
             else if (s.mode === 'down') { const c = clipById(SC_CLIP.getup); seg(s, t0, t0 + c.len, 'clip', {clip: c.id, at: {x: s.x, z: s.z}, yaw: s.yaw}); t1 = t0 + c.len; s.mode = 'stand'; } break;
           case 'turn': s.yaw = wrapA(s.yaw + Math.PI); seg(s, t0, t0 + .6, 'turn', {yaw: s.yaw}); t1 = t0 + .6; break;
+          case 'spin': { const y0 = s.yaw; s.yaw = wrapA(y0 + Math.PI * .999); seg(s, t0, t0 + .38, 'turn', {yaw: s.yaw}); s.yaw = y0; seg(s, t0 + .38, t0 + .76, 'turn', {yaw: y0}); t1 = t0 + .76; break; }
           case 'face': if (tgt) { faceTo(s, tgt, t0); s.gaze.push({t0, t1: t0 + 3, c: tgt.ci}); } t1 = t0 + .6; break;
           case 'clip': case 'loop': { if (s.mode === 'sit' && !/sit/i.test(spec.c[0])) { /* gestures seated: the upper body only would be ideal; stand them up first */ const c = clipById(SC_CLIP.stand); seg(s, t0, t0 + c.len, 'clip', {clip: c.id, at: {x: s.sx ?? s.x, z: s.sz ?? s.z}, yaw: s.yaw, root: true, seated: true}); s.mode = 'stand'; }
             const t00 = Math.max(t0, endOf(s));
@@ -699,6 +704,7 @@ function bakeScene(D) {
       if (from >= 0 && tl < .35 && g.kind !== 'gone' && full[from].kind !== 'gone') { const was = partPose(from, tt); if (was) pose = mixPose(was, pose, easeIO(tl / .35)); }
       keys.push({f, pose, lin: true}); prevPose = pose;
     }
+    despike(keys);
     tracks.push({ci: s.ci, keys});
   }
   // the heads turn to whoever is being listened to (now that everyone's place at every frame is known), smoothly
@@ -715,6 +721,20 @@ function bakeScene(D) {
   return {tracks, n};
 }
 const easeIO = t => t * t * (3 - 2 * t);
+// a joint that jumps away for one frame and comes straight back (a flip in a blend, a clip's glitch) is put back on its
+// way between the frames around it; a fast move that goes on (a punch, a fall) is left as it is
+function despike(keys) {
+  const qa = new Q(), qb = new Q(), qc = new Q(), lim = 35 * DEG;
+  for (let f = 1; f < keys.length - 1; f++) {
+    const A = keys[f - 1].pose, B = keys[f].pose, C = keys[f + 1].pose; let fixed = null;
+    for (const n of Object.keys(B.q)) {
+      if (!A.q[n] || !C.q[n]) continue; qa.fromArray(A.q[n]); qb.fromArray(B.q[n]); qc.fromArray(C.q[n]);
+      const a = qa.angleTo(qb), b = qb.angleTo(qc), c = qa.angleTo(qc);
+      if (a > lim && b > lim && c < .5 * Math.min(a, b)) { (fixed = fixed || {...B.q})[n] = qa.clone().slerp(qc, .5).toArray(); }
+    }
+    if (fixed) keys[f].pose = {...B, q: fixed};
+  }
+}
 // sitting still on the chair: the clip's seated loop at the height where the sitting clip ended
 function seatPose(m, pose, g) { return pose; }
 function stillPose(m, g) {
@@ -871,7 +891,7 @@ function camFor(spec, t, D, sample, side) {
     const el = (spec.type === 'est' ? 18 : 7) * DEG, dir = n.clone().add(side.d ? side.d.clone().multiplyScalar(spec.type === 'est' ? .55 : .15) : new V3()).normalize();
     tgt = new V3(c.x, Math.max(.5 * k, (spec.type === 'est' ? c.y * .9 : mid.y - H / 6)), c.z);
     pos = tgt.clone().add(dir.multiplyScalar(d * Math.cos(el))).add(new V3(0, d * Math.sin(el), 0));
-  } else if (spec.type === 'ots' && spec.other != null && W.of[spec.other]) {
+  } else if (spec.type === 'ots' && spec.other != null && W.of[spec.other] && W.of[spec.other].eye.y > 1.05 * k && subj[0].fwd.dot(W.of[spec.other].eye.clone().sub(subj[0].eye).setY(0).normalize()) > -.3) {
     const S = subj[0], O = W.of[spec.other], dirOS = S.eye.clone().sub(O.eye).setY(0).normalize(), sideV = n.clone().multiplyScalar(n.dot(new V3().crossVectors(new V3(0, 1, 0), dirOS)) >= 0 ? 1 : -1);
     pos = O.eye.clone().addScaledVector(dirOS, -.62 * k).addScaledVector(new V3(-dirOS.z, 0, dirOS.x).multiplyScalar(sideV.dot(new V3(-dirOS.z, 0, dirOS.x)) >= 0 ? 1 : -1), .36 * k).add(new V3(0, .06 * k, 0));
     tgt = S.eye.clone().add(new V3(0, -H / 6, 0)); const d = pos.distanceTo(tgt);
@@ -883,7 +903,8 @@ function camFor(spec, t, D, sample, side) {
   } else if (spec.type === 'pov' && spec.other != null && W.of[spec.other]) {
     pos = W.of[spec.other].eye.clone(); tgt = subj[0].eye.clone(); focal = 32;
   } else {  // a single (or a reaction, or a follow): in front of the subject, a little towards whoever they face, on the camera's side
-    const S = subj[0], O = spec.other != null ? W.of[spec.other] : null, look = O ? O.eye.clone().sub(S.eye).setY(0).normalize() : S.fwd.clone();
+    // (one who has turned away from the other — «sin girarse», walking off — is shot from where they face: the face, not the back)
+    const S = subj[0], O0 = spec.other != null ? W.of[spec.other] : null, lookO = O0 && O0.eye.clone().sub(S.eye).setY(0).normalize(), O = O0 && S.fwd.dot(lookO) > -.3 ? O0 : null, look = O ? lookO : S.fwd.clone();
     // (the line is the one between these two — the 180° rule of the exchange —, on the side the scene is seen from)
     let np = n.clone(); if (O) { np.set(-look.z, 0, look.x); if (np.dot(n) < 0) np.negate(); }
     const toCam = look.clone().multiplyScalar(.55).add(np.multiplyScalar(np.dot(S.fwd) < -.3 && !O ? -1 : 1)).normalize();
@@ -900,6 +921,44 @@ function camFor(spec, t, D, sample, side) {
   return {p: pos.toArray().map(v => +v.toFixed(3)), t: tgt.toArray().map(v => +v.toFixed(3)), f: +focal.toFixed(1), r: 0};
 }
 
+// a still camera that keeps its people in: their heads and hips at the start, middle and end of the shot are seen through
+// it, and it steps back (the same lens) until they stay inside the frame with room above the heads
+const _fitCam = new THREE.PerspectiveCamera();
+function fitCam(c, u, sample) {
+  const pts = []; for (const t of [u.t0 + .05, (u.t0 + u.t1) / 2, u.t1 - .05]) { const W = sample(t); for (const ci of u.subj) { const x = W.of[ci]; if (x && x.hips.y > -10) pts.push(x.eye.clone().add(new V3(0, .12 * W.size, 0)), x.hips); } }
+  if (!pts.length) return c;
+  const T = new V3().fromArray(c.t); let P = new V3().fromArray(c.p);
+  _fitCam.filmGauge = camera.filmGauge; _fitCam.aspect = camera.aspect; _fitCam.setFocalLength(c.f); _fitCam.near = .05; _fitCam.far = 500;
+  for (let n = 0; n < 4; n++) {
+    _fitCam.position.copy(P); _fitCam.lookAt(T); _fitCam.updateMatrixWorld(true); _fitCam.updateProjectionMatrix();
+    let worst = 0; for (const p of pts) { const q = p.clone().project(_fitCam); if (q.z > 1) { worst = 2; break; } worst = Math.max(worst, Math.abs(q.x) / .94, q.y / .92, -q.y / .98); }
+    if (worst <= 1) break;
+    P = T.clone().add(P.clone().sub(T).multiplyScalar(Math.min(1.6, Math.max(1.12, worst * 1.05))));
+  }
+  return {...c, p: P.toArray().map(v => +v.toFixed(3))};
+}
+
+/* ---------- the light of each shot ----------
+   The mood comes from the time and the place (a night outside is moonlit, a room at night warm, a dusk back-lit), then
+   from the story and the moment: a horror's frights and its monsters lit from below, sorrow, fear and anger in low key,
+   laughter bright, a fight hard. The key comes from the side the face is turned to (seen from the camera). */
+const SC_MONSTER = /\b(zombi|zombie|monstruo|monster|monstre|monstro|mostro|fantasma|ghost|fantome|geist|demonio|demon|vampiro|vampire|orco|orc|criatura|creature|bestia|beast)\b/;
+function filmLightFor(D, u, c0, sample, cast) {
+  const amb = state.amb, out = SCENES[state.env] && SCENES[state.env].group !== 'in';
+  let mood = amb === 'noche' ? (out ? 'noche' : 'calida') : amb === 'atardecer' ? 'atardecer' : amb === 'interior' || !out ? 'calida' : 'natural';
+  const L = D.lines.find(l => u.subj.includes(l.c) && l.t0 < u.t1 && l.t0 + l.dur > u.t0), emo = L && L.emo, inten = L ? L.inten : 0;
+  const monster = u.subj.some(c => SC_MONSTER.test(scNorm(`${cast[c].name} ${cast[c].desc || ''}`)));
+  if (D.genre === 'horror' && (monster || emo === 'miedo' || emo === 'grito') && ['single', 'react', 'track', 'fight'].includes(u.type)) mood = 'terror';
+  else if (['triste', 'miedo', 'enfado'].includes(emo) && inten > .45 && mood !== 'noche') mood = 'drama';
+  else if (D.genre === 'horror' && mood !== 'noche') mood = 'drama';
+  else if (u.type === 'fight' && mood === 'calida') mood = 'drama';
+  else if (['risa', 'sonrisa'].includes(emo) && mood !== 'noche' && mood !== 'atardecer') mood = 'comedia';
+  // the side: the key on the side the subject looks to, as the camera sees it
+  let side = -1; const S = c0 && sample(u.t0 + .05).of[u.subj[0]];
+  if (S && !['est', 'master', 'two'].includes(u.type)) { const d = new V3().fromArray(c0.p).sub(new V3().fromArray(c0.t)), right = new V3(0, 1, 0).cross(d).normalize(), k = S.fwd.dot(right); if (Math.abs(k) > .15) side = Math.sign(k); }
+  return {auto: mood, side};
+}
+
 /* ---------- the whole film ---------- */
 const SC_SAMPLE = {es: 'INT. COCINA - NOCHE\n\nANA está junto a la mesa. LUIS entra y se acerca a ella.\n\nLUIS\n(sonriendo)\n¡Hola! ¿Llego tarde?\n\nANA\n(enfadada)\nUna hora tarde, Luis. Una hora.\n\nLuis se encoge de hombros y se sienta.\n\nLUIS\nLo siento. El tráfico estaba fatal…\n\nAna se ríe y lo abraza.\n\nEXT. PARQUE - DÍA\n\nPLANO GENERAL. Ana y Luis caminan.\n\nANA\n¿Ves? Así está mucho mejor.\n\nLuis salta y celebra.\n',
   en: 'INT. KITCHEN - NIGHT\n\nANNA waits by the table. LEO enters and walks over to her.\n\nLEO\n(smiling)\nHi! Am I late?\n\nANNA\n(angry)\nAn hour late, Leo. An hour.\n\nLeo shrugs and sits down.\n\nLEO\nI\'m sorry. The traffic was terrible…\n\nAnna laughs and hugs him.\n\nEXT. PARK - DAY\n\nWIDE SHOT. Anna and Leo walk.\n\nANNA\nSee? This is much better.\n\nLeo jumps and celebrates.\n'};
@@ -914,7 +973,10 @@ async function scriptToFilm(text, o = {}) {
     if (!ANIM.open) { $('#animBtn').click(); await new Promise(r => setTimeout(r, 50)); }
     await loadClipLibrary(); clipRig();
     if (VOICE.on) { msg(tr('Preparando las voces…')); await espeak().catch(() => {}); }
-    storeShot(); SC.last = JSON.stringify({shots: ANIM.shots, cur: ANIM.cur});  // for "Undo" (the shot being edited included)
+    storeShot(); SC.last = JSON.stringify({shots: ANIM.shots, cur: ANIM.cur, fps: ANIM.fps});  // for "Undo" (the shot being edited included)
+    // a film is baked at 24 frames a second: fast moves (a punch, a jump) keep their arcs, and the key drawings are found
+    // in the real motion (it can still be shown on twos or threes: Interpretación › Ritmo)
+    ANIM.fps = o.fps || 24; if ($('#tlFps')) setPressed($('#tlFps'), String(ANIM.fps));
     const film = [], genre = genreOf(text); let prevPresent = [], lastTime = null, lastEnv = null;
     for (const [idx, sc] of P.scenes.entries()) {
       if (!sc.beats.length) continue;
@@ -939,7 +1001,7 @@ async function scriptToFilm(text, o = {}) {
       if (amb) { state.amb = amb; applyAmbient(); setPressed($('#ambChips'), amb); }
       clearProps();
       // laid out again now that the bodies exist (sizes), timed with the voices, baked, shot
-      const D = directScene(sc, idx, cast, lang, o);
+      const D = directScene(sc, idx, cast, lang, o); D.genre = genre;
       await timeLines(D, cast);
       for (const c of D.chairs) { const g = makeProp('silla', new V3(c.x, 0, c.z)); g.rotation.y = c.yaw + Math.PI; }
       const B = bakeScene(D), sample = worldSampler(D, B), side = lineOfInterest(D, (ci, t) => sample(t).of[ci].hips);
@@ -989,9 +1051,13 @@ function makeShot(D, B, u, ui, sample, side, cast) {
     const e = [...D.st[li].expr].filter(x => x.t <= (u.t0 + u.t1) / 2).pop(), J = exprJoints(m, ANTHRO_OF[e && e.e] || 'neutra'); if (!J) return; delete J.jaw;
     const Qs = Object.fromEntries(Object.entries(J).map(([n, r]) => [n, new Q().setFromEuler(new THREE.Euler(r[0], r[1], r[2])).toArray()]));
     s.keys[li] = s.keys[li].map(k => ({...k, pose: {...k.pose, q: {...k.pose.q, ...Qs}}})); });
-  const c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move === 'track' ? camFor(u, u.t1 - .05, D, sample, side) : null;
+  let c0 = camFor(u, u.t0 + .05, D, sample, side), c1 = u.type === 'track' || u.move === 'track' ? camFor(u, u.t1 - .05, D, sample, side) : null;
+  if (c0 && !c1 && !['insert', 'pov', 'ots'].includes(u.type)) c0 = fitCam(c0, u, sample);
   if (c0) { s.cam = c1 ? [{f: 0, c: c0}, {f: len - 1, c: c1}] : camMove(c0, u.cam, len, fps); s.scene.cam = s.cam[0].c; }
-  s.key = u.type === 'est' ? .5 : 1;
+  s.key = u.type === 'est' ? .6 : 1;
+  // a little overlap: the chest, the head and the hands arrive a moment after the hips (Interpretación › Arrastre)
+  s.motion = Object.fromEntries(s.keys.map((_, li) => [li, {drag: .25}]));
+  s.light = filmLightFor(D, u, c0, sample, cast);
   // the place's effects in this shot, in its frames (a blast only while it lasts; light, rain, fire, a fade, all through)
   s.fx = (D.fx || []).filter(x => x.t < u.t1 && (x.fx !== 'blast' || x.t > u.t0 - 2.5) && (x.fx !== 'fadein' || x.t > u.t0 - 1.5) && (x.fx !== 'fadeout' || x.t < u.t1)).map(x => ({f: Math.round((x.t - u.t0) * fps), kind: x.fx, col: x.col || undefined, k: x.k || undefined}));
   s.lines = D.lines.filter(l => l.t0 < u.t1 && l.t0 + l.dur > u.t0).map(l => ({c: D.present.indexOf(l.c), f: Math.round((l.t0 - u.t0) * fps), len: Math.max(2, Math.round(l.dur * fps)), text: l.text, lang: l.lang, voice: l.voice,
@@ -1036,7 +1102,7 @@ async function runScript() {
 }
 async function undoScript() {
   if (!SC.last || SC.busy) return; const o = JSON.parse(SC.last); if (ANIM.playing) play(false);
-  ANIM.shots = o.shots; ANIM.cur = -1; await enterShot(Math.max(0, o.cur), 0); renderStrip();
+  ANIM.shots = o.shots; ANIM.cur = -1; if (o.fps) { ANIM.fps = o.fps; if ($('#tlFps')) setPressed($('#tlFps'), String(o.fps)); } await enterShot(Math.max(0, o.cur), 0); renderStrip();
   SC.last = null; scriptState(); $('#scMsg').textContent = tr('Película anterior recuperada.'); if ($('#scModal').hidden) toast(tr('Película anterior recuperada.'));
 }
 function buildScriptUI() {
