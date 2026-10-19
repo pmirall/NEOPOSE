@@ -38,9 +38,33 @@ function sampleClip(c, t) {
   const n = c.frames.length, x = c.loop ? ((t * c.fps) % n + n) % n : clamp(t * c.fps, 0, n - 1), i = Math.floor(x), k = x - i, a = c.frames[i], b = c.frames[c.loop ? (i + 1) % n : Math.min(i + 1, n - 1)];
   const q = {}, qa = new Q(), qb = new Q();
   for (const j of CLIP_J) { qa.fromArray(a.q[j]); qb.fromArray(b.q[j]); q[j] = qa.slerp(qb, k).toArray(); }
-  return {q, p: a.p.map((v, n) => v + (b.p[n] - v) * k), h: a.h.map((v, n) => v + (b.h[n] - v) * k)};
+  // a loop's last frame leads on into the next lap, a stride further, not back to where the first one stood
+  const bp = c.loop && i === n - 1 ? clipStride(c).map((d, m) => c.frames[0].p[m] + (m === 1 ? 0 : d)) : b.p;
+  return {q, p: a.p.map((v, m) => v + (bp[m] - v) * k), h: a.h.map((v, m) => v + (b.h[m] - v) * k)};
 }
 const REST_CURLS = [.25, .18, .26, .32, .4, .25, .18, .26, .32, .4];
+// how far the hips go in one lap of a loop (or the whole of a clip), in the clip's metres: [x, y, z]
+function clipStride(c) {
+  if (!c._stride) { const n = c.frames.length, a = c.frames[0].p, b = c.frames[n - 1].p, k = c.loop && n > 1 ? n / (n - 1) : 1; c._stride = [0, 1, 2].map(m => (b[m] - a[m]) * k); }
+  return c._stride;
+}
+// its speed over the ground (metres a second): what a walk has to be played at for its feet not to slide. A clip that
+// travels says so with its hips; one made on the spot (a treadmill walk) by how fast the foot on the ground goes back
+function clipSpeed(c) {
+  if (c._speed == null) {
+    const d = Math.hypot(clipStride(c)[0], clipStride(c)[2]);
+    if (c.len <= 0) c._speed = 0;
+    else if (d > .05 * c.len) c._speed = d / c.len;
+    else {
+      // (the middle of how fast it goes back while it is down: the moments a foot lands or lifts do not count)
+      const m = clipRig(), save = m.getPose(), P = c.frames.map(f => footPoints(m, f)), n = P.length, floor = Math.min(...P.map(f => Math.min(f[0].y, f[1].y))), v = [];
+      for (let i = 0; i < n - (c.loop ? 0 : 1); i++) { const j = (i + 1) % n, s = P[i][0].y + P[j][0].y <= P[i][1].y + P[j][1].y ? 0 : 1; if (Math.max(P[i][s].y, P[j][s].y) - floor < .08) v.push((P[i][s].ankle.z - P[j][s].ankle.z) * c.fps); }
+      m.setPose(save); m.group.updateMatrixWorld(true);
+      v.sort((a, b) => a - b); c._speed = v.length ? Math.max(0, v[v.length >> 1]) : 0;
+    }
+  }
+  return c._speed;
+}
 // where a pose faces: hips, chest and both feet together (a contrapposto or a twisted start does not count as a turn)
 function facingOf(q) {
   const w = (...n) => n.reduce((a, j) => a.multiply(new Q().fromArray(q[j] || [0, 0, 0, 1])), new Q()), f = new V3();
@@ -193,10 +217,13 @@ function framesFromBVH(text, fps) {
   return {src: {rest: rest.pos, restHeadQ: rest.headQ || new Q(), restCurl: rest.curls, frames}, fps: 1 / (ft * step), names};
 }
 
-/* ---------- NEOPOSE's own clips: key poses, eased ---------- */
+/* ---------- NEOPOSE's own clips: key poses, on a smooth curve ---------- */
+// a key: [time, pose (a library pose, or joints), hands (true: the library pose mirrored), dy, dz]
+// feet: the clip is a step cycle made on the spot: it is stood on the ground and travels as its feet push (see plantFeet);
+// 'air' for a run, which leaves the ground between steps
 const OWN_CLIPS = [
-  {id: 'np-andar', name: 'Andar (ciclo)', cat: 'mov', loop: true, dur: 1, step: .5, keys: [[0, 'caminar'], [.5, 'caminar', true], [1, 'caminar']]},
-  {id: 'np-correr', name: 'Correr (ciclo)', cat: 'mov', loop: true, dur: .7, step: .35, keys: [[0, 'correr'], [.35, 'correr', true], [.7, 'correr']]},
+  {id: 'np-andar', name: 'Andar (ciclo)', cat: 'mov', loop: true, dur: 1, feet: true, keys: [[0, 'caminar'], [.25, WALK_PASS], [.5, 'caminar', true], [.75, mirrorJ(WALK_PASS)], [1, 'caminar']]},
+  {id: 'np-correr', name: 'Correr (ciclo)', cat: 'mov', loop: true, dur: .7, feet: 'air', keys: [[0, 'correr'], [.175, RUN_PASS, 'agarre'], [.35, 'correr', true], [.525, mirrorJ(RUN_PASS), 'agarre'], [.7, 'correr']]},
   {id: 'np-respirar', name: 'Respirar', cat: 'reposo', loop: true, dur: 3, keys: [[0, {chest: [-2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.5, {chest: [-6, 0, 0], neck: [2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [3, {chest: [-2, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}]]},
   {id: 'np-saludar', name: 'Saludar con la mano', cat: 'gestos', loop: true, dur: 1.2, keys: [[0, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-60], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta'], [.6, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-100], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta'], [1.2, {shoulderR: [0, -90, -100, 'ZXY'], elbowR: [-60], ...LEGS_STAND, shoulderL: [0, 0, 8], elbowL: [-15]}, 'abierta']]},
   {id: 'np-si', name: 'Asentir', cat: 'gestos', dur: 1.2, keys: [[0, {head: [0, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.3, {head: [18, 0, 0], neck: [6, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.6, {head: [-4, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [.9, {head: [15, 0, 0], neck: [5, 0, 0], ...ARMS_DOWN, ...LEGS_STAND}], [1.2, {...ARMS_DOWN, ...LEGS_STAND}]]},
@@ -208,23 +235,96 @@ const OWN_CLIPS = [
   {id: 'np-sentarse', name: 'Sentarse', cat: 'reposo', dur: 1.6, keys: [[0, 'pie'], [.8, {hips: [30, 0, 0], waist: [10, 0, 0], ...sym({hipL: [-60, 0, 6], kneeL: [70], ankleL: [-15], shoulderL: [-30, 0, 10], elbowL: [-30]})}, null, -.18], [1.6, 'sentado', null, -.43]]},
   {id: 'np-boxeo', name: 'Combinación de puñetazos', cat: 'combate', dur: 1.4, keys: [[0, 'guardia'], [.25, 'jab'], [.5, 'guardia'], [.8, 'cross'], [1.1, 'guardia'], [1.4, 'guardia']]}
 ];
+/* A curve through key values that never stops between them: at each key the slope comes from its neighbours (the
+   shape-keeping Hermite of Fritsch and Carlson), flat only where a move turns back or holds, so nothing overshoots a
+   key and a move that goes on through a key does not halt there. A loop's ends meet with the same slope; a clip that
+   is not a loop eases out of its first key and into its last.
+   ts: key times, vs: one array of numbers per key; wrap(i, v): a neighbour's value seen from key i (quaternion signs) */
+function keyCurve(ts, vs, loop, wrap) {
+  const m = ts.length, dur = ts[m - 1] - ts[0], off = vs[m - 1].map((v, c) => v - vs[0][c]);  // a loop may travel: its last key is its first, moved on
+  const nb = (i, d) => {  // the key d steps from i, with its time and value (around the loop)
+    let j = i + d, t, v;
+    if (j >= 0 && j < m) { t = ts[j]; v = vs[j]; }
+    else if (!loop) return null;
+    else if (j < 0) { j += m - 1; t = ts[j] - dur; v = vs[j].map((x, c) => x - off[c]); }
+    else { j -= m - 1; t = ts[j] + dur; v = vs[j].map((x, c) => x + off[c]); }
+    return {t, v: wrap ? wrap(i, v) : v};
+  };
+  const slope = vs.map((v, i) => {
+    const a = nb(i, -1), b = nb(i, 1);
+    if (!a || !b) return v.map(() => 0);
+    const h0 = ts[i] - a.t, h1 = b.t - ts[i], w1 = 2 * h1 + h0, w2 = h1 + 2 * h0;
+    return v.map((x, c) => { const d0 = (x - a.v[c]) / h0, d1 = (b.v[c] - x) / h1; return d0 * d1 <= 0 ? 0 : (w1 + w2) / (w1 / d0 + w2 / d1); });
+  });
+  return t => {
+    let i = 0; while (i < m - 2 && ts[i + 1] <= t) i++;
+    const h = ts[i + 1] - ts[i], s = h > 0 ? clamp((t - ts[i]) / h, 0, 1) : 0, s2 = s * s, s3 = s2 * s;
+    const a = vs[i], b = wrap ? wrap(i, vs[i + 1]) : vs[i + 1], flip = b !== vs[i + 1] ? -1 : 1;  // (the next key's slope turns with it)
+    return a.map((x, c) => (2 * s3 - 3 * s2 + 1) * x + (s3 - 2 * s2 + s) * h * slope[i][c] + (-2 * s3 + 3 * s2) * b[c] + (s3 - s2) * h * slope[i + 1][c] * flip);
+  };
+}
+// a quaternion on the same side as another (q and -q are the same turn: the curve must not go the long way round)
+const sameSide = (q, ref) => q[0] * ref[0] + q[1] * ref[1] + q[2] * ref[2] + q[3] * ref[3] < 0 ? q.map(x => -x) : q;
 function buildOwnClip(def) {
   const m = clipRig(), fps = 24, n = Math.round(def.dur * fps) + 1, Ks = [];
   for (const [t, p, hands, dy, dz] of def.keys) {
     const pose = typeof p === 'string' ? POSE[p] : {j: p, hands: hands ? {L: hands, R: hands} : undefined};
-    m.joints.hips.position.set(0, m.rootY, 0); applyPreset(m, hands === true ? {j: Object.fromEntries(Object.entries(pose.j).map(([k, e]) => [swapSide(k), mirrorRot(e)])), hands: pose.hands} : pose, {ground: false});
+    m.joints.hips.position.set(0, m.rootY, 0); applyPreset(m, hands === true ? {j: mirrorJ(pose.j), hands: pose.hands} : pose, {ground: false});
     const g = m.getPose(), q = {}; for (const j of CLIP_J) q[j] = g.q[j];
     Ks.push({t, q, dy: dy || 0, dz: dz || 0, h: [...m.hands.L.c, ...m.hands.R.c]});
   }
-  const frames = [];
+  const ts = Ks.map(k => k.t), Q4 = {};
+  for (const j of CLIP_J) Q4[j] = keyCurve(ts, Ks.map(k => k.q[j]), def.loop, (i, v) => sameSide(v, Ks[i].q[j]));
+  const rest = keyCurve(ts, Ks.map(k => [k.dy, k.dz, ...k.h]), def.loop), frames = [];
   for (let i = 0; i < n; i++) {
-    const t = i / fps; let a = 0; while (a < Ks.length - 2 && Ks[a + 1].t <= t) a++;
-    const A = Ks[a], B = Ks[Math.min(a + 1, Ks.length - 1)], u0 = B.t > A.t ? clamp((t - A.t) / (B.t - A.t), 0, 1) : 0, u = u0 * u0 * (3 - 2 * u0), q = {}, qa = new Q(), qb = new Q();
-    for (const j of CLIP_J) { qa.fromArray(A.q[j]); qb.fromArray(B.q[j]); q[j] = qa.slerp(qb, u).toArray(); }
-    frames.push({q, p: [0, A.dy + (B.dy - A.dy) * u, A.dz + (B.dz - A.dz) * u0], h: A.h.map((v, k) => v + (B.h[k] - v) * u)});
+    const t = i / fps, q = {}, r = rest(t);
+    for (const j of CLIP_J) { const v = Q4[j](t), l = Math.hypot(...v) || 1; q[j] = v.map(x => x / l); }
+    frames.push({q, p: [0, r[0], r[1]], h: r.slice(2).map(v => clamp(v, 0, 1))});
   }
   if (def.loop) frames.pop();  // the last key repeats the first
+  if (def.feet) plantFeet(frames, fps, def.loop, def.feet === 'air');
   return {id: def.id, name: tr(def.name), cat: def.cat, src: 'neopose', fps, loop: !!def.loop, frames, len: (def.loop ? frames.length : n - 1) / fps, kit: def.kit};
+}
+// the feet of the figure posed with frame f on the spot: for each side the lower of the ankle and the toes (where the
+// foot touches the ground) and the ankle (what stays put while the foot is down: the lowest point rolls on as it rocks
+// from heel to toes)
+function footPoints(m, f) {
+  m.setPose(clipPose(m, {q: f.q, p: [0, f.p[1], 0], h: f.h || REST_CURLS}, new V3(0, 0, 0), 0, true, 1)); m.group.updateMatrixWorld(true);
+  const T = m.J;
+  return ['L', 'R'].map(s => {
+    const a = m.joints['ankle' + s], i = FIG.jIdx['ankle' + s], t = FIG.jIdx['toe' + s];
+    const an = wposOf(a), toe = a.localToWorld(new V3(T[t * 3] - T[i * 3], T[t * 3 + 1] - T[i * 3 + 1], T[t * 3 + 2] - T[i * 3 + 2]));
+    const low = an.y < toe.y ? an.clone() : toe; low.ankle = an; return low;
+  });
+}
+// a step cycle made on the spot, stood on the ground: the hips drop as far as the lower foot is off the floor (they go
+// down as the legs open and up as they pass), and the whole body travels so that the foot on the ground stays put.
+// A run (air) also leaves the ground: where both feet are up, the hips fly on the arc gravity gives them, at the speed
+// they took off with
+function plantFeet(frames, fps, loop, air) {
+  const m = clipRig(), save = m.getPose(), floor = footPoints(m, {q: {hips: [0, 0, 0, 1]}, p: [0, 0, 0]})[0].y;
+  const P = frames.map(f => footPoints(m, f)), n = frames.length, low = P.map(([l, r]) => Math.min(l.y, r.y)), lowest = Math.min(...low);
+  const down = low.map(y => !air || y - lowest < .05), dy = low.map(y => floor - y);
+  // each flight, from the last frame down to the next one (round the loop: start counting from a frame down)
+  const d0 = down.indexOf(true), end = loop ? d0 + n : n;
+  for (let u = d0 + 1; u < end; u++) {
+    if (down[u % n]) continue;
+    let b = u; while (b < end && !down[b % n]) b++;
+    if (b >= end && !loop) break;
+    const a = u - 1, T = (b - a) / fps, ya = dy[a % n], yb = dy[b % n];
+    for (let j = u; j < b; j++) { const t = (j - a) / fps; dy[j % n] = ya + (yb - ya) * t / T + 4.9 * t * (T - t); }
+    u = b;
+  }
+  frames.forEach((f, i) => f.p[1] += dy[i]);
+  const step = [], j1 = i => loop ? (i + 1) % n : Math.min(i + 1, n - 1);
+  for (let i = 0; i < n; i++) {  // from each frame to the next, the foot lower over both pushes the body on by as much as it moves back
+    const j = j1(i), s = P[i][0].y + P[j][0].y <= P[i][1].y + P[j][1].y ? 0 : 1;
+    step.push(i === j ? null : down[i] && down[j] ? [P[i][s].ankle.x - P[j][s].ankle.x, P[i][s].ankle.z - P[j][s].ankle.z] : null);
+  }
+  const on = step.filter(Boolean), mean = on.length ? [0, 1].map(c => on.reduce((a, v) => a + v[c], 0) / on.length) : [0, 0];
+  let x = 0, z = 0;
+  frames.forEach((f, i) => { f.p[0] = x; f.p[2] = z; if (j1(i) !== i) { const v = step[i] || mean; x += v[0]; z += v[1]; } });
+  m.setPose(save); m.group.updateMatrixWorld(true);
 }
 
 /* ---------- the library: own clips, Quaternius (bundled), yours (this browser) ---------- */
@@ -261,7 +361,7 @@ function insertClip(c, ci, f0, o = {}) {
   let seatOff = 0;
   if (c.kit) { if (c.kit === 'silla') { const keep = m.getPose(); m.setPose(clipPose(m, c.frames[0], new V3().fromArray(keep.pos), facingOf(keep.q), true, m.rootY / clipRig().rootY, keep.q)); accessKit(m, c.kit); seatOff = m.joints.hips.position.y - m.rootY; m.joints.hips.position.y = keep.pos[1]; } else accessKit(m, c.kit); }
   const p0 = m.getPose(), at = new V3().fromArray(p0.pos), yaw = facingOf(p0.q), k = m.rootY / clipRig().rootY;
-  const last = c.frames[c.frames.length - 1].p, first = c.frames[0].p, span = c.len / Math.max(1e-6, (c.frames.length - 1) / c.fps), stride = new V3(last[0] - first[0], 0, last[2] - first[2]).multiplyScalar(span);
+  const cs = clipStride(c), stride = new V3(cs[0], 0, cs[2]);
   const K = s.keys[ci].filter(x => x.f < f0 || x.f > f0 + n - 1);
   for (let i = 0; i < n; i++) {
     const tt = i / ANIM.fps * speed, loop = Math.min(loops - 1, Math.floor(tt / c.len + 1e-6)), t = tt - loop * c.len;

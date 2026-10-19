@@ -22,6 +22,9 @@ const SC_SPEED = {walk: 1.1, run: 2.6, sprint: 4.6, sneak: .7, carry: 1, swim: .
 const SC_CLIP = {walk: 'ual1-Walk_Loop', run: 'ual1-Jog_Fwd_Loop', sprint: 'ual1-Sprint_Loop', sneak: 'ual1-Crouch_Fwd_Loop', idle: 'np-respirar', idle2: 'ual1-Idle_Loop', talk: 'ual1-Idle_Talking_Loop',
   sit: 'ual1-Sitting_Enter', sitIdle: 'ual1-Sitting_Idle_Loop', sitTalk: 'ual1-Sitting_Talking_Loop', stand: 'ual1-Sitting_Exit', getup: 'ual2-LayToIdle'};
 const clipById = id => (CLIPS.lib || []).find(c => c.id === id) || CLIPS.mine.find(c => c.id === id);
+// how fast someone goes walking, running…: at the pace the clip's own steps take (so it is not played in slow motion
+// or fast forward to keep its feet planted), within reason for what the script says
+const paceOf = kind => { const c = clipById(SC_CLIP[kind]), v = SC_SPEED[kind] || 1; return c ? clamp(clipSpeed(c), v * .7, v * 1.6) : v; };
 const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 /* ---------- places and times ---------- */
@@ -194,7 +197,7 @@ function directScene(sc, idx, cast, lang, o) {
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   const walkTo = (s, x, z, t0, kind = 'walk', stopAt = 0) => {
     const dx = x - s.x, dz = z - s.z, L = Math.hypot(dx, dz) - stopAt; if (L < .15) return t0;
-    const yaw = Math.atan2(dx, dz), v = SC_SPEED[kind] * (chars[local(s.ci)] ? chars[local(s.ci)].size : 1), dur = L / v, ex = s.x + dx / Math.hypot(dx, dz) * L, ez = s.z + dz / Math.hypot(dx, dz) * L;
+    const yaw = Math.atan2(dx, dz), v = paceOf(kind) * (chars[local(s.ci)] ? chars[local(s.ci)].size : 1), dur = L / v, ex = s.x + dx / Math.hypot(dx, dz) * L, ez = s.z + dz / Math.hypot(dx, dz) * L;
     seg(s, t0, t0 + dur, 'walk', {clip: SC_CLIP[kind], from: {x: s.x, z: s.z}, to: {x: ex, z: ez}, yaw}); s.x = ex; s.z = ez; s.yaw = yaw; if (s.mode === 'off') s.mode = 'stand';
     events.push({t0, t1: t0 + dur, kind: 'move', c: s.ci, shot: takeShot()}); return t0 + dur;
   };
@@ -312,28 +315,44 @@ function bakeScene(D) {
       t = Math.max(t, g.t1);
     }
     pushIdle(t, D.len + 1);
-    const phase = li * .83, keys = []; let prevPose = null, cur = -1, blendFrom = null, gazeYaw = 0;
+    const phase = li * .83, keys = []; let prevPose = null, cur = -1, from = -1;
+    // talking or not, eased in and out over a third of a second (the hands do not snap into a gesture)
+    const talkW = t => { let w = 0; for (const l of D.lines) if (l.c === s.ci) { const a = l.t0 - .1, b = l.t0 + l.dur + .2, d = t < a ? a - t : t > b ? t - b : 0; w = Math.max(w, 1 - d / .35); } return easeIO(clamp(w, 0, 1)); };
+    // how far along a walk is at tl: it speeds up over its first steps and slows down over its last
+    const walked = (g, tl) => {
+      const L = Math.hypot(g.to.x - g.from.x, g.to.z - g.from.z), T = g.t1 - g.t0, r = Math.min(.45, T / 3), v = L / Math.max(1e-6, T - r), t = clamp(tl, 0, T);
+      return [t < r ? v * t * t / (2 * r) : t > T - r ? L - v * (T - t) ** 2 / (2 * r) : v * (t - r / 2), L];
+    };
+    // the pose of part i at time tt (also after it has ended: a walk stands where it stopped, a clip on its last frame)
+    const partPose = (i, tt) => {
+      const g = full[i], tl = tt - g.t0, at = new V3(g.at.x, 0, g.at.z);
+      if (g.kind === 'idle') {
+        if (g.mode === 'down') return g._still;
+        const sit = g.mode === 'sit', w = talkW(tt), a = clipById(sit ? SC_CLIP.sitIdle : SC_CLIP.idle) || clipById(SC_CLIP.idle2), b = clipById(sit ? SC_CLIP.sitTalk : SC_CLIP.talk) || a;
+        const one = c => clipPose(m, sampleClip(c, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep);
+        const pose = w <= 0 ? one(a) : w >= 1 ? one(b) : mixPose(one(a), one(b), w);
+        return sit ? seatPose(m, pose, g) : pose;
+      }
+      if (g.kind === 'walk') {  // the steps go with the ground covered, so the feet do not slide
+        const c = clipById(g.clip) || clipById(SC_CLIP.walk), [d, L] = walked(g, tl), u = L > 0 ? d / L : 1, sp = clipSpeed(c) * k;
+        return clipPose(m, sampleClip(c, sp > .1 ? d / sp : tl), new V3(g.from.x + (g.to.x - g.from.x) * u, 0, g.from.z + (g.to.z - g.from.z) * u), g.yaw, true, k, keep);
+      }
+      if (g.kind === 'turn') {
+        const c = clipById(SC_CLIP.idle), pv = full[i - 1], y0 = pv ? (pv.yaw ?? (pv.at && pv.at.yaw) ?? g.yaw) : g.yaw, u = easeIO(clamp(tl / Math.max(.1, g.t1 - g.t0), 0, 1));
+        return clipPose(m, sampleClip(c, tt + phase), at, y0 + wrapA(g.yaw - y0) * u, true, k, keep);
+      }
+      if (g.kind === 'clip') { const c = clipById(g.clip); return c ? clipPose(m, sampleClip(c, g.loop ? tl : Math.min(tl, c.len)), at, g.yaw, !g.root, k, keep) : null; }
+      if (g.kind === 'pose') return g._pose || (g._pose = stillPose(m, g));
+      if (g.kind === 'group') return g._pose || (g._pose = groupPose(D, li, g));
+      return null;
+    };
     for (let f = 0; f < n; f++) {
       const tt = f / fps; let i = full.findIndex(g => tt >= g.t0 && tt < g.t1); if (i < 0) i = full.length - 1;
-      const g = full[i]; if (i !== cur) { blendFrom = prevPose; cur = i; }
-      const tl = tt - g.t0, at = new V3(g.at.x, 0, g.at.z); let pose;
-      if (g.kind === 'idle') {
-        if (g.mode === 'down' && prevPose) pose = prevPose;
-        else { const id = g.mode === 'sit' ? (talking(tt) ? SC_CLIP.sitTalk : SC_CLIP.sitIdle) : talking(tt) ? SC_CLIP.talk : SC_CLIP.idle, c = clipById(id) || clipById(SC_CLIP.idle2);
-          pose = clipPose(m, sampleClip(c, tt + phase), at, g.at.yaw ?? P.yaw, true, k, keep); if (g.mode === 'sit') pose = seatPose(m, pose, g); }
-      } else if (g.kind === 'walk') {
-        const c = clipById(g.clip) || clipById(SC_CLIP.walk), u = clamp(tl / (g.t1 - g.t0), 0, 1), p = new V3(g.from.x + (g.to.x - g.from.x) * u, 0, g.from.z + (g.to.z - g.from.z) * u);
-        pose = clipPose(m, sampleClip(c, tl * (g.clip === SC_CLIP.walk ? 1 : 1)), p, g.yaw, true, k, keep);
-      } else if (g.kind === 'turn') {
-        const c = clipById(SC_CLIP.idle), pv = full[i - 1], y0 = pv ? (pv.yaw ?? (pv.at && pv.at.yaw) ?? g.yaw) : g.yaw, u = easeIO(clamp(tl / Math.max(.1, g.t1 - g.t0), 0, 1));
-        pose = clipPose(m, sampleClip(c, tt + phase), at, y0 + wrapA(g.yaw - y0) * u, true, k, keep);
-      } else if (g.kind === 'clip') {
-        const c = clipById(g.clip); pose = clipPose(m, sampleClip(c, g.loop ? tl : Math.min(tl, c.len)), at, g.yaw, !g.root, k, keep);
-      } else if (g.kind === 'pose') { pose = g._pose || (g._pose = stillPose(m, g)); }
-      else if (g.kind === 'group') { pose = g._pose || (g._pose = groupPose(D, li, g)); }
-      if (!pose) pose = prevPose || m.getPose();
-      // the first quarter of a second of each part comes from where the last one left off
-      if (blendFrom && tl < .28) pose = mixPose(blendFrom, pose, easeIO(tl / .28));
+      const g = full[i]; if (i !== cur) { from = cur; cur = i; if (g.kind === 'idle' && g.mode === 'down') g._still = prevPose || m.getPose(); }
+      let pose = partPose(i, tt) || prevPose || m.getPose();
+      // each part takes over from the last one still moving, not from a frozen frame of it
+      const tl = tt - g.t0;
+      if (from >= 0 && tl < .35) { const was = partPose(from, tt); if (was) pose = mixPose(was, pose, easeIO(tl / .35)); }
       keys.push({f, pose, lin: true}); prevPose = pose;
     }
     tracks.push({ci: s.ci, keys});

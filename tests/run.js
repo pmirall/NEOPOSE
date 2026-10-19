@@ -341,6 +341,18 @@ const SUITES = {
     await page.click('#agPose'); await page.waitForTimeout(300);
     const arms = await A(() => { const m = window.__cdp.mq, w = m.joints.wristL.getWorldPosition(new THREE.Vector3()), c = m.joints.chest.getWorldPosition(new THREE.Vector3()); return w.distanceTo(c); });
     ok(arms < .35, `“use as pose” folds the arms (left wrist ${arms.toFixed(2)} m from the chest)`);
+    // NEOPOSE's own walk goes somewhere, with the foot that bears the weight planted; a walk made on the spot knows its pace
+    const walk = await A(() => {
+      const C = window.__cdp, K = C.clips, m = C.mq, V = THREE.Vector3, c = K.allClips().find(x => x.id === 'np-andar'), n = c.frames.length, st = (c.frames[n - 1].p[2] - c.frames[0].p[2]) * n / (n - 1);
+      const P = [], fps = 48;
+      for (let i = 0; i <= fps * 2 * c.len; i++) { const t = i / fps, lap = Math.floor(t / c.len + 1e-9); m.setPose(K.clipPose(m, K.sampleClip(c, t), new V(0, 0, st * lap), 0, false, 1)); m.group.updateMatrixWorld(true); P.push(['ankleL', 'ankleR'].map(j => m.joints[j].getWorldPosition(new V()))); }
+      const floor = Math.min(...P.map(f => Math.min(f[0].y, f[1].y))), v = [];
+      for (let i = 1; i < P.length; i++) { const s = P[i][0].y + P[i - 1][0].y <= P[i][1].y + P[i - 1][1].y ? 0 : 1; if (Math.max(P[i][s].y, P[i - 1][s].y) - floor < .06) v.push(P[i][s].distanceTo(P[i - 1][s]) * fps); }
+      v.sort((a, b) => a - b); const end = K.sampleClip(c, c.len - 1e-4).p[2], ual = K.allClips().find(x => x.id === 'ual1-Walk_Loop');
+      return {speed: st / c.len, slide: v[v.length >> 1], seam: Math.abs(end - st), ual: K.clipSpeed(ual), bob: Math.max(...c.frames.map(f => f.p[1])) - Math.min(...c.frames.map(f => f.p[1]))};
+    });
+    ok(walk.speed > 1 && walk.speed < 1.8 && walk.slide < .35 && walk.bob > .02 && walk.bob < .12, `the walk cycle travels at ${walk.speed.toFixed(2)} m/s, rising and falling ${Math.round(walk.bob * 100)} cm, its foot on the ground sliding ${walk.slide.toFixed(2)} m/s`);
+    ok(walk.seam < .03 && walk.ual > .7 && walk.ual < 1.5, `a loop runs on into its next lap (${(walk.seam * 100).toFixed(1)} cm), and an on-the-spot walk is paced by its feet (${walk.ual.toFixed(2)} m/s)`);
     await page.screenshot({path: path.join(OUT, 'clips.png')});
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
@@ -774,6 +786,14 @@ const SUITES = {
     ok(film.lines === 4 && film.timed && film.cams && film.keys, `every line is said with its voice and timed word by word; every shot has its camera and every frame its pose`);
     ok(film.names.some(n => /hombro|Plano medio|primer plano/i.test(n)) && film.names.some(n => /dos|general/i.test(n)) && film.chairs, 'the camera follows film grammar (establishing, over the shoulder or singles, two-shots) and Luis has a chair to sit on');
     ok(!film.warn, 'the sample is understood without warnings' + (film.warn ? ': ' + film.warn : ''));
+    // no pops: no arm or head jumps in one frame while it hardly moves in the frames around (as they did when someone
+    // started or stopped talking); a fast move such as a jump for joy turns as much over several frames
+    const jump = await A(() => { const A = window.__cdp.ANIM, Q = THREE.Quaternion; let w = 0;
+      for (const s of A.shots) for (const K of s.keys) for (const j of ['shoulderL', 'elbowL', 'shoulderR', 'elbowR', 'head']) {
+        const v = []; for (let i = 1; i < K.length; i++) { const a = new Q().fromArray(K[i - 1].pose.q[j] || [0, 0, 0, 1]), b = new Q().fromArray(K[i].pose.q[j] || [0, 0, 0, 1]); v.push(2 * Math.acos(Math.min(1, Math.abs(a.dot(b)))) * 180 / Math.PI); }
+        for (let i = 1; i < v.length - 1; i++) w = Math.max(w, v[i] - Math.max(v[i - 1], v[i + 1])); }
+      return w; });
+    ok(jump < 25, `the film flows: no arm or head jumps in a frame (at most ${Math.round(jump)}° more than the frames around)`);
     const wav = await A(async () => { const b = await window.__cdp.script.dialogueWav(); return String.fromCharCode(...b.slice(0, 4)) + ' ' + b.length; });
     ok(/^RIFF \d+/.test(wav) && +wav.split(' ')[1] > 100000, `the dialogue as a WAV (${wav})`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
