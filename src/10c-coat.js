@@ -293,8 +293,7 @@ function fluffGeo(m) {
     // behind the elbow, round the wrist (a cuff pointing to the hand), on the back of the hock
     for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - el.y) < .035 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('elbow' + sd), .035 + .04 * s, .016, back);
     for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && P[i * 3 + 1] > wr.y && P[i * 3 + 1] < wr.y + .035 * sz, Math.round(4 + 4 * s))) tuft(i, ACC('wrist' + sd), .025 + .03 * s, .013, new V3(0, -1, 0));
-    // (the point of the hock: there the hair runs down the back of the metatarsus, so the tufts lie down along it)
-    if (legSpec(m.body)) for (const i of pick(i => /^(leg|foot)/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - an.y) < .03 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('ankle' + sd), .02 + .025 * s, .014, new V3(0, -1, -.1).normalize());
+    if (legSpec(m.body)) for (const i of pick(i => /^(leg|foot)/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - an.y) < .03 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('ankle' + sd), .03 + .035 * s, .015, back);
   }
   return parts.length ? mergeLofts(parts) : null;
 }

@@ -396,11 +396,11 @@ const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b &&
    and height; claw: length, base half height, curl; bean and pad: half width and length; mitt: ball to knuckles; slim:
    how much the metatarsus is slimmed (a rabbit's long foot keeps its thickness) */
 const PAWS = {
-  can: {w: .33, n: 4, x: .36, reach: [.18, .27], tw: .145, tt: .15, claw: [.115, .058, -.75], bean: [.075, .11], pad: [.24, .19], mitt: .33},
-  fel: {w: .34, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .3},
+  can: {w: .36, n: 4, x: .36, reach: [.18, .27], tw: .145, tt: .15, claw: [.115, .058, -.75], bean: [.075, .11], pad: [.24, .19], mitt: .33},
+  fel: {w: .37, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .3},
   urs: {w: .4, n: 5, x: .4, reach: [.2, .3], tw: .1, tt: .11, claw: [.2, .06, -.4], bean: [.085, .065], pad: [.34, .5], mitt: .1},
-  rep: {w: .34, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .24, dew: 1, knuckles: 1},
-  lep: {w: .32, n: 4, x: .22, reach: [.36, .44], tw: .14, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .2, slim: .15},
+  rep: {w: .36, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .24, dew: 1, knuckles: 1},
+  lep: {w: .32, n: 4, x: .25, reach: [.36, .44], tw: .115, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .2, slim: .15},
   hoof: {w: .25}
 };
 const pawOf = L => PAWS[L.hoof ? 'hoof' : L.paw] || PAWS.can;
@@ -476,14 +476,14 @@ function remodelLegs(b, P, J, H) {
     //    slimmer down to the ball (Wm, Dm: half width and half depth at q), and the joint itself (the human ankle, as deep
     //    as the foot is high) is brought to Dj, so the hock is a knob and not the top of a cone (a rabbit's furred foot
     //    keeps most of its own shape)
-    const dg = rot ? 1 : 0, sl = K.slim ?? 1, Wm = q => W * (.27 - .05 * q), Dm = q => W * (.18 - .035 * q), Dj = .27 * W, hA = band(A.z)[3];
+    const dg = rot ? 1 : 0, sl = K.slim ?? 1, Wm = q => W * (.25 - .05 * q), Dm = q => W * (.19 - .06 * q), Dj = .25 * W, hA = band(A.z)[3];
     const shape = (x, y, z, w, out) => {
       const q = clamp((z - A.z) / (zBall - A.z), 0, 1), [bxc, bhw, bym, bhh] = band(clamp(z, z0, zBall)), f = sl * sstep(0, .1, q);
       const kx = dg ? (z < A.z ? 1 - .3 * sstep(A.z, z0, z) : 1 + f * (Wm(q) / bhw - 1)) : 1.1 + .25 * q;
       const ky = dg ? (z < A.z ? (1 - .2 * sstep(A.z, z0, z)) * (1 + sl * (Dj / hA - 1)) : 1 + sl * (Dj + (Dm(q) - Dj) * sstep(0, .1, q)) / bhh - sl) : 1;
       // (the stretch to the metatarsus' length starts past the joint: stretched there, the skin of the ankle's front,
       // half bent, would swing far forward)
-      const kz = !dg ? 1 : z < A.z ? .5 : 1 + (ks - 1) * sstep(0, .3, q), rc = dg * sstep(0, 1, q);
+      const kz = !dg ? 1 : z < A.z ? .4 : 1 + (ks - 1) * sstep(0, .3, q), rc = dg * (.3 + .7 * sstep(0, .15, q));
       let lx = (bxc - A.x) * (1 - rc) + (x - bxc) * kx, ly = (bym - A.y) * (1 - rc) + (y - bym) * ky, lz = (z - A.z) * kz;
       // a bear's sole is flat on the ground from heel to ball: the human arch is let down, the top of the foot stays
       if (!dg) ly -= (bym - bhh - gf) * clamp(1 - (y - bym + bhh) / (2 * bhh), 0, 1);
@@ -511,7 +511,7 @@ function remodelLegs(b, P, J, H) {
       if (dg) {
         g = Bc.y - DB * Math.cos(psiB) - .02 * W; T = new V3(Bc.x, g + .1 * W, kn + .2 * W);
         KF = [[zBall, Bc.x, Bc.y, Bc.z, psiB, WB, DB], [(zBall + zToe) / 2, Bc.x, g + .17 * W, Bc.z + .45 * K.mitt * W, 0, .46 * W, .17 * W],
-          [zToe, Bc.x, g + .12 * W, kn, 0, .42 * W, .12 * W], [z1, Bc.x, g + .09 * W, kn + .1 * W, 0, .05 * W, .03 * W]];
+          [zToe, Bc.x, g + .12 * W, kn, 0, .42 * W, .12 * W], [z1, Bc.x, g + .1 * W, kn + .07 * W, 0, .24 * W, .08 * W]];
       } else {
         g = gf; T = new V3(Bc.x, g + .1 * W, kn + .2 * W);
         const Dk = .15 * W, Kc = new V3(Bc.x, g + Dk, kn);
@@ -548,10 +548,10 @@ function remodelLegs(b, P, J, H) {
     // it; below the hock knob every section is laid on the shaft's ellipse (Wm across, Dm along n) about the line from
     // the joint to the ball
     if (dg) { const ax = Bc.clone().sub(A), La = ax.length(), e = new V3(); ax.multiplyScalar(1 / La); const nx = new V3(0, ax.z, -ax.y);
-      for (const i of ids) { if (!(ws[i] > 0)) continue; e.set(P[i * 3] - A.x, P[i * 3 + 1] - A.y, P[i * 3 + 2] - A.z); const t = e.dot(ax) / La, k = sl * ws[i] * sstep(.1, .28, t) * (1 - sstep(.97, 1.03, t)); if (k < .005) continue;
+      for (const i of ids) { if (!(ws[i] > 0)) continue; e.set(P[i * 3] - A.x, P[i * 3 + 1] - A.y, P[i * 3 + 2] - A.z); const t = e.dot(ax) / La, k = sl * ws[i] * sstep(.07, .2, t) * (1 - sstep(.97, 1.03, t)); if (k < .005) continue;
         const a = e.x, b = e.dot(nx), r = Math.hypot(a / Wm(t), b / Dm(t)) || 1, f = 1 + k * (1 / r - 1);
         P[i * 3] += a * (f - 1); P[i * 3 + 1] += nx.y * b * (f - 1); P[i * 3 + 2] += nx.z * b * (f - 1); } }
-    for (let it = 0; it < 14; it++) {
+    for (let it = 0; it < 24; it++) {
       const k = it % 2 ? -.53 : .5;
       ids.forEach((i, j) => { const kw = k * (ws[i] < 0 ? 1 : it < 8 ? ws[i] : 0); if (!kw) { tmp[j * 3] = P[i * 3]; tmp[j * 3 + 1] = P[i * 3 + 1]; tmp[j * 3 + 2] = P[i * 3 + 2]; return; }
         let ax = 0, ay = 0, az = 0; const a = off[j], c = off[j + 1]; for (let q = a; q < c; q++) { const v = nb[q]; ax += P[v * 3]; ay += P[v * 3 + 1]; az += P[v * 3 + 2]; }
@@ -668,11 +668,11 @@ function footGeos(m, P) {
         secs: [[-.5 * len, .62 * c, c], [0, .64 * c, c], [.35 * len, .5 * c, .8 * c], [.7 * len, .28 * c, .45 * c], [.92 * len, .1 * c, .14 * c], [len, .001, .001]]}, 3, ax);
     };
     // a toe: a bean of fur from inside the paw (buried as deep as a short toe, so a long one does not come out behind)
-    // over its knuckle and down to the tip (dragons: three knuckles). Rows: t, half width, half height, centre height (in
+    // over its knuckle and down to the tip (dragons: three knuckles); the buried root rides high, clear of the sole. Rows: t, half width, half height, centre height (in
     // tw, tt); its underside stays a third of tt above the ground over the bean, which stands out under it as its own
     // oval (a toe sitting on its bean, not a bean cut by the fur)
-    const TOE = K.knuckles ? [[-.5, .001, .001, 1.05], [-.42, .8, .8, 1.1], [0, 1, 1, 1.25], [.28, 1.08, 1.04, 1.36], [.44, .9, .86, 1.2], [.6, .98, .85, 1.17], [.76, .8, .66, .98], [.9, .72, .5, .82], [.975, .36, .3, .66], [1, .001, .001, .62]]
-      : [[-.5, .001, .001, 1], [-.42, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.04, 1.32], [.62, .96, .78, 1.1], [.84, .76, .56, .9], [.95, .46, .34, .68], [1, .001, .001, .62]];
+    const TOE = K.knuckles ? [[-.5, .001, .001, 1.3], [-.42, .7, .6, 1.3], [0, 1, .95, 1.28], [.28, 1.08, 1.04, 1.36], [.44, .9, .86, 1.2], [.6, .98, .85, 1.17], [.76, .8, .66, .98], [.9, .72, .5, .82], [.975, .36, .3, .66], [1, .001, .001, .62]]
+      : [[-.5, .001, .001, 1.3], [-.42, .7, .6, 1.3], [0, 1, .95, 1.25], [.32, 1.04, 1.04, 1.32], [.62, .96, .78, 1.1], [.84, .76, .56, .9], [.95, .46, .34, .68], [1, .001, .001, .62]];
     const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * (t < 0 ? Math.min(Lt, .32 * W) : Lt), w * tw, h * tt, 0, c * tt])}, 1, d, d.clone().negate(), true);
     if (L.hoof) {
       // the hoof under the coronet: its sole on the ground, the front wall at ~55°, the heels lower (horse: one; goats and
