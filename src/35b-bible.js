@@ -6,6 +6,8 @@
    every comic panel that has them; a script that names them uses them; a place is used where a scene heading names it. */
 function bibleCastFromActive(name) {
   const m = mq; if (name) { m.body.name = name; renderCast(); }
+  // under another name it is someone new: the cast member it came from stays as it was
+  const cur = m.body.castId && castById(m.body.castId); if (name && cur && scNorm(cur.name) !== scNorm(name)) delete m.body.castId;
   const c = castFromChar(m, name || m.body.name || charLabel(m)); c.thumb = characterThumb(m);
   const n = propagateCast(c.id); renderBible(); autosaveSoon();
   toast(n.shots + n.panels ? tr('«{x}» actualizado en el proyecto, en {s} planos y {p} viñetas.', {x: c.name, s: n.shots, p: n.panels}) : tr('«{x}» está en el reparto del proyecto.', {x: c.name}));
@@ -77,43 +79,51 @@ function sheetGrid(title, items, cols) {
 }
 async function saveSheet(kind) {
   try {
+    toast(tr('Haciendo la hoja…')); await new Promise(r => setTimeout(r, 30));  // (a moment for the message to show: the sheet is drawn in one go)
     const cv = kind === 'expr' ? await expressionSheet() : await lineupSheet();
-    const b = await new Promise(r => cv.toBlob(r, 'image/png')); saveFile(`${kind === 'expr' ? tr('expresiones') : tr('alturas')}-${stamp()}.png`, new Uint8Array(await b.arrayBuffer()), 'image/png');
+    const name = `${kind === 'expr' ? tr('expresiones') : tr('alturas')}-${stamp()}.png`, b = await new Promise(r => cv.toBlob(r, 'image/png')); await saveFile(name, new Uint8Array(await b.arrayBuffer()), 'image/png');
+    toast(tr('Guardado en «{f}»', {f: name}));
   } catch (e) { console.warn('sheet', e); toast(tr('No se ha podido hacer la hoja: {e}', {e: e && e.message || e})); }
 }
 
 /* ---------- the tab ---------- */
 function renderBible() {
   const box = $('#bbCast'); if (!box) return; box.innerHTML = '';
-  if (!PROJECT.cast.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = tr('Aún no hay nadie: diseña un personaje en Cuerpo y Ropa y añádelo.'); box.appendChild(p); }
+  if (!PROJECT.cast.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = tr('Aún no hay nadie. Diseña a alguien en Cuerpo y Ropa (o tráelo de Mis personajes) y pulsa «Añadir el personaje activo».'); box.appendChild(p); }
   for (const c of PROJECT.cast) {
     const card = document.createElement('div'); card.className = 'bbcard';
     card.innerHTML = `<img alt=""><div class="bbn"><b></b><span></span></div><div class="row"><button class="btn small" data-a="put"></button><button class="btn small" data-a="upd"></button><button class="btn icon small danger" data-a="del" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
     if (c.thumb) card.querySelector('img').src = c.thumb; else card.querySelector('img').remove();
     card.querySelector('b').textContent = c.name; card.querySelector('.bbn span').textContent = tr((BODY_PRESETS[c.preset] || {}).label || '');
-    const [put, upd, del] = card.querySelectorAll('button'); put.textContent = tr('A la escena'); upd.textContent = tr('Actualizar con el activo'); del.setAttribute('aria-label', tr('Quitar del reparto'));
+    const [put, upd, del] = card.querySelectorAll('button'); put.textContent = tr('A la escena'); upd.textContent = tr('Actualizar con el activo'); del.setAttribute('aria-label', tr('Quitar del reparto')); del.title = del.getAttribute('aria-label');
     put.onclick = () => placeCharacter(c);
     upd.onclick = () => { if (!confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: c.name}))) return; mq.body.castId = c.id; bibleCastFromActive(c.name); };
-    del.onclick = () => { PROJECT.cast.splice(PROJECT.cast.indexOf(c), 1); renderBible(); autosaveSoon(); toast(tr('«{x}» ya no está en el reparto (los planos lo conservan).', {x: c.name})); };
+    // taken out with the way back right there (the same entry comes back, so the shots that still carry its id are linked again)
+    del.onclick = () => { const i = PROJECT.cast.indexOf(c); PROJECT.cast.splice(i, 1); renderBible(); autosaveSoon();
+      toast(tr('«{x}» ya no está en el reparto (los planos lo conservan).', {x: c.name}), {undo: () => { PROJECT.cast.splice(Math.min(i, PROJECT.cast.length), 0, c); renderBible(); autosaveSoon(); }}); };
     box.appendChild(card);
   }
   const todo = $('#bbTodo'); todo.innerHTML = ''; const names = scriptNamesToDesign(); $('#bbTodoBox').hidden = !names.length;
   for (const n of names) { const b = document.createElement('button'); b.className = 'chip'; b.textContent = n; b.title = tr('El personaje activo será «{x}»', {x: n}); b.onclick = () => bibleCastFromActive(n); todo.appendChild(b); }
   const lb = $('#bbPlaces'); lb.innerHTML = '';
+  if (!PROJECT.locations.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = tr('Aún no hay lugares. Monta el escenario en Escena y pulsa «Guardar este lugar».'); lb.appendChild(p); }
   for (const l of PROJECT.locations) {
     const card = document.createElement('div'); card.className = 'bbcard place';
     card.innerHTML = `<img alt=""><div class="bbn"><b></b><span></span></div><div class="row"><button class="btn small" data-a="go"></button><button class="btn small" data-a="view"></button><button class="btn icon small danger" data-a="del" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
     if (l.thumb) card.querySelector('img').src = l.thumb; card.querySelector('b').textContent = l.name; card.querySelector('.bbn span').textContent = trn(l.views.length, '1 vista', '{n} vistas');
-    const [go, view, del] = card.querySelectorAll('button'); go.textContent = tr('Ir allí'); view.textContent = tr('Guardar esta vista'); del.setAttribute('aria-label', tr('Borrar el lugar'));
+    const [go, view, del] = card.querySelectorAll('button'); go.textContent = tr('Ir allí'); view.textContent = tr('Guardar esta vista'); del.setAttribute('aria-label', tr('Borrar el lugar')); del.title = del.getAttribute('aria-label');
     go.onclick = () => applyLocation(l, 0);
     view.onclick = () => { l.views.push({name: tr('Vista {n}', {n: l.views.length + 1}), cam: camState()}); renderBible(); autosaveSoon(); toast(tr('Vista guardada en «{x}».', {x: l.name})); };
-    del.onclick = () => { PROJECT.locations.splice(PROJECT.locations.indexOf(l), 1); renderBible(); autosaveSoon(); };
+    del.onclick = () => { const i = PROJECT.locations.indexOf(l); PROJECT.locations.splice(i, 1); renderBible(); autosaveSoon();
+      toast(tr('Lugar «{x}» borrado.', {x: l.name}), {undo: () => { PROJECT.locations.splice(Math.min(i, PROJECT.locations.length), 0, l); renderBible(); autosaveSoon(); }}); };
     lb.appendChild(card);
   }
 }
 function buildBibleUI() {
   if (!$('section[data-tab=biblia]')) return;
-  $('#bbAdd').onclick = () => { const name = prompt(tr('Nombre del personaje'), mq.body.name || charLabel(mq)); if (name) bibleCastFromActive(name.trim()); };
+  // the same name as the cast member the active character came from replaces them everywhere, so it asks first; another name adds someone new
+  $('#bbAdd').onclick = () => { const name = prompt(tr('Nombre del personaje'), mq.body.name || charLabel(mq)); if (!name) return;
+    const nm = name.trim(), cur = mq.body.castId && castById(mq.body.castId); if (cur && scNorm(cur.name) === scNorm(nm) && !confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: cur.name}))) return; bibleCastFromActive(nm); };
   $('#bbPlaceAdd').onclick = () => { const name = prompt(tr('Nombre del lugar'), tr(SCENES[state.env] ? SCENES[state.env].label : state.env)); if (name) saveLocation(name.trim()); };
   $('#bbTurn').onclick = () => { openExport(); const c = $('#exKind .chip[data-v="turn"]'); if (c) c.click(); };
   $('#bbExpr').onclick = () => saveSheet('expr'); $('#bbLine').onclick = () => saveSheet('line');

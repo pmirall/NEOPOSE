@@ -34,7 +34,8 @@ async function saveCharacter(m = mq) {
   const name = prompt(tr('Nombre del personaje'), m.body.name || charLabel(m)); if (!name) return;
   m.body.name = name.trim(); renderCast();
   const c = characterOf(m, m.body.name); c.thumb = characterThumb(m);
-  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}));
+  // Mis personajes is this device's; the way into the project's cast (what its shots and panels follow) is offered right there
+  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}), {act: ['Añadir al reparto del proyecto', () => { if (mq === m) bibleCastFromActive(m.body.name); }]});
 }
 async function loadCharacters() { SAVED_CHARS = (await charDB.all()).sort((a, b) => (b.at || 0) - (a.at || 0)); renderCharacters(); return SAVED_CHARS; }
 // into the scene: a new character with this body and these clothes, standing where there is room
@@ -89,16 +90,22 @@ function renderCharacters() {
     card.appendChild(acts); grid.appendChild(card);
   }
 }
-// the cast's "+ Character": a new one, or one of yours
+// the cast's "+ Character": a new one, one of the project's cast or one of yours (each list under its name, and only when it has someone)
 function castAddMenu(anchor) {
-  if (!SAVED_CHARS.length) { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); buildPoseGrid(); } return; }
+  if (!SAVED_CHARS.length && !PROJECT.cast.length) { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); buildPoseGrid(); } return; }
   let pop = $('#castPop'); if (pop) { pop.remove(); return; }
   pop = document.createElement('div'); pop.id = 'castPop'; pop.className = 'castpop';
   const fresh = document.createElement('button'); fresh.type = 'button'; fresh.className = 'btn small'; fresh.textContent = tr('Personaje nuevo');
   fresh.onclick = () => { pop.remove(); const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { setActive(chars.length - 1); pushHistory(); buildPoseGrid(); } };
-  const grid = document.createElement('div'); grid.className = 'pose-grid chargrid';
-  for (const c of SAVED_CHARS.slice(0, 12)) grid.appendChild(characterCard(c, () => { pop.remove(); placeCharacter(c); }));
-  pop.append(fresh, grid); document.body.appendChild(pop);
+  pop.append(fresh);
+  for (const [title, list, cast] of [['Reparto del proyecto', PROJECT.cast, true], ['Mis personajes', SAVED_CHARS, false]]) {
+    if (!list.length) continue;
+    const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(title);
+    const grid = document.createElement('div'); grid.className = 'pose-grid chargrid';
+    for (const c of list.slice(0, 12)) { const card = characterCard(c, () => { pop.remove(); placeCharacter(c); }); if (cast) card.dataset.cast = c.id; grid.appendChild(card); }
+    pop.append(h, grid);
+  }
+  document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect(); pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 300)) + 'px'; pop.style.top = (r.bottom + 6) + 'px';
   setTimeout(() => addEventListener('pointerdown', function off(e) { if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); removeEventListener('pointerdown', off); } }), 0);
 }

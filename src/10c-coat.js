@@ -343,7 +343,10 @@ function editCoat(fn, hist = true) {
 }
 function syncCoatUI(light) {
   const box = $('#coatBox'); if (!box) return;
-  const anthro = mq.body.species !== 'humano' && !mq.avatar; box.hidden = !anthro; if (!anthro) return;
+  const anthro = mq.body.species !== 'humano' && !mq.avatar; box.hidden = !anthro;
+  // humans and avatars have no coat: the section and its chip in the tab's index go away instead of showing an empty box
+  $('#coatSec').hidden = !anthro; const nb = $('.secnav .chip[data-sec="pelaje"]'); if (nb) nb.hidden = !anthro;
+  if (!anthro) return;
   const c = coatOf(mq.body), sp = mq.body.species; if (coatSl.fluff) coatSl.fluff.set(fluffOf(mq.body));
   if (!light) {
     const list = coatPresetsFor(sp).concat(Object.entries(COATS).filter(([, p]) => !p.for.includes(sp) && p.for.includes(headSp(mq.body))));

@@ -109,7 +109,7 @@ const DRAG_KINDS = [
       const s = t.g.spec; if (s.mode === 'tex') s.mode = 'tint'; s.colA = c; updateGarment(mq, t.g); t.g.open = true; renderGarmentList(); pushHistory(); return tr('«{p}» teñido', {p: garmentTitle(s.id)}); }); }},
   {sel: '#propChips .chip[data-v]', target: 'floor', item: el => el.dataset.v, label: () => tr('Dejarlo aquí'),
     commit: (t, id) => { const g = makeProp(id, t.point); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); return tr('«{p}» en la escena', {p: tr(PROPS[id] || (ASSET_PROPS[id] || [id])[0])}); }},
-  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id]', target: 'floor', item: el => SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
+  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id]', target: 'floor', item: el => el.dataset.cast ? castById(el.dataset.cast) : SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
     commit: (t, c) => { $('#castPop')?.remove(); const n = chars.length; placeCharacter(c); if (chars.length > n) { const m = chars[chars.length - 1]; m.joints.hips.position.x = t.point.x; m.joints.hips.position.z = t.point.z; m.group.updateMatrixWorld(true); pushHistory(); } return null; }},
   {sel: '#addPoint, #addSpot', target: 'floor', item: el => el.id === 'addSpot' ? 'foco' : 'punto', label: () => tr('Una luz aquí encima'),
     commit: (t, type) => { if (extraLights.length >= 4) return tr('Ya hay 4 luces.'); const g = makeLight(type, t.point.clone().setY(2.2)); selectObj(g); pushHistory(); return tr('Luz añadida'); }},
@@ -342,6 +342,7 @@ function paletteIndex() {
   for (const [k, v] of Object.entries(SCENES)) add('set', tr(v.label), () => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === k))); setEnv(k); pushHistory(); });
   for (const [k, v] of [...Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]]), ...Object.entries(PROPS)]) add('prop', tr(v), () => { const g = makeProp(k, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   for (const b of $$('#exprChips .chip[data-v]')) add('expr', b.textContent, () => b.click());
+  for (const c of PROJECT.cast) add('char', c.name, () => placeCharacter(c), tr('Reparto del proyecto'), 'cast:' + c.id);
   for (const c of SAVED_CHARS) add('char', c.name, () => placeCharacter(c));
   if (ROPA.catalog) for (const c of ROPA.catalog) add('garment', gTitle(c), () => { if (!mq.outfit.some(s => s.id === c.id)) toggleGarment(c.id); }, c.title + ' ' + tr(c.cat));
   // the chips of the panels, read as they are now (the list of species keeps growing): pressing one is using it

@@ -204,9 +204,11 @@ function showTab(id) {
   tabs.forEach(t => { t.setAttribute('aria-selected', String(t.dataset.tab === id)); t.tabIndex = t.dataset.tab === id ? 0 : -1; });
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
+  // Biblia's turntable is for showing a character off: leaving the tab stops it (the canvas would keep spinning under other work)
+  if (id !== 'biblia' && controls.autoRotate) { controls.autoRotate = false; const s = $('#bbSpin'); if (s) s.checked = false; }
   store.set('cdp.tab', id);
-  // the garment library (1.3 MB) is fetched the first time it is shown, not at start
-  if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && !ROPA.catalog) renderLibrary();
+  // the garment library (1.3 MB) is fetched the first time it is shown, not at start; it is also drawn then when the palette or Práctica fetched it first
+  if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && (!ROPA.catalog || !$('#garmentAdd').childElementCount)) renderLibrary();
   // Estático's comic page shows with its tab (and the 3D canvas with the others)
   if (typeof showPage === 'function') showPage(id === 'comic');
 }
@@ -261,9 +263,12 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 
 /* body */
 let bodyEls = {};
+// what a character keeps when a body type is picked: who they are (name, cast link, species, head, coat, tail, face, hair), their limbs and prostheses and an imported avatar
+const KEEP_ON_TYPE = ['castId','name','species','headStyle','kemo','snout','headModel','feet','coat','tail','tailMove','pads','paws','fluff','expr','exprAmt','hair','hairCol','limbs','avatar','avatarScale'];
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
-    mq.body = {...bodyOf(id), castId: mq.body.castId, name: mq.body.name, species: mq.body.species, headStyle: mq.body.headStyle, kemo: mq.body.kemo, snout: mq.body.snout, headModel: mq.body.headModel, feet: mq.body.feet, coat: mq.body.coat, tail: mq.body.tail, tailMove: mq.body.tailMove, pads: mq.body.pads, paws: mq.body.paws, fluff: mq.body.fluff, expr: mq.body.expr, exprAmt: mq.body.exprAmt, hair: mq.body.hair, hairCol: mq.body.hairCol}; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
+    const nb = bodyOf(id); for (const k of KEEP_ON_TYPE) if (mq.body[k] !== undefined) nb[k] = mq.body[k];
+    mq.body = nb; mq.bodyPreset = id; tourEvent('body'); rebuildActive(true); syncBodyUI(); pushHistory();
   });
   // species by family, so the list reads like a field guide
   const fams = [['', ''], ['can', 'Cánidos'], ['fel', 'Felinos'], ['otro', 'Osos y prociónidos'], ['pre', 'Conejos y ungulados'], ['rep', 'Reptiles']], spBox = $('#speciesChips');

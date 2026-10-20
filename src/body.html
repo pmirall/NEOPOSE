@@ -248,21 +248,32 @@
 
         <section data-tab="cuerpo" hidden>
           <details class="sec" data-sec="personajes" open>
-            <summary><h3>Mis personajes</h3></summary>
+            <summary><h3>Mis personajes <span>en este dispositivo, para cualquier proyecto</span></h3></summary>
             <div class="pose-grid chargrid" id="charGrid"></div>
             <div class="row"><button class="btn small" id="charSave">Guardar este personaje</button><button class="btn small" id="charImport">Importar…</button></div>
             <input type="file" id="charFile" accept=".json,application/json" multiple hidden>
-            <p class="note">Guarda cuerpo, proporciones, complexión, ropa, pelo, cabeza, expresión, extremidades y avatar. Tócalo para ponerlo en la escena; con los botones de cada tarjeta lo aplicas al personaje activo, lo exportas o lo borras.</p>
+            <p class="note">Se guardan en este dispositivo y sirven para cualquier proyecto (un guion que los nombra los usa). Para que un cambio llegue a todos los planos y viñetas, añádelo también al reparto en Biblia. Toca una tarjeta para ponerlo en la escena; con sus botones lo aplicas al personaje activo, lo exportas o lo borras.</p>
           </details>
           <details class="sec" data-sec="tipo" open>
             <summary><h3>Tipo de cuerpo <span id="bodyWho"></span></h3></summary>
             <div class="chips" id="bodyChips"></div>
+            <p class="note">Cambia sexo, edad y estilo, y empieza de cero la complexión. Para cambiar solo músculo y grasa, usa Complexión.</p>
             <div class="canon"><strong id="headsOut">7,5</strong><span>cabezas de alto · real ≈ 7–7½ · niño ≈ 5–6 · anime ≈ 8 · chibi 2–3</span></div>
           </details>
           <details class="sec" data-sec="complexion" open>
             <summary><h3>Complexión <span>músculo, grasa y forma</span></h3></summary>
             <div class="pose-grid buildgrid" id="buildGrid"></div>
-            <p class="note">Mantiene el sexo y la edad del personaje. Afina cada parte en Proporciones → Ajustes avanzados.</p>
+            <p class="note">Mantiene el sexo y la edad del personaje. Afina cada parte justo debajo, en Proporciones → Ajustes avanzados.</p>
+          </details>
+          <details class="sec" data-sec="prop" open>
+            <summary><h3>Proporciones <span>edad, sexo, altura, músculo y grasa</span></h3></summary>
+            <div id="bodySliders"></div>
+            <details class="more"><summary>Estilización (cabeza, piernas, manos…)</summary>
+              <div id="styleSliders"></div>
+            </details>
+            <details class="more" id="advMore"><summary>Ajustes avanzados: músculo, grasa y forma</summary>
+              <div id="advBody"></div>
+            </details>
           </details>
           <details class="sec" data-sec="extremidades">
             <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
@@ -329,16 +340,6 @@
             <input type="file" id="avFile" accept=".vrm,.glb,.gltf,.fbx" hidden>
             <p class="note">También puedes soltar el archivo sobre el lienzo. Necesita un esqueleto humanoide (caderas, columna, brazos y piernas).</p>
           </details>
-          <details class="sec" data-sec="prop">
-            <summary><h3>Proporciones</h3></summary>
-            <div id="bodySliders"></div>
-            <details class="more"><summary>Estilización (cabeza, piernas, manos…)</summary>
-              <div id="styleSliders"></div>
-            </details>
-            <details class="more" id="advMore"><summary>Ajustes avanzados: músculo, grasa y forma</summary>
-              <div id="advBody"></div>
-            </details>
-          </details>
           <p class="note foot-note">Cuerpo basado en la malla anatómica de MakeHuman (dominio público, CC0). Edad, género, musculatura, grasa y altura mezclan sus modelos medidos; la estilización estira el esqueleto.</p>
         </section>
 
@@ -355,10 +356,10 @@
             </details>
           </details>
           <details class="sec" data-sec="puestas" open>
-            <summary><h3>Puesto <span>toca para cambiar el color</span></h3></summary>
-            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
-            <p class="note dropnote">Arrastra un color a una prenda o al pelo del lienzo.</p>
+            <summary><h3>Ropa puesta <span>toca una prenda para cambiar su color</span></h3></summary>
             <div id="garmentList"></div>
+            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
+            <p class="note dropnote">También puedes arrastrar un color hasta una prenda o el pelo en el lienzo.</p>
           </details>
           <details class="sec" data-sec="armario" open>
             <summary><h3>Armario <span>toca para poner o quitar</span></h3></summary>
@@ -405,7 +406,7 @@
 
         <section data-tab="escena" hidden>
           <details class="sec" data-sec="reparto" open>
-            <summary><h3>Reparto <span>hasta 4</span></h3></summary>
+            <summary><h3>Reparto <span>en escena · hasta 4</span></h3></summary>
             <div id="castList"></div>
             <div class="row" style="margin-top:8px">
               <button class="btn small" id="delChar">Quitar el activo</button>

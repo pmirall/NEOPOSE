@@ -71,8 +71,10 @@ const gTitle = c => (GARMENT_TR[LANG] || {})[c.title] || c.title;
 function garmentTitle(id) { return ROPA.byId[id] ? gTitle(ROPA.byId[id]) : id; }
 function renderGarmentList() {
   const box = $('#garmentList'); if (!box) return;
+  // the colours to drag only show when someone on the canvas has clothes or hair to take them
+  const any = chars.some(c => (c.outfit && c.outfit.length) || c.body.hair); $('#dropColors').hidden = !any; $('.dropnote').hidden = !any;
   box.innerHTML = '';
-  if (!mq.outfit.length) { box.innerHTML = `<p class="empty">${tr('Sin ropa. Elige un conjunto o añade prendas de la biblioteca.')}</p>`; return; }
+  if (!mq.outfit.length) { box.innerHTML = `<p class="empty">${tr('Sin ropa. Elige un conjunto arriba o toca prendas del Armario, abajo.')}</p>`; return; }
   mq.garments.forEach((g, gi) => {
     if (g === mq.hairG) return;
     const s = g.spec, card = document.createElement('details'); card.className = 'garment';
@@ -87,19 +89,19 @@ function renderGarmentList() {
     const changed = () => { updateGarment(mq, g); };
     const mc = document.createElement('div'); mc.className = 'chips'; body.appendChild(mc);
     chips(mc, Object.entries(COLOR_MODES), s.mode, v => { s.mode = v; changed(); renderGarmentList(); pushHistory(); });
-    if (s.mode !== 'tex') {
-      const cols = document.createElement('div'); cols.className = 'gcols';
-      for (const [k, lab] of s.mode === 'pat' ? [['colA', 'Color'], ['colB', 'Color 2']] : [['colA', 'Color']]) {
-        const l = document.createElement('label'); l.className = 'gcol'; l.textContent = tr(lab);
-        const inp = document.createElement('input'); inp.type = 'color'; inp.value = s[k]; inp.id = `gc_${gi}_${k}`;
-        inp.oninput = () => { s[k] = inp.value; changed(); }; inp.onchange = pushHistory; l.appendChild(inp); cols.appendChild(l);
-      }
-      body.appendChild(cols);
-      const sw = document.createElement('div'); sw.className = 'swatches';
-      for (const c of PALETTE) { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.title = c; b.setAttribute('aria-label', 'Color ' + c);
-        b.onclick = () => { s.colA = c; body.querySelector(`#gc_${gi}_colA`).value = c; changed(); pushHistory(); }; sw.appendChild(b); }
-      body.appendChild(sw);
+    // a colour is always at hand: picking one on an Original garment dyes it (the mode turns to Teñir; the list is not redrawn, so an open colour picker stays open)
+    const toTint = () => { if (s.mode === 'tex') { s.mode = 'tint'; setPressed(mc, 'tint'); } };
+    const cols = document.createElement('div'); cols.className = 'gcols';
+    for (const [k, lab] of s.mode === 'pat' ? [['colA', 'Color'], ['colB', 'Color 2']] : [['colA', 'Color']]) {
+      const l = document.createElement('label'); l.className = 'gcol'; l.textContent = tr(lab);
+      const inp = document.createElement('input'); inp.type = 'color'; inp.value = s[k]; inp.id = `gc_${gi}_${k}`;
+      inp.oninput = () => { toTint(); s[k] = inp.value; changed(); }; inp.onchange = pushHistory; l.appendChild(inp); cols.appendChild(l);
     }
+    body.appendChild(cols);
+    const sw = document.createElement('div'); sw.className = 'swatches';
+    for (const c of PALETTE) { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.title = c; b.setAttribute('aria-label', 'Color ' + c);
+      b.onclick = () => { toTint(); s.colA = c; body.querySelector(`#gc_${gi}_colA`).value = c; changed(); pushHistory(); }; sw.appendChild(b); }
+    body.appendChild(sw);
     if (s.mode === 'pat') {
       const pc = document.createElement('div'); pc.className = 'chips'; body.appendChild(pc);
       chips(pc, Object.entries(PATTERNS), s.pat, v => { s.pat = v; changed(); pushHistory(); });
@@ -135,7 +137,7 @@ function toggleGarment(id) {
 function renderLibrary() {
   const box = $('#garmentAdd'); if (!box) return;
   if (!ROPA.catalog && state.tab !== 'ropa' && !ROPA.catalogP) { box.innerHTML = ''; return; }  // not shown yet: no need to fetch it
-  if (!ROPA.catalog) { box.innerHTML = `<p class="empty">${tr('Cargando la biblioteca…')}</p>`; loadCatalog().then(renderLibrary, () => box.innerHTML = `<p class="empty">${tr('No se pudo cargar la biblioteca de ropa.')}</p>`); return; }
+  if (!ROPA.catalog) { box.innerHTML = `<p class="empty">${tr('Cargando el armario…')}</p>`; loadCatalog().then(renderLibrary, () => box.innerHTML = `<p class="empty">${tr('No se pudo cargar el armario.')}</p>`); return; }
   const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.cat));
   box.innerHTML = '';
   const q = ropaSearch.trim().toLowerCase(), worn = new Set(mq.outfit.map(s => s.id));

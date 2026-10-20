@@ -694,6 +694,7 @@ details.sec > summary h3 span{display:inline-block;white-space:normal;line-heigh
 .charact:hover{color:var(--ink);border-color:var(--ink)}
 .charact svg{width:13px;height:13px}
 .castpop{position:fixed;z-index:30;width:290px;max-height:60vh;overflow:auto;background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px;display:flex;flex-direction:column;gap:8px}
+.castpop .lbl{margin:4px 0 -2px}
 /* ---------- open in ---------- */
 .btn.magic{border-color:var(--blue);color:var(--blue)}
 .btn.magic:hover{background:var(--blue-wash)}
@@ -1274,6 +1275,7 @@ body.paging #openIn{display:none}
 @media (max-width:600px){ .cmeditbar{top:auto;bottom:10px;flex-wrap:wrap;width:max-content} .cmeditbar .t{display:none} body.panelEdit .hint{bottom:74px} }
 /* the bible's cards: a portrait, the name, what can be done */
 .bblist{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.bblist > .empty{grid-column:1/-1}
 .bbcard{border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:6px;display:flex;flex-direction:column;gap:6px}
 .bbcard img{width:100%;height:110px;object-fit:contain;background:var(--page);border-radius:4px}
 .bbcard.place img{object-fit:cover}
