@@ -1,7 +1,6 @@
-/* ======================= the comic: sounds, effects and print =======================
-   Sounds written on the page (onomatopoeia), the backgrounds of manga per panel (speed lines, focus lines, a flash,
-   black), and the pages out of the app: a PDF to print or send (each page an image at its true size), a CBZ for
-   comic readers, or a PSD per page in layers (paper, panels, balloons, sounds, borders and an empty one to ink on). */
+/* ======================= the comic: effects and print =======================
+   The backgrounds of manga per panel (speed lines, focus lines, a flash, black), and the pages out of the app: a PDF
+   to print or send (each page an image at its true size), a CBZ for comic readers, or a PSD per page in layers (paper, panels, balloons, sounds, borders and an empty one to ink on). */
 const PANEL_BGS = [['set', 'Escenario'], ['white', 'Blanco'], ['speed', 'Líneas de velocidad'], ['focus', 'Líneas de concentración'], ['flash', 'Destello'], ['black', 'Negro']];
 
 /* ---------- PDF: one image per page, at its size in points ---------- */
@@ -60,18 +59,13 @@ async function exportComic(kind) {
 
 /* ---------- the tab's extra controls ---------- */
 function syncComicExtraUI() {
-  const p = CM.sel, x = CM.selX; if (!$('#cmBg')) return;
+  const p = CM.sel; if (!$('#cmBg')) return;
   $('#cmBgRow').hidden = !p; if (p) setPressed($('#cmBg'), p.bg || 'set');
-  $('#cmSfxEdit').hidden = !x; if (x) { if (document.activeElement !== $('#cmSfxText')) $('#cmSfxText').value = x.text; $('#cmSfxSize').value = x.size; $('#cmSfxRot').value = x.rot || 0; }
+  syncSfxUI();  // (the sounds' section: 36g)
 }
 function buildComicExtraUI() {
   if (!$('#cmBg')) return;
   chips($('#cmBg'), PANEL_BGS, 'set', v => { const p = CM.sel; if (!p) return; p.bg = v === 'set' ? undefined : v; drawPage(); comicSaved(); });
-  $('#cmSfxAdd').onclick = () => { const c = comic(), pg = curPage(); if (!pg) return; pg.sfx = pg.sfx || []; const p = CM.sel, x = {id: newId('s'), text: ($('#cmSfxNew').value || '').trim() || tr('¡BAM!'), x: p ? panelBox(p).x + panelBox(p).w * .6 : c.page.w / 2, y: p ? panelBox(p).y + panelBox(p).h * .35 : c.page.h / 3, size: 16, rot: -8};
-    pg.sfx.push(x); CM.selX = x; drawPage(); syncComicUI(); comicSaved(); };
-  $('#cmSfxText').oninput = e => { if (CM.selX) { CM.selX.text = e.target.value; drawPage(); } }; $('#cmSfxText').onchange = comicSaved;
-  $('#cmSfxSize').oninput = e => { if (CM.selX) { CM.selX.size = +e.target.value; drawPage(); } };
-  $('#cmSfxRot').oninput = e => { if (CM.selX) { CM.selX.rot = +e.target.value; drawPage(); } };
-  $('#cmSfxDel').onclick = () => { const pg = curPage(), x = CM.selX; if (!pg || !x) return; pg.sfx.splice(pg.sfx.indexOf(x), 1); CM.selX = null; drawPage(); syncComicUI(); comicSaved(); };
+  buildSfxUI();
   $('#cmPdf').onclick = () => exportComic('pdf'); $('#cmCbz').onclick = () => exportComic('cbz'); $('#cmPsd').onclick = () => exportComic('psd');
 }

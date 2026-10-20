@@ -1299,6 +1299,25 @@ body.paging #openIn{display:none}
 .fpbtn{display:flex;flex-direction:column;gap:2px}
 #cmSfxNew,#cmSfxText{font:inherit;font-family:Bangers,var(--f-hand);font-size:18px;letter-spacing:.04em;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:4px 8px;min-width:0;flex:1}
 #cmSfxText{width:100%;margin:6px 0}
+/* the sounds' section: the looks drawn small, the words to pick, the field written over a sound on the page */
+.sfxstyles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 8px}
+.chip.preset.sfxst{padding:4px 4px 3px}
+.chip.preset.sfxst canvas{width:100%;height:auto;display:block;border-radius:5px;background:#fff;box-shadow:0 2px 4px rgba(40,30,10,.14)}
+.chip.preset.sfxst[aria-pressed=true]{background:var(--blue-wash);color:var(--ink);border-color:var(--blue)}
+.chip.preset.sfxst[aria-pressed=true] span{color:var(--ink);font-weight:700}
+.chip.preset.sfxst[aria-pressed=true] canvas{outline:2px solid var(--blue);outline-offset:1px}
+.sfxcat{display:flex;flex-direction:column;gap:5px;margin:4px 0 8px}
+.sfxcatrow{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.sfxcatrow b{font-size:11px;color:var(--ink-soft);font-weight:600;min-width:100%}
+.sfxword{font:inherit;font-family:Bangers,var(--f-hand);font-size:15px;letter-spacing:.03em;line-height:1;padding:4px 7px;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);color:var(--ink);cursor:pointer;transition:transform .12s cubic-bezier(.2,.8,.2,1.4)}
+.sfxword:hover{transform:translateY(-2px) rotate(-3deg);border-color:var(--ink)}
+.sfxsl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}
+.sfxsl .sl{margin:5px 0}
+.sfxgrp{margin-top:8px;border-top:1px dashed var(--rule);padding-top:4px}
+.sfxgrp>summary{cursor:pointer;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);padding:4px 0;list-style-position:inside}
+.sfxcolors{align-items:center;flex-wrap:wrap}
+.sfxcolors input[type=color]{width:34px;height:24px;padding:0;border:1.5px solid var(--line);border-radius:4px;vertical-align:middle;background:none}
+.pvsfxedit{position:absolute;z-index:5;min-width:6ch;width:max-content;max-width:80%;font-family:Bangers,var(--f-hand);letter-spacing:.03em;text-align:center;padding:2px 10px;border:2px solid #2b5a9e;border-radius:8px;background:rgba(255,255,255,.94);color:#141210;box-shadow:0 8px 20px -8px rgba(0,0,0,.45);outline:none;field-sizing:content}
 /* the quiet way to support the app (Help, Settings) */
 a.kofi{color:var(--blue);font-weight:600;text-decoration:none;border-bottom:1px dashed currentColor}
 a.kofi:hover{border-bottom-style:solid}

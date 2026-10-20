@@ -544,11 +544,31 @@
           <details class="sec" data-sec="cmsfx" open>
             <summary><h3>Onomatopeyas <span>sobre la página</span></h3></summary>
             <div class="row"><input id="cmSfxNew" placeholder="¡BAM!" maxlength="24"><button class="btn small" id="cmSfxAdd">Añadir</button></div>
+            <p class="lbl">Estilo</p>
+            <div class="sfxstyles" id="cmSfxStyles"></div>
+            <p class="lbl">Catálogo</p>
+            <div class="sfxcat" id="cmSfxCat"></div>
+            <p class="note" id="cmSfxHint">Elige un estilo y toca una palabra (o escribe la tuya): sale en la viñeta elegida. En la página, arrástrala, gírala con el asa redonda y cambia su tamaño con la esquina; doble clic para escribir en ella.</p>
             <div id="cmSfxEdit" hidden>
-              <input id="cmSfxText" maxlength="24">
-              <label class="lbl">Tamaño <input type="range" id="cmSfxSize" min="6" max="60" step="1" value="16"></label>
-              <label class="lbl">Giro <input type="range" id="cmSfxRot" min="-45" max="45" step="1" value="-8"></label>
-              <div class="row"><button class="btn small" id="cmSfxDel">Borrar la onomatopeya</button></div>
+              <input id="cmSfxText" maxlength="24" aria-label="Texto de la onomatopeya">
+              <div id="cmSfxSl" class="sfxsl"></div>
+              <details class="sfxgrp" open>
+                <summary>Forma de las letras</summary>
+                <div id="cmSfxShape" class="sfxsl"></div>
+                <div class="row"><button class="btn small" id="cmSfxShuffle" title="Otro desorden de las letras, el mismo estilo">Otra variación</button></div>
+              </details>
+              <details class="sfxgrp" open>
+                <summary>Aspecto</summary>
+                <div id="cmSfxLook" class="sfxsl"></div>
+              <p class="lbl">Borde</p><div class="chips" id="cmSfxOutline"></div>
+              <p class="lbl">Relleno</p><div class="chips" id="cmSfxPaint"></div>
+              <p class="lbl">Sombra</p><div class="chips" id="cmSfxShadow"></div>
+              <p class="lbl">Adorno</p><div class="chips" id="cmSfxDeco"></div>
+              <p class="lbl">Letra</p><div class="chips" id="cmSfxFont"></div>
+              <label class="check"><input type="checkbox" id="cmSfxVert"> Letras en columna (manga)</label>
+              <div class="row sfxcolors"><label class="lbl">Color <input type="color" id="cmSfxFill" value="#ffffff"></label><label class="lbl">Tinta <input type="color" id="cmSfxInk" value="#141210"></label><button class="btn small" id="cmSfxBW">Volver a blanco y negro</button></div>
+              </details>
+              <div class="row"><button class="btn small" id="cmSfxReset" title="Quita lo cambiado: queda como su estilo">Como su estilo</button><button class="btn small" id="cmSfxDup">Duplicar</button><button class="btn small" id="cmSfxDel">Borrar la onomatopeya</button></div>
             </div>
           </details>
           <details class="sec" data-sec="cmformato">

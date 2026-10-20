@@ -3,7 +3,7 @@
 import json, os
 H = os.path.dirname(os.path.abspath(__file__))
 rd = lambda p: open(os.path.join(H, p), encoding='utf-8').read()
-MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '05h-spaces', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '10c-coat', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '20c-characters', '20d-access', '21-export', '21b-layers', '21c-video', '21d-keys', '22-anim', '22b-motion', '22c-timeline', '22d-film-panel', '23-photo', '24-perf', '25-share', '26-clips', '26b-gait', '27-board', '28-ux', '29-web', '30-refs', '31-script-lex', '31-script-look', '31-script', '32-voice', '33-paper', '34-file', '34b-backups', '35-project', '35b-bible', '36-comic', '36d-comic-shapes', '36e-comic-desk', '36f-comic-tracker', '36b-comic-ui', '36c-comic-export', '37-support', '07-start']
+MODULES = ['00-i18n', '01-core', '02-poses', '03-figure', '03b-muscles', '04-scene', '05-app', '05b-guides', '05c-ui', '05d-library', '05e-input', '05f-render', '05g-boot', '05h-spaces', '06-tools', '08-ropa', '09-ropa-ui', '10-anthro', '10b-bodies', '10c-coat', '11-heads', '12-sets', '13-envs', '14-tour', '15-avatars', '16-practice', '17-hair', '18-anatomy', '19-posing', '19b-dynamics', '20-scene', '20b-limbs', '20c-characters', '20d-access', '21-export', '21b-layers', '21c-video', '21d-keys', '22-anim', '22b-motion', '22c-timeline', '22d-film-panel', '23-photo', '24-perf', '25-share', '26-clips', '26b-gait', '27-board', '28-ux', '29-web', '30-refs', '31-script-lex', '31-script-look', '31-script', '32-voice', '33-paper', '34-file', '34b-backups', '35-project', '35b-bible', '36-comic', '36d-comic-shapes', '36e-comic-desk', '36f-comic-tracker', '36b-comic-ui', '36c-comic-export', '36g-comic-sfx', '37-support', '07-start']
 I18D = os.path.join(H, 'src', 'i18n')
 I18N = {f[:-5]: json.load(open(os.path.join(I18D, f), encoding='utf-8')) for f in sorted(os.listdir(I18D)) if f.endswith('.json') and f != 'es.json'}
 GD = os.path.join(I18D, 'garments')
@@ -17,7 +17,7 @@ for l in I18N:
     open(os.path.join(H, f'app/i18n/{l}.js'), 'w', encoding='utf-8').write('(window.NEOPOSE_I18N = window.NEOPOSE_I18N || {})[' + json.dumps(l) + '] = ' + json.dumps(I18N[l], ensure_ascii=False, separators=(',', ':'))
         + ';\n(window.NEOPOSE_GTR = window.NEOPOSE_GTR || {})[' + json.dumps(l) + '] = ' + json.dumps(GTR.get(l, {}), ensure_ascii=False, separators=(',', ':')) + ';\n')
 import hashlib
-fhash = p => hashlib.sha1(open(os.path.join(H, p), 'rb').read()).hexdigest()[:10]
+fhash = lambda p: hashlib.sha1(open(os.path.join(H, p), 'rb').read()).hexdigest()[:10]
 LOADER = ('<script>(function () { var all = ' + json.dumps(sorted(I18N)) + ', l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}\n'
   + '  var h = ' + json.dumps({l: fhash(f'app/i18n/{l}.js') for l in I18N}) + ';\n'
   + '  ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write(\'<script src="i18n/\' + c + \'.js?h=\' + h[c] + \'"><\\/script>\'); });\n})();</script>\n')

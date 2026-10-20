@@ -48,6 +48,8 @@ const SUITES = {
   async i18n(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
+      // (the comic's catalogue of sound effects: the words of each language, as they are written there)
+      for (const t of await page.evaluate(() => window.__cdp.comic.SFX_CATALOG.flatMap(g => [g[0], ...g[1].map(e => e[0])]))) ALLOW.add(t);
       await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
       for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) {
         await goTab(page, tab); await page.waitForTimeout(400);
@@ -1218,6 +1220,89 @@ const SUITES = {
     ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
     await A(() => { const K = window.__cdp.comic; K.CM.sel = null; document.querySelector('#cmTemplates .chip[data-v="s5"]').click(); });
     await page.waitForTimeout(800); await page.screenshot({path: path.join(OUT, 'comic-shapes.png')});
+    await page.context().close();
+  },
+  // sound effects: the first sounds drawn as they were, every look, letters shaped one by one, the handles on the
+  // page (move, turn, size, write), the catalogue, a new one placed in its panel, undo, and the pages out
+  async sfx(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    await goTab(page, 'comic'); await page.waitForTimeout(900);
+    await A(() => document.fonts.load('400 20px Bangers'));
+    const ink = 'const ink = (cv) => { const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128 && d[i] < 90) n++; return n; };';
+    // an old sound ({id, text, x, y, size, rot}) drawn exactly as before: white letters, an ink edge, set whole
+    const old = await A(() => { const K = window.__cdp.comic, x = {id: 's1', text: '¡BLAM!', x: 60, y: 40, size: 16, rot: -8}, mk = () => { const cv = document.createElement('canvas'); cv.width = 480; cv.height = 320; return cv; };
+      const a = mk(), b = mk(), ga = a.getContext('2d'), gb = b.getContext('2d'), hand = getComputedStyle(document.documentElement).getPropertyValue('--f-hand').trim();
+      K.drawSfx(ga, x, 4, 0, 0);
+      const px = x.size * 4; gb.save(); gb.translate(x.x * 4, x.y * 4); gb.rotate(x.rot * Math.PI / 180); gb.font = `400 ${px}px Bangers, "Comic Neue", ${hand}, sans-serif`; gb.textAlign = 'center'; gb.textBaseline = 'middle';
+      gb.lineJoin = 'round'; gb.lineWidth = px * .2; gb.strokeStyle = '#141210'; gb.strokeText(x.text, 0, 0); gb.fillStyle = '#ffffff'; gb.fillText(x.text, 0, 0); gb.restore();
+      const da = ga.getImageData(0, 0, 480, 320).data, db = gb.getImageData(0, 0, 480, 320).data; let diff = 0, on = 0; for (let i = 0; i < da.length; i++) { if (da[i] !== db[i]) diff++; if (i % 4 === 3 && db[i]) on++; }
+      return {diff, on, keys: Object.keys(x).join(), style: K.sfxParams(x).outline + '/' + K.sfxParams(x).fill}; });
+    ok(old.diff === 0 && old.on > 2000 && old.keys === 'id,text,x,y,size,rot' && old.style === 'single/#ffffff', `an old sound drawn exactly as before (${old.diff} bytes differ of ${old.on} pixels drawn), and left as it was saved`);
+    // every look drawn, each its own; the gallery shows them small
+    const st = await page.evaluate(new Function(`return (async () => { ${ink} const K = window.__cdp.comic, out = {}, sig = {};
+      for (const k of Object.keys(K.SFX_STYLES)) { const cv = document.createElement('canvas'); cv.width = 600; cv.height = 360; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 600, 360);
+        K.drawSfx(g, {id: 'x', text: 'BOOM', x: 75, y: 45, size: 14, rot: 0, style: k}, 4, 0, 0); out[k] = ink(cv); sig[k] = cv.toDataURL(); }
+      const gal = [...document.querySelectorAll('#cmSfxStyles .sfxst canvas')].map(ink);
+      // (a sheet of every look, on a grey ground, for the eye)
+      const keys = Object.keys(K.SFX_STYLES), sheet = document.createElement('canvas'); sheet.width = 1200; sheet.height = Math.ceil(keys.length / 3) * 300; const g = sheet.getContext('2d'); g.fillStyle = '#c9c4ba'; g.fillRect(0, 0, sheet.width, sheet.height);
+      keys.forEach((k, i) => K.drawSfx(g, {id: 's' + i, text: K.SFX_STYLES[k].sample, x: 50, y: 37, size: 14, rot: K.SFX_STYLES[k].rot ?? -8, style: k}, 4, (i % 3) * 400 - 0, Math.floor(i / 3) * 300));
+      return {out, distinct: new Set(Object.values(sig)).size, gal, sheet: sheet.toDataURL()}; })()`));
+    fs.writeFileSync(path.join(OUT, 'comic-sfx-looks.png'), Buffer.from(st.sheet.split(',')[1], 'base64'));
+    ok(Object.keys(st.out).length >= 9 && Object.values(st.out).every(n => n > 800) && st.distinct === Object.keys(st.out).length && st.gal.length === Object.keys(st.out).length && st.gal.every(n => n > 50), `${Object.keys(st.out).length} looks, each drawn its own way (${Object.entries(st.out).map(([k, n]) => k + ' ' + n).join(', ')}); the gallery shows ${st.gal.length} of them small`);
+    // letters shaped one by one: crescendo, arc, perspective, the same shake every time, stacked for katakana
+    const sh = await A(() => { const K = window.__cdp.comic, g = document.createElement('canvas').getContext('2d'), L = o => K.sfxLayout(g, {id: 'q', text: 'WHAAAM', x: 0, y: 0, size: 10, rot: 0, style: 'classic', ...o}, 40).G;
+      const gr = L({grow: 1}), ar = L({arc: .8}), pe = L({persp: 1}), j1 = L({jit: .8}), j2 = L({jit: .8}), j3 = L({jit: .8, seed: 1}), ve = L({vert: true}), ti = L({tilt: 15});
+      return {grow: gr[5].s / gr[0].s, up: gr[5].y < gr[0].y, arc: ar[2].y < ar[0].y && ar[0].r < 0 && ar[5].r > 0, persp: pe[5].s > pe[0].s * 2, same: JSON.stringify(j1) === JSON.stringify(j2), other: JSON.stringify(j1) !== JSON.stringify(j3),
+        vert: ve.every((q, i) => !i || q.y > ve[i - 1].y) && ve.every(q => Math.abs(q.x) < 1), rock: Math.sign(ti[0].r) !== Math.sign(ti[1].r), n: gr.length}; });
+    ok(sh.n === 6 && sh.grow > 2.5 && sh.up && sh.arc && sh.persp && sh.same && sh.other && sh.vert && sh.rock, `letters one by one: a crescendo ${sh.grow.toFixed(1)}× from first to last, standing on its line; on an arc, each turned to it; in perspective; the shake the same each time (another on «Otra variación»); stacked in a column; rocking`);
+    // the look: a double edge (white inside the ink), screentone, a 3D block, colour
+    const lk = await page.evaluate(new Function(`return (() => { ${ink} const K = window.__cdp.comic, draw = o => { const cv = document.createElement('canvas'); cv.width = 500; cv.height = 300; const g = cv.getContext('2d'); g.fillStyle = '#888'; g.fillRect(0, 0, 500, 300); K.drawSfx(g, {id: 'l', text: 'POW', x: 62, y: 37, size: 16, rot: 0, style: 'classic', ...o}, 4, 0, 0); return cv; };
+      const white = cv => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 240 && d[i + 1] > 240) n++; return n; };
+      const one = draw({fill: '#141210'}), two = draw({fill: '#141210', outline: 'double'}), tone = draw({paint: 'tone'}), flat = draw({}), depth = draw({shadow: 'depth'}), col = draw({fill: '#e03020'});
+      const red = (() => { const d = col.getContext('2d').getImageData(0, 0, 500, 300).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 180 && d[i + 1] < 90) n++; return n; })();
+      return {one: white(one), two: white(two), tone: ink(tone) > ink(flat) * 1.05 && white(tone) > 100, depth: ink(depth) > ink(flat) * 1.15, red}; })()`));
+    ok(lk.one < 50 && lk.two > 1000 && lk.tone && lk.depth && lk.red > 1000, `the look: black letters with a double edge show white inside the ink (${lk.two} px), screentone dots in the letters, a 3D block behind them, a colour when asked`);
+    // the catalogue: a word picked goes into the chosen panel, clear of its balloon, sized to it, in its look
+    const ct = await A(() => { const K = window.__cdp.comic, pg = K.comic().pages[0], p = pg.panels[0]; K.CM.sel = p; p.balloons = [{id: 'b1', kind: 'speech', text: 'Hola', ci: null, x: .3, y: .25, size: 9}];
+      const words = [...document.querySelectorAll('#cmSfxCat .sfxword')], w = words.find(b => b.textContent === 'ドン'), n0 = (pg.sfx || []).length; w.click();
+      const x = K.CM.selX, B = K.panelBox(p), g = document.createElement('canvas').getContext('2d'), L = K.sfxLayout(g, x, x.size), bw = L.full.x1 - L.full.x0;
+      return {words: words.length, langs: document.querySelectorAll('#cmSfxCat .sfxcatrow').length, added: pg.sfx.length === n0 + 1, style: x.style, inside: K.inPoly(K.panelPts(p), x.x, x.y), far: Math.hypot((x.x - (B.x + .3 * B.w)) / B.w, (x.y - (B.y + .25 * B.h)) / B.h), fits: bw < B.w, edit: !document.querySelector('#cmSfxEdit').hidden}; });
+    ok(ct.words >= 30 && ct.langs === 3 && ct.added && ct.style === 'manga' && ct.inside && ct.far > .3 && ct.fits && ct.edit, `the catalogue: ${ct.words} words in ${ct.langs} languages; ドン goes into the chosen panel in the manga look, inside it, clear of its balloon (${ct.far.toFixed(2)} of the panel away), fitting it`);
+    // in the tab: a look chosen for it, a slider, a chip, back to its look
+    const ui = await A(() => { const K = window.__cdp.comic, x = K.CM.selX; document.querySelector('#cmSfxStyles .sfxst[data-v="impact"]').click(); const r = {style: x.style, vert: K.sfxParams(x).vert};
+      const s = document.querySelector('#cmSfxGrow'); s.value = 1.2; s.dispatchEvent(new Event('input')); s.dispatchEvent(new Event('change')); r.grow = x.grow;
+      document.querySelector('#cmSfxDeco .chip[data-v="debris"]').click(); r.deco = x.deco; r.pressed = document.querySelector('#cmSfxStyles .sfxst[data-v="impact"]').getAttribute('aria-pressed');
+      document.querySelector('#cmSfxReset').click(); r.reset = x.grow === undefined && x.deco === undefined && K.sfxParams(x).deco === 'burst'; return r; });
+    ok(ui.style === 'impact' && !ui.vert && ui.grow === 1.2 && ui.deco === 'debris' && ui.pressed === 'true' && ui.reset, 'in the tab: the look chosen in the gallery, a crescendo slid, debris round it, then back to its look as it was');
+    // on the page: dragged, turned by the round handle, sized by the corner; each step undone
+    const H = async () => page.evaluate(() => { const K = window.__cdp.comic, h = K.pv.hits.find(q => q.x === K.CM.selX), b = document.querySelector('#pageView').getBoundingClientRect(), d = K.pv.dpr, Hs = K.sfxHandles(h.rb), P = q => ({x: b.left + q[0] / d, y: b.top + q[1] / d});
+      return {mid: P([h.rb.cx, h.rb.cy]), rot: P(Hs.rot), size: P(Hs.size), x: K.CM.selX.x, y: K.CM.selX.y, r: K.CM.selX.rot, s: K.CM.selX.size}; });
+    await A(() => window.__cdp.comic.histCommit()); await page.waitForTimeout(300);
+    const h0 = await H(); await page.mouse.move(h0.mid.x, h0.mid.y); await page.mouse.down(); await page.mouse.move(h0.mid.x + 30, h0.mid.y + 20, {steps: 6}); await page.mouse.up(); await page.waitForTimeout(400);
+    const h1 = await H(); await page.mouse.move(h1.rot.x, h1.rot.y); await page.mouse.down(); await page.mouse.move(h1.rot.x + 80, h1.rot.y + 40, {steps: 8}); await page.mouse.up(); await page.waitForTimeout(400);
+    const h2 = await H(); await page.mouse.move(h2.size.x, h2.size.y); await page.mouse.down(); await page.mouse.move(h2.size.x + 40, h2.size.y + 40, {steps: 8}); await page.mouse.up(); await page.waitForTimeout(400);
+    const h3 = await H();
+    const un = await A(() => { const K = window.__cdp.comic, id = K.CM.selX.id, get = () => K.comic().pages[0].sfx.find(q => q.id === id); K.histCommit(); K.comicUndo(-1); const b = {...get()}; K.comicUndo(-1); const c = {...get()}; K.comicUndo(1); K.comicUndo(1); return {b, c, back: get().size}; });
+    ok(Math.abs(h1.x - h0.x) > 3 && h2.r !== h1.r && h3.s > h2.s * 1.2 && un.b.size === h2.s && un.c.rot === h1.r && un.back === h3.s, `on the page: dragged ${(h1.x - h0.x).toFixed(1)} mm, turned by its round handle from ${h1.r}° to ${h2.r}°, sized by its corner from ${h2.s} to ${h3.s} mm; each step undone and redone`);
+    // a double click writes in it: a field over it, Intro keeps it
+    await page.waitForTimeout(300); const m = (await H()).mid; await page.mouse.dblclick(m.x, m.y); await page.waitForTimeout(250);
+    const fld = await A(() => !!document.querySelector('#pvSfxEdit') && document.activeElement === document.querySelector('#pvSfxEdit'));
+    await page.keyboard.type('ゴゴゴ'); await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+    const wr = await A(() => { const K = window.__cdp.comic; return {text: K.CM.selX.text, gone: !document.querySelector('#pvSfxEdit'), side: document.querySelector('#cmSfxText').value}; });
+    ok(fld && wr.text === 'ゴゴゴ' && wr.gone && wr.side === 'ゴゴゴ', `a double click writes in the sound itself: «${wr.text}», in the tab too`);
+    await page.screenshot({path: path.join(OUT, 'comic-sfx.png')});
+    await page.evaluate(() => document.querySelector('details[data-sec=cmsfx]').scrollIntoView()); await page.waitForTimeout(300); await page.locator('details[data-sec=cmsfx]').screenshot({path: path.join(OUT, 'comic-sfx-tab.png')});
+    await page.evaluate(() => document.querySelector('#cmSfxEdit').scrollIntoView()); await page.waitForTimeout(300); await page.locator('#cmSfxEdit').screenshot({path: path.join(OUT, 'comic-sfx-edit.png')});
+    // the pages out: the sounds in the PNG page, its PSD layer, the PDF and CBZ; saved and back with all their looks
+    const ex = await page.evaluate(new Function(`return (async () => { ${ink} const C = window.__cdp, K = C.comic, pg = K.comic().pages[0], k = 150 / 25.4, c = K.comic();
+      pg.sfx.push({id: 'old1', text: 'CRASH', x: 40, y: 200, size: 14, rot: 10});
+      const cv = document.createElement('canvas'); cv.width = Math.round(c.page.w * k); cv.height = Math.round(c.page.h * k); K.composePage(cv.getContext('2d'), pg, k, 0, 0, {part: 'sfx'}); const layer = ink(cv);
+      const withS = ink(await K.pageImage(pg, 150)), keep = pg.sfx; pg.sfx = []; const without = ink(await K.pageImage(pg, 150)); pg.sfx = keep;
+      const pdf = await C.comicx.comicPDF(72), cbz = await C.comicx.comicCBZ(72), psd = await C.comicx.comicPSD(pg, 72), t = new TextDecoder('latin1');
+      const before = JSON.stringify(pg.sfx), bytes = await C.file.neoposeBytes('t'); C.project.applyProjectState(null); await C.file.openNeopose(new File([bytes], 't.neopose'));
+      return {layer, more: withS - without, pdf: t.decode(pdf.slice(0, 5)), cbz: cbz.length > 1000, psd: t.decode(psd.slice(0, 4)), back: JSON.stringify(K.comic().pages[0].sfx) === before, n: K.comic().pages[0].sfx.length}; })()`));
+    ok(ex.layer > 1500 && ex.more > 1000 && ex.pdf === '%PDF-' && ex.cbz && ex.psd === '8BPS' && ex.back && ex.n === 2, `the pages out: the sounds on their own PSD layer (${ex.layer} px of ink) and on the page (${ex.more} px more); PDF, CBZ and PSD made; ${ex.n} sounds back from the .neopose file as they were`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
     await page.context().close();
   },
   // the project shared by the three spaces: a cast and places kept once (and used by the script), changes carried to
