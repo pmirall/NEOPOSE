@@ -109,7 +109,7 @@ const DRAG_KINDS = [
       const s = t.g.spec; if (s.mode === 'tex') s.mode = 'tint'; s.colA = c; updateGarment(mq, t.g); t.g.open = true; renderGarmentList(); pushHistory(); return tr('«{p}» teñido', {p: garmentTitle(s.id)}); }); }},
   {sel: '#propChips .chip[data-v]', target: 'floor', item: el => el.dataset.v, label: () => tr('Dejarlo aquí'),
     commit: (t, id) => { const g = makeProp(id, t.point); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); return tr('«{p}» en la escena', {p: tr(PROPS[id] || (ASSET_PROPS[id] || [id])[0])}); }},
-  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id]', target: 'floor', item: el => el.dataset.cast ? castById(el.dataset.cast) : SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
+  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id], #crCast .charcard[data-id]', target: 'floor', item: el => el.dataset.cast ? castById(el.dataset.cast) : SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
     commit: (t, c) => { $('#castPop')?.remove(); const n = chars.length; placeCharacter(c); if (chars.length > n) { const m = chars[chars.length - 1]; m.joints.hips.position.x = t.point.x; m.joints.hips.position.z = t.point.z; m.group.updateMatrixWorld(true); pushHistory(); } return null; }},
   {sel: '#addPoint, #addSpot', target: 'floor', item: el => el.id === 'addSpot' ? 'foco' : 'punto', label: () => tr('Una luz aquí encima'),
     commit: (t, type) => { if (extraLights.length >= 4) return tr('Ya hay 4 luces.'); const g = makeLight(type, t.point.clone().setY(2.2)); selectObj(g); pushHistory(); return tr('Luz añadida'); }},

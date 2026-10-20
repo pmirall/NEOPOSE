@@ -29,6 +29,7 @@
   </header>
 
   <div class="main">
+    <nav class="crrail" id="crRail" aria-label="Categorías del personaje"></nav>
     <div class="stage-wrap">
       <div id="viewport">
         <canvas id="gl"></canvas>
@@ -138,6 +139,13 @@
           <button class="btn small primary" id="ihInstall" hidden>Instalar</button>
           <button class="gx" id="ihClose" aria-label="Cerrar">×</button>
         </div>
+        <div class="crcam" id="crCam" role="toolbar" aria-label="Vista del personaje" aria-orientation="vertical">
+          <button class="btn icon" type="button" id="crFace" aria-pressed="false" title="Acercar a la cara" aria-label="Acercar a la cara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="6"/><path d="M10 10v.5M14 10v.5M10 13.5c1.2.8 2.8.8 4 0M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/></svg></button>
+          <button class="btn icon" type="button" id="crBody" aria-pressed="false" title="Ver todo el cuerpo" aria-label="Ver todo el cuerpo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7m0 0-3 7m3-7 3 7M7 10l5-1 5 1M3 7V3h3M21 7V3h-3M3 17v4h3M21 17v4h-3"/></svg></button>
+          <button class="btn icon" type="button" id="crRotL" title="Girar a la izquierda" aria-label="Girar a la izquierda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/></svg></button>
+          <button class="btn icon" type="button" id="crRotR" title="Girar a la derecha" aria-label="Girar a la derecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v4.5h-4.5"/></svg></button>
+          <button class="btn icon" type="button" id="crSpin" aria-pressed="false" title="Plataforma giratoria" aria-label="Plataforma giratoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="8" ry="3"/><path d="M12 4v9M9.5 6.5 12 4l2.5 2.5"/></svg></button>
+        </div>
         <div class="hint" id="hint" role="status">Arrastra <b>●</b> manos y pies y <i>●</i> el cuerpo · toca una pieza o un punto para girarla</div>
       </div>
     </div>
@@ -156,6 +164,15 @@
         <button class="tab" role="tab" data-tab="comic" aria-selected="false" title="Cómic y manga: páginas, viñetas y bocadillos"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"/></svg><span>Cómic</span></button>
       </div>
       <div class="page">
+        <div class="crtop" id="crTop">
+          <div class="crsearch" role="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input type="search" id="crQ" placeholder="Buscar ropa, pelo, cabezas, especies, cuerpos…" aria-label="Buscar en las bibliotecas: ropa, pelo, cabezas, especies, cuerpos, expresiones y personajes" aria-controls="crResults" autocomplete="off">
+          </div>
+          <div class="chips crfilt" id="crFilt" role="group" aria-label="Filtrar la búsqueda" hidden></div>
+          <p class="sr" id="crCount" aria-live="polite"></p>
+          <div class="crresults" id="crResults" role="group" aria-label="Resultados" hidden></div>
+        </div>
         <section data-tab="pose">
           <div class="quick">
             <button class="btn small" id="mirrorBtn" title="Espejar pose">Espejar</button>
@@ -247,16 +264,13 @@
         </section>
 
         <section data-tab="cuerpo" hidden>
-          <details class="sec" data-sec="personajes" open>
-            <summary><h3>Mis personajes <span>en este dispositivo, para cualquier proyecto</span></h3></summary>
-            <div class="pose-grid chargrid" id="charGrid"></div>
-            <div class="row"><button class="btn small" id="charSave">Guardar este personaje</button><button class="btn small" id="charImport">Importar…</button></div>
-            <input type="file" id="charFile" accept=".json,application/json" multiple hidden>
-            <p class="note">Se guardan en este dispositivo y sirven para cualquier proyecto (un guion que los nombra los usa). Para que un cambio llegue a todos los planos y viñetas, añádelo también al reparto en Biblia. Toca una tarjeta para ponerlo en la escena; con sus botones lo aplicas al personaje activo, lo exportas o lo borras.</p>
-          </details>
+          <div class="crcat" data-cat="body" id="crCatBody">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3c-1.5 2.5-1 5 0 6.5L7 21m9-18c1.5 2.5 1 5 0 6.5l1 11.5M8 9.5h8M9 15h6"/></svg>Cuerpo <span>tipo, complexión y proporciones</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="body" title="Cuerpo al azar" aria-label="Cuerpo al azar"></button>
+          </div>
           <details class="sec" data-sec="tipo" open>
             <summary><h3>Tipo de cuerpo <span id="bodyWho"></span></h3></summary>
-            <div class="chips" id="bodyChips"></div>
+            <div class="chips crtiles" id="bodyChips"></div>
             <p class="note">Cambia sexo, edad y estilo, y empieza de cero la complexión. Para cambiar solo músculo y grasa, usa Complexión.</p>
             <div class="canon"><strong id="headsOut">7,5</strong><span>cabezas de alto · real ≈ 7–7½ · niño ≈ 5–6 · anime ≈ 8 · chibi 2–3</span></div>
           </details>
@@ -265,8 +279,8 @@
             <div class="pose-grid buildgrid" id="buildGrid"></div>
             <p class="note">Mantiene el sexo y la edad del personaje. Afina cada parte justo debajo, en Proporciones → Ajustes avanzados.</p>
           </details>
-          <details class="sec" data-sec="prop" open>
-            <summary><h3>Proporciones <span>edad, sexo, altura, músculo y grasa</span></h3></summary>
+          <details class="sec fine" data-sec="prop">
+            <summary><h3>Proporciones <span>edad, sexo, altura, músculo y grasa</span></h3><span class="finetag">Ajuste fino</span></summary>
             <div id="bodySliders"></div>
             <details class="more"><summary>Estilización (cabeza, piernas, manos…)</summary>
               <div id="styleSliders"></div>
@@ -275,14 +289,36 @@
               <div id="advBody"></div>
             </details>
           </details>
-          <details class="sec" data-sec="extremidades">
-            <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
-            <div id="limbsBox"></div>
-            <p class="note">El muñón se cierra con su forma y la ropa lo acompaña. Con prótesis, se posa como el resto del cuerpo. Silla de ruedas, muletas, andador y bastón: Escena → Objetos.</p>
+          <div class="crcat" data-cat="face" id="crCatFace">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9 10v.5M15 10v.5M8.5 14.5c1.8 2 5.2 2 7 0"/></svg>Cara <span>expresión</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="face" title="Expresión al azar" aria-label="Expresión al azar"></button>
+          </div>
+          <div class="crblock">
+            <div class="crgrid crfaces" id="crExpr" role="group" aria-label="Expresión"></div>
+            <p class="note" id="crExprNote"></p>
+            <details class="more" id="crExprFine"><summary>Ajuste fino: intensidad</summary><div id="crExprAmtBox"></div></details>
+          </div>
+          <div class="crcat" data-cat="hair" id="crCatHair">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 20C4 12 6 5 12 5s8 7 6.5 15"/><path d="M7 10c3 0 6-1.5 8-4M12 5c-1 4-.5 9 1 15"/></svg>Pelo <span>peinado y color</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="hair" title="Pelo al azar" aria-label="Pelo al azar"></button>
+          </div>
+          <details class="sec" data-sec="pelo" open>
+            <summary><h3>Pelo <span id="hairWho"></span></h3></summary>
+            <div id="hairColorBox" hidden>
+              <p class="lbl">Color</p>
+              <div class="hairsw"><div class="swatches" id="hairSw"></div><input type="color" id="hairColor" aria-label="Color del pelo"></div>
+            </div>
+            <div class="hairgrid" id="hairGrid"></div>
+            <p class="note" id="hairNote" hidden></p>
+            <p class="note">Peinados de MakeHuman (CC0): siguen la cabeza, la edad y la pose.</p>
           </details>
+          <div class="crcat" data-cat="species" id="crCatSpecies">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14.5" cy="6" r="1.8"/><circle cx="18" cy="10" r="1.8"/><path d="M7.5 17.5c0-3.2 2.1-5.5 4.7-5.5s4.6 2.3 4.6 5.5c0 2-1.9 3-4.6 2.5-2.8.5-4.7-.5-4.7-2.5Z"/></svg>Especie <span>cabeza, pelaje y avatar</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="species" title="Especie al azar" aria-label="Especie al azar"></button>
+          </div>
           <details class="sec" data-sec="especie" open>
             <summary><h3>Especie</h3></summary>
-            <div class="chips" id="speciesChips"></div>
+            <div class="chips crtiles" id="speciesChips"></div>
             <div id="headStyle" hidden>
               <div><p class="lbl">Cabeza</p>
                 <div class="chips" id="headModelChips"></div></div>
@@ -306,7 +342,7 @@
             <summary><h3>Pelaje y marcas</h3></summary>
             <div id="coatBox" hidden>
               <div id="fluffBox"></div>
-              <div class="chips" id="coatChips"></div>
+              <div class="chips crcoats" id="coatChips"></div>
               <div id="coatEdit">
                 <div class="coatcols" id="coatCols"></div>
                 <p class="lbl">Marcas</p>
@@ -316,16 +352,6 @@
                 <p class="note">Para una hoja de referencia en colores planos, usa el acabado <b>Solo línea</b> (Estático → Dibujo). El pelaje y las marcas también van en el modelo 3D exportado (GLB).</p>
               </div>
             </div>
-          </details>
-          <details class="sec" data-sec="pelo" open>
-            <summary><h3>Pelo <span id="hairWho"></span></h3></summary>
-            <div class="hairgrid" id="hairGrid"></div>
-            <p class="note" id="hairNote" hidden></p>
-            <div id="hairColorBox" hidden>
-              <p class="lbl">Color</p>
-              <div class="hairsw"><div class="swatches" id="hairSw"></div><input type="color" id="hairColor" aria-label="Color del pelo"></div>
-            </div>
-            <p class="note">Peinados de MakeHuman (CC0): siguen la cabeza, la edad y la pose.</p>
           </details>
           <details class="sec" data-sec="avatar">
             <summary><h3>Avatar importado <span>VRM · GLB · FBX</span></h3></summary>
@@ -340,13 +366,29 @@
             <input type="file" id="avFile" accept=".vrm,.glb,.gltf,.fbx" hidden>
             <p class="note">También puedes soltar el archivo sobre el lienzo. Necesita un esqueleto humanoide (caderas, columna, brazos y piernas).</p>
           </details>
+          <div class="crcat" data-cat="limbs" id="crCatLimbs">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6.5l-1.5 5L9 21M15 3v6.5l1 3.5"/><path d="M14.5 13h3l-1 8h-2.5"/></svg>Extremidades <span>amputaciones y prótesis</span></h3>
+          </div>
+          <details class="sec" data-sec="extremidades" open>
+            <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
+            <div id="limbsBox"></div>
+            <p class="note">El muñón se cierra con su forma y la ropa lo acompaña. Con prótesis, se posa como el resto del cuerpo. Silla de ruedas, muletas, andador y bastón: Escena → Objetos.</p>
+          </details>
           <p class="note foot-note">Cuerpo basado en la malla anatómica de MakeHuman (dominio público, CC0). Edad, género, musculatura, grasa y altura mezclan sus modelos medidos; la estilización estira el esqueleto.</p>
         </section>
 
         <section data-tab="ropa" hidden>
+          <div class="crcat" data-cat="clothes" id="crCatClothes">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 4 6l2 4 2-1v12h8V9l2 1 2-4-5-3a3 3 0 0 1-6 0Z"/></svg>Ropa <span>conjuntos y armario</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="clothes" title="Conjunto al azar" aria-label="Conjunto al azar"></button>
+          </div>
+          <div class="crblock">
+            <p class="lbl" id="crSlotsLbl">Conjunto para</p>
+            <div class="chips seg crslots" id="crSlots" role="group" aria-labelledby="crSlotsLbl"></div>
+          </div>
           <details class="sec" data-sec="conj" open>
             <summary><h3>Conjuntos</h3></summary>
-            <div class="chips" id="outfitChips"></div>
+            <div class="chips crtiles" id="outfitChips"></div>
             <div class="row" style="margin-top:8px">
               <button class="btn small" id="outfitRandom">Al azar</button>
               <button class="btn small" id="outfitNone">Desvestir</button>
@@ -355,17 +397,25 @@
               <div class="row"><button class="btn small" id="outfitAll">Vestir a todos igual</button><button class="btn small" id="outfitEachRandom">Cada uno al azar</button></div>
             </details>
           </details>
-          <details class="sec" data-sec="puestas" open>
-            <summary><h3>Ropa puesta <span>toca una prenda para cambiar su color</span></h3></summary>
-            <div id="garmentList"></div>
-            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
-            <p class="note dropnote">También puedes arrastrar un color hasta una prenda o el pelo en el lienzo.</p>
-          </details>
           <details class="sec" data-sec="armario" open>
             <summary><h3>Armario <span>toca para poner o quitar</span></h3></summary>
             <input type="search" id="ropaSearch" class="search" placeholder="Buscar prenda…" aria-label="Buscar prenda">
             <div id="garmentAdd"></div>
           </details>
+          <details class="sec fine" data-sec="puestas" open>
+            <summary><h3>Ropa puesta <span>toca una prenda para cambiar su color</span></h3><span class="finetag">Ajuste fino</span></summary>
+            <div id="garmentList"></div>
+            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
+            <p class="note dropnote">También puedes arrastrar un color hasta una prenda o el pelo en el lienzo.</p>
+          </details>
+          <div class="crcat" data-cat="acc" id="crCatAcc">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.5c3 2 15 2 18 0M6 17l2-9.5C8.3 6 10 5.5 12 5.5s3.7.5 4 2l2 9.5M7.3 12.5c3 1 6.4 1 9.4 0"/></svg>Accesorios <span>sombreros, joyas, guantes y más</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="acc" title="Accesorios al azar" aria-label="Accesorios al azar"></button>
+          </div>
+          <div class="crblock">
+            <div class="chips crfilt" id="crAccCats" role="group" aria-label="Tipo de accesorio"></div>
+            <div class="lib cracc" id="crAcc"></div>
+          </div>
           <p class="note foot-note">469 prendas de la comunidad MakeHuman (CC0) ajustadas a la malla: siguen cualquier edad, complexión, proporción y pose. La piel que cubren no se dibuja.</p>
         </section>
 
@@ -620,6 +670,25 @@
         </section>
       </div>
     </aside>
+    <div class="crgallery" id="crGallery">
+      <div class="crghead">
+        <h2 class="crgtitle" id="crGalTitle"><button class="crgtoggle" type="button" id="crGalToggle" aria-expanded="true" aria-controls="crGalRow">Tus personajes</button></h2>
+        <div class="crgtools" role="toolbar" aria-label="Tus personajes">
+          <button class="btn small" type="button" id="crNew" title="Un personaje nuevo en la escena"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo</span></button>
+          <button class="btn small magic" type="button" id="crDice" title="Al azar: cuerpo, pelo, cara y ropa del personaje activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.1" fill="currentColor"/></svg><span>Al azar</span></button>
+          <button class="btn small" type="button" id="charSave" title="Guardar el personaje activo en Mis personajes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4Z"/></svg><span>Guardar este personaje</span></button>
+          <button class="btn small" type="button" id="crExport" title="Exportar el personaje activo a un archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Exportar</span></button>
+          <button class="btn small" type="button" id="charImport" title="Personajes de NEOPOSE (.json) o avatares VRM, GLB y FBX"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg><span>Importar…</span></button>
+          <button class="btn small" type="button" id="crExportAll" title="Todos los de Mis personajes en un archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h11v13M5 7h11v14H5zM10.5 10v7M8 14.5l2.5 2.5 2.5-2.5"/></svg><span>Exportar todos</span></button>
+          <input type="file" id="charFile" accept=".json,application/json,.vrm,.glb,.gltf,.fbx" multiple hidden>
+        </div>
+      </div>
+      <div class="crgrow" id="crGalRow">
+        <div class="crgroup"><p class="lbl" id="crStageLbl">En escena</p><div class="crgcards" id="crStage" role="group" aria-labelledby="crStageLbl"></div></div>
+        <div class="crgroup"><p class="lbl" id="crMineLbl">Mis personajes</p><div class="pose-grid chargrid" id="charGrid" role="group" aria-labelledby="crMineLbl"></div></div>
+        <div class="crgroup" id="crCastBox"><p class="lbl" id="crCastLbl">Reparto del proyecto</p><div class="crgcards" id="crCast" role="group" aria-labelledby="crCastLbl"></div></div>
+      </div>
+    </div>
   </div>
 </div>
 

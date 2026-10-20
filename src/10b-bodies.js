@@ -60,11 +60,14 @@ function applyBuild(m, build) {
 /* ---------- the panel ---------- */
 let buildThumbR = null, buildFig = null;
 function buildThumb(build) {  // a silhouette of the build on the active character's sex and age, front and side
+  const fake = {body: {...BODY_BASE, gender: mq.body.gender, age: mq.body.age}}; applyBuild(fake, build);
+  return bodySilhouette(fake.body);
+}
+function bodySilhouette(body) {
   try {
     if (!buildThumbR) { buildThumbR = new THREE.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true}); buildThumbR.setPixelRatio(2); buildThumbR.setSize(96, 120); buildThumbR.setClearColor(0, 0);
       buildFig = new Mannequin({sil: new THREE.MeshBasicMaterial({color: 0xffffff})}, 'sil'); buildFig.noMuscles = true; buildFig.sc = new THREE.Scene(); buildFig.cam = new THREE.PerspectiveCamera(24, 96 / 120, .05, 80); }
-    const fake = {body: {...BODY_BASE, gender: mq.body.gender, age: mq.body.age}}; applyBuild(fake, build);
-    buildFig.build(fake.body); buildFig.joints.hips.position.set(0, buildFig.rootY, 0); applyPreset(buildFig, POSE.pie); buildFig.sc.add(buildFig.group);
+    buildFig.build(body); buildFig.joints.hips.position.set(0, buildFig.rootY, 0); applyPreset(buildFig, POSE.pie); buildFig.sc.add(buildFig.group);
     const box = buildFig.box(8), c = box.getCenter(new V3()), h = box.getSize(new V3()).y;
     buildFig.cam.position.set(c.x + h * .9, c.y, c.z + h * 2.1); buildFig.cam.lookAt(c); buildThumbR.render(buildFig.sc, buildFig.cam);
     return buildThumbR.domElement.toDataURL('image/png');

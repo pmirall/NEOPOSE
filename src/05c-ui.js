@@ -15,6 +15,7 @@ function pushHistory() {
   const sig = chars.length + JSON.stringify(chars.map(m => [m.body.species, m.body.headStyle, m.heads, m.size]));
   if (hist.castSig && sig !== hist.castSig) reframeSoon();
   hist.castSig = sig;
+  if (typeof crChanged === 'function') crChanged();
 }
 function restore(s) {
   const o = typeof s === 'string' ? JSON.parse(s) : s;
@@ -211,12 +212,14 @@ function showTab(id) {
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
   // Biblia's turntable is for showing a character off: leaving the tab stops it (the canvas would keep spinning under other work)
-  if (id !== 'biblia' && controls.autoRotate) { controls.autoRotate = false; const s = $('#bbSpin'); if (s) s.checked = false; }
+  if (id !== 'biblia' && !CR_TABS.has(id) && controls.autoRotate) { controls.autoRotate = false; const s = $('#bbSpin'); if (s) s.checked = false; }
   store.set('cdp.tab', id);
   // the garment library (1.3 MB) is fetched the first time it is shown, not at start; it is also drawn then when the palette or Práctica fetched it first
   if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && (!ROPA.catalog || !$('#garmentAdd').childElementCount)) renderLibrary();
   // Estático's comic page shows with its tab (and the 3D canvas with the others)
   if (typeof showPage === 'function') showPage(id === 'comic');
+  // Cuerpo and Ropa are the character creator's (see 20e-creator)
+  if (typeof creatorSync === 'function') creatorSync();
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); setPanel(true); });
 /* collapsible sections remember whether they were open */
@@ -268,9 +271,10 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
   $('#viewport').addEventListener('pointerdown', () => { if (++n === 3) $('#hint').classList.add('quiet'); store.set('cdp.hintN', n); }); }
 
 /* body */
+const CR_TABS = new Set(['cuerpo', 'ropa']);  // the tabs the character creator lays out (20e-creator)
 let bodyEls = {};
 // what a character keeps when a body type is picked: who they are (name, cast link, species, head, coat, tail, face, hair), their limbs and prostheses and an imported avatar
-const KEEP_ON_TYPE = ['castId','name','species','headStyle','kemo','snout','headModel','feet','coat','tail','tailMove','pads','paws','fluff','expr','exprAmt','hair','hairCol','limbs','avatar','avatarScale'];
+const KEEP_ON_TYPE = ['castId','name','outfits','outfitSlot','species','headStyle','kemo','snout','headModel','feet','coat','tail','tailMove','pads','paws','fluff','expr','exprAmt','hair','hairCol','limbs','avatar','avatarScale'];
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
     const nb = bodyOf(id); for (const k of KEEP_ON_TYPE) if (mq.body[k] !== undefined) nb[k] = mq.body[k];
