@@ -102,8 +102,8 @@ INK.mat = new THREE.ShaderMaterial({
     float across(vec2 o, vec4 c, float zc) {
       vec4 a = texture2D(tN, vUv + o), b = texture2D(tN, vUv - o);
       float za = a.a > .5 ? Z(vUv + o) : zc * 1.5, zb = b.a > .5 ? Z(vUv - o) : zc * 1.5, lap = (za + zb - 2.0 * zc) / zc;
-      float step_ = smoothstep(.006, .016, lap);                                    // a form in front of another: its near side
-      float fold = smoothstep(.3, .65, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * a.a * b.a;  // turning inwards
+      float step_ = smoothstep(.004, .012, lap);                                    // a form in front of another: its near side
+      float fold = smoothstep(.22, .55, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * a.a * b.a;  // turning inwards
       float tol = zc * .004, part = 0.0;                                            // a part ends: on the one in front
       if (a.a > .5 && abs(a.b - c.b) > .5 / 255.0 && (zc < za - tol || (abs(za - zc) <= tol && c.b > a.b))) part = 1.0;
       if (b.a > .5 && abs(b.b - c.b) > .5 / 255.0 && (zc < zb - tol || (abs(zb - zc) <= tol && c.b > b.b))) part = 1.0;

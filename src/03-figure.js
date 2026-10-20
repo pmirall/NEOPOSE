@@ -155,9 +155,10 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
     }`,
   fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
 });
-// the sculpted heads' ears are single sheets: seen from behind, a one-sided material shows nothing there and the
-// outline hull behind them comes through as black blots. Their mesh wears a two-sided twin of the style's material
-// (same shader and uniforms, so the same coat, highlight and ink id); the closed body keeps culling its back faces
+// the sculpted heads' ears, a hoof's cap, a tuft are single sheets or open shells: seen from behind, a one-sided
+// material shows nothing there and the outline hull behind them comes through as black blots. Everything but the
+// body wears a two-sided twin of the style's material (same shader and uniforms, so the same coat, highlight and ink
+// id); the closed body, most of the pixels, keeps culling its back faces
 const TWO_SIDED = new WeakMap();
 function twoSided(mat) {
   let c = TWO_SIDED.get(mat);
@@ -592,7 +593,7 @@ class Mannequin {
       const m = this.lib[k]; if (!m || !m.isMaterial) continue;
       m.transparent = ghost; m.opacity = ghost ? (mode === 'esqueleto' ? .16 : .3) : 1; m.depthWrite = !ghost; m.needsUpdate = true;
     }
-    if (this.headMesh) { this.headMesh.material = twoSided(this.lib[this.style]); this.headMesh.material.needsUpdate = true; }
+    for (const m of this.meshes) if (m !== this.body3) { m.material = twoSided(this.lib[this.style]); m.material.needsUpdate = true; }
     applySkeletonVis(this);
     if (this.garments) applyGarmentVis(this);
   }
@@ -660,7 +661,7 @@ class Mannequin {
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     // fluff tufts are skinned like the skin under them: the body's skeleton, not the accessories'
     this.fluffGeo = null;
-    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, this.lib[this.style]); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
+    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style])); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
       this.group.add(fm); fm.bind(this.skeleton, I0); this.acc.push(fm); this.meshes.push(fm);
       if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.skeleton, I0); this.acc.push(o); this.hulls.push(o); } } }
     const I = new THREE.Matrix4();
@@ -673,7 +674,7 @@ class Mannequin {
       if (this.lib.outline && p.kind !== 'cavity') { const o = new THREE.SkinnedMesh(p.geo, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; mm.add(o); o.bind(this.accSkeleton, I); this.hulls.push(o); }
     }
     for (const g of geos) {
-      const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
+      const m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
       m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
       this.group.add(m); m.bind(this.accSkeleton, I); this.acc.push(m); this.meshes.push(m);
       m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
@@ -755,7 +756,7 @@ class Mannequin {
   }
   setStyle(style) {
     this.style = style;
-    for (const m of this.meshes) m.material = m.userData.headSwap ? twoSided(this.lib[style]) : this.lib[style];
+    for (const m of this.meshes) m.material = m === this.body3 ? this.lib[style] : twoSided(this.lib[style]);
     for (const m of this.mouthMeshes || []) m.material = mouthMat(m.userData.kind, style);
     this.hulls.forEach(o => o.visible = this.outlineOn !== false);
     if (this.formMode && this.formMode !== 'figura') this.applyFormVis();

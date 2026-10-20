@@ -1418,9 +1418,10 @@ const SUITES = {
     const mc = await mouth('contorno'), ms = await mouth('silueta'), mk = await mouth('construccion');
     ok(mc.n > 4 && mc.open && mc.hulls === mc.teeth && mk.hulls === mk.teeth, `an open mouth: its ${mc.teeth} teeth and tongue outlined, in Solo línea and in Construcción`);
     ok(mc.types === 'MeshBasicMaterial' && ms.cols.length === 1 && ms.cols[0] === 0x2a2620 && ms.hulls === 0 && mk.types === 'MeshToonMaterial', `the mouth takes the style: flat paper and greys in Solo línea, the figure's dark in Silueta (no outline there), shaded in Construcción`);
-    // the sculpted head's ears are single sheets: drawn from both sides, as the body's material (same shader and ink id)
-    const head = await A(() => { const m = window.__cdp.mq, h = m.headMesh, b = m.lib[m.style]; return {side: h.material.side === THREE.DoubleSide, same: h.material.onBeforeCompile === b.onBeforeCompile, ink: !!h.material.userData.ink, style: m.style}; });
-    ok(head.side && head.same && head.ink, `the sculpted head is drawn from both sides with the style's own shader (${head.style})`);
+    // the sculpted head's ears, hoof caps, tufts are single sheets: drawn from both sides with the body's own shader (and ink id); the closed body culls
+    const head = await A(() => { const m = window.__cdp.mq, b = m.lib[m.style], rest = m.meshes.filter(x => x !== m.body3);
+      return {n: rest.length, side: rest.every(x => x.material.side === THREE.DoubleSide), same: rest.every(x => x.material.onBeforeCompile === b.onBeforeCompile && x.material.userData.ink), head: rest.includes(m.headMesh), body: m.body3.material === b, style: m.style}; });
+    ok(head.n > 3 && head.side && head.same && head.head && head.body, `the sculpted head and the ${head.n - 1} other parts are drawn from both sides with the style's own shader, the body from the front (${head.style})`);
     // a human in Solo línea: the ink pass too, and nothing of a coat
     await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="humano"]').click()); await page.waitForTimeout(3000);
     await goTab(page, 'dibujo'); await style('contorno'); await aim('head', 3.4);
