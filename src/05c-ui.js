@@ -33,7 +33,14 @@ function restore(s) {
 }
 function undo() { if (hist.i > 0) { restore(hist.stack[--hist.i]); updateUndo(); autosaveSoon(); return true; } return false; }
 function redo() { if (hist.i < hist.stack.length - 1) { restore(hist.stack[++hist.i]); updateUndo(); autosaveSoon(); return true; } return false; }
-function updateUndo() { $('#undo').disabled = $('#undoF').disabled = hist.i <= 0; $('#redo').disabled = $('#redoF').disabled = hist.i >= hist.stack.length - 1; }
+function updateUndo() {
+  if (typeof sk !== 'undefined' && sk.on) {  // while sketching they undo and redo the strokes
+    $('#undo').disabled = $('#undoF').disabled = !sk.strokes.length; $('#redo').disabled = $('#redoF').disabled = !sk.redo.length;
+    $('#undo').title = tr('Deshacer el trazo (Ctrl+Z)'); $('#redo').title = tr('Rehacer el trazo (Ctrl+Y)'); return;
+  }
+  $('#undo').disabled = $('#undoF').disabled = hist.i <= 0; $('#redo').disabled = $('#redoF').disabled = hist.i >= hist.stack.length - 1;
+  $('#undo').title = tr('Deshacer (Ctrl+Z)'); $('#redo').title = tr('Rehacer (Ctrl+Y)');
+}
 /* ---------- the scene survives a reload, a closed tab or an update ----------
    A moment after each change (and whenever the page is hidden) the whole scene (cast, set, camera, look and film)
    goes to IndexedDB, or to localStorage where there is none; the next start brings it back, with a way to begin
@@ -315,12 +322,13 @@ function buildDrawUI() {
   const box = $('#drawSliders'); box.innerHTML = '';
   slider(box, {id: 'd_stride', label: 'Separación de anillos', min: .012, max: .08, step: .001, value: LU.uStride.value, fmt: v => dec(v * 100) + ' cm', input: v => LU.uStride.value = v});
   slider(box, {id: 'd_alpha', label: 'Intensidad de líneas', min: .1, max: 1, step: .01, value: state.lineA, fmt: pctFmt, input: v => { state.lineA = v; applyDrawing(); }});
-  slider(box, {id: 'd_out', label: 'Grosor del contorno', min: 0, max: 4, step: .1, value: state.outline, fmt: v => dec(v) + ' px', input: v => { state.outline = v; applyDrawing(); }});
+  slider($('#outlineBox'), {id: 'd_out', label: 'Grosor del contorno', min: 0, max: 4, step: .1, value: state.outline, fmt: v => dec(v) + ' px', input: v => { state.outline = v; applyDrawing(); }});
   $('#centerChk').onchange = e => LU.uCenter.value = e.target.checked ? 1 : 0;
   slider($('#hatchBox'), {id: 'd_hatch', label: 'Cantidad de sombreado', min: .2, max: .7, step: .01, value: LU.uHatch.value, fmt: pctFmt, input: v => LU.uHatch.value = v});
   chips($('#levelChips'), [[2, 'Dos tonos'], [3, 'Tres tonos']], 3, v => LU.uLevels.value = +v);
   slider($('#valueBox'), {id: 'd_thr', label: 'Umbral de sombra', min: .2, max: .8, step: .01, value: LU.uThresh.value, fmt: pctFmt, input: v => LU.uThresh.value = v});
   chips($('#formChips'), Object.entries(FORM_MODES), state.form, v => setForm(v));
+  $('#styleToSketch').onclick = () => setSketch(true);
   applyDrawing();
 }
 

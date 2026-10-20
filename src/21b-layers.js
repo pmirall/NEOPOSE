@@ -62,18 +62,18 @@ async function renderLayerSet(subsFrame) {
   const keep = {bg: ex.bg, guides: $('#exGuides').checked, sketch: $('#exSketch').checked}, vis = chars.map(m => m.group.visible), stools = chars.map(m => m.stoolMesh && m.stoolMesh.visible), pv = props.map(p => p.visible);
   const only = f => chars.forEach((m, i) => { m.group.visible = vis[i] && f(i); if (m.avatar) m.avatar.root.visible = m.group.visible; if (m.stoolMesh) m.stoolMesh.visible = stools[i] && f(i); });
   const layers = [];
-  $('#exGuides').checked = false; $('#exSketch').checked = false;
+  ex.userGuides = keep.guides; $('#exGuides').checked = false; $('#exSketch').checked = false;  // (no guides drawn over the layers, but the centre line and the grid stay as asked)
   try {
     ex.bg = keep.bg === 'alpha' || keep.bg === 'lines' ? 'alpha' : 'paper'; only(() => false);
     layers.push({name: tr('Escenario'), canvas: renderExportCanvas()});
     ex.bg = 'alpha'; props.forEach(p => { if (!(p.userData.held)) p.visible = false; });
     for (let i = 0; i < chars.length; i++) { if (!vis[i]) continue; only(j => j === i); layers.push({name: `${tr('Personaje')} ${i + 1} · ${charName(chars[i])}`, canvas: renderExportCanvas()}); }
     ex.bg = 'lines'; only(() => true); layers.push({name: tr('Líneas'), canvas: renderExportCanvas(), opacity: .9});
-    if (sk.strokes.length) { ex.bg = 'alpha'; only(() => false); if (envGroup) envGroup.visible = false; $('#exSketch').checked = true; const c = renderExportCanvas(); layers.push({name: tr('Boceto'), canvas: c}); }
+    if (sketchInExport()) { ex.bg = 'alpha'; only(() => false); if (envGroup) envGroup.visible = false; $('#exSketch').checked = true; const c = renderExportCanvas(); layers.push({name: tr('Boceto'), canvas: c}); }
     if (subsFrame != null && typeof burnSubs === 'function' && shot() && shot().lines.some(l => l.text.trim())) {  // the same folders in every frame of a shot that has dialogue
       const c = document.createElement('canvas'); c.width = layers[0].canvas.width; c.height = layers[0].canvas.height; burnSubs(c, subsFrame); layers.push({name: tr('Subtítulos'), canvas: c}); }
   } finally {
-    ex.bg = keep.bg; $('#exGuides').checked = keep.guides; $('#exSketch').checked = keep.sketch; only(() => true); props.forEach((p, i) => p.visible = pv[i]);
+    ex.bg = keep.bg; ex.userGuides = undefined; $('#exGuides').checked = keep.guides; $('#exSketch').checked = keep.sketch; only(() => true); props.forEach((p, i) => p.visible = pv[i]);
   }
   const top = document.createElement('canvas'); top.width = layers[0].canvas.width; top.height = layers[0].canvas.height; layers.push({name: tr('Dibuja aquí'), canvas: top});
   return layers;
@@ -82,11 +82,13 @@ async function layeredPSD() { const L = await renderLayerSet(); return psdBytes(
 async function savePSD() {
   $('#exMsg').textContent = tr('Preparando las capas…'); await new Promise(r => setTimeout(r, 30));
   const bytes = await layeredPSD(); saveFile(`neopose-${stamp()}.psd`, bytes, 'image/vnd.adobe.photoshop');
-  $('#exMsg').textContent = tr('PSD con capas: escenario, cada personaje, líneas{s} y una capa vacía para dibujar.', {s: sk.strokes.length ? ', ' + tr('boceto') : ''});
+  $('#exMsg').textContent = tr('PSD con capas: escenario, cada personaje, líneas{s} y una capa vacía para dibujar.', {s: sketchInExport() ? ', ' + tr('boceto') : ''});
 }
 
 /* ---------- open in… ---------- */
 const nativeShell = () => window.neoposeNative || null;
+// a plain browser cannot start a program: "Open in…" copies the picture and downloads the PSD (asked each time: the desktop app's bridge can arrive after boot)
+function openInIsBrowser() { const cap = window.Capacitor; return !nativeShell() && !(cap && cap.isNativePlatform && cap.isNativePlatform()); }
 // from the top bar the export window is closed: the news goes to a note on the canvas
 const oiMsg = t => { $('#exMsg').textContent = t; if ($('#exportModal').hidden) toast(t); };
 async function openIn() {
@@ -141,6 +143,7 @@ async function exportLayerSequences() {
 function buildLayersUI() {
   $('#exPsd').onclick = savePSD;
   $('#exOpenIn').onclick = openIn; $('#openIn').onclick = openIn;
+  if (openInIsBrowser()) $('#openIn').title = tr('Copia la imagen para pegarla en tu programa de dibujo y descarga un PSD con capas para abrirlo en Krita, Clip Studio, Photoshop…');
   $('#openInClose').onclick = () => { $('#openInModal').hidden = true; };
   $('#openInModal').onclick = e => { if (e.target.id === 'openInModal') $('#openInModal').hidden = true; };
 }

@@ -180,6 +180,9 @@ body.practicing .cast{display:none}
 
 #sketch,#sketchLive{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:2;touch-action:none}
 #sketchLive.on{pointer-events:auto;cursor:crosshair}
+/* the sketch is drawn over Estático's picture: the other spaces do not show it, nor the Dibujo tab's way to it */
+body:not([data-ws="static"]) #sketch{visibility:hidden}
+body:not([data-ws="static"]) #styleSketchNote,body:not([data-ws="static"]) #styleToSketch{display:none}
 .sketch-bar{position:absolute;left:12px;top:58px;bottom:52px;overflow:auto;z-index:4;width:268px;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:10px 12px;box-shadow:var(--lift);display:grid;gap:6px}
 #sketchBtn[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--page)}
 .search{width:100%;border:0;border-bottom:1.5px solid var(--ink);background:transparent;padding:6px 2px;margin:0 0 8px;font:inherit;color:var(--ink)}
@@ -800,6 +803,11 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .thumbbar .btn:disabled{opacity:.45}
   body.practicing .thumbbar,#sketchBar:not([hidden]) ~ .thumbbar{display:none}
   body.anim .thumbbar{bottom:calc(var(--dockH,0px) + 12px)}
+  /* the brushes become a strip along the bottom, so the figure above stays free to draw on */
+  .sketch-bar{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:45%;gap:4px;overscroll-behavior:contain}
+  .sketch-bar .brushes{display:flex;overflow-x:auto;gap:4px;scrollbar-width:none}
+  .sketch-bar .brush{flex:0 0 68px}
+  #skMsg{display:none}
 }
 /* the index of a long tab */
 .secnav{position:sticky;top:-6px;z-index:4;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin:-6px -14px 8px -30px;padding:8px 14px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule)}

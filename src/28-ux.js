@@ -568,5 +568,8 @@ function buildUX() {
     b.onclick = () => toast(tr('Arrastra el color hasta una prenda o el pelo de un personaje.')); dc.appendChild(b); }
   initDrag(); initGestures(); initMenus(); initPalette(); initSheet(); initModals();
   // the handlers that change a pose from the panel glide too
-  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => { usePreset(POSE.pie); toast(tr('Pose de pie neutra'), {undo: true}); }], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) { const b = $(sel); if (b) b.onclick = () => withGlide(fn); }
+  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => { usePreset(POSE.pie); toast(tr('Pose de pie neutra'), {undo: true}); }], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) {
+    const b = $(sel), strokes = /^#(un|re)do/.test(sel);  // (while sketching, undo and redo act on the strokes)
+    if (b) b.onclick = () => strokes && sk.on ? $(sel.includes('undo') ? '#skUndo' : '#skRedo').click() : withGlide(fn);
+  }
 }

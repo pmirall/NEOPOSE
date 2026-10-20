@@ -75,6 +75,8 @@ renderer.setAnimationLoop(frame);
 
 /* ---------- export ---------- */
 const ex = {bg: 'paper', size: 2};
+// the sketch is drawn over Estático's picture: it goes into the still images made there, not into a film's frames
+const sketchInExport = () => sk.strokes.length > 0 && WS.cur === 'static' && !ex.film;
 function renderExport() {
   const out = renderExportCanvas();
   ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
@@ -83,12 +85,13 @@ function renderExport() {
 // the picture of the current view, with the chosen background, size and layers (also each frame of an animation)
 function renderExportCanvas(subsFrame) {
   noDockView();  // the next frame puts it back
-  const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines;
-  const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value};
+  const lines = ex.bg === 'lines', alpha = ex.bg === 'alpha' || lines, noGuides = !(ex.userGuides ?? $('#exGuides').checked);  // (the layers keep them, see renderLayerSet)
+  const vis = {tc: tc.visible, bg: scene.background, env: envGroup && envGroup.visible, grid: grid.visible, fog: scene.fog, sky: sky.visible, style: state.style, render: LU.uRender.value, center: LU.uCenter.value};
   const hidden = [...(typeof TRAIL !== 'undefined' && TRAIL.group ? [TRAIL.group] : []), ...(typeof DYN !== 'undefined' ? [DYN.loaObj, DYN.balObj, ...DYN.inbMeshes].filter(Boolean) : []), ...Object.values(handles), ...Object.values(jointDots), ...Object.values(pinRings), sunHandle, sunRing, ...extraLights.flatMap(g => g.children.filter(c => c.isMesh)), ...(ghostMesh ? [ghostMesh] : []), ...ANIM.ghosts];
   const hv = hidden.map(h => h.visible);
   tc.visible = false; hidden.forEach(h => h.visible = false);
   const panoV = panoSphere.visible;
+  if (noGuides) { LU.uCenter.value = 0; grid.visible = false; }  // without the guides: no centre line, no floor grid either
   if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; panoSphere.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
   if (lines) { for (const m of chars) m.setStyle('contorno'); LU.uRender.value = 0; }
   const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, f = frameRect(W, Hh), k = exportScale(f);
@@ -110,10 +113,10 @@ function renderExportCanvas(subsFrame) {
   c.save(); c.scale(k, k); c.translate(-f.x, -f.y);
   if ($('#exGuides').checked && (state.guides.thirds || state.guides.persp || state.guides.ruler || state.guides.action)) { c.noFrame = true; drawOverlay(c, W, Hh); }
   c.restore();
-  if ($('#exSketch').checked && sk.strokes.length) c.drawImage(sketchCanvas(k), f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
+  if ($('#exSketch').checked && sketchInExport()) c.drawImage(sketchCanvas(k), f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
   renderer.setPixelRatio(pr); renderer.setSize(W, Hh, false); LU.uLineW.value = lw; LU.uDpr.value = dpr;
   if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; }
-  tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = panoV;
+  tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; LU.uCenter.value = vis.center; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = panoV;
   hidden.forEach((h, i) => h.visible = hv[i]);
   if (subsFrame != null) burnSubs(out, subsFrame);
   return onPaper(out, alpha);
@@ -143,7 +146,12 @@ function renderView(o) {
   resize(); dockView();  // the window's own size and aspect back
   return out;
 }
-function openExport() { tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus(); }
+// the window opens on what the space makes: the film in Animación, a picture elsewhere (a turnaround, maps or 3D stay as chosen)
+function openExport() {
+  setExportKind(ANIM.open && EXK.kind === 'img' ? 'anim' : !ANIM.open && EXK.kind === 'anim' ? 'img' : EXK.kind);
+  if (EXK.kind === 'anim' && !ANIM.exported) { ANIM.exported = true; ex.imgSize = ex.size; ex.size = 1; setPressed($('#exSize'), '1'); }  // a film's first export at 1× (every frame is a picture)
+  tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus();
+}
 function closeExport() { $('#exportModal').hidden = true; }
 $('#exportBtn').onclick = openExport; $('#exClose').onclick = closeExport;
 $('#exportModal').onclick = e => { if (e.target.id === 'exportModal') closeExport(); };

@@ -341,15 +341,18 @@ function exportKindUI() {
   const w = EXK.animWhat, pic = k !== 'anim' || w === 'frames' || w === 'layers' || w === 'gif' || w === 'board' || w === 'keylines';
   $('#exOptImg').hidden = k !== 'img'; $('#exOptTurn').hidden = k !== 'turn'; $('#exOptMap').hidden = k !== 'maps'; $('#exOpt3d').hidden = k !== 'm3d'; $('#exOptAnim').hidden = k !== 'anim';
   $('#exBgRow').hidden = k === 'maps' || k === 'm3d' || !pic || (k === 'anim' && w === 'keylines'); $('#exKeyRow').hidden = k !== 'anim' || w !== 'keylines'; $('#exSizeRow').hidden = k === 'm3d' || !pic;
-  $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim'; $('#exPsd').hidden = k !== 'img'; $('#exOpenIn').hidden = k !== 'img' && k !== 'anim';
+  $('#exImgWrap').hidden = k === 'm3d' || (k === 'anim' && !pic); $('#exCopy').hidden = k === 'm3d' || k === 'anim'; $('#exPsd').hidden = k !== 'img'; $('#exOpenIn').hidden = k !== 'img' || openInIsBrowser();  // (in a browser it could only copy and download, as «Copiar imagen» and «PSD con capas» beside it do)
+  // the picture's checkboxes only when they can change something: a guide on, a sketch drawn in Estático
+  const G = state.guides; $('#exGuides').closest('label').hidden = !(G.thirds || G.persp || G.ruler || G.action || G.grid || $('#centerChk').checked);
+  $('#exSketch').closest('label').hidden = !(sk.strokes.length && WS.cur === 'static');
   $('#exAnimStepRow').hidden = w !== 'frames' && w !== 'layers' && w !== 'gif'; $('#exSubsRow').hidden = !(w === 'frames' || w === 'layers' || w === 'gif' || w === 'board' || w === 'video'); $('#exAnimResRow').hidden = w !== 'video';
   $('#exAnimRange').querySelectorAll('.chip').forEach(b => b.disabled = w === 'bvh' && b.dataset.v === 'movie');
   $('#exBg .chip[data-v=paper]').textContent = tr(k === 'turn' ? 'Papel' : 'Con escenario');
-  $('#exSave').textContent = k === 'anim' ? tr('Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
+  $('#exSave').textContent = k === 'anim' ? tr(w === 'bvh' ? 'Guardar BVH' : 'Exportar') : k === 'm3d' ? tr(EXK.fmt3d === 'bvh' ? 'Guardar BVH' : 'Guardar GLB') : tr('Guardar PNG');
 }
 // the choices of the last export come back next time
 const EX_KEEP = ['kind', 'map', 'views', 'fmt3d', 'animWhat', 'animRange', 'animStep', 'vres'];
-function saveExportPrefs() { store.set('cdp.export', {...Object.fromEntries(EX_KEEP.map(k => [k, EXK[k]])), bg: ex.bg, size: ex.size}); }
+function saveExportPrefs() { store.set('cdp.export', {...Object.fromEntries(EX_KEEP.map(k => [k, EXK[k]])), bg: ex.bg, size: ex.imgSize || ex.size}); }
 function loadExportPrefs() {
   const p = store.get('cdp.export', null); if (!p) return;
   const ok = {kind: EX_KINDS, map: EX_MAPS, fmt3d: {glb: 1, bvh: 1}, animWhat: EX_ANIM, animRange: {shot: 1, movie: 1}, animStep: {1: 1, 2: 1, 4: 1, keys: 1}, vres: {720: 1, 1080: 1}, views: {4: 1, 8: 1}};
@@ -358,6 +361,7 @@ function loadExportPrefs() {
   if ([1, 2, 3, 'a5', 'a4', 'a3'].includes(p.size)) ex.size = p.size;
 }
 function renderExportKind() {
+  $('#exSave').disabled = false; $('#exOptAnim').classList.remove('empty');  // (an empty Animación disables them again, see animExportPreview)
   exportKindUI(); saveExportPrefs();
   if (EXK.kind === 'img') return renderExport();
   if (EXK.kind === 'anim') return animExportPreview();
@@ -380,10 +384,15 @@ function saveExport() {
   const bytes = PRINT[ex.size] ? pngWithDpi(src, 300) : (() => { const b = atob(src.split(',')[1]), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; })();
   saveFile(name, bytes, 'image/png');
 }
+// what to export; leaving the film, the pictures get their own size back (see openExport)
+function setExportKind(v) {
+  if (EXK.kind === 'anim' && v !== 'anim' && ex.imgSize) { ex.size = ex.imgSize; ex.imgSize = null; setPressed($('#exSize'), String(ex.size)); }
+  EXK.kind = v; setPressed($('#exKind'), v);
+}
 function buildExportUI() {
   initVideoWindow();
   loadExportPrefs(); buildKeyLinesUI();
-  chips($('#exKind'), Object.entries(EX_KINDS), EXK.kind, v => { EXK.kind = v; setPressed($('#exKind'), v); renderExportKind(); });
+  chips($('#exKind'), Object.entries(EX_KINDS), EXK.kind, v => { setExportKind(v); renderExportKind(); });
   chips($('#exMap'), Object.entries(EX_MAPS), EXK.map, v => { EXK.map = v; setPressed($('#exMap'), v); renderExportKind(); });
   chips($('#exViews'), [['4', '4 vistas'], ['8', '8 vistas']], String(EXK.views), v => { EXK.views = +v; setPressed($('#exViews'), v); renderExportKind(); });
   chips($('#ex3d'), [['glb', 'GLB (malla posada)'], ['bvh', 'BVH (esqueleto y pose)']], EXK.fmt3d, v => { EXK.fmt3d = v; setPressed($('#ex3d'), v); renderExportKind(); });
@@ -409,23 +418,28 @@ function countFrames() {
   return list.reduce((a, s) => a + (st === 'keys' ? new Set([0, ...s.keys.flat().map(k => k.f), ...s.cam.map(k => k.f), ...s.lines.map(l => l.f), s.len - 1]).size : Math.ceil(s.len / +st)), 0);
 }
 function animExportPreview() {
-  exportKindUI();
-  if (!ANIM.shots.length) {  // nothing to export yet: say so, and the way there
-    const n = $('#exAnimNote'), b = document.createElement('button'); n.textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.') + ' ';
-    b.type = 'button'; b.className = 'btn small'; b.textContent = tr('Abrir Animar'); b.onclick = () => { closeExport(); openTimeline(true); }; n.appendChild(b);
-    $('#exMsg').textContent = ''; $('#exSave').disabled = true; $('#exImgWrap').hidden = $('#exBgRow').hidden = $('#exSizeRow').hidden = true; $('#exOptAnim').classList.add('empty'); return;
-  }
-  $('#exOptAnim').classList.remove('empty');
-  $('#exSave').disabled = false;
-  const w = EXK.animWhat, list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], secs = list.reduce((a, s) => a + s.len, 0) / ANIM.fps;
-  $('#exAnimNote').textContent = w === 'frames' ? tr('{n} fotogramas en PNG, en carpetas por plano dentro de un archivo ZIP.', {n: countFrames()})
-    : w === 'video' ? (window.VideoEncoder ? tr('MP4 de {s} s a 30 fotogramas por segundo, renderizado fotograma a fotograma, con las voces.', {s: dec(secs)}) : tr('Se graba mientras se reproduce: {s} s.', {s: dec(secs)}))
-    : w === 'board' ? tr('Una viñeta por plano, con su nombre, duración, cámara y diálogo: {n} viñetas.', {n: list.length})
-    : tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))});
-  if (w === 'keylines') return keyLinesPreview();
-  if (w === 'frames' || w === 'board') { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
-    $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
-  else $('#exMsg').textContent = '';
+  exportKindUI(); ex.film = true;  // (a film's frames leave the Estático sketch out)
+  try {
+    if (!ANIM.shots.length) {  // nothing to export yet: say so, and the way there
+      const n = $('#exAnimNote'), b = document.createElement('button'); n.textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.') + ' ';
+      b.type = 'button'; b.className = 'btn small'; b.textContent = tr('Abrir Animar'); b.onclick = () => { closeExport(); openTimeline(true); }; n.appendChild(b);
+      $('#exMsg').textContent = ''; $('#exSave').disabled = true; $('#exImgWrap').hidden = $('#exBgRow').hidden = $('#exSizeRow').hidden = true; $('#exOptAnim').classList.add('empty'); return;
+    }
+    $('#exOptAnim').classList.remove('empty');
+    $('#exSave').disabled = false;
+    const w = EXK.animWhat, list = EXK.animRange === 'movie' ? ANIM.shots : [shot()], secs = list.reduce((a, s) => a + s.len, 0) / ANIM.fps;
+    $('#exAnimNote').textContent = w === 'frames' ? tr('{n} fotogramas en PNG, en carpetas por plano dentro de un archivo ZIP.', {n: countFrames()})
+      : w === 'video' ? (window.VideoEncoder ? tr('MP4 de {s} s a 30 fotogramas por segundo, renderizado fotograma a fotograma, con las voces.', {s: dec(secs)}) : tr('Se graba mientras se reproduce: {s} s.', {s: dec(secs)}))
+      : w === 'board' ? tr('Una viñeta por plano, con su nombre, duración, cámara y diálogo: {n} viñetas.', {n: list.length})
+      : w === 'layers' ? tr('{n} fotogramas en un ZIP, con una carpeta por capa (escenario, cada personaje, líneas…) para importarlas como capas animadas.', {n: countFrames()})
+      : w === 'gif' ? tr('GIF animado de {n} fotogramas, de hasta 720 px de ancho, que se repite sin fin.', {n: countFrames()})
+      : w === 'audio' ? tr('Los diálogos de toda la película, con sus voces, en un archivo WAV ({s} s).', {s: dec(ANIM.shots.reduce((a, s) => a + s.len, 0) / ANIM.fps)})  // (the WAV is always the whole film)
+      : w === 'bvh' ? tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))}) : '';
+    if (w === 'keylines') return keyLinesPreview();
+    if (['frames', 'board', 'gif', 'layers'].includes(w)) { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
+      $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
+    else $('#exMsg').textContent = '';
+  } finally { ex.film = false; }
 }
 function exportBusy(on, p) {
   for (const id of ['#exSave', '#exClose', '#exCopy']) $(id).disabled = on;
@@ -437,7 +451,7 @@ async function exportAnimation() {
   if (w === 'bvh') return saveFile(`animacion-${stamp()}.bvh`, new TextEncoder().encode(animBVH(mq)), 'text/plain');
   storeShot();
   if (w === 'video') { closeExport(); return exportVideo(EXK.animRange); }
-  exportBusy(true, 0);
+  ex.film = true; exportBusy(true, 0);
   try {
     if (w === 'layers') await exportLayerSequences();
     else if (w === 'keylines') await exportKeyLines();
@@ -459,7 +473,7 @@ async function exportAnimation() {
       ex.canvas = pages[0]; $('#exImg').src = pages[0].toDataURL('image/png'); $('#exMsg').textContent = tr('Guion gráfico listo: {n} página(s).', {n: pages.length});
     }
   } catch (e) { console.warn('anim export', e); $('#exMsg').textContent = tr('No se ha podido exportar: {e}', {e: e && e.message || e}); }
-  exportBusy(false);
+  ex.film = false; exportBusy(false);
 }
 // animated GIF: plays anywhere (chats, references boards, PureRef), each frame held as long as it lasts
 async function exportGIF() {

@@ -649,7 +649,7 @@ function buildAnimUI() {
   $('#tlPrev').onclick = () => jump(-1); $('#tlNext').onclick = () => jump(1);
   $('#tlCamRec').onclick = toggleCamRec;
   $('#tlLine').onclick = () => addLine();
-  $('#tlExport').onclick = () => { EXK.kind = 'anim'; if (!ANIM.exported) { ANIM.exported = true; ex.size = 1; setPressed($('#exSize'), '1'); } openExport(); setPressed($('#exKind'), 'anim'); };
+  $('#tlExport').onclick = () => { setExportKind('anim'); openExport(); };
   $('#tlMin').onclick = () => { ANIM.min = !ANIM.min; $('#timeline').classList.toggle('min', ANIM.min); $('#tlMin').setAttribute('aria-expanded', String(!ANIM.min)); drawTimeline(); };
   // tracks: selection, moves, menus, zoom (22c-timeline)
   const cv = $('#tlTrack'); initTimeline(cv); initTimelineKeys();

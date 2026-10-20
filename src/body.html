@@ -377,6 +377,9 @@
             <p class="note" id="styleNote"></p>
             <div id="hatchBox" hidden></div>
             <div id="valueBox" hidden><div class="chips" id="levelChips"></div></div>
+            <div id="outlineBox"></div>
+            <p class="note" id="styleSketchNote">Para dibujar encima de la figura, abre el Boceto (B).</p>
+            <button class="btn small" id="styleToSketch" type="button">Boceto</button>
           </details>
           <details class="sec" data-sec="guias" open>
             <summary><h3>Guías</h3></summary>
@@ -595,7 +598,7 @@
       <div id="exBgRow"><p>Fondo</p><div class="chips" id="exBg">
         <button class="chip" data-v="paper" aria-pressed="true">Con escenario</button>
         <button class="chip" data-v="alpha" aria-pressed="false">Transparente</button>
-        <button class="chip" data-v="lines" aria-pressed="false">Solo trazo</button></div></div>
+        <button class="chip" data-v="lines" aria-pressed="false" title="Solo las líneas, sobre fondo transparente">Solo línea</button></div></div>
       <div id="exSizeRow"><p>Tamaño</p><div class="chips" id="exSize">
         <button class="chip" data-v="1" aria-pressed="false">1×</button>
         <button class="chip" data-v="2" aria-pressed="true">2×</button>

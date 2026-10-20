@@ -129,7 +129,7 @@ function endStroke() {
   delete s.carry; delete s.drawn; delete s.rnd;
   if (!s.erase) { sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalAlpha = s.opacity; sctx.drawImage(skl, 0, 0); sctx.restore(); }
   lctx.save(); lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, skl.width, skl.height); lctx.restore();
-  sk.strokes.push(s); sk.redo = [];
+  sk.strokes.push(s); sk.redo = []; updateUndo();
 }
 skl.addEventListener('pointerup', endStroke); skl.addEventListener('pointercancel', endStroke);
 function setSketch(on) {
@@ -137,6 +137,9 @@ function setSketch(on) {
   sk.on = on; skl.classList.toggle('on', on); $('#sketchBar').hidden = !on;
   $('#sketchBtn').setAttribute('aria-pressed', String(on));
   if (on) select(null);
+  // closing it (Cerrar, Esc, another space) brings the figure and the scene back (the practice keeps its own hiding)
+  else if (!practice.active) { if (sk.hideFig) setHideFig(false); if (sk.dim) { sk.dim = false; canvas.style.opacity = 1; $('#skDim').textContent = tr('Atenuar escena'); } }
+  updateUndo();  // the top bar's undo and redo act on the strokes while it is open
 }
 function setHideFig(v) { sk.hideFig = v; $$('.hideFigBtn').forEach(b => b.textContent = tr(v ? 'Mostrar figura' : 'Ocultar figura')); }
 
@@ -299,9 +302,9 @@ function buildSketchUI() {
   $('#skPSize').checked = sk.pSize; $('#skPSize').onchange = e => sk.pSize = e.target.checked;
   $('#skPOpac').checked = sk.pOpac; $('#skPOpac').onchange = e => sk.pOpac = e.target.checked;
   $('#skMouse').checked = sk.mouseSim; $('#skMouse').onchange = e => sk.mouseSim = e.target.checked;
-  $('#skUndo').onclick = () => { const s = sk.strokes.pop(); if (s) { sk.redo.push(s); redrawSketch(); } };
-  $('#skRedo').onclick = () => { const s = sk.redo.pop(); if (s) { sk.strokes.push(s); redrawSketch(); } };
-  $('#skClear').onclick = () => { if (!sk.strokes.length) return; const was = sk.strokes; sk.redo = sk.strokes.slice().reverse(); sk.strokes = []; redrawSketch(); toast(tr('Boceto borrado'), {undo: () => { sk.strokes = was; sk.redo = []; redrawSketch(); }}); };
+  $('#skUndo').onclick = () => { const s = sk.strokes.pop(); if (s) { sk.redo.push(s); redrawSketch(); } updateUndo(); };
+  $('#skRedo').onclick = () => { const s = sk.redo.pop(); if (s) { sk.strokes.push(s); redrawSketch(); } updateUndo(); };
+  $('#skClear').onclick = () => { if (!sk.strokes.length) return; const was = sk.strokes; sk.redo = sk.strokes.slice().reverse(); sk.strokes = []; redrawSketch(); updateUndo(); toast(tr('Boceto borrado'), {undo: () => { sk.strokes = was; sk.redo = []; redrawSketch(); updateUndo(); }}); };
   $$('.hideFigBtn').forEach(b => b.onclick = () => setHideFig(!sk.hideFig));
   $('#skDim').onclick = () => { sk.dim = !sk.dim; canvas.style.opacity = sk.dim ? .35 : 1; $('#skDim').textContent = tr(sk.dim ? 'Escena normal' : 'Atenuar escena'); };
   $('#skClose').onclick = () => setSketch(false);
