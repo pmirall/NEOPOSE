@@ -742,8 +742,8 @@ const SUITES = {
     ok(head.man && head.apple && /viewport-fit=cover/.test(head.vp), 'the page links the manifest and the iOS icon, and uses the whole screen');
     await page.waitForFunction(() => navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true), null, {timeout: 60000});
     await page.waitForTimeout(3000);
-    const cached = await page.evaluate(async () => { const ks = await caches.keys(), shell = ks.find(k => k.startsWith('neopose-shell-')); return shell ? (await (await caches.open(shell)).keys()).length : 0; });
-    ok(cached >= 10, `the service worker keeps the shell (${cached} files)`);
+    const cached = await page.evaluate(async () => { const ks = await caches.keys(), files = ks.includes('neopose-files') ? await (await caches.open('neopose-files')).keys() : [], shell = ks.find(k => k.startsWith('neopose-shell-')); return {n: files.length, hashed: files.every(r => /[?&]h=[0-9a-f]{10}/.test(r.url)), page: shell ? (await (await caches.open(shell)).keys()).length : 0}; });
+    ok(cached.n >= 10 && cached.hashed && cached.page >= 1, `the service worker keeps the shell (${cached.n} files, each by its content hash, and the page)`);
     await page.reload(); await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000}); await page.waitForTimeout(2500);
     await ctx.setOffline(true); await page.reload();
     const offline = await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000}).then(() => true, () => false);
@@ -1053,8 +1053,8 @@ const SUITES = {
     ok(R > 0 && R2.n === R, `a copy brought back restores the work after a restart (sketch: ${R2.n} of ${R} strokes)`);
     // a shared link: what was here is kept as a copy
     const S2 = await A(async () => { const C = window.__cdp, S = C.safety; S.autosaveNow(); await new Promise(r => setTimeout(r, 500)); const n0 = (await S.snapList()).length;
-      location.hash = C.sceneLink().split('#')[1]; S.openSharedScene(); await new Promise(r => setTimeout(r, 1500)); const L = await S.snapList(); return {n0, n: L.length, label: L[0] && L[0].label}; });
-    ok(S2.n >= Math.min(10, S2.n0 + 1) && /link|enlace/i.test(S2.label), `opening a shared link keeps the previous work as a copy («${S2.label}»)`);
+      location.hash = C.sceneLink().split('#')[1]; S.openSharedScene(); await new Promise(r => setTimeout(r, 1500)); const L = await S.snapList(); return {n0, n: L.length, label: L[0] && L[0].label, all: L.map(x => x.label).join(' | '), hash: location.hash.slice(0, 10), sh: (document.querySelector('#hint').textContent || '').slice(0, 60)}; });
+    ok(S2.n >= Math.min(10, S2.n0 + 1) && /link|enlace/i.test(S2.label), `opening a shared link keeps the previous work as a copy («${S2.label}»)` + (/link|enlace/i.test(S2.label) ? '' : ' ' + JSON.stringify(S2)));
     await A(() => { document.querySelector('#setBtn').click(); }); await page.waitForTimeout(500);
     const st = await A(() => ({rows: document.querySelectorAll('#snapList .snaprow').length, saved: document.querySelector('#snapSaved').textContent}));
     ok(st.rows >= 3 && st.saved.length > 5, `Settings lists ${st.rows} copies and when the work was last saved`);

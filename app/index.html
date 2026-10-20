@@ -17671,7 +17671,7 @@ function buildFileUI() {
    (opening a file or a shared link, starting afresh, making the film again, bringing back an older copy). Settings
    lists them and brings any of them back. A failed save says so (once) and offers a file instead; a second tab of the
    app is warned about (both would write the same autosave). */
-const SNAPS = {key: 'cdp.snaps', max: 10, every: 10 * 60e3, last: 0, failed: false, saved: 0, persist: false};
+const SNAPS = {key: 'cdp.snaps', max: 10, every: 10 * 60e3, last: Date.now(), failed: false, saved: 0, persist: false};
 // the whole work, as the autosave keeps it
 function workData() { return JSON.stringify({v: 1, t: Date.now(), ...snapshot(), ...sceneExtras(true, {project: true}), sketch: sk.strokes.length ? sk.strokes : undefined}); }
 // the work is still the scene the app starts with (nothing worth a copy)
