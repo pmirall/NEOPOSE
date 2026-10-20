@@ -479,6 +479,7 @@ class Mannequin {
     this.computeHandAxes(jp);
     this.buildAccessories(sp, tl, tsp);
     attachHeadSwap(this);
+    attachFluff(this);  // after the sculpted head: cheek tufts grow on its skin
     musclesAfterBuild(this);
     garmentsAfterBuild(this);
     limbsAfterBuild(this);
@@ -630,11 +631,6 @@ class Mannequin {
       g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
-    // fluff tufts are skinned like the skin under them: the body's skeleton, not the accessories'
-    this.fluffGeo = null;
-    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, this.lib[this.style]); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
-      this.group.add(fm); fm.bind(this.skeleton, I0); this.acc.push(fm); this.meshes.push(fm);
-      if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.skeleton, I0); this.acc.push(o); this.hulls.push(o); } } }
     const I = new THREE.Matrix4();
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];

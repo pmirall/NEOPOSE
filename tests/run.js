@@ -182,6 +182,61 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
+  // fur tufts: clumps of thick tapered locks where real fur breaks the outline, flowing with the hair, attached to the skin
+  async furtufts(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await goTab(page, 'cuerpo');
+    const pick = async sp => { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(2500); };
+    // every lock (5 rings of 6 vertices): where it grows, its base and tip, its length, how deep it is against how wide
+    const locks = () => A(() => {
+      const C = window.__cdp, m = C.mq, F = C.FIG, g = m.fluffGeo; if (!g) return null;
+      const P = g.attributes.position.array, R = g.attributes.aRoot.array, E = g.attributes.aEye.array, BP = m.geo.attributes.position.array, J = m.J, j = n => [0, 1, 2].map(k => J[F.jIdx[n] * 3 + k]);
+      const v = i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), avg = (o, r) => [0, 1, 2].map(k => { let s = 0; for (let q = 0; q < 6; q++) s += P[(o + r * 6 + q) * 3 + k]; return s / 6; });
+      const out = [];
+      for (let o = 0; o < R.length; o += 30) {
+        const r = R[o], base = avg(o, 0), tip = avg(o, 4), ring = [0, 1, 2, 3, 4, 5].map(q => v(o + 6 + q)), wide = Math.max(...ring.map(a => Math.max(...ring.map(b => d(a, b)))));
+        out.push({part: r < 0 ? 'cheek' : F.region[m.dom[r]], root: r < 0 ? null : [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
+      }
+      return {L: out, n: P.length / 3, size: m.size, chest: j('chest'), elbow: j('elbowL'), wrist: j('wristL'), ankle: j('ankleL')};
+    });
+    // (the fox's sculpted head loads on its own: wait for its cheeks)
+    await pick('zorro'); await page.waitForFunction(() => { const g = window.__cdp.mq.fluffGeo; return g && g.attributes.aRoot.array.includes(-1); }, null, {timeout: 60000}); const f = await locks();
+    ok(f && f.L.length >= 60 && f.n < 9000, `a fox grows tufts: ${f && f.L.length} locks, ${f && f.n} vertices (modest)`);
+    ok(f.L.every(l => l.deep > .45), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
+    const lens = f.L.map(l => l.len / f.size);
+    ok(Math.max(...lens) < .12 && Math.min(...lens) > .01, `locks are tufts, not spikes: ${(Math.min(...lens) * 100).toFixed(1)}–${(Math.max(...lens) * 100).toFixed(1)} cm per metre of body`);
+    const cheek = f.L.filter(l => l.part === 'cheek');
+    ok(cheek.length >= 6 && cheek.filter(l => l.tip[2] < l.base[2]).length >= cheek.length * .8, `cheek ruffs on the sculpted head, swept back (${cheek.length} locks)`);
+    const bib = f.L.filter(l => l.part === 'torso' && l.root[2] > f.chest[2] && Math.abs(l.root[0]) < .08 * f.size);
+    ok(bib.length >= 10 && bib.filter(l => l.tip[1] < l.base[1]).length >= bib.length * .8, `a chest bib falling down the breastbone (${bib.length} locks)`);
+    ok(bib.filter(l => l.belly > .4).length >= bib.length * .8, 'the bib takes the light colour of the fox\'s chest');
+    const near = (l, p, r) => l.root && Math.hypot(l.root[0] - p[0], l.root[1] - p[1], l.root[2] - p[2]) < r * f.size;
+    const el = f.L.filter(l => near(l, f.elbow, .08) && l.root[2] < f.elbow[2]), wr = f.L.filter(l => near(l, f.wrist, .09)), hk = f.L.filter(l => near(l, f.ankle, .09) && l.root[2] < f.ankle[2]);
+    ok(el.length >= 3 && wr.length >= 6 && hk.length >= 3, `tufts behind the elbow (${el.length}), round the wrist (${wr.length}) and behind the hock (${hk.length})`);
+    ok(wr.filter(l => l.tip[1] < l.base[1]).length >= wr.length * .8, 'the wrist tufts point down the arm, to the paw');
+    // attached: in a pose, every arm lock keeps its place on the skin it grows from
+    const drift = await A(() => {
+      const C = window.__cdp, m = C.mq, fm = m.meshes.find(x => x.userData.fluff), bm = m.body3, R = fm.geometry.attributes.aRoot.array, F = C.FIG, v = new THREE.Vector3();
+      const sk = (mesh, i) => mesh.boneTransform(i, v.fromBufferAttribute(mesh.geometry.attributes.position, i)).clone().applyMatrix4(mesh.matrixWorld);
+      const at = [], gaps = () => { m.group.updateMatrixWorld(true); const out = []; for (let o = 0; o < R.length; o += 30) { const r = R[o]; if (r >= 0 && /^(arm|hand)R/.test(F.region[m.dom[r]])) { const b = sk(fm, o); at.push(b); out.push(b.distanceTo(sk(bm, r))); } } return out; };
+      const g0 = gaps(); C.usePreset(C.POSES.find(p => p.id === 'saludo')); const g1 = gaps();
+      return {gap: g0.length ? Math.max(...g0.map((g, i) => Math.abs(g - g1[i]))) / m.size : 1, moved: Math.max(...g0.map((g, i) => at[i].distanceTo(at[i + g0.length]))) / m.size}; });
+    ok(drift.moved > .2 && drift.gap < .005, `waving, the arm's tufts travel with it (${(drift.moved * 100).toFixed(0)} cm/m) and stay where they grow (gaps to their roots change by ${(drift.gap * 1000).toFixed(1)} mm/m at most)`);
+    await A(() => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); });
+    // the fluff slider: fuller and longer tufts; quick to rebuild
+    const at = v => A(v => { const C = window.__cdp, m = C.mq; m.body.fluff = v; let t = performance.now(); for (let i = 0; i < 5; i++) C.furry.fluffGeo(m).dispose(); t = (performance.now() - t) / 5;
+      const g = C.furry.fluffGeo(m), n = g.attributes.position.count; g.dispose(); return {n, t}; }, v);
+    const lo = await at(.2), hi = await at(1);
+    ok(hi.n > lo.n * 1.3, `more fluff, fuller tufts (${lo.n} → ${hi.n} vertices)`);
+    ok(hi.t < 40, `generated in a few milliseconds (${hi.t.toFixed(1)} ms at full fluff, software rendering)`);
+    await A(() => { delete window.__cdp.mq.body.fluff; window.__cdp.rebuildActive(); });
+    // a lion's mane is its ruff: no cheek or neck tufts on it; a dragon has scales, no fur
+    await pick('leon'); const li = await locks();
+    ok(li && !li.L.some(l => l.part === 'cheek' || l.part === 'neck'), `a lion's mane stands for its cheek and neck ruff (${li && li.L.length} locks elsewhere)`);
+    await pick('dragon'); ok(await locks() === null, 'a dragon has no fur tufts');
+    ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
+    await page.context().close();
+  },
   // posing helpers: a pinned hand stays put, a library pose can be blended with the one before, a chair can be sat on
   async posing(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
