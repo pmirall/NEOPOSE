@@ -1026,6 +1026,19 @@ const SUITES = {
   // the comic desk: gutters and corners dragged on the page, layouts that keep what the panels hold, pictures swapped
   // by dragging, undo and redo, the row of pages (new, copied, reordered, their state), the page's script (the same
   // words as the balloons), one click into a panel's scene and back
+  // the Ko-fi note: only after the third save, then not again for a fortnight; quiet links in Help and Settings
+  async support(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    const r = await A(async () => { const S = window.__cdp.support, wait = () => new Promise(res => setTimeout(res, 2600)), shown = () => /Ko-fi|coffee|café/i.test(document.querySelector('#hint').textContent);
+      S.supportAfterSave(); S.supportAfterSave(); await wait(); const early = shown(); S.supportAfterSave(); await wait(); const third = shown();
+      document.querySelector('#hint').classList.remove('toast'); S.supportAfterSave(); await wait(); const again = shown() && S.SUP.saves === 4 && S.SUP.last > 0;
+      const links = [...document.querySelectorAll('a.kofi')].map(a => a.href); return {early, third, again, links, last: S.SUP.last}; });
+    ok(!r.early && r.third && r.links.length === 2 && r.links.every(h => h === 'https://ko-fi.com/pmirall'), `the Ko-fi note waits for the third save (${r.early ? 'shown early!' : 'not before'}), and Help and Settings link to it`);
+    const q = await A(async () => { const S = window.__cdp.support; S.SUP.last = Date.now(); const n = S.SUP.saves; S.supportAfterSave(); await new Promise(res => setTimeout(res, 2600)); return S.SUP.last !== 0 && S.SUP.saves === n + 1; });
+    ok(q, 'after it has shown, it stays quiet for a fortnight');
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors');
+    await page.context().close();
+  },
   async comicdesk(browser) {
     const page = await open(browser), A = fn => page.evaluate(fn);
     await goTab(page, 'comic'); await page.waitForTimeout(900);

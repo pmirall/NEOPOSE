@@ -318,6 +318,7 @@ function pngWithDpi(dataUrl, dpi) {
   return out;
 }
 function saveFile(name, bytes, mime) {
+  if (typeof supportAfterSave === 'function') supportAfterSave();
   const cap = window.Capacitor;
   if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
     let b64 = ''; for (let i = 0; i < bytes.length; i += 32768) b64 += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768)); b64 = btoa(b64);

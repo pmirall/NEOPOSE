@@ -12,7 +12,7 @@ function boot(data, saved) {
   initTour(); initAvatars();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
-  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI(); buildComicUI(); buildBibleUI(); buildFilmPanelUI();
+  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI(); buildComicUI(); buildBibleUI(); buildFilmPanelUI(); buildSupportUI();
   resize(); setView(30, 8); frameAll();
   if (snap && snap.cam) applySceneExtras({cam: snap.cam});
   pushHistory(); initAutosave(!!snap, !!snap && snap === saved);
