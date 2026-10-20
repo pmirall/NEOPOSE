@@ -90,19 +90,20 @@ function garmentMat(style, U) {
   mat.side = THREE.DoubleSide;
   mat.polygonOffset = true;
   mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU, U);
+    Object.assign(sh.uniforms, LU, U); inkUniforms(sh, mat);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>
-        attribute vec4 aLine; attribute float aHide; varying float vGHide; varying vec4 vL2; varying vec3 vRest; varying vec2 vTUv;`)
+        attribute vec4 aLine; attribute float aHide; varying float vGHide; varying vec4 vL2; varying vec3 vRest; varying vec2 vTUv; varying vec3 vInkN;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vL2 = aLine; vRest = position; vTUv = vec2(uv.x, uv.y); vGHide = aHide;`);
+        vL2 = aLine; vRest = position; vTUv = vec2(uv.x, uv.y); vGHide = aHide; ${inkVert(mat)}`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${PATTERN_GLSL}\n${TEX_GLSL}\n${SKETCH_GLSL}\nvarying float vGHide;`)
+      .replace('#include <common>', `#include <common>\n${PATTERN_GLSL}\n${TEX_GLSL}\n${SKETCH_GLSL}\nvarying float vGHide; uniform float uInk, uInkId; varying vec3 vInkN;`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\n if (vGHide > .999) discard; vec4 tx = texel(); if (uCut > .5 && tx.a < .5) discard;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${tint ? `{ float l = dot(tx.rgb, vec3(.299, .587, .114)), det = clamp(l / max(uAvgL, .05), .35, 1.5);
           diffuseColor.rgb = uMode < .5 ? tx.rgb : (uMode < 1.5 ? uColA * det : garmentColor() * mix(1.0, det, .8)); }` : ''}`)
-      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`);
+      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`)
+      .replace('#include <dithering_fragment>', inkFrag('0.0'));
   };
   mat.customProgramCacheKey = () => 'ropa-' + style;
   return mat;

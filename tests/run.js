@@ -1377,6 +1377,58 @@ const SUITES = {
     ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
     await page.context().close();
   },
+  // Solo línea as a line drawing: interior lines from the ink pass (overlaps, folds, part borders), the small parts
+  // (teeth, tongue, the inside of the mouth) outlined and in every style, the ink renders without the guides
+  async furlines(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    const style = st => A(st => document.querySelector(`#styleChips .chip[data-v="${st}"]`).click(), st);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="lobo"]').click()); await page.waitForTimeout(4500);
+    await goTab(page, 'dibujo'); await page.waitForTimeout(300);
+    // the camera on the head, from the front and a little to the side
+    const aim = (bone, k) => A(([bone, k]) => { const C = window.__cdp, m = C.mq, c = m.joints[bone].getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
+      C.controls.target.copy(c); C.camera.position.copy(c).add(new THREE.Vector3(.35, .05, 1).normalize().applyQuaternion(q).multiplyScalar(m.headH * k)); C.camera.lookAt(c); C.controls.update(); }, [bone, k]);
+    await aim('head', 3.4);
+    await style('construccion'); const off = await A(() => window.__cdp.ink.inkWanted());
+    await style('contorno'); await page.waitForTimeout(300); const on = await A(() => window.__cdp.ink.inkWanted());
+    ok(on && !off, 'the ink pass runs in Solo línea only (the other styles keep their look)');
+    // the buffer it reads: the head's parts apart (fur, the eyes, the nose leather)
+    const parts = await A(() => { const C = window.__cdp; C.renderView({w: 480, h: 480, bg: 'paper'}); const rt = [...C.ink.INK.rts.values()].pop(), px = new Uint8Array(rt.width * rt.height * 4);
+      C.renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, px); const n = new Map(); let cov = 0;
+      for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { cov++; n.set(px[i + 2], (n.get(px[i + 2]) || 0) + 1); }
+      return {size: rt.width + '×' + rt.height, cov, ids: [...n.values()].filter(v => v > 15).length}; });
+    ok(parts.size === '480×480' && parts.cov > 20000 && parts.ids >= 3, `the ink buffer has the head at the picture's size (${parts.size}, ${parts.cov} px) with its parts apart (${parts.ids} ids)`);
+    // lines inside the silhouette: far more ink away from the outline with the pass than with its lines made invisible
+    const inner = async a => A(a => { const C = window.__cdp, U = C.ink.INK.mat.uniforms.uA, a0 = U.value; U.value = a;
+      const ink = C.renderView({w: 480, h: 480, bg: 'lines'}).getContext('2d').getImageData(0, 0, 480, 480).data, sil = C.renderView({w: 480, h: 480, bg: 'alpha'}).getContext('2d').getImageData(0, 0, 480, 480).data; U.value = a0;
+      let n = 0; for (let y = 5; y < 475; y++) for (let x = 5; x < 475; x++) { const i = (y * 480 + x) * 4; if (ink[i + 3] < 128) continue; let inside = true;
+        for (let dy = -5; dy <= 5 && inside; dy += 5) for (let dx = -5; dx <= 5; dx += 5) if (!sil[((y + dy) * 480 + x + dx) * 4 + 3]) { inside = false; break; } if (inside) n++; }
+      return n; }, a);
+    const withInk = await inner(1), without = await inner(0);
+    ok(withInk > without * 1.3 && withInk - without > 150, `interior lines: ${withInk} ink pixels inside the head against ${without} with the outline alone`);
+    // the ink render is the drawing's line: no rings, no red centre line, and the guides are back afterwards
+    const guide = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value; L.uLineA.value = .8; L.uCenter.value = 1;
+      const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] - d[i + 2] > 40) red++;
+      const kept = L.uLineA.value === .8 && L.uCenter.value === 1; L.uLineA.value = la; L.uCenter.value = ce; return {red, kept}; });
+    ok(guide.red === 0 && guide.kept, `the ink render leaves out the centre line and the rings, and puts them back (${guide.red} red pixels)`);
+    // an open mouth: teeth and tongue outlined, every part of it in the drawing style
+    await goTab(page, 'pose'); await A(() => document.querySelector('#exprChips .chip[data-v="rugido"]').click()); await page.waitForTimeout(800);
+    const mouth = async st => { await goTab(page, 'dibujo'); await style(st); await page.waitForTimeout(200);
+      return A(() => { const m = window.__cdp.mq, M = m.mouthMeshes; return {n: M.length, open: M.every(x => x.visible), types: [...new Set(M.map(x => x.material.type))].join(), cols: [...new Set(M.map(x => x.material.color.getHex()))],
+        hulls: M.filter(x => x.children.some(h => h.userData.hull && h.visible)).length, teeth: M.filter(x => x.userData.kind !== 'cavity').length}; }); };
+    const mc = await mouth('contorno'), ms = await mouth('silueta'), mk = await mouth('construccion');
+    ok(mc.n > 4 && mc.open && mc.hulls === mc.teeth && mk.hulls === mk.teeth, `an open mouth: its ${mc.teeth} teeth and tongue outlined, in Solo línea and in Construcción`);
+    ok(mc.types === 'MeshBasicMaterial' && ms.cols.length === 1 && ms.cols[0] === 0x2a2620 && ms.hulls === 0 && mk.types === 'MeshToonMaterial', `the mouth takes the style: flat paper and greys in Solo línea, the figure's dark in Silueta (no outline there), shaded in Construcción`);
+    // the sculpted head's ears are single sheets: drawn from both sides, as the body's material (same shader and ink id)
+    const head = await A(() => { const m = window.__cdp.mq, h = m.headMesh, b = m.lib[m.style]; return {side: h.material.side === THREE.DoubleSide, same: h.material.onBeforeCompile === b.onBeforeCompile, ink: !!h.material.userData.ink, style: m.style}; });
+    ok(head.side && head.same && head.ink, `the sculpted head is drawn from both sides with the style's own shader (${head.style})`);
+    // a human in Solo línea: the ink pass too, and nothing of a coat
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="humano"]').click()); await page.waitForTimeout(3000);
+    await goTab(page, 'dibujo'); await style('contorno'); await aim('head', 3.4);
+    const hum = await inner(1), hum0 = await inner(0);
+    ok(hum > hum0 && await A(() => window.__cdp.mq.lib.uFur.uFurOn.value === 0), `a human's face gets its interior lines too (${hum} against ${hum0}) and no coat`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
+    await page.context().close();
+  },
   async scripts(browser) {
     const page = await open(browser, {lang: 'es'}), A = (f, a) => page.evaluate(f, a), DIR = path.join(__dirname, 'scripts'), EXP = JSON.parse(fs.readFileSync(path.join(DIR, 'expect.json'), 'utf8'));
     await page.click('#animBtn'); await page.waitForTimeout(400);

@@ -6,8 +6,20 @@ const LU = {
   uOutW: {value: 1.6}, uPx: {value: new THREE.Vector2(.002, .002)}, uOutCol: {value: new THREE.Color(0x1e1a15)},
   // 0 normal · 1 pencil hatching · 2 value study · 3 screentone (manga dots; uTone: the dot cell in pixels)
   uRender: {value: 0}, uDpr: {value: 1}, uThresh: {value: .5}, uLevels: {value: 3}, uHatch: {value: .4}, uTone: {value: 7},
-  uPaper: {value: new THREE.Color(0xf4f0e6)}, uGraphite: {value: new THREE.Color(0x2e2a25)}
+  uPaper: {value: new THREE.Color(0xf4f0e6)}, uGraphite: {value: new THREE.Color(0x2e2a25)},
+  uInk: {value: 0}  // 1 while the ink pass draws the characters' normals and part ids (see INK in 05f-render.js)
 };
+/* the ink pass's output, shared by every material a character is drawn with: the view normal (xy; z is the visible
+   side), and in blue the part: one id per material (body, garment, teeth, tongue…) plus, on the body, what the coat
+   says the skin is there (pad and nose leather, claw, horn: kinds 2–4 of furPack; fur, 0 and 1, is one part), so a line
+   is found where one part meets another, and round the eyes (w = 1: the eyelid's line). Each kind is read halfway
+   between its value and its neighbour's (leather below −3, between fur and leather; the eye above .5 on a bare body,
+   −.25 on a coat's −1.5), so the border runs along the triangles' middle, not on their jagged vertex ring. */
+const inkId = mat => 8 * (1 + mat.id % 30);
+const inkVert = mat => `vInkN = normalMatrix * ${mat.isMeshBasicMaterial ? '\n#if defined(USE_ENVMAP) || defined(USE_SKINNING)\nobjectNormal\n#else\nnormal\n#endif\n' : 'objectNormal'};`;
+const inkFrag = kind => `#include <dithering_fragment>
+  if (uInk > .5) { vec3 n = normalize(vInkN) * (gl_FrontFacing ? 1.0 : -1.0); gl_FragColor = vec4(n.xy * .5 + .5, (uInkId + ${kind}) / 255.0, 1.0); }`;
+function inkUniforms(sh, mat) { sh.uniforms.uInkId = {value: inkId(mat)}; mat.userData.ink = true; }
 const SKETCH_GLSL = `
   uniform float uRender, uDpr, uThresh, uLevels, uHatch, uTone;
   uniform vec3 uPaper, uGraphite;
@@ -36,18 +48,18 @@ const SKETCH_GLSL = `
   }`;
 function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = null) {
   mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF);
+    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF); inkUniforms(sh, mat);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vInkN;\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye; vFurP = position * uFurK;
+        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye; vFurP = position * uFurK; ${inkVert(mat)}
         #ifdef USE_SKINNING
         vHi = dot(skinWeight, vec4(1.0 - step(.5, abs(skinIndex.x - uHi)), 1.0 - step(.5, abs(skinIndex.y - uHi)),
                                    1.0 - step(.5, abs(skinIndex.z - uHi)), 1.0 - step(.5, abs(skinIndex.w - uHi))));
         #endif`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth;
+        varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
         varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil;
         ${FUR_GLSL}
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
@@ -72,8 +84,10 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           float d = abs(x) / max(fwidth(x), 1e-5);
           return 1.0 - clamp(d - w * .5 + .5, 0.0, 1.0);
         }`)
+      // (Solo línea is a line drawing on paper: the coat only as a pale wash, a little more on pads, nose and claws,
+      // and its rings at half strength, under the contour and the ink of its interior lines)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, uFurOn);`)
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, uFurOn${mat.isMeshBasicMaterial ? ' * (.14 + .12 * step(3.0, -vEye.w))' : ''});`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: triangles that join the upper snout (+1) to the jaw (-1) are cut
@@ -88,11 +102,12 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
             float ring = gridLine(vLine.z / uStride, uLineW);
             float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW), lineAt(vLine.y, uLineW)) * .85 : 0.0;
             float cen = vLine.w * uCenter * max(lineAt(vLine.y, uLineW * 1.7) * step(0.0, vLine.x), lineAt(vLine.y, uLineW * 1.2) * step(vLine.x, 0.0) * .7);
-            c = mix(c, uLineCol, max(ring, mer) * uLineA);
+            c = mix(c, uLineCol, max(ring, mer) * uLineA${mat.isMeshBasicMaterial ? ' * .5' : ''});
             c = mix(c, uCenterCol, cen * min(1.0, uLineA * 1.4));
           }
           gl_FragColor.rgb = c;
-        }`);
+        }`)
+      .replace('#include <dithering_fragment>', inkFrag('(vEye.w > mix(.5, -.25, uFurOn) ? 7.0 : vEye.w < -3.0 ? floor(-vEye.w) - 1.0 : 0.0)'));
   };
   mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type;
   return mat;
@@ -100,10 +115,12 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
 // scenery and construction forms: no contour rings, but they follow the pencil / value modes
 function patchEnv(mat) {
   mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU);
+    Object.assign(sh.uniforms, LU); inkUniforms(sh, mat);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vInkN;').replace('#include <begin_vertex>', `#include <begin_vertex>\n${inkVert(mat)}`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${SKETCH_GLSL}`)
-      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`);
+      .replace('#include <common>', `#include <common>\nuniform float uInk, uInkId; varying vec3 vInkN;\n${SKETCH_GLSL}`)
+      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`)
+      .replace('#include <dithering_fragment>', inkFrag('0.0'));
   };
   mat.customProgramCacheKey = () => 'cdp-env-' + mat.type;
   return mat;
@@ -117,7 +134,7 @@ function toonGradient() {
 const TOON_GRAD = toonGradient();
 const OUTLINE_MAT = new THREE.ShaderMaterial({
   uniforms: {uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol},
-  side: THREE.BackSide,
+  side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2,  // (behind thin parts' own faces: an ear or a tuft is not blotted by its hull)
   vertexShader: `#include <common>
     #include <skinning_pars_vertex>
     #include <morphtarget_pars_vertex>
@@ -138,6 +155,16 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
     }`,
   fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
 });
+// the sculpted heads' ears are single sheets: seen from behind, a one-sided material shows nothing there and the
+// outline hull behind them comes through as black blots. Their mesh wears a two-sided twin of the style's material
+// (same shader and uniforms, so the same coat, highlight and ink id); the closed body keeps culling its back faces
+const TWO_SIDED = new WeakMap();
+function twoSided(mat) {
+  let c = TWO_SIDED.get(mat);
+  if (!c) { c = mat.clone(); c.side = THREE.DoubleSide; c.onBeforeCompile = mat.onBeforeCompile; c.customProgramCacheKey = mat.customProgramCacheKey; c.userData.ink = true; TWO_SIDED.set(mat, c); }
+  c.transparent = mat.transparent; c.opacity = mat.opacity; c.depthWrite = mat.depthWrite;
+  return c;
+}
 // one material set per character, so each can highlight its own selected joint and fade on its own
 const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}};
 function makeCharMats() {
@@ -565,6 +592,7 @@ class Mannequin {
       const m = this.lib[k]; if (!m || !m.isMaterial) continue;
       m.transparent = ghost; m.opacity = ghost ? (mode === 'esqueleto' ? .16 : .3) : 1; m.depthWrite = !ghost; m.needsUpdate = true;
     }
+    if (this.headMesh) { this.headMesh.material = twoSided(this.lib[this.style]); this.headMesh.material.needsUpdate = true; }
     applySkeletonVis(this);
     if (this.garments) applyGarmentVis(this);
   }
@@ -639,8 +667,10 @@ class Mannequin {
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];
     for (const p of mouthParts(this)) {
-      const mm = new THREE.SkinnedMesh(p.geo, mouthMat(p.kind === 'cavity' ? 'cavity' : p.kind)); mm.frustumCulled = false; mm.userData.acc = true; mm.userData.mouth = true;
+      const mm = new THREE.SkinnedMesh(p.geo, mouthMat(p.kind, this.style)); mm.frustumCulled = false; mm.userData.acc = true; mm.userData.mouth = true; mm.userData.kind = p.kind;
       mm.visible = !!this.mouthOpen; this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.mouthMeshes.push(mm);
+      // teeth and tongue outlined like every other part (the hull hangs from its part, so it opens and closes with it)
+      if (this.lib.outline && p.kind !== 'cavity') { const o = new THREE.SkinnedMesh(p.geo, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; mm.add(o); o.bind(this.accSkeleton, I); this.hulls.push(o); }
     }
     for (const g of geos) {
       const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
@@ -725,7 +755,8 @@ class Mannequin {
   }
   setStyle(style) {
     this.style = style;
-    for (const m of this.meshes) m.material = this.lib[style];
+    for (const m of this.meshes) m.material = m.userData.headSwap ? twoSided(this.lib[style]) : this.lib[style];
+    for (const m of this.mouthMeshes || []) m.material = mouthMat(m.userData.kind, style);
     this.hulls.forEach(o => o.visible = this.outlineOn !== false);
     if (this.formMode && this.formMode !== 'figura') this.applyFormVis();
     if (this.garments) applyGarmentVis(this);

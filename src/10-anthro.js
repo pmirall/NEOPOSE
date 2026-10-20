@@ -124,10 +124,15 @@ function shiftAnthro(m, dy) {
   if (an.earBase) for (const k in an.earBase) an.earBase[k].y -= dy;
 }
 /* inside of the snout, shown when the jaw opens: palate and floor (dark), tongue, and teeth with canines */
+// they take the drawing style like the body: in Solo línea flat paper teeth, a pale tongue and the dark of the mouth
+// (as inked mouths are drawn: outlined teeth against a dark inside), in Silueta all of the figure's flat dark
 const MOUTH_MATS = {};
-function mouthMat(kind) {
-  if (!MOUTH_MATS[kind]) MOUTH_MATS[kind] = patchEnv(new THREE.MeshToonMaterial({color: kind === 'teeth' ? 0xf1ece0 : kind === 'tongue' ? 0xb0646a : 0x4a2a2a, gradientMap: TOON_GRAD, side: THREE.DoubleSide}));
-  return MOUTH_MATS[kind];
+function mouthMat(kind, style) {
+  const k = kind + (style === 'contorno' || style === 'silueta' ? style : ''), col = kind === 'teeth' ? 0xf1ece0 : kind === 'tongue' ? 0xb0646a : 0x4a2a2a;
+  if (!MOUTH_MATS[k]) MOUTH_MATS[k] = patchEnv(style === 'silueta' ? new THREE.MeshBasicMaterial({color: 0x2a2620, side: THREE.DoubleSide})
+    : style === 'contorno' ? new THREE.MeshBasicMaterial({color: kind === 'teeth' ? 0xf8f5ee : kind === 'tongue' ? 0xd2c8bf : 0x58504a, side: THREE.DoubleSide})
+    : new THREE.MeshToonMaterial({color: col, gradientMap: TOON_GRAD, side: THREE.DoubleSide}));
+  return MOUTH_MATS[k];
 }
 function snoutProfile(m) {
   const an = m.anthro, L = an.L, hh = L.hh, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, hs = m.headSwap;
