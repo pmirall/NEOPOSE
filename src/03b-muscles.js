@@ -36,7 +36,13 @@ const MUSCLE_DEFS = [
 ];
 const MUSCLES = MUSCLE_DEFS.flatMap(d => d.mid ? [{...d, s: ''}] : [{...d, s: 'L'}, {...d, s: 'R'}]);
 const MUSC_BONES = Math.ceil(MUSCLES.length / 16);  // extra skeleton "bones" that carry 16 activations each
-const MUSC_ATTRS = ['aMuscI', 'aMusc0', 'aMusc1', 'aMusc2', 'aMusc3', 'aMusc4', 'aMusc5'];
+/* Per vertex: four muscle ids and, for each, how far it moves the skin and turns its normal (24 numbers). They ride in
+   four attributes, not seven: a skinned figure with cross-contour lines, fur, lips and eyes would otherwise pass the 16
+   attributes WebGL allows once the vertex index the morphs read is counted (SwiftShader, the software WebGL browsers
+   fall back to, counts it and refuses the shader). Each float carries two whole numbers below 4096 (exact: a float
+   holds every integer to 2^24): the ids two by two, then the 24 numbers as 12-bit steps of the vertex's own largest
+   movement and turn, which ride as plain floats. A mesh without them reads zeros: no muscle. */
+const MUSC_ATTRS = ['aMuscP0', 'aMuscP1', 'aMuscP2', 'aMuscP3'];
 const mouthCount = () => (FIG.visemes ? FIG.visemes.length : 0);
 const smoothR = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
@@ -47,7 +53,9 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   C.skinning_pars_vertex += `
 #ifdef USE_SKINNING
   #define DQ_MIX ${DQ_MIX.toFixed(1)}
-  attribute vec4 aMuscI; attribute vec4 aMusc0; attribute vec4 aMusc1; attribute vec4 aMusc2; attribute vec4 aMusc3; attribute vec4 aMusc4; attribute vec4 aMusc5;
+  attribute vec4 aMuscP0; attribute vec4 aMuscP1; attribute vec4 aMuscP2; attribute vec4 aMuscP3;
+  vec2 mU( const in float v ) { float h = floor( v / 4096.0 ); return vec2( v - h * 4096.0, h ); }
+  vec2 mQ( const in float v, const in float s ) { return ( mU( v ) / 2047.5 - 1.0 ) * s; }
   float muscAct( const in float s ) {
     if ( s < 1.5 ) return 0.0;
     float k = s - 2.0, b = floor( k / 16.0 + 0.001 ), e = k - b * 16.0; mat4 M = getBoneMatrix( b );
@@ -79,9 +87,15 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   vec4 dqD = dqd0 * skinWeight.x + dqd1 * skinWeight.y + dqd2 * skinWeight.z + dqd3 * skinWeight.w;
   float dqS = dot( vec4( dqs0, dqs1, dqs2, dqs3 ), skinWeight ) / max( dot( skinWeight, vec4( 1.0 ) ), 1e-6 ), dqL = max( length( dqR ), 1e-8 ); dqR /= dqL; dqD /= dqL;
   vec3 dqT = 2.0 * ( dqR.w * dqD.xyz - dqD.w * dqR.xyz + cross( dqR.xyz, dqD.xyz ) );
-  float mA0 = muscAct( aMuscI.x ), mA1 = muscAct( aMuscI.y ), mA2 = muscAct( aMuscI.z ), mA3 = muscAct( aMuscI.w );
-  vec3 muscDisp = mA0 * aMusc0.xyz + mA1 * vec3( aMusc1.zw, aMusc2.x ) + mA2 * aMusc3.xyz + mA3 * vec3( aMusc4.zw, aMusc5.x );
-  vec3 muscNorm = mA0 * vec3( aMusc0.w, aMusc1.xy ) + mA1 * aMusc2.yzw + mA2 * vec3( aMusc3.w, aMusc4.xy ) + mA3 * aMusc5.yzw;
+  vec2 mI0 = mU( aMuscP0.x ), mI1 = mU( aMuscP0.y ); float mSd = aMuscP0.z, mSn = aMuscP0.w;
+  float mA0 = muscAct( mI0.x ), mA1 = muscAct( mI0.y ), mA2 = muscAct( mI1.x ), mA3 = muscAct( mI1.y );
+  vec3 muscDisp = vec3( 0.0 ), muscNorm = vec3( 0.0 );
+  if ( mA0 + mA1 + mA2 + mA3 != 0.0 ) {
+    vec2 d0 = mQ( aMuscP1.x, mSd ), d1 = mQ( aMuscP1.y, mSd ), d2 = mQ( aMuscP1.z, mSd ), d3 = mQ( aMuscP1.w, mSd ), d4 = mQ( aMuscP2.x, mSd ), d5 = mQ( aMuscP2.y, mSd );
+    vec2 n0 = mQ( aMuscP2.z, mSn ), n1 = mQ( aMuscP2.w, mSn ), n2 = mQ( aMuscP3.x, mSn ), n3 = mQ( aMuscP3.y, mSn ), n4 = mQ( aMuscP3.z, mSn ), n5 = mQ( aMuscP3.w, mSn );
+    muscDisp = mA0 * vec3( d0, d1.x ) + mA1 * vec3( d1.y, d2 ) + mA2 * vec3( d3, d4.x ) + mA3 * vec3( d4.y, d5 );
+    muscNorm = mA0 * vec3( n0, n1.x ) + mA1 * vec3( n1.y, n2 ) + mA2 * vec3( n3, n4.x ) + mA3 * vec3( n4.y, n5 );
+  }
 #endif
 `;
   C.skinnormal_vertex = `
@@ -123,16 +137,10 @@ const DQ_MIX = 1;  // 1: dual quaternions, 0: plain linear blend
   }
   THREE.SkinnedMesh.prototype.boneTransform = function (index, target) {
     const sk = this.skeleton, g = this.geometry, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, M = sk.boneMatrices;
-    const mi = g.attributes.aMuscI;
-    if (mi) {  // muscles, in rest space as in the shader
-      const A = g.attributes, I = mi.array, o = index * 4, P = [A.aMusc0.array, A.aMusc1.array, A.aMusc2.array, A.aMusc3.array, A.aMusc4.array, A.aMusc5.array];
-      const act = s => s < 1.5 ? 0 : (M[s - 2] || 0), a = [act(I[o]), act(I[o + 1]), act(I[o + 2]), act(I[o + 3])];
-      if (a[0] || a[1] || a[2] || a[3]) {
-        const f = (k, c) => P[k][o + c];
-        target.x += a[0] * f(0, 0) + a[1] * f(1, 2) + a[2] * f(3, 0) + a[3] * f(4, 2);
-        target.y += a[0] * f(0, 1) + a[1] * f(1, 3) + a[2] * f(3, 1) + a[3] * f(4, 3);
-        target.z += a[0] * f(0, 2) + a[1] * f(2, 0) + a[2] * f(3, 2) + a[3] * f(5, 0);
-      }
+    const mc = g.userData.musc;
+    if (mc) {  // muscles, in rest space as in the shader (from the full-precision copy the attributes were packed from)
+      const I = mc.ids, o = index * 4, act = s => s < 1.5 ? 0 : (M[s - 2] || 0);
+      for (let s = 0; s < 4; s++) { const a = act(I[o + s]); if (!a) continue; const d = (o + s) * 6; target.x += a * mc.pk[d]; target.y += a * mc.pk[d + 1]; target.z += a * mc.pk[d + 2]; }
     }
     const D = boneDQ(this), w = [SW.getX(index), SW.getY(index), SW.getZ(index), SW.getW(index)], b = [SI.getX(index), SI.getY(index), SI.getZ(index), SI.getW(index)];
     let rx = 0, ry = 0, rz = 0, rw = 0, dx = 0, dy = 0, dz = 0, dw = 0, sc = 0, ws = 0; const b0 = b[0] * 9;
@@ -213,18 +221,25 @@ function muscleField(o) {
   });
   return {ids, dv, nv};
 }
-// packed into the seven attributes the shader reads; slot: where the skeleton's activation bones start (x16)
+// packed into the four attributes the shader reads; slot: where the skeleton's activation bones start (x16)
 function writeMuscleAttrs(g, field, n, slotBase, toGeo) {
+  if (slotBase + MUSCLES.length + 2 > 4095) return;  // (a skeleton of more than 250 bones: no room for its ids)
   addMuscleAttrs(g, n);
-  const A = MUSC_ATTRS.map(k => g.attributes[k].array), {ids, dv, nv} = field, d = new V3(), nn = new V3(), pk = new Float32Array(24);
+  const A = MUSC_ATTRS.map(k => g.attributes[k].array), {ids, dv, nv} = field, d = new V3(), nn = new V3();
+  const keep = g.userData.musc && g.userData.musc.n === n ? g.userData.musc : (g.userData.musc = {n, ids: new Uint16Array(n * 4), pk: new Float32Array(n * 24)}), S = keep.ids, pk = keep.pk;
   for (let i = 0; i < n; i++) {
     const o4 = i * 4;
     for (let s = 0; s < 4; s++) {
-      const id = ids[o4 + s]; A[0][o4 + s] = id < 0 ? 0 : slotBase + id + 2;
+      const id = ids[o4 + s]; S[o4 + s] = id < 0 ? 0 : slotBase + id + 2;
       d.fromArray(dv, (o4 + s) * 3); nn.fromArray(nv, (o4 + s) * 3); if (toGeo) { d.applyMatrix3(toGeo); nn.applyMatrix3(toGeo); }
-      pk[s * 6] = d.x; pk[s * 6 + 1] = d.y; pk[s * 6 + 2] = d.z; pk[s * 6 + 3] = nn.x; pk[s * 6 + 4] = nn.y; pk[s * 6 + 5] = nn.z;
+      const o = (o4 + s) * 6; pk[o] = d.x; pk[o + 1] = d.y; pk[o + 2] = d.z; pk[o + 3] = nn.x; pk[o + 4] = nn.y; pk[o + 5] = nn.z;
     }
-    for (let k = 0; k < 6; k++) A[k + 1].set(pk.subarray(k * 4, k * 4 + 4), o4);
+    // ids two to a float; the largest movement and turn; the movements, then the turns, in 12-bit steps of those
+    let sd = 0, sn = 0; for (let s = 0; s < 4; s++) { const o = (o4 + s) * 6; for (let c = 0; c < 3; c++) { sd = Math.max(sd, Math.abs(pk[o + c])); sn = Math.max(sn, Math.abs(pk[o + 3 + c])); } }
+    const P0 = A[0], q = (v, sc) => sc > 0 ? clamp(Math.round((v / sc + 1) * 2047.5), 0, 4095) : 2048, two = (a, b) => a + b * 4096;
+    P0[o4] = two(S[o4], S[o4 + 1]); P0[o4 + 1] = two(S[o4 + 2], S[o4 + 3]); P0[o4 + 2] = sd; P0[o4 + 3] = sn;
+    const D = [], N = []; for (let s = 0; s < 4; s++) { const o = (o4 + s) * 6; D.push(q(pk[o], sd), q(pk[o + 1], sd), q(pk[o + 2], sd)); N.push(q(pk[o + 3], sn), q(pk[o + 4], sn), q(pk[o + 5], sn)); }
+    for (let k = 0; k < 6; k++) { A[1 + (k >> 2)][o4 + (k & 3)] = two(D[k * 2], D[k * 2 + 1]); A[2 + ((k + 2) >> 2)][o4 + ((k + 2) & 3)] = two(N[k * 2], N[k * 2 + 1]); }
   }
   for (const k of MUSC_ATTRS) g.attributes[k].needsUpdate = true;
 }
@@ -275,14 +290,14 @@ function avatarMuscles(m) {
   const meshes = []; av.root.traverse(o => { if (o.isSkinnedMesh) meshes.push(o); });
   for (const o of meshes) {
     const g = o.geometry, n = g.attributes.position.count;
-    if (!g.attributes.aMuscI && (Object.keys(g.attributes).length > 9 || n > 120000)) continue;  // no room for seven more attributes, or too heavy
+    if (!g.attributes.aMuscP0 && (Object.keys(g.attributes).length > 12 || n > 120000)) continue;  // no room for four more attributes, or too heavy
     let sk = skels.get(o.skeleton);
     if (!sk) {  // the skeleton with its activation bones (shared by the meshes and outlines that used it)
       const old = o.skeleton; sk = old.bones.some(b => b.name === '_musc') ? old : new THREE.Skeleton([...old.bones, ...muscleBones()], [...old.boneInverses, ...[...Array(MUSC_BONES)].map(() => new THREE.Matrix4())]);
       skels.set(old, sk); skels.set(sk, sk);
     }
     if (o.skeleton !== sk) o.bind(sk, o.bindMatrix);
-    if (o.userData.isHull || g.attributes.aMuscI) continue;  // outlines share the geometry of their mesh
+    if (o.userData.isHull || g.attributes.aMuscP0) continue;  // outlines share the geometry of their mesh
     const part = sk.bones.map(bn => { let x = bn; while (x) { for (const [key, val] of Object.entries(map)) if (val === x) return key; x = x.parent; } return null; });
     const bindOf = bn => { const k = sk.bones.indexOf(bn); return k < 0 ? null : new V3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[k]).invert()); };
     const J = (nm, s) => { const bn = map[hbName(nm, s)]; return bn ? bindOf(bn) : null; };

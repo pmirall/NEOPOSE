@@ -454,9 +454,9 @@ const SUITES = {
   async muscles(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     const peak = () => A(() => { const F = window.__cdp.mq.musc; let x = 0, n = 0; for (let i = 0; i < F.ids.length; i++) if (F.ids[i] === 0) { n++; x = Math.max(x, Math.hypot(F.dv[i * 3], F.dv[i * 3 + 1], F.dv[i * 3 + 2])); } return {x, n}; });
-    const info = await A(() => { const m = window.__cdp.mq, g = m.body3.geometry, I = g.attributes.aMuscI; let used = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) used++;
+    const info = await A(() => { const m = window.__cdp.mq, g = m.body3.geometry, I = g.attributes.aMuscP0; let used = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) used++;
       return {attrs: !!I, used, morphs: (g.morphAttributes.position || []).length, bones: m.skeleton.bones.filter(b => b.name === '_musc').length}; });
-    ok(info.attrs && info.used > 2000 && info.morphs === 7 && info.bones === 2, `muscles live in the vertices (${info.used} moved by some muscle) and the skeleton's two activation bones; the mouth keeps its 7 shapes`);
+    ok(info.attrs && info.used > 2000 && info.morphs >= 7 && info.bones === 2, `muscles live in the vertices (${info.used} moved by some muscle) and the skeleton's two activation bones; the mouth and face keep their ${info.morphs} shapes`);
     const p0 = await peak();
     ok(p0.x > .008 && p0.x < .04, `the biceps rises ${(p0.x * 100).toFixed(1)} cm at most on this body`);
     const drive = id => A(id => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === id)); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(C.mq._muscVals.slice())))); }, id);
@@ -486,7 +486,7 @@ const SUITES = {
     const th = await A(() => { const C = window.__cdp; C.renderThumb(C.POSES.find(p => p.id === 'guardia')); const t = C.thumbChars[0]; return t._muscVals ? t._muscVals[0] : -1; });
     ok(th > .8, `the pose library's silhouettes flex too (biceps ${th.toFixed(2)})`);
     await goTab(page, 'ropa'); await page.click('#outfitChips .chip'); await page.waitForTimeout(4000);
-    const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => { const I = g.geo.attributes.aMuscI; let u = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) u++; return u; }));
+    const worn = await A(() => window.__cdp.mq.garments.filter(g => g.geo).map(g => { const I = g.geo.attributes.aMuscP0; let u = 0; if (I) for (let i = 0; i < I.count; i++) if (I.array[i * 4]) u++; return u; }));
     ok(worn.length && worn.some(n => n > 100), `clothes follow the same muscles (${worn.join(', ')} vertices)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
