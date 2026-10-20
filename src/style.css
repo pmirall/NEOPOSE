@@ -2,7 +2,7 @@
 /* Layout: a sketchbook spread — the 3D stage is the drawing page (left), the notebook with index tabs holds the tools (right); stacks on phones */
 :root{
   --paper:#e4ddcb; --page:#f2ede1; --stage:#ebe4d4; --floor:#d8cfba;
-  --ink:#2a2620; --ink-soft:#6d6555; --line:#b9ad94; --rule:#ddd4c0;
+  --ink:#2a2620; --ink-soft:#5f5748; --line:#b9ad94; --rule:#ddd4c0;
   --blue:#2b5a9e; --blue-wash:rgba(43,90,158,.12); --red:#b0432c;
   --tape:rgba(205,186,128,.55);
   --f-hand:"Kalam","Segoe Print","Bradley Hand",cursive;
@@ -186,7 +186,7 @@ body:not([data-ws="anim"]) .page [data-ws~="anim"]{display:none}
 .sketch-bar{position:absolute;left:12px;top:58px;bottom:52px;overflow:auto;z-index:4;width:268px;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:10px 12px;box-shadow:var(--lift);display:grid;gap:6px}
 #sketchBtn[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--page)}
 .search{width:100%;border:0;border-bottom:1.5px solid var(--ink);background:transparent;padding:6px 2px;margin:0 0 8px;font:inherit;color:var(--ink)}
-.search:focus{outline:none;border-bottom-color:var(--blue)}
+.search:focus{outline:none;border-bottom-color:var(--blue);box-shadow:0 1.5px 0 var(--blue)}
 .chipx{margin-left:6px;opacity:.6}
 .chipx:hover{opacity:1}
 #jsonText{width:100%;min-height:200px;font-family:var(--f-mono);font-size:11px;border:1.5px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);padding:8px;resize:vertical}
@@ -305,6 +305,7 @@ details.more[open] > summary{margin-bottom:4px}
 .help{display:grid;grid-template-columns:1fr 1.15fr;gap:22px;margin:10px 0}
 .help h4{font-family:var(--f-hand);font-size:18px;margin:0 0 6px}
 .help ul{margin:0;padding-left:18px;font-size:13px;display:grid;gap:6px}
+.help ul + h4{margin-top:14px}
 .help b.r{color:var(--red)} .help b.b{color:var(--blue)}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;margin:0;font-size:13px;align-items:center}
 .keys dt{white-space:nowrap}
@@ -312,7 +313,8 @@ details.more[open] > summary{margin-bottom:4px}
 kbd{color:var(--ink);font-family:var(--f-mono);font-size:11.5px;border:1.5px solid var(--line);border-bottom-width:2.5px;border-radius:4px;padding:0 5px;background:var(--paper)}
 .sketch-bar details.more{margin:0}
 
-@media (max-width:1100px){ .tb .btn > span{display:none} .tb .btn{padding:6px 8px} }
+@media (max-width:1100px){ .tb .btn:not(#exportBtn) > span{display:none} .tb .btn{padding:6px 8px} }
+@media (max-width:1000px){ #exportBtn > span{display:none} }
 @media (max-width:860px){
   .tabs{position:sticky;top:0;z-index:5;background:var(--paper);padding-top:4px}
   .help{grid-template-columns:1fr}
@@ -789,7 +791,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .book{flex:none;height:var(--sheetH,48vh);display:flex;flex-direction:column;margin:0 -16px -14px;background:var(--paper);border-top:1.5px solid var(--ink);border-radius:16px 16px 0 0;box-shadow:0 -10px 26px -18px rgba(40,30,10,.5);position:relative;z-index:6;transition:height var(--dur-2) var(--ease)}
   .book.live{transition:none}
   .sheetgrip{display:block;flex:none;height:22px;width:100%;border:0;background:none;cursor:grab;touch-action:none;position:relative}
-  .sheetgrip::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:var(--line)}
+  .sheetgrip::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:var(--ink-soft)}
   .tabs{position:static;background:none;padding-top:0;touch-action:none;padding-right:10px}
   .page{flex:1;min-height:0;overflow:auto;max-height:none;margin:0 10px;overscroll-behavior:contain}
   .book[data-snap="peek"] .page{overflow:hidden}
@@ -1120,7 +1122,7 @@ body[data-ws="chars"] .top [data-ws]:not(.space):not([data-ws~="chars"]),
 body[data-ws="static"] .top [data-ws]:not(.space):not([data-ws~="static"]),
 body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:none}
 .tabs .tab[hidden]{display:none}
-@media (max-width:1100px){ .space > span{display:none} .space{padding:6px 10px 5px} }
+@media (max-width:1000px){ .space > span{display:none} .space{padding:6px 10px 5px} }
 @media (max-width:480px){
   .brand{display:none}
   .spaces{margin-left:0}

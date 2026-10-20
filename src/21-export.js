@@ -421,8 +421,8 @@ function animExportPreview() {
   exportKindUI(); ex.film = true;  // (a film's frames leave the Estático sketch out)
   try {
     if (!ANIM.shots.length) {  // nothing to export yet: say so, and the way there
-      const n = $('#exAnimNote'), b = document.createElement('button'); n.textContent = tr('Abre «Animar» y crea tu película: aquí se exporta plano a plano.') + ' ';
-      b.type = 'button'; b.className = 'btn small'; b.textContent = tr('Abrir Animar'); b.onclick = () => { closeExport(); openTimeline(true); }; n.appendChild(b);
+      const n = $('#exAnimNote'), b = document.createElement('button'); n.textContent = tr('Ve a Animación y crea tu película: aquí se exporta plano a plano.') + ' ';
+      b.type = 'button'; b.className = 'btn small'; b.textContent = tr('Ir a Animación'); b.onclick = () => { closeExport(); openTimeline(true); }; n.appendChild(b);
       $('#exMsg').textContent = ''; $('#exSave').disabled = true; $('#exImgWrap').hidden = $('#exBgRow').hidden = $('#exSizeRow').hidden = true; $('#exOptAnim').classList.add('empty'); return;
     }
     $('#exOptAnim').classList.remove('empty');

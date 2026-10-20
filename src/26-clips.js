@@ -600,7 +600,7 @@ function buildAnimGalleryUI() {
   $('#agImport').onclick = () => $('#agFile').click();
   $('#agFile').onchange = e => { importAnimFile(e.target.files[0]); e.target.value = ''; };
   $('#agSaveTrack').onclick = async () => {
-    if (!ANIM.open || !shot()) return toast(tr('Abre «Animar» y crea claves para un personaje.'));
+    if (!ANIM.open || !shot()) return toast(tr('Ve a Animación y crea claves para un personaje.'));
     const ci = chars.indexOf(mq), name = prompt(tr('Nombre de la animación'), `${speaker(ci)} · ${shot().name}`); if (!name) return;
     const c = clipFromTrack(ci, name); if (!c) return toast(tr('Ese personaje necesita al menos dos claves en este plano.'));
     await saveMyClip(c); AG.cat = 'mias'; AG.sel = CLIPS.mine[0]; renderAnimGallery(); $('#agMsg').textContent = tr('Guardada en «Mis animaciones».');
