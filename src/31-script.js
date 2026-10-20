@@ -978,7 +978,8 @@ function filmLightFor(D, u, c0, sample, cast) {
 const SC_SAMPLE = {es: 'INT. COCINA - NOCHE\n\nANA está junto a la mesa. LUIS entra y se acerca a ella.\n\nLUIS\n(sonriendo)\n¡Hola! ¿Llego tarde?\n\nANA\n(enfadada)\nUna hora tarde, Luis. Una hora.\n\nLuis se encoge de hombros y se sienta.\n\nLUIS\nLo siento. El tráfico estaba fatal…\n\nAna se ríe y lo abraza.\n\nEXT. PARQUE - DÍA\n\nPLANO GENERAL. Ana y Luis caminan.\n\nANA\n¿Ves? Así está mucho mejor.\n\nLuis salta y celebra.\n',
   en: 'INT. KITCHEN - NIGHT\n\nANNA waits by the table. LEO enters and walks over to her.\n\nLEO\n(smiling)\nHi! Am I late?\n\nANNA\n(angry)\nAn hour late, Leo. An hour.\n\nLeo shrugs and sits down.\n\nLEO\nI\'m sorry. The traffic was terrible…\n\nAnna laughs and hugs him.\n\nEXT. PARK - DAY\n\nWIDE SHOT. Anna and Leo walk.\n\nANNA\nSee? This is much better.\n\nLeo jumps and celebrates.\n'};
 async function scriptToFilm(text, o = {}) {
-  if (SC.busy) return; SC.busy = true;
+  if (SC.busy) return; if (ANIM.shots.length) await beforeReplace(tr('Antes de rehacer la película'));
+  SC.busy = true;
   const msg = t => { const el = $('#scMsg'); if (el) el.textContent = t; }, report = {warn: [], scenes: 0, shots: 0};
   try {
     const P = parseScript(text), lang = o.lang || scLang(text);
@@ -1029,7 +1030,7 @@ async function scriptToFilm(text, o = {}) {
       for (const [ui, u] of units.entries()) film.push(makeShot(D, B, u, ui, sample, side, cast));
       report.warn.push(...D.warn.map(w => `${idx + 1}: ${w}`)); report.scenes++;
     }
-    ANIM.shots = film; ANIM.cur = -1; report.shots = film.length; report.cast = cast;
+    unlinkPanels(ANIM.shots); ANIM.shots = film; ANIM.cur = -1; report.shots = film.length; report.cast = cast;
     await enterShot(0, 0); renderStrip(); renderLabels();
     msg(filmReady(report));
     return report;

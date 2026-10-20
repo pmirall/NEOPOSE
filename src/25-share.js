@@ -28,6 +28,7 @@ function openSharedScene() {
     if (!o.chars) throw new Error('no cast');
     restore(o); if (o.cam) applySceneExtras({cam: o.cam}); else frameAll(); pushHistory();
     toast(tr('Escena abierta desde el enlace.'));
+    readAutosave(true).then(a => a && keepSnap(tr('Tu trabajo antes de abrir un enlace'), JSON.stringify(a))).then(it => { if (it) toast(tr('Escena abierta desde el enlace. Tu trabajo anterior está guardado como copia.'), {act: ['Recuperar mi trabajo', () => recoverSnap(it)], ms: 12000}); });
   } catch (e) { console.warn('shared scene', e); toast(tr('Ese enlace no contiene una escena válida.')); }
   try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
   return true;

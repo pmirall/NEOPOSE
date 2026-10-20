@@ -190,6 +190,18 @@ function drawPanels(list, pxOf) {
   });
   return CM.queue;
 }
+// shots of the film going away (deleted, or the film made again): the panels showing them keep their picture as a scene
+// of their own; returns [panel, link] pairs so an undo can link them again
+function unlinkPanels(shots) {
+  const by = new Map(shots.map(s => [s.id, s])), out = [];
+  for (const pg of (PROJECT.comic && PROJECT.comic.pages) || []) for (const p of pg.panels) {
+    const s = p.link && by.get(p.link.shotId); if (!s) continue;
+    const c = JSON.parse(JSON.stringify(s)); delete c.thumb; c.id = ++shotSeq; out.push([p, p.link, p.f]); p.shot = c; p.f = p.link.f; p.link = null;
+  }
+  if (out.length && typeof comicChanged === 'function') comicChanged();
+  return out;
+}
+function relinkPanels(list) { for (const [p, link, f] of list) { p.link = link; p.shot = null; p.f = f || 0; } if (list.length) comicChanged(); }
 function comicChanged() { if (typeof deskChanged === 'function' && pageOn()) deskChanged(); if (typeof syncComicUI === 'function') syncComicUI(); }
 
 // the backgrounds of manga: speed lines (the move), focus lines (to a face), a flash (a shock)

@@ -62,23 +62,26 @@ function autosaveSoon(ms = 1200) { if (AUTO.base === null) return; clearTimeout(
 function autosaveNow(e) {
   if (AUTO.base === null) return; clearTimeout(AUTO.t);
   // not in the middle of a practice session (random scenes), a playing film or a script being staged
+  // (a film playing is stopped when the page goes, so what is kept is the film as it stands)
+  if (e && ANIM.playing && !ANIM.busy) play(false);
   if (practice.active || ANIM.playing || ANIM.busy || (typeof SC !== 'undefined' && SC.busy)) return e ? undefined : autosaveSoon(3000);
-  const an = animState(), pj = typeof projectState === 'function' && projectState(), data = histStr() !== AUTO.base || an || pj ? JSON.stringify({v: 1, t: Date.now(), ...snapshot(), ...sceneExtras(true, {project: true})}) : null;
-  const ls = () => { try { if (data) localStorage.setItem(AUTO.key, data); else localStorage.removeItem(AUTO.key); } catch (_) {} };
+  const an = animState(), pj = typeof projectState === 'function' && projectState(), data = histStr() !== AUTO.base || an || pj || sk.strokes.length ? workData() : null;
+  const ls = failed => { try { if (data) localStorage.setItem(AUTO.key, data); else localStorage.removeItem(AUTO.key); if (failed) afterAutosave(data); } catch (err) { if (failed && data) storageFailed(err); } };
   if (e) ls();
-  try { (data ? idb.set(AUTO.key, data) : idb.del(AUTO.key)).then(() => { if (!e) try { localStorage.removeItem(AUTO.key); } catch (_) {} }, ls); } catch (_) { ls(); }
+  try { (data ? idb.set(AUTO.key, data) : idb.del(AUTO.key)).then(() => { if (!e) try { localStorage.removeItem(AUTO.key); } catch (_) {} afterAutosave(data); }, () => ls(true)); } catch (_) { ls(true); }
 }
-function readAutosave() {
-  if (/^#s=/.test(location.hash)) return Promise.resolve(null);  // a shared scene is what this start is for
+function readAutosave(any) {
+  if (!any && /^#s=/.test(location.hash)) return Promise.resolve(null);  // a shared scene is what this start is for
   const parse = v => { try { return v ? JSON.parse(v) : null; } catch (_) { return null; } };
   let p; try { p = idb.get(AUTO.key).catch(() => null); } catch (_) { p = Promise.resolve(null); }
   return p.then(v => { let l = null; try { l = localStorage.getItem(AUTO.key); } catch (_) {} const a = parse(v), b = parse(l); return a && b ? ((b.t || 0) > (a.t || 0) ? b : a) : a || b; });
 }
 // "Start afresh": the scene the app starts with (kept before the saved one came back); undo still has the other
-function startFresh() {
+async function startFresh() {
   if (!AUTO.fresh) return;
+  await beforeReplace(tr('Antes de empezar de cero'));
   if (ANIM.open) openTimeline(false);
-  ANIM.shots = []; ANIM.cur = 0; restore(AUTO.fresh); setView(30, 8); frameAll(); pushHistory();
+  unlinkPanels(ANIM.shots); ANIM.shots = []; ANIM.cur = 0; restore(AUTO.fresh); setView(30, 8); frameAll(); pushHistory();
 }
 function initAutosave(restored, recovered) {
   if (!restored) AUTO.base = hist.stack[hist.i];
@@ -257,7 +260,7 @@ function setLang(l) {
   carryScene(); location.reload();
 }
 // the scene goes over a reload (a language switch, an update) in this tab at once
-function carryScene() { if (!chars.length) return; try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true, {project: true})})); } catch (e) {} }
+function carryScene() { if (!chars.length) return; try { sessionStorage.setItem('cdp.carry', JSON.stringify({...snapshot(), ...sceneExtras(true, {project: true}), sketch: sk.strokes.length ? sk.strokes : undefined})); } catch (e) {} }
 $$('.langChips').forEach(c => chips(c, Object.entries(LANGS), LANG, setLang));
 $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
 /* the canvas hint steps back once the user has tried posing */

@@ -260,8 +260,10 @@ function duplicateShot() {
 function deleteShot() {
   if (ANIM.busy) return; if (ANIM.shots.length < 2) return toast(tr('La película necesita al menos un plano.'));
   storeShot(); thumbNow(); const i = ANIM.cur, gone = ANIM.shots.splice(i, 1)[0]; ANIM.cur = -1;
-  enterShot(Math.min(i, ANIM.shots.length - 1)).then(() => toast(tr('Plano «{n}» borrado.', {n: gone.name}), {undo: () => { if (!ANIM.open || ANIM.busy) return;
-    storeShot(); ANIM.shots.splice(Math.min(i, ANIM.shots.length), 0, gone); ANIM.cur = -1; enterShot(Math.min(i, ANIM.shots.length - 1)); }}));
+  // (the comic panels that showed it keep its picture as a scene of their own; undo links them again)
+  const kept = unlinkPanels([gone]);
+  enterShot(Math.min(i, ANIM.shots.length - 1)).then(() => toast(kept.length ? trn(kept.length, 'Plano «{n}» borrado; la viñeta que lo mostraba conserva su imagen.', 'Plano «{n}» borrado; las {k} viñetas que lo mostraban conservan su imagen.', {n: gone.name, k: kept.length}) : tr('Plano «{n}» borrado.', {n: gone.name}), {undo: () => { if (!ANIM.open || ANIM.busy) return;
+    storeShot(); ANIM.shots.splice(Math.min(i, ANIM.shots.length), 0, gone); relinkPanels(kept); ANIM.cur = -1; enterShot(Math.min(i, ANIM.shots.length - 1)); }}));
 }
 function moveShot(d) {
   const i = ANIM.cur, j = i + d; if (j < 0 || j >= ANIM.shots.length) return;
@@ -789,7 +791,12 @@ function applyAnimState(a) {
   if (!a.v) { // the first timeline (1.3 previews): one track holding every character
     const s = newShot(); s.len = a.len || 48; s.keys = chars.map((_, i) => (a.keys || []).filter(k => k.poses && k.poses[i]).map(k => ({f: k.f, pose: k.poses[i]})));
     ANIM.fps = a.fps || 12; ANIM.shots = [s]; ANIM.cur = 0;
-  } else { ANIM.fps = a.fps || 12; ANIM.shots = a.shots.map(s => ({...s, id: ++shotSeq, thumb: ''})); ANIM.cur = Math.min(a.cur || 0, ANIM.shots.length - 1); }
+  } else {
+    // (each shot keeps its id: comic panels follow their shot by it)
+    const seen = new Set(); ANIM.fps = a.fps || 12; ANIM.shots = a.shots.map(s => { const id = s.id && !seen.has(s.id) ? s.id : null; if (id) seen.add(id); return {...s, id, thumb: ''}; });
+    shotSeq = Math.max(shotSeq, ...ANIM.shots.map(s => s.id || 0)); for (const s of ANIM.shots) if (!s.id) s.id = ++shotSeq;
+    ANIM.cur = Math.min(a.cur || 0, ANIM.shots.length - 1);
+  }
   if (ANIM.open) { const i = ANIM.cur; ANIM.cur = -1; enterShot(i); }
 }
 // undo and redo also cover the tracks of the current shot and how it plays (Interpretación, Ritmo, its camera style and

@@ -62,6 +62,7 @@ async function openNeopose(file) {
     if (!doc.scene || !doc.scene.chars || !doc.scene.chars.length) throw new Error(tr('no es un archivo de NEOPOSE'));
     for (const a of doc.avatars || []) { const b = files[`avatars/${a.id}`]; if (b) await avatarDB.put({id: a.id, file: a.file || a.name, buf: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)}); }
     if (ANIM.playing) play(false);
+    const prev = await beforeReplace(tr('Antes de abrir «{f}»', {f: file.name}));
     restore(doc.scene); applyProjectState(doc.project);
     if (doc.scene.cam) applySceneExtras({cam: doc.scene.cam}); else frameAll();
     sk.strokes = Array.isArray(doc.sketch) ? doc.sketch : []; sk.redo = []; redrawSketch();
@@ -72,7 +73,7 @@ async function openNeopose(file) {
     pushHistory();
     const newer = doc.version > NP_VERSION;
     toast(newer ? tr('Este archivo es de una versión más nueva de NEOPOSE ({v}); se ha abierto lo que esta versión entiende.', {v: doc.app || '?'})
-      : tr('Abierto «{f}»', {f: doc.name || file.name}), {undo: true});
+      : tr('Abierto «{f}»', {f: doc.name || file.name}), prev ? {act: ['Recuperar lo anterior', () => recoverSnap(prev)], ms: 9000} : {undo: true});
   } catch (e) { console.warn('neopose open', e); toast(tr('No se ha podido abrir «{f}»: {e}', {f: file.name, e: e && e.message || e})); }
 }
 function pickNeopose() {

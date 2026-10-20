@@ -1026,6 +1026,41 @@ const SUITES = {
   // the comic desk: gutters and corners dragged on the page, layouts that keep what the panels hold, pictures swapped
   // by dragging, undo and redo, the row of pages (new, copied, reordered, their state), the page's script (the same
   // words as the balloons), one click into a panel's scene and back
+  // nothing is lost: shot ids survive a reopen (panels stay linked), the sketch is autosaved, panels keep their picture
+  // when their shot goes, a copy is kept before a file or a link replaces the work, and a copy comes back
+  async safety(browser) {
+    let page = await open(browser), A = fn => page.evaluate(fn);
+    const film = await A(async () => { const C = window.__cdp; C.script.VOICE.on = false;
+      await C.script.scriptToFilm('INT. COCINA - DÍA\n\nANA está en la cocina.\n\nANA: Hola.\n\nLUIS entra.\n\nLUIS: ¿Qué tal?\n', {cams: true, online: false}); return C.ANIM.shots.length; });
+    await page.click('#wsStatic'); await goTab(page, 'comic'); await page.waitForTimeout(400);
+    const L = await A(async () => { const C = window.__cdp, K = C.comic; await K.filmToComic(); const P = K.comic().pages.flatMap(p => p.panels).filter(p => p.link);
+      const before = P.map(p => p.link.shotId).join(); const bytes = await C.file.neoposeBytes('t'); for (let i = 0; i < 5; i++) C.ANIM.shots.push({...C.ANIM.shots[0], id: 9000 + i});
+      C.project.applyProjectState(null); await C.file.openNeopose(new File([bytes], 't.neopose'));
+      const Q = K.comic().pages.flatMap(p => p.panels).filter(p => p.link); return {n: Q.length, before, after: Q.map(p => p.link.shotId).join(), ok: Q.every(p => !!K.panelShot(p))}; });
+    ok(film >= 2 && L.n >= 2 && L.ok && L.before === L.after, `a film of ${film} shots in ${L.n} linked panels: after reopening the file every panel still finds its shot`);
+    const U = await A(() => { const C = window.__cdp, S = C.safety, K = C.comic, P = K.comic().pages.flatMap(p => p.panels).filter(p => p.link), s = K.panelShot(P[0]);
+      const kept = S.unlinkPanels([s]); const own = !!P[0].shot && !P[0].link && P[0].shot.id !== s.id; S.relinkPanels(kept); return {own, back: !!P[0].link && !P[0].shot && K.panelShot(P[0]) === s}; });
+    ok(U.own && U.back, 'a panel whose shot goes keeps its picture as a scene of its own, and undo links it again');
+    const B = await A(async () => { const C = window.__cdp, S = C.safety; C.sk.strokes.push({brush: C.sk.brush, color: '#141210', size: 4, opacity: 1, flow: 1, erase: false, pSize: C.sk.pSize, pOpac: C.sk.pOpac, curve: C.sk.curve, h0: 600, seed: 7, pts: [[100, 100, .5], [140, 160, .5], [180, 200, .5]]}); C.redrawSketch(); S.autosaveNow(); await new Promise(r => setTimeout(r, 600));
+      const a = await S.readAutosave(true); const bytes = await C.file.neoposeBytes('u'); await C.file.openNeopose(new File([bytes], 'u.neopose')); const L = await S.snapList();
+      return {sketch: !!(a && a.sketch && a.sketch.length), copy: L.some(x => /u\.neopose/.test(x.label)), act: /Bring back|Recuperar/.test(document.querySelector('#hint').textContent)}; });
+    ok(B.sketch && B.copy && B.act, 'the sketch is in the autosave; opening a file keeps a copy of the work first and offers to bring it back');
+    // a copy brought back: the app starts again on it (here: with the sketch the copy had)
+    const R = await A(async () => { const C = window.__cdp, S = C.safety; window.__it = await S.keepSnap('test'); return C.sk.strokes.length; });
+    await Promise.all([page.waitForNavigation({timeout: 60000}), A(() => { window.__cdp.sk.strokes.length = 0; window.__cdp.safety.recoverSnap(window.__it); }).catch(() => {})]);
+    await page.waitForFunction(() => window.__cdp && window.__cdp.chars && window.__cdp.chars.length, null, {timeout: 120000}); await page.waitForTimeout(1500);
+    const R2 = await A(() => ({n: window.__cdp.sk.strokes.length, copies: 0}));
+    ok(R > 0 && R2.n === R, `a copy brought back restores the work after a restart (sketch: ${R2.n} of ${R} strokes)`);
+    // a shared link: what was here is kept as a copy
+    const S2 = await A(async () => { const C = window.__cdp, S = C.safety; S.autosaveNow(); await new Promise(r => setTimeout(r, 500)); const n0 = (await S.snapList()).length;
+      location.hash = C.sceneLink().split('#')[1]; S.openSharedScene(); await new Promise(r => setTimeout(r, 1500)); const L = await S.snapList(); return {n0, n: L.length, label: L[0] && L[0].label}; });
+    ok(S2.n >= Math.min(10, S2.n0 + 1) && /link|enlace/i.test(S2.label), `opening a shared link keeps the previous work as a copy («${S2.label}»)`);
+    await A(() => { document.querySelector('#setBtn').click(); }); await page.waitForTimeout(500);
+    const st = await A(() => ({rows: document.querySelectorAll('#snapList .snaprow').length, saved: document.querySelector('#snapSaved').textContent}));
+    ok(st.rows >= 3 && st.saved.length > 5, `Settings lists ${st.rows} copies and when the work was last saved`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
+    await page.context().close();
+  },
   // the Ko-fi note: only after the third save, then not again for a fortnight; quiet links in Help and Settings
   async support(browser) {
     const page = await open(browser), A = fn => page.evaluate(fn);

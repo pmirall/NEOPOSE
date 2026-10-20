@@ -1302,3 +1302,5 @@ body.paging #openIn{display:none}
 /* the quiet way to support the app (Help, Settings) */
 a.kofi{color:var(--blue);font-weight:600;text-decoration:none;border-bottom:1px dashed currentColor}
 a.kofi:hover{border-bottom-style:solid}
+.snaplist{display:flex;flex-direction:column;gap:4px;margin:6px 0;max-height:210px;overflow:auto}
+.snaprow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--rule)}
