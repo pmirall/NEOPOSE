@@ -321,9 +321,11 @@ function directScene(sc, idx, cast, lang, o) {
   };
   const faceTo = (s, b, t) => { if (!b) return; s.yaw = Math.atan2(b.x - s.x, b.z - s.z); seg(s, t, t + .45, 'turn', {yaw: s.yaw}); };
   const intensity = (b) => { let k = .25; if (/!/.test(b.text)) k += .25; if (/!{2,}|[A-ZÁÉÍÓÚÑ]{4,}/.test(b.text)) k += .25; if (b.emo && !['sonrisa', 'concentrado'].includes(b.emo)) k += .3; return Math.min(1, k); };
-  const panels = []; let pendingShot = null; const takeShot = () => { const x = pendingShot; pendingShot = null; return x; };
+  const panels = []; let pendingShot = null, openPanel = null; const takeShot = () => { const x = pendingShot; pendingShot = null; return x; };
   for (const b of sc.beats) {
-    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: scWho(b.text, cast).filter(i => present.includes(i)), t: T}; if (b.panel) panels.push({t: T, dir: b.dir}); continue; }
+    // (a comic script: what each panel shows, kept for its panel's note)
+    if (openPanel && !b.panel && (b.k === 'act' || b.k === 'shot') && b.text) openPanel.text = ((openPanel.text || '') + ' ' + b.text.trim()).trim();
+    if (b.k === 'shot') { pendingShot = {dir: b.dir, who: scWho(b.text, cast).filter(i => present.includes(i)), t: T}; if (b.panel) { openPanel = {t: T, dir: b.dir}; panels.push(openPanel); } continue; }
     if (b.k === 'trans') { const tw = scNorm(b.text);
       if (/fade in|fundido de entrada|desde negro|fondu d'ouverture|abblende auf|aufblende|dissolvenza in apertura|fos d'entrada/.test(tw)) fxs.push({t: T, fx: 'fadein'});
       else if (/fade out|fade to black|fundido a negro|fundido en negro|fundido|fondu au noir|fondu|abblende|dissolvenza|fos a negre|escurecimento/.test(tw)) fxs.push({t: null, fx: 'fadeout'});
@@ -810,7 +812,7 @@ function planShots(D) {
     const marks = D.panels.map(p => ({...p, t: Math.min(p.t, D.len - .3)})), out = [];
     marks.forEach((m, i) => { const t0 = i ? m.t : 0, t1 = i < marks.length - 1 ? marks[i + 1].t : D.len; if (t1 - t0 < .05) return;
       const mid = (t0 + t1) / 2, base = units.find(u => u.t0 <= mid && u.t1 > mid) || units[units.length - 1] || {type: 'master', size: 'fs', subj: D.present.slice()};
-      const u = {...base, t0, t1, panel: true}; if (m.dir && (m.dir.size || m.dir.angle)) Object.assign(u, shotFromDirection({dir: m.dir}, u, D)); out.push(u); });
+      const u = {...base, t0, t1, panel: true, note: m.text || undefined}; if (m.dir && (m.dir.size || m.dir.angle)) Object.assign(u, shotFromDirection({dir: m.dir}, u, D)); out.push(u); });
     if (out.length) return styleShots(out, D);
   }
   const there = (c, t) => { const s = D.st[D.present.indexOf(c)]; return s && !(s.onAt != null && t < s.onAt) && !(s.offAt != null && t > s.offAt); };
@@ -1052,7 +1054,7 @@ function worldSampler(D, B) {
 function makeShot(D, B, u, ui, sample, side, cast) {
   const fps = ANIM.fps, f0 = Math.round(u.t0 * fps), f1 = Math.max(f0 + 2, Math.round(u.t1 * fps)), len = f1 - f0;
   const s = newShot(`${D.idx + 1}${String.fromCharCode(65 + (ui % 26))} · ${tr(SC_SHOT_NAME[u.type] || 'Plano')}${u.size && !['est', 'master', 'two', 'insert'].includes(u.type) ? ' ' + tr({ews: 'muy general', ws: 'general', fs: 'entero', mfs: 'americano', ms: 'medio', mcu: 'medio corto', cu: 'primer plano', ecu: 'detalle'}[u.size]) : ''}`);
-  s.len = len;
+  s.len = len; if (u.note) s.note = u.note;
   // the scene as it stands at the shot's first frame: bodies (with the face of the moment), clothes, set
   s.scene = captureScene();
   // (the faces change on the body's morphs as the shot plays, not baked into it: the body stays the same from shot to

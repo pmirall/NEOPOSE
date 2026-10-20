@@ -20,7 +20,8 @@ const COMIC_FORMATS = {
   tira: {label: 'Tira', w: 300, h: 100, margin: [6, 6, 6, 6], gutter: [4, 4]}
 };
 tLabels(COMIC_FORMATS);
-// page layouts: rows (their height share) of panels (their width share)
+// page layouts: rows (their height share) of panels (their width share); or columns of panels stacked (cols); kind
+// sorts them in the gallery
 const PANEL_TEMPLATES = {
   p1: {label: '1', rows: [[1, [1]]]},
   p2: {label: '2', rows: [[1, [1]], [1, [1]]]},
@@ -34,11 +35,22 @@ const PANEL_TEMPLATES = {
   s3: {label: '3 inclinadas', rows: [[1, [1]], [1, [1]], [1, [1]]], tilt: .1},
   s4: {label: '4 en acción', rows: [[1, [1.3, 1]], [1, [1, 1.3]]], tilt: .08, vtilt: .14},
   s5: {label: '5 en acción', rows: [[1.1, [1]], [1, [1, 1]], [1, [1, 1]]], tilt: .12, vtilt: .16},
-  big: {label: 'Grande + 2', rows: [[2.2, [1]], [1, [1, 1]]], tilt: .06, vtilt: .1}
+  big: {label: 'Grande + 2', rows: [[2.2, [1]], [1, [1, 1]]], tilt: .06, vtilt: .1},
+  splash: {label: 'Splash', rows: [[1, [1]]], bleed: true},
+  splash2: {label: 'Splash + insertada', rows: [[1, [1]]], bleed: true, insets: 1},
+  wide3: {label: '3 panorámicas', rows: [[1, [1]], [1, [1]], [1, [1]]]},
+  p9: {label: '9 (rejilla)', rows: [[1, [1, 1, 1]], [1, [1, 1, 1]], [1, [1, 1, 1]]]},
+  hero: {label: 'Alta + 3', cols: [[1.3, [1]], [1, [1, 1, 1]]]},
+  cols2: {label: '2 columnas', cols: [[1, [1.2, 1]], [1, [1, 1.2]]]},
+  manga7: {label: 'Manga 7', rows: [[1, [1.5, 1]], [1.25, [1]], [1, [1, 1, 1]], [.85, [1]]]},
+  climax: {label: 'Clímax', rows: [[.8, [1, 1, 1]], [2, [1]]], tilt: .05},
+  shards: {label: 'Cristales', cols: [[1, [1, 1.3]], [1.2, [1.2, 1, 1]]], tilt: .14, vtilt: .06}
 };
+// the gallery's order: everyday grids, cinema, manga, action
+const PRESET_GROUPS = [['Rejillas', ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p9']], ['Cine', ['wide3', 'big', 'hero', 'cols2', 'splash', 'splash2']], ['Manga', ['manga7', 'koma4', 'climax', 'tira3']], ['Acción', ['s3', 's4', 's5', 'shards']]];
 const BALLOON_KINDS = {speech: 'Habla', thought: 'Pensamiento', shout: 'Grito', whisper: 'Susurro', radio: 'Radio / teléfono', wavy: 'Tembloroso', black: 'Monstruo', caption: 'Cartela', narration: 'Narración'};
 tValues(BALLOON_KINDS);
-const CM = {sel: null, selB: null, page: 0, edit: null, cache: new Map(), view: null, busy: false, queue: Promise.resolve()};
+const CM = {sel: null, selB: null, page: 0, edit: null, cache: new Map(), last: new Map(), tw: new Map(), twOn: false, fly: new Map(), view: null, busy: false, queue: Promise.resolve()};
 const mmPx = (mm, dpi) => mm / 25.4 * dpi;
 
 /* ---------- the model ---------- */
@@ -51,10 +63,12 @@ const curPage = () => comic().pages[CM.page];
 // the panels of a template laid in the page's live area (right to left when the comic reads that way): each the live
 // area cut by the lines through its gutters (straight, or slanted when the template tilts them)
 function layoutPanels(tpl, c = comic()) {
-  const T = PANEL_TEMPLATES[tpl] || PANEL_TEMPLATES.p4, P = c.page, [mt, mr, mb, ml] = P.margin, [gx, gy] = P.gutter;
-  const W = P.w - ml - mr, H = P.h - mt - mb, hs = T.rows.reduce((a, r) => a + r[0], 0), live = rectPts({x: ml, y: mt, w: W, h: H}), cxL = ml + W / 2, out = [];
+  const T = PANEL_TEMPLATES[tpl] || PANEL_TEMPLATES.p4, P = c.page, cols = !!T.cols;
+  // (columns are rows of a page turned on its side: laid out so, then turned back)
+  const M = cols ? [P.margin[3], P.margin[2], P.margin[1], P.margin[0]] : P.margin, [mt, mr, mb, ml] = M, [gx, gy] = cols ? [P.gutter[1], P.gutter[0]] : P.gutter, PW = cols ? P.h : P.w, PH = cols ? P.w : P.h, R = T.cols || T.rows;
+  const W = PW - ml - mr, H = PH - mt - mb, hs = R.reduce((a, r) => a + r[0], 0), live = rectPts({x: ml, y: mt, w: W, h: H}), cxL = ml + W / 2, out = [];
   const half = (pts, p0, dir, g) => { const L = Math.hypot(...dir), n = [-dir[1] / L, dir[0] / L]; return clipHalf(pts, n, n[0] * p0[0] + n[1] * p0[1] + g); };
-  let y = mt; const rows = T.rows.map(([rh, cols]) => { const h = (H - gy * (T.rows.length - 1)) * rh / hs, r = {y, h, cols}; y += h + gy; return r; });
+  let y = mt; const rows = R.map(([rh, cs]) => { const h = (H - gy * (R.length - 1)) * rh / hs, r = {y, h, cols: cs}; y += h + gy; return r; });
   rows.forEach((r, ri) => {
     const s0 = (T.tilt || 0) * ((ri - 1) % 2 ? -1 : 1), s1 = (T.tilt || 0) * (ri % 2 ? -1 : 1), ws = r.cols.reduce((a, x) => a + x, 0), cy = r.y + r.h / 2;
     let x = ml; const xs = r.cols.map(cw => { const w = (W - gx * (r.cols.length - 1)) * cw / ws, q = [x, w]; x += w + gx; return q; });
@@ -65,11 +79,18 @@ function layoutPanels(tpl, c = comic()) {
       const t0 = (T.vtilt || 0) * ((ri + j - 1) % 2 ? -1 : 1), t1 = (T.vtilt || 0) * ((ri + j) % 2 ? -1 : 1);
       if (j > 0) pts = half(pts, [x0 - gx / 2, cy], [-t0, -1], gx / 2);
       if (j < xs.length - 1) pts = half(pts, [x0 + w + gx / 2, cy], [t1, 1], gx / 2);
+      if (cols) pts = pts.map(([px, py]) => [py, px]).reverse();
       if (c.rtl) pts = pts.map(([px, py]) => [P.w - px, py]).reverse();  // (mirrored: the first panel at the right)
-      if (pts.length >= 3) out.push(setPanelPoly({id: newId('p'), x: 0, y: 0, w: 1, h: 1, shot: null, link: null, f: 0, balloons: []}, pts));
+      if (pts.length >= 3) out.push(setPanelPoly({id: newId('p'), x: 0, y: 0, w: 1, h: 1, shot: null, link: null, f: 0, balloons: [], ...(T.bleed ? {bleed: true} : {})}, pts));
     });
   });
   return out;
+}
+// a template's panels for a page: its own extras too (a panel set into the first)
+function presetPanels(tpl, c = comic()) {
+  const L = layoutPanels(tpl, c), T = PANEL_TEMPLATES[tpl] || {};
+  for (let i = 0; i < (T.insets || 0); i++) insetPanel({panels: L}, L[0], c);
+  return L;
 }
 // n panels in rows of up to three (a page with more than a template holds)
 function layoutGrid(n, c = comic()) {
@@ -80,7 +101,7 @@ function layoutGrid(n, c = comic()) {
 function readingOrder(pg, c = comic()) {
   return [...pg.panels].sort((a, b) => Math.abs(a.y - b.y) > 4 ? a.y - b.y : (c.rtl ? b.x - a.x : a.x - b.x));
 }
-function addPage(tpl = 'p4') { const c = comic(), pg = {id: newId('pg'), panels: layoutPanels(tpl, c)}; c.pages.push(pg); CM.page = c.pages.length - 1; CM.sel = null; comicChanged(); return pg; }
+function addPage(tpl = 'p4', at) { const c = comic(), pg = {id: newId('pg'), panels: presetPanels(tpl, c)}; if (at == null || at >= c.pages.length) c.pages.push(pg); else c.pages.splice(Math.max(0, at), 0, pg); CM.page = c.pages.indexOf(pg); CM.sel = null; comicChanged(); return pg; }
 // what a panel shows: its own shot, or the film's one it is linked to
 function panelShot(p) { if (p.shot) return p.shot; if (p.link) return ANIM.shots.find(s => s.id === p.link.shotId) || null; return null; }
 const panelFrame = p => p.link ? p.link.f : p.f || 0;
@@ -162,14 +183,14 @@ function drawPanels(list, pxOf) {
     const todo = list.filter(p => panelShot(p) && !CM.cache.has(panelKey(p, ...pxOf(p)))); if (!todo.length || CM.edit) return;
     CM.busy = true; const bench = benchSave(); let prev = null;
     try {
-      for (const p of todo) { const [w, h] = pxOf(p); if (!(await stagePanel(p, prev))) continue; prev = panelShot(p); const r = await drawPanelOnStage(p, w, h); CM.cache.set(panelKey(p, w, h), r); }
+      for (const p of todo) { const [w, h] = pxOf(p); if (!(await stagePanel(p, prev))) continue; prev = panelShot(p); const r = await drawPanelOnStage(p, w, h); CM.cache.set(panelKey(p, w, h), r); CM.last.set(p.id, r); }
     } catch (e) { console.warn('comic panels', e); }
     finally { await benchRestore(bench); CM.busy = false; }
     drawPage();
   });
   return CM.queue;
 }
-function comicChanged() { if (typeof drawPage === 'function' && $('#pageView') && !$('#pageView').hidden) drawPage(); if (typeof syncComicUI === 'function') syncComicUI(); }
+function comicChanged() { if (typeof deskChanged === 'function' && pageOn()) deskChanged(); if (typeof syncComicUI === 'function') syncComicUI(); }
 
 // the backgrounds of manga: speed lines (the move), focus lines (to a face), a flash (a shock)
 function panelEffect(g, kind, w, h, a) {
@@ -211,14 +232,18 @@ function composePage(g, pg, k, ox, oy, o = {}) {
   const c = comic(), P = c.page, part = o.part, want = x => !part || part === x; if (!part) { g.fillStyle = '#fff'; g.fillRect(ox, oy, P.w * k, P.h * k); }
   const hits = [], num = new Map(readingOrder(pg, c).map((p, i) => [p, i + 1]));
   const L = drawOrder(pg).map(p => { const B = panelBox(p), R = {x: ox + B.x * k, y: oy + B.y * k, w: B.w * k, h: B.h * k}, w = Math.round(R.w * (o.px || 1)), h = Math.round(R.h * (o.px || 1));
-    return {p, R, path: panelPath(p, k, ox, oy), hit: CM.cache.get(panelKey(p, w, h))}; });
+    // (on screen, while a panel's new picture is drawn, its last one, filling it)
+    return {p, R, path: panelPath(p, k, ox, oy), hit: CM.cache.get(panelKey(p, w, h)) || ((o.screen || o.thumb) && panelShot(p) ? CM.last.get(p.id) : null)}; });
   for (const {p, R, path, hit} of L) {
     // (a panel set into another: a white edge round it, the page's gutter)
     if (p.inset && want('panels')) { g.save(); g.strokeStyle = '#fff'; g.lineJoin = 'round'; g.lineWidth = c.page.gutter[0] * k * 2; g.stroke(path); g.restore(); }
     g.save(); g.clip(path);
-    if (hit && want('panels')) { if (p.inset) { g.fillStyle = '#fff'; g.fillRect(R.x, R.y, R.w, R.h); } g.drawImage(hit.img, R.x, R.y, R.w, R.h); }
+    if (hit && want('panels')) { if (p.inset) { g.fillStyle = '#fff'; g.fillRect(R.x, R.y, R.w, R.h); } if (!(o.screen && CM.fly.has(p.id))) drawCover(g, hit.img, R); }
     else if (o.screen) { g.fillStyle = '#f4f1ea'; g.fillRect(R.x, R.y, R.w, R.h); g.fillStyle = '#8a8170'; const fs = Math.max(10, Math.min(k * 3.2, R.w / 9)); g.font = `600 ${fs}px ${css('--f-body')}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const rows = wrapText(g, panelShot(p) ? tr('Dibujando…') : tr('Viñeta vacía: doble clic para montarla'), R.w * .82); rows.forEach((r, j) => g.fillText(r, R.x + R.w / 2, R.y + R.h / 2 + (j - (rows.length - 1) / 2) * fs * 1.25)); g.textBaseline = 'alphabetic'; }
+      const rows = wrapText(g, panelShot(p) ? tr('Dibujando…') : '', R.w * .82); rows.forEach((r, j) => g.fillText(r, R.x + R.w / 2, R.y + R.h / 2 + (j - (rows.length - 1) / 2) * fs * 1.25)); g.textBaseline = 'alphabetic';
+      // (an empty panel: a faint + where its scene goes)
+      if (!panelShot(p)) { const r = Math.min(R.w, R.h) * .09; g.strokeStyle = 'rgba(138,129,112,.55)'; g.lineWidth = Math.max(1.5, r * .16); g.lineCap = 'round'; g.beginPath(); g.arc(R.x + R.w / 2, R.y + R.h / 2, r * 1.6, 0, Math.PI * 2); g.moveTo(R.x + R.w / 2 - r * .7, R.y + R.h / 2); g.lineTo(R.x + R.w / 2 + r * .7, R.y + R.h / 2); g.moveTo(R.x + R.w / 2, R.y + R.h / 2 - r * .7); g.lineTo(R.x + R.w / 2, R.y + R.h / 2 + r * .7); g.stroke(); } }
+    else if (o.thumb) { g.fillStyle = '#ece6d8'; g.fillRect(R.x, R.y, R.w, R.h); }
     g.restore();
     if (want('borders')) strokePanel(g, p, path, k, ox, oy);
   }
@@ -234,6 +259,11 @@ function composePage(g, pg, k, ox, oy, o = {}) {
   }
   if (want('sfx')) for (const x of pg.sfx || []) { const b = drawSfx(g, x, k, ox, oy, o.screen && CM.selX === x); hits.push({x, box: {x: ox + x.x * k - b.w / 2, y: oy + x.y * k - b.h / 2, w: b.w, h: b.h}}); }
   return hits;
+}
+// a picture filling a rectangle, cut to its shape (the middle kept)
+function drawCover(g, img, R) {
+  const a = img.width / img.height, b = R.w / R.h; if (Math.abs(a - b) < .01) { g.drawImage(img, R.x, R.y, R.w, R.h); return; }
+  const sw = a > b ? img.height * b : img.width, sh = a > b ? img.height : img.width / b; g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, R.x, R.y, R.w, R.h);
 }
 // the page at print size (dpi): the panels drawn for it first
 async function pageImage(pg, dpi = 300, part) {

@@ -48,7 +48,8 @@ function panelPts(p, c = comic()) {
   let pts = p.poly ? p.poly.map(q => [...q]) : rectPts(p);
   if (p.bleed) { const P = c.page, [mt, mr, mb, ml] = P.margin, e = .6, b = P.bleed || 3;
     pts = pts.map(([x, y]) => [x <= ml + e ? -b : x >= P.w - mr - e ? P.w + b : x, y <= mt + e ? -b : y >= P.h - mb - e ? P.h + b : y]); }
-  return pts;
+  // (on screen, a panel that changed shape glides there from its old outline: see 36e)
+  const tw = CM.twOn && CM.tw.get(p.id); return tw ? tweenPts(tw, pts) : pts;
 }
 // the picture's rectangle (mm): what the camera frames, the balloons' room
 const panelBox = p => polyBox(panelPts(p));

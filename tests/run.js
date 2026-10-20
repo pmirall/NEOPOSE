@@ -950,6 +950,92 @@ const SUITES = {
     await ph.screenshot({path: path.join(OUT, 'comic-phone.png')});
     await ph.context().close();
   },
+  // the comic desk: gutters and corners dragged on the page, layouts that keep what the panels hold, pictures swapped
+  // by dragging, undo and redo, the row of pages (new, copied, reordered, their state), the page's script (the same
+  // words as the balloons), one click into a panel's scene and back
+  async comicdesk(browser) {
+    const page = await open(browser), A = fn => page.evaluate(fn);
+    await goTab(page, 'comic'); await page.waitForTimeout(900);
+    const at = async (pi, i, fx = .5, fy = .5) => page.evaluate(([pi, i, fx, fy]) => { const K = window.__cdp.comic, p = K.comic().pages[pi].panels[i], R = K.panelScreenRect(p), b = document.querySelector('#pageView').getBoundingClientRect(); if (!R) throw new Error('no rect ' + JSON.stringify({pi, i, page: K.CM.page, shown: K.pv.pages.map(e => e.i), n: K.comic().pages.length, view: !document.querySelector('#pageView').hidden})); return {x: b.left + R.x + R.w * fx, y: b.top + R.y + R.h * fy, R}; }, [pi, i, fx, fy]);
+    const d0 = await A(async () => { const K = window.__cdp.comic, pg = K.comic().pages[0]; for (const p of pg.panels) { K.CM.sel = p; document.querySelector('#cmFromStage').click(); } K.CM.sel = null; await K.CM.queue;
+      return {tools: !!document.querySelector('#pvTools'), cards: document.querySelectorAll('#pvTrack .pvcard').length, script: !document.querySelector('#pvScript').hidden, rows: document.querySelectorAll('#pvScript .pvs-row').length, layouts: document.querySelectorAll('#cmLayouts .preset').length}; });
+    ok(d0.tools && d0.cards === 1 && d0.script && d0.rows === 4 && d0.layouts >= 20, `the desk: its toolbar, ${d0.cards} page in the row, the page's script (${d0.rows} panels), ${d0.layouts} layouts to choose`);
+    // a gutter dragged: both rows follow, the gutter keeps its width
+    const g0 = await A(() => { const K = window.__cdp.comic, P = K.comic().pages[0].panels; return P.map(p => [p.x, p.w]); });
+    const a = await at(0, 0), b = await at(0, 1), gx = (Math.min(a.R.x + a.R.w, b.R.x + b.R.w) + Math.max(a.R.x, b.R.x)) / 2 + (a.x - a.R.x - a.R.w * .5);
+    await page.mouse.move(gx, a.y); await page.waitForTimeout(150); await page.mouse.down(); await page.mouse.move(gx + 50, a.y, {steps: 8}); await page.mouse.up(); await page.waitForTimeout(300);
+    const g1 = await A(() => { const K = window.__cdp.comic, P = K.comic().pages[0].panels; return P.map(p => [p.x, p.w]); });
+    const gap = P => { const [A0, B0] = [P[0], P[1]].sort((u, v) => u[0] - v[0]); return B0[0] - (A0[0] + A0[1]); };
+    const moved = g1.filter((q, i) => Math.abs(q[1] - g0[i][1]) > 3).length;
+    ok(moved === 4 && Math.abs(gap(g1) - gap(g0)) < .2, `a gutter dragged: the ${moved} panels along it follow, the gutter stays ${gap(g1).toFixed(1)} mm`);
+    // a corner of the chosen panel dragged: it slants, and the corner across the gutter goes with it
+    const c = await at(0, 0, .5, .5); await page.mouse.click(c.x, c.y); await page.waitForTimeout(150);
+    const cn = await A(() => { const K = window.__cdp.comic, p = K.comic().pages[0].panels[0], P = K.panelPts(p), b = document.querySelector('#pageView').getBoundingClientRect(), R = K.panelScreenRect(p), B = K.panelBox(p);
+      // its lower inner corner (towards the page's middle)
+      const j = P.map((q, i) => [i, Math.abs(q[0] - K.comic().page.w / 2) - q[1]]).sort((u, v) => u[1] - v[1])[0][0], q = P[j];
+      return {x: b.left + R.x + (q[0] - B.x) / B.w * R.w, y: b.top + R.y + (q[1] - B.y) / B.h * R.h}; });
+    await page.mouse.move(cn.x, cn.y); await page.waitForTimeout(100); await page.mouse.down(); await page.mouse.move(cn.x + 4, cn.y + 30, {steps: 6}); await page.mouse.up(); await page.waitForTimeout(200);
+    const sl = await A(() => window.__cdp.comic.comic().pages[0].panels.filter(p => p.poly).length);
+    ok(sl >= 2, `a corner dragged: ${sl} panels slant together`);
+    // a layout over full panels: the pictures keep their order, the shapes glide
+    const L = await A(() => { const K = window.__cdp.comic, pg = K.comic().pages[0], ids = K.readingOrder(pg).map(p => p.id + ':' + (p.shot && p.shot.id)); document.querySelector('#cmLayouts .preset[data-v="s5"]').click();
+      const tw = K.CM.tw.size, now = K.readingOrder(pg).map(p => p.id + ':' + (p.shot && p.shot.id)); return {n: pg.panels.length, kept: ids.every((x, i) => now[i] === x), tw}; });
+    ok(L.n === 5 && L.kept && L.tw >= 4, `a layout of 5 on a page of 4: the pictures keep their order, ${L.tw} panels glide to their new shapes`);
+    await page.waitForTimeout(700);
+    // undo and redo
+    await page.mouse.click(30, 400); await page.keyboard.press('Control+z'); await page.waitForTimeout(200); const u1 = await A(() => window.__cdp.comic.comic().pages[0].panels.length);
+    await page.keyboard.press('Control+Shift+z'); await page.waitForTimeout(200); const u2 = await A(() => window.__cdp.comic.comic().pages[0].panels.length);
+    ok(u1 === 4 && u2 === 5, `Ctrl+Z gives back the ${u1} panels; Ctrl+Mayús+Z the ${u2} again`);
+    await page.waitForTimeout(700);
+    // a picture dragged onto another panel: they swap
+    const s0 = await A(() => window.__cdp.comic.comic().pages[0].panels.map(p => p.shot ? p.shot.id : '-').join());
+    const p0 = await at(0, 0, .5, .7), p4 = await at(0, 4, .5, .5);
+    await page.mouse.move(p0.x, p0.y); await page.mouse.down(); await page.mouse.move((p0.x + p4.x) / 2, (p0.y + p4.y) / 2, {steps: 6}); await page.mouse.move(p4.x, p4.y, {steps: 6});
+    const drop = await A(() => !!window.__cdp.comic.pv.drop && !!window.__cdp.comic.pv.ghost); await page.mouse.up(); await page.waitForTimeout(200);
+    const s1 = await A(() => window.__cdp.comic.comic().pages[0].panels.map(p => p.shot ? p.shot.id : '-').join());
+    const x0 = s0.split(','), x1 = s1.split(',');
+    ok(drop && x1[0] === x0[4] && x1[4] === x0[0], `a picture dragged onto an empty panel (its ghost in the hand, the target marked): moved there (${x0[0]} → panel 5)`);
+    // the row of pages: a new page from the gallery, copied, moved first, its state advanced; one taken out
+    const t = await A(async () => { const K = window.__cdp.comic, c = K.comic(); document.querySelector('#pvTrack .pvadd').click(); const pop = !document.querySelector('#pvPresets').hidden;
+      document.querySelector('#cmTemplates .preset[data-v="hero"]').click(); await new Promise(r => setTimeout(r, 200)); const n1 = c.pages.length, cur = K.CM.page;
+      K.duplicatePage(c.pages[1]); await new Promise(r => setTimeout(r, 200));
+      const st = document.querySelector('#pvTrack .pvcard .st'); st.click(); st.click();
+      return {pop, n1, cur, n2: c.pages.length, hero: c.pages[1].panels.length, status: c.pages[0].status, cards: document.querySelectorAll('#pvTrack .pvcard').length}; });
+    ok(t.pop && t.n1 === 2 && t.cur === 1 && t.n2 === 3 && t.hero === 4 && t.status === 'tinta' && t.cards === 3, `a page from the gallery (Alta + 3), then a copy: ${t.cards} cards in the row; the first page's state advanced to «${t.status}»`);
+    await page.waitForTimeout(500);
+    // a card dragged to the front of the row
+    await page.waitForFunction(() => !document.getAnimations().some(x => x.playState === 'running' && x.effect && x.effect.target && x.effect.target.closest && x.effect.target.closest('#pvTrack')), null, {timeout: 15000}).catch(() => {});
+    const cards = await A(() => [...document.querySelectorAll('#pvTrack .pvcard')].map(el => { const r = el.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2, id: el.dataset.id}; }));
+    await page.mouse.move(cards[2].x, cards[2].y); await page.mouse.down(); await page.mouse.move(cards[0].x - 20, cards[2].y, {steps: 10}); await page.mouse.up(); await page.waitForTimeout(500);
+    const ord = await A(() => window.__cdp.comic.comic().pages.map(p => p.id));
+    ok(ord[0] === cards[2].id && ord.length === 3, 'a page dragged to the front of the row goes first in the book' + (ord[0] === cards[2].id ? '' : ` ${JSON.stringify(cards)} ${ord}`));
+    // the page's script: a line typed is the balloon on the page; the comic's script as text
+    await A(() => { const K = window.__cdp.comic; K.goPage(K.comic().pages.findIndex(pg => pg.panels.some(p => p.shot)), {force: true}); });
+    await page.waitForTimeout(400);
+    await A(() => document.querySelector('#pvScript .pvs-row .addln').click()); await page.waitForTimeout(100);
+    await page.keyboard.type('Hello there'); await A(() => { const n = document.querySelector('#pvScript .pvs-row .note'); n.value = 'A rooftop at dusk.'; n.dispatchEvent(new Event('input')); n.dispatchEvent(new Event('change')); });
+    const sc = await A(() => { const K = window.__cdp.comic, pg = K.comic().pages[K.CM.page], b = pg.panels.flatMap(p => p.balloons).find(x => x.text === 'Hello there'); return {b: !!b, text: K.comicScriptText()}; });
+    ok(sc.b && /PAGE 1/.test(sc.text) && /PANEL 1\nA rooftop at dusk\./.test(sc.text) && /Hello there/.test(sc.text), 'a line typed in the script is a balloon on the page; the script comes out as PAGE / PANEL / lines' + (sc.b ? '' : ' (no balloon)') + ' ' + JSON.stringify(sc.text.slice(0, 200)));
+    // one click into a panel's scene, and back
+    const cp = await A(() => window.__cdp.comic.CM.page), e1 = await at(cp, 0); await page.mouse.move(e1.x, e1.y); await page.mouse.click(e1.x, e1.y); await page.waitForTimeout(200);
+    const bar = await A(() => !document.querySelector('#pvBar').hidden); await A(() => document.querySelector('#pvBar [data-act=edit]').click()); await page.waitForTimeout(1500);
+    const ed = await A(() => ({edit: !!window.__cdp.comic.CM.edit, page: !document.querySelector('#pageView').hidden})); await A(() => document.querySelector('#cmBack').click()); await page.waitForTimeout(800);
+    const bk = await A(() => ({edit: !!window.__cdp.comic.CM.edit, page: !document.querySelector('#pageView').hidden}));
+    ok(bar && ed.edit && !ed.page && !bk.edit && bk.page, 'the panel\'s toolbar opens its scene in one click; «Back to the page» returns to the desk');
+    // keys: the next page, a balloon removed
+    const k = await A(async () => { const K = window.__cdp.comic; K.goPage(0, {force: true}); return K.CM.page; }); await page.mouse.click(30, 400); await page.keyboard.press('PageDown'); await page.waitForTimeout(200);
+    const k2 = await A(() => window.__cdp.comic.CM.page);
+    ok(k === 0 && k2 === 1, 'Av Pág turns to the next page');
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).slice(0, 2).join(' | ').slice(0, 300)));
+    await page.screenshot({path: path.join(OUT, 'comic-desk.png')});
+    await page.context().close();
+    const ph = await open(browser, {viewport: {width: 390, height: 844}, mobile: true});
+    await goTab(ph, 'comic'); await ph.waitForTimeout(900);
+    const m = await ph.evaluate(() => ({x: document.documentElement.scrollWidth - innerWidth, track: !!document.querySelector('#pvTrack') && document.querySelector('#pvTrack').getBoundingClientRect().width <= innerWidth, tools: document.querySelector('#pvTools').getBoundingClientRect().right <= innerWidth + 1}));
+    ok(m.x <= 0 && m.track && m.tools, 'phone: the desk\'s toolbar and the row of pages fit, no sideways scroll');
+    await ph.screenshot({path: path.join(OUT, 'comic-desk-phone.png')});
+    await ph.context().close();
+  },
   // the shapes of comics: slanted pages, panels split straight and slanted, set into others, bled off the paper, broken
   // out of; every kind of border and balloon; joined balloons drawn as one outline
   async comicshapes(browser) {

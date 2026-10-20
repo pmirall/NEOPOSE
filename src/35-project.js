@@ -16,7 +16,7 @@ function applyProjectState(p) {
   const o = p && typeof p === 'object' ? p : {};
   PROJECT.cast = Array.isArray(o.cast) ? o.cast : []; PROJECT.locations = Array.isArray(o.locations) ? o.locations : [];
   PROJECT.film = {aspect: null, ...(o.film || {})}; PROJECT.comic = o.comic || null;
-  if (typeof comicChanged === 'function') comicChanged(); if (typeof renderBible === 'function') renderBible();
+  if (typeof histReset === 'function') histReset(); if (typeof comicChanged === 'function') comicChanged(); if (typeof renderBible === 'function') renderBible();
 }
 // every shot of the project: the film's and the comic panels' own ones (linked panels are the film's)
 function eachProjectShot(fn) {
