@@ -7792,15 +7792,21 @@ function remodelHands(b, P, J, H) {
     apply(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
   }
 }
-// claws on fingers and paws, hooves on goats: rigid on the finger tips and the ankles (accessory skeleton)
-function pawGeos(m, P) {
-  const L = legSpec(m.body), out = []; if (!L) return out;
-  const sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
+// claws on fingers and paws, hooves on goats, pads: rigid on the finger tips and the ankles (accessory skeleton)
+function pawGeos(m, P) { return [...footGeos(m, P), ...handGeos(m, P)]; }
+// the shared makers: a claw (keratin cone, bent down) and a pad (low leather dome)
+function pawMakers(m) {
+  const L = legSpec(m.body), sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
   const ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]);
   const claw = (origin, axis, len, r, bone) => furAttrsLoft(loft({origin, axis, side: new V3(1, 0, 0), secs: [[-r * .5, r * .9, r * .75], [0, r, r * .8], [len * .5, r * .65, r * .55], [len, .0015, .0015]], radial: 8, sub: 2, bend: -.35, weights: () => [[bone, 1]]}), 3, 0, sz);
   // pads (toe beans): low leather domes, a in the skin's plane and h out of it
   const pad = (origin, axis, side, a, b, h, bone) => furAttrsLoft(loft({origin, axis, side, secs: [[-h * .6, a * .7, b * .7], [-h * .2, a, b], [h * .35, a * .85, b * .85], [h * .75, a * .45, b * .45], [h, .001, .001]], radial: 12, sub: 2, weights: () => [[bone, 1]]}), 2, 0, sz);
-  const pads = padsOn(m.body);
+  return {L, sz, jp, ACC, claw, pad, pads: padsOn(m.body)};
+}
+// feet: claws or hooves, toe beans and the big pad behind them
+function footGeos(m, P) {
+  const out = []; if (!legSpec(m.body)) return out;
+  const {L, sz, jp, ACC, claw, pad, pads} = pawMakers(m);
   for (const s of ['L', 'R']) {
     const ai = FIG.jIdx['ankle' + s], A = jp('ankle' + s);
     // paw extent from the remodelled geometry (front of the toes, width, sole)
@@ -7826,6 +7832,14 @@ function pawGeos(m, P) {
       if (L.type === 'planti') out.push(pad(new V3(cx, y, (zmin + zmax) / 2 - .01 * sz), dn, sd, .34 * w, Math.max(.3 * w, (zmax - zmin) * .26), .007 * sz, bone));
       else out.push(pad(new V3(cx, y, zmax - .055 * sz), dn, sd, .26 * w, .16 * w, .007 * sz, bone));
     }
+  }
+  return out;
+}
+// hands: palm and finger pads, hoof caps, finger claws
+function handGeos(m, P) {
+  const out = []; if (!legSpec(m.body)) return out;
+  const {L, sz, jp, ACC, claw, pad, pads} = pawMakers(m);
+  for (const s of ['L', 'R']) {
     if (pads && m.handAxes) {
       // palm and finger pads, on the palm side of the hand
       const n = m.handAxes[s].n, w = jp('wrist' + s), mid = jp(`f${s}20`), side = jp(`f${s}10`).sub(jp(`f${s}40`)).normalize();
