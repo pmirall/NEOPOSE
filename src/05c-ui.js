@@ -1,9 +1,12 @@
 /* ---------- history ---------- */
 const hist = {stack: [], i: -1};
 const snapshot = () => ({chars: chars.map(m => ({body: {...m.body}, preset: m.bodyPreset, pose: m.getPose(), outfit: m.outfit})), active});
+// the look (drawing style, form, light and its preset) is part of each undo step, so changing it alone is a step of its
+// own and is autosaved (files keep it with the camera, in sceneExtras)
+function histLook() { return {style: state.style, form: state.form, light: {...state.light}, lineMode: state.lineMode, lp: state.lightPreset}; }
 function pushHistory() {
   if (typeof animAutoKey === 'function') animAutoKey();
-  const s = JSON.stringify({...snapshot(), ...sceneExtras(false), mv: typeof animHist === 'function' ? animHist() : undefined});
+  const s = JSON.stringify({...snapshot(), ...sceneExtras(false), look: histLook(), mv: typeof animHist === 'function' ? animHist() : undefined});
   if (hist.stack[hist.i] === s) return;
   hist.stack = hist.stack.slice(0, hist.i + 1); hist.stack.push(s);
   if (hist.stack.length > 80) hist.stack.shift();
@@ -46,7 +49,7 @@ function updateUndo() {
    goes to IndexedDB, or to localStorage where there is none; the next start brings it back, with a way to begin
    afresh. Nothing is kept while the scene is still the one the app starts with. */
 const AUTO = {key: 'cdp.autosave', t: 0, base: null};
-const histStr = () => JSON.stringify({...snapshot(), ...sceneExtras(false), mv: typeof animHist === 'function' ? animHist() : undefined});
+const histStr = () => JSON.stringify({...snapshot(), ...sceneExtras(false), look: histLook(), mv: typeof animHist === 'function' ? animHist() : undefined});
 const idb = (() => {
   let db = null;
   const open = () => db || (db = new Promise((ok, ko) => { const r = indexedDB.open('neopose', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }));
@@ -322,8 +325,8 @@ function applyDrawing() {
   applyAmbient();
 }
 function buildDrawUI() {
-  chips($('#styleChips'), Object.entries(STYLES), state.style, id => { state.style = id; applyDrawing(); });
-  chips($('#lineChips'), Object.entries(LINE_MODES), state.lineMode, id => { state.lineMode = id; applyDrawing(); });
+  chips($('#styleChips'), Object.entries(STYLES), state.style, id => { state.style = id; applyDrawing(); pushHistory(); });
+  chips($('#lineChips'), Object.entries(LINE_MODES), state.lineMode, id => { state.lineMode = id; applyDrawing(); pushHistory(); });
   const box = $('#drawSliders'); box.innerHTML = '';
   slider(box, {id: 'd_stride', label: 'Separación de anillos', min: .012, max: .08, step: .001, value: LU.uStride.value, fmt: v => dec(v * 100) + ' cm', input: v => LU.uStride.value = v});
   slider(box, {id: 'd_alpha', label: 'Intensidad de líneas', min: .1, max: 1, step: .01, value: state.lineA, fmt: pctFmt, input: v => { state.lineA = v; applyDrawing(); }});
@@ -332,7 +335,7 @@ function buildDrawUI() {
   slider($('#hatchBox'), {id: 'd_hatch', label: 'Cantidad de sombreado', min: .2, max: .7, step: .01, value: LU.uHatch.value, fmt: pctFmt, input: v => LU.uHatch.value = v});
   chips($('#levelChips'), [[2, 'Dos tonos'], [3, 'Tres tonos']], 3, v => LU.uLevels.value = +v);
   slider($('#valueBox'), {id: 'd_thr', label: 'Umbral de sombra', min: .2, max: .8, step: .01, value: LU.uThresh.value, fmt: pctFmt, input: v => LU.uThresh.value = v});
-  chips($('#formChips'), Object.entries(FORM_MODES), state.form, v => setForm(v));
+  chips($('#formChips'), Object.entries(FORM_MODES), state.form, v => { setForm(v); pushHistory(); });
   $('#styleToSketch').onclick = () => setSketch(true);
   applyDrawing();
 }
@@ -356,32 +359,34 @@ function syncHandUI() { const h = mq.hands[handTargets()[0]]; fingerEls.forEach(
 /* light */
 let lightEls = {};
 function buildLightUI() {
-  chips($('#lightChips'), Object.entries(LIGHTS).map(([k, v]) => [k, v.label]), state.lightPreset, id => setLightPreset(id));
+  chips($('#lightChips'), Object.entries(LIGHTS).map(([k, v]) => [k, v.label]), state.lightPreset, id => { setLightPreset(id); pushHistory(); });
   const box = $('#lightSliders'); box.innerHTML = '';
   const defs = [['az', 'Dirección', -180, 180, 1, v => Math.round(v) + '°'], ['el', 'Altura@luz', -40, 90, 1, v => Math.round(v) + '°'],
     ['key', 'Luz principal', 0, 2, .01, pctFmt], ['fill', 'Relleno ambiente', 0, 1.5, .01, pctFmt], ['rim', 'Luz de recorte', 0, 1.5, .01, pctFmt], ['soft', 'Suavidad de sombra', 1, 12, .1, v => dec(v)]];
   for (const [k, label, mn, mx, st, fmt] of defs) lightEls[k] = slider(box, {id: 'l_' + k, label, min: mn, max: mx, step: st, value: state.light[k], fmt,
-    input: v => { state.light[k] = v; state.lightPreset = null; setPressed($('#lightChips'), ''); }});
+    input: v => { state.light[k] = v; state.lightPreset = null; setPressed($('#lightChips'), ''); }, change: pushHistory});
   $('#shadowChk').onchange = e => state.shadows = e.target.checked;
-  const addL = type => { if (extraLights.length >= 4) return; const g = makeLight(type, spotNear().setY(2.2)); selectObj(g); pushHistory(); };
+  const addL = type => { if (extraLights.length >= 4) { toast(tr('Ya hay 4 luces.')); return; } const g = makeLight(type, spotNear().setY(2.2)); selectObj(g); pushHistory(); };
   $('#addPoint').onclick = () => addL('punto'); $('#addSpot').onclick = () => addL('foco');
-  $('#clearLights').onclick = () => { if (!extraLights.length) return; tc.detach(); $('#objCard').hidden = true; state.sel = null; for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; pushHistory(); toast(tr('Luces quitadas'), {undo: true}); };
+  // the time of day and the set's lamps live in Escena › Ambiente: one tap takes you there
+  $('#goAmb').onclick = () => { goTab('escena'); requestAnimationFrame(() => goSection($('section[data-tab=escena] details[data-sec=ambiente]'))); };
+  $('#clearLights').onclick = () => { if (!extraLights.length) { toast(tr('No hay luces añadidas.')); return; } tc.detach(); $('#objCard').hidden = true; state.sel = null; for (const g of [...extraLights]) { scene.remove(g); if (g.userData.ref.light.isSpotLight) scene.remove(g.userData.ref.light.target); } extraLights.length = 0; pushHistory(); toast(tr('Luces quitadas'), {undo: true}); };
 }
 function syncLightUI() { for (const k in lightEls) lightEls[k].set(state.light[k]); setPressed($('#lightChips'), state.lightPreset || ''); }
 
 /* scene */
 function buildSceneUI() {
   const eb = $('#envChips'); eb.innerHTML = '';
-  for (const [g, label] of [['in', 'Interiores'], ['out', 'Exteriores'], ['pano', 'Panoramas 360°'], ['x', 'Otros']]) {
+  for (const [g, label] of [['x', 'Básicos'], ['in', 'Interiores'], ['out', 'Exteriores'], ['pano', 'Panoramas 360°']]) {
     const items = Object.entries(SCENES).filter(([, v]) => v.group === g).map(([k, v]) => [k, v.label]);
     if (g === 'x') for (const k of Object.keys(ENV_BUILD)) if (!SCENES[k] && k === 'vacio') items.push([k, ENVS[k]]);
     if (!items.length) continue;
     const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); const c = document.createElement('div'); c.className = 'chips envg';
-    eb.append(h, c); chips(c, items, state.env, id => { eb.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id))); setEnv(id); pushHistory(); });
+    eb.append(h, c); chips(c, items, state.env, id => { eb.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id))); setEnv(id).then(() => { if (state.env === id) pushHistory(); }); });
   }
-  slider($('#practicalBox'), {id: 'e_prac', label: 'Luces del escenario', min: 0, max: 2, step: .01, value: state.practical, fmt: pctFmt, input: v => { state.practical = v; applyAmbient(); }});
+  slider($('#practicalBox'), {id: 'e_prac', label: 'Lámparas del escenario', min: 0, max: 2, step: .01, value: state.practical, fmt: pctFmt, input: v => { state.practical = v; applyAmbient(); }});
   $('#lampShadowChk').onchange = e => { state.lampShadows = e.target.checked; applyAmbient(); };
-  chips($('#ambChips'), Object.entries(AMBIENTS).map(([k, v]) => [k, v.label]), state.amb, id => { state.amb = id; applyAmbient(); });
+  chips($('#ambChips'), Object.entries(AMBIENTS).map(([k, v]) => [k, v.label]), state.amb, id => { state.amb = id; applyAmbient(); pushHistory(); });
   $('#envOutlineChk').onchange = e => { state.envOutline = e.target.checked; if (envGroup) setOutlines(envGroup, state.envOutline); for (const p of props) setOutlines(p, state.envOutline); for (const m of chars) setOutlines(m.stoolMesh, state.envOutline); };
   const pb = $('#propChips'); pb.innerHTML = '';
   const ACCESS = ['sillaRuedas', 'muleta', 'muletas', 'bastonPaseo', 'andador', 'baston'];
@@ -391,7 +396,7 @@ function buildSceneUI() {
     else { const h = document.createElement('p'); h.className = 'lbl'; h.textContent = tr(label); pb.append(h, c); }
     chips(c, items, null, id => { setPressed(c, ''); const g = makeProp(id, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   }
-  $('#clearProps').onclick = () => { if (!props.length) return; if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; } clearProps(); pushHistory(); toast(tr('Objetos quitados'), {undo: true}); };
+  $('#clearProps').onclick = () => { if (!props.length) { toast(tr('No hay objetos en la escena.')); return; } if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; } clearProps(); pushHistory(); toast(tr('Objetos quitados'), {undo: true}); };
   $('#delChar').onclick = () => { if (chars.length < 2) return; const n = charLabel(mq); removeChar(active); pushHistory(); toast(tr('{x}: fuera de la escena', {x: n}), {undo: true}); };
   $('#rowChars').onclick = () => { chars.forEach((m, i) => { const yaw = m.yaw(); m.joints.hips.quaternion.premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), -yaw)); m.joints.hips.position.x = (i - (chars.length - 1) / 2) * .9; m.joints.hips.position.z = 0; }); frameAll(); pushHistory(); };
 }
@@ -400,12 +405,12 @@ function buildSceneUI() {
 let rollEl;
 function setRoll(v) { state.roll = v || 0; if (rollEl) rollEl.set(state.roll); }
 function buildCamUI() {
-  chips($('#viewChips'), VIEWS.map(v => [v[0], v[0]]), null, id => { const v = VIEWS.find(x => x[0] === id); setView(v[1], v[2]); });
-  $('#frameBtn').onclick = frameAll;
-  rollEl = slider($('#rollBox'), {id: 'roll', label: 'Inclinación (plano holandés)', min: -45, max: 45, step: 1, value: state.roll, fmt: v => Math.round(v) + '°', input: v => state.roll = Math.abs(v) < 1.5 ? 0 : v, change: () => rollEl.set(state.roll)});
-  rollEl.inp.ondblclick = () => setRoll(0);
+  chips($('#viewChips'), VIEWS.map(v => [v[0], v[0]]), null, id => { const v = VIEWS.find(x => x[0] === id); setView(v[1], v[2]); camTouched(); });
+  $('#frameBtn').onclick = () => { frameAll(); camTouched(); };
+  rollEl = slider($('#rollBox'), {id: 'roll', label: 'Inclinación (plano holandés)', min: -45, max: 45, step: 1, value: state.roll, fmt: v => Math.round(v) + '°', input: v => state.roll = Math.abs(v) < 1.5 ? 0 : v, change: () => { rollEl.set(state.roll); camTouched(); }});
+  rollEl.inp.ondblclick = () => { setRoll(0); camTouched(); };
   $('#focal').oninput = e => setFocal(+e.target.value, $('#dollyChk').checked);
-  for (const mm of LENSES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = mm; b.title = mm + ' mm'; b.onclick = () => { $('#focal').value = mm; setFocal(mm, $('#dollyChk').checked); }; $('#lensTicks').appendChild(b); }
+  chips($('#lensTicks'), LENSES.map(mm => [mm, mm + ' mm']), Math.round(state.focal), mm => { $('#focal').value = mm; setFocal(+mm, $('#dollyChk').checked); camTouched(); });
   const link = (id, k, after) => { const el = $(id); el.checked = state.guides[k]; el.onchange = () => { state.guides[k] = el.checked; after && after(); }; };
   link('#gThirds', 'thirds'); link('#gPersp', 'persp'); link('#gGrid', 'grid', () => grid.visible = state.guides.grid);
   link('#gRuler', 'ruler');

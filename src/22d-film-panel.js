@@ -9,6 +9,7 @@ function applyFilmFormat() {
   const a = PROJECT.film.aspect;
   if (ANIM.open && a) { if (state.ratio !== '_film') ANIM.ratioBack = state.ratio; RATIOS._film = [tr('Película'), a]; state.ratio = '_film'; applyFrameAspect(a); }
   else if (state.ratio === '_film') { state.ratio = ANIM.ratioBack || 'libre'; applyFrameAspect(null); }
+  if (typeof syncRatioUI === 'function') syncRatioUI();
 }
 function renderFilmList() {
   const box = $('#fpShots'); if (!box) return; box.innerHTML = '';

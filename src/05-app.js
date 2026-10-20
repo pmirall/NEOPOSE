@@ -326,4 +326,5 @@ function setFocal(mm, dolly) {
   camera.setFocalLength(mm); camera.updateProjectionMatrix();
   if (dolly) { const dir = camera.position.clone().sub(controls.target).multiplyScalar(mm / old); camera.position.copy(controls.target).add(dir); if (camera.position.y < .06) camera.position.y = .06; controls.update(); }
   state.focal = mm; $('#focalOut').textContent = Math.round(mm) + ' mm';
+  const lt = $('#lensTicks'); if (lt) setPressed(lt, Math.round(mm));  // (Objetivo's chip of that lens, when it is one of them, shows pressed)
 }

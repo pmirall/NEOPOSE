@@ -217,6 +217,24 @@ const SUITES = {
     ok(mv.side > 100 && mv.gl > mv.side, `four views: small views beside a narrower main view (${JSON.stringify(mv)})`);
     await page.screenshot({path: path.join(OUT, 'scene.png')});
     await page.click('#multiBtn'); await page.waitForTimeout(300);
+    // a lens chip sets the focal length and shows pressed
+    const lens = await A(() => { document.querySelector('#lensTicks .chip[data-v="85"]').click(); return {f: window.__cdp.state.focal, on: [...document.querySelectorAll('#lensTicks .chip[aria-pressed=true]')].map(b => b.dataset.v).join()}; });
+    ok(lens.f === 85 && lens.on === '85', `the 85 mm chip sets the lens and shows pressed (${JSON.stringify(lens)})`);
+    // the time of day asked for survives the set being built (undo, files, shots); a set picked by hand keeps its own in undo
+    const amb = await A(async () => { const C = window.__cdp; await C.setEnv('estudio'); C.restore({...C.snapshot(), env: 'calle', amb: 'noche'}); await C.state.envReady; return {env: C.state.env, amb: C.state.amb}; });
+    ok(amb.env === 'calle' && amb.amb === 'noche', `a scene restored with a set and a time of day keeps that time once the set is built (${JSON.stringify(amb)})`);
+    await goTab(page, 'escena');
+    await A(async () => { document.querySelector('#envChips .chip[data-v="calle"]').click(); await window.__cdp.state.envReady; });
+    const amb2 = await A(async () => { const C = window.__cdp, a = C.state.amb; document.querySelector('#undo').click(); await C.state.envReady; const u = C.state.env; document.querySelector('#redo').click(); await C.state.envReady; return {picked: a, undone: u, env: C.state.env, amb: C.state.amb}; });
+    ok(amb2.picked === 'dia' && amb2.undone !== 'calle' && amb2.env === 'calle' && amb2.amb === 'dia', `Calle picked by hand, undone and redone, comes back by day (${JSON.stringify(amb2)})`);
+    // a light style is its own undo step: Ctrl+Z takes the light back and keeps the pose made before it
+    const pa = await A(async () => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'senalar')); await new Promise(r => setTimeout(r, 500)); return {q: C.mq.getPose().q, light: JSON.stringify(C.state.light)}; });
+    await goTab(page, 'luz'); await page.click('#lightChips .chip[data-v="contraluz"]'); await page.waitForTimeout(200);
+    const lit = await A(() => window.__cdp.state.lightPreset);
+    await page.keyboard.press('Control+z'); await page.waitForTimeout(600);
+    const pz = await A(() => { const C = window.__cdp; return {q: C.mq.getPose().q, light: JSON.stringify(C.state.light), lp: C.state.lightPreset}; });
+    const poseOff = Math.max(...Object.keys(pa.q).map(k => Math.max(...pa.q[k].map((v, i) => Math.abs(v - ((pz.q[k] || [])[i] ?? 9))))));
+    ok(lit === 'contraluz' && pz.light === pa.light && poseOff < 1e-3 && pz.lp !== 'contraluz', `Ctrl+Z after «Contraluz» takes the light back and keeps the pose (${JSON.stringify({lit, light: pz.light === pa.light, poseOff})})`);
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
@@ -258,6 +276,20 @@ const SUITES = {
     await page.evaluate(() => { if (window.__cdp.ANIM.playing) document.querySelector('#tlPlay').click(); });
     await page.waitForTimeout(500);
     await page.screenshot({path: path.join(OUT, 'anim.png')});
+    // with «Grabar la cámara» on, Cámara's buttons store camera keys; with it off, a shot whose camera is animated says so
+    await goTab(page, 'camara'); await page.evaluate(() => { if (!window.__cdp.ANIM.camRec) document.querySelector('#tlCamRec').click(); });
+    const ck = await A(async () => { const C = window.__cdp, n = () => C.ANIM.shots[C.ANIM.cur].cam.length, n0 = n();
+      document.querySelector('#viewChips .chip:nth-child(3)').click(); const n1 = n();
+      C.setFrameAnim(C.ANIM.f > 20 ? 4 : 36); document.querySelector('#frameBtn').click(); const n2 = n();
+      document.querySelector('#tlCamRec').click(); document.querySelector('#viewChips .chip:nth-child(1)').click(); return {n0, n1, n2, n3: n(), warned: !!C.ANIM.camWarned}; });
+    ok(ck.n1 > ck.n0 && ck.n2 > ck.n1 && ck.n3 === ck.n2 && ck.warned, `an angle and «Encuadrar a todos» key the recorded camera; unrecorded, it warns instead (${JSON.stringify(ck)})`);
+    // the film's format sets the frame: Cámara's ratio chips are locked (none pressed) until the timeline closes
+    const rl = () => A(() => { const b = [...document.querySelectorAll('#ratioChips .chip')]; return {off: b.filter(x => x.disabled).length, n: b.length, on: b.filter(x => x.getAttribute('aria-pressed') === 'true').length, note: !document.querySelector('#ratioNote').hidden}; });
+    await page.evaluate(() => document.querySelector('#fpFormat .chip[data-v="2.39"]').click()); await page.waitForTimeout(200);
+    const r1 = await rl();
+    await page.evaluate(() => window.__cdp.spaces.setWorkspace('static')); await page.waitForTimeout(400);
+    const r2 = await rl();
+    ok(r1.off === r1.n && r1.on === 0 && r1.note && r2.off === 0 && r2.on === 1 && !r2.note, `the film's format locks the ratio chips, closing the timeline frees them (${JSON.stringify({r1, r2})})`);
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },

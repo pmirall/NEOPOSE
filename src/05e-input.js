@@ -86,7 +86,7 @@ function endDrag() {
   if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');
   if (drag && drag.id !== 'fk' && drag.id !== 'sun') tourEvent(drag.id === 'hips' ? 'hips' : 'ik');
   if (drag && drag.id === 'fk' && !drag.moved) { const jn = drag.joint; drag = null; controls.enabled = true; vp.style.cursor = ''; down = null; return select(jn); }
-  if (!drag) return; const wasSun = drag.id === 'sun'; drag = null; controls.enabled = true; vp.style.cursor = ''; if (!wasSun) pushHistory(); }
+  if (!drag) return; drag = null; controls.enabled = true; vp.style.cursor = ''; pushHistory(); }
 vp.addEventListener('pointerup', e => {
   if (drag) { endDrag(); down = null; return; }
   if (down && !gizmoDragged && !practice.active && e.target === canvas && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) {

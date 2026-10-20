@@ -196,6 +196,13 @@ function animAutoKey() {
 }
 // the camera, when its track is being recorded
 function camAutoKey() { if (ANIM.open && ANIM.camRec && !ANIM.playing && !ANIM.busy) setKey('cam'); }
+// a Cámara button pressed by hand (an angle, «Encuadrar a todos», a lens…): a key while the camera is recorded; on a shot
+// whose camera is already animated and not being recorded, the new framing would be lost at the next frame, so it says
+// so (once a session)
+function camTouched() {
+  camAutoKey();
+  if (ANIM.open && !ANIM.camRec && !ANIM.playing && !ANIM.busy && shot() && shot().cam.length && !ANIM.camWarned) { ANIM.camWarned = true; toast(tr('Este plano tiene la cámara animada: activa «Grabar la cámara» en la línea de tiempo para guardar este encuadre.')); }
+}
 
 /* ---------- shots ---------- */
 // leave the current shot: keep its cast, set and a thumbnail; enter another and rebuild its scene

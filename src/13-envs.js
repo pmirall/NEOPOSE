@@ -27,7 +27,7 @@ const SCENES = {
       L(e, -2.25, 2.25, 1.6, {to: [0, 1.1, 0], ang: 40, pen: 1, i: 1.6, d: 14, c: 0xfff3e2, sh: true, studio: true});
       L(e, 2.55, 1.95, 1.2, {to: [0, 1, 0], ang: 45, pen: 1, i: .55, d: 12, c: 0xf2f5ff, studio: true});
       L(e, 1.1, 2.9, -2.3, {to: [0, 1.4, 0], ang: 30, pen: .8, i: 1, d: 10, c: 0xffffff, sh: true, studio: true});
-      A(e, 'wooden_crate_01', -1.9, -1.9, .4); A(e, 'plastic_crate_01', -1.45, -2.2, -.2); A(e, 'metal_stool_01', 1.7, -1.2, .3);
+      A(e, 'wooden_crate_01', -3.3, -1.5, .4); A(e, 'plastic_crate_01', -2.8, -1.9, -.2); A(e, 'metal_stool_01', 1.7, -1.2, .3);  // (the crates to one side: never behind the figure)
       A(e, 'cardboard_box_01', 3.4, -2.4, .7); A(e, 'cardboard_box_01', 3.1, -2.9, .2, {y: 0});
       const t = A(e, 'wooden_crate_01', 3.8, .2, 1.2); A(e, 'Camera_01', 3.8, .2, -1, {y: topOf(t, 3.8, .2), node: 'Camera_01'});
     }},

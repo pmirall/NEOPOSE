@@ -99,6 +99,6 @@ function setMulti(on) {
 }
 function buildSceneExtrasUI() {
   slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }});  // the sun turns with a found panorama
-  chips($('#perspChips'), Object.entries(PERSP_SHOTS).map(([k, v]) => [k, v[0]]), null, id => { perspShot(id); setPressed($('#perspChips'), ''); });
+  chips($('#perspChips'), Object.entries(PERSP_SHOTS).map(([k, v]) => [k, v[0]]), null, id => { perspShot(id); setPressed($('#perspChips'), ''); camTouched(); });
   $('#multiBtn').onclick = () => setMulti(!MV.on);
 }

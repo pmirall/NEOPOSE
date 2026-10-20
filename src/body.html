@@ -417,13 +417,15 @@
             <summary><h3>Escenario</h3></summary>
             <button class="btn small magic refbtn" id="refOpenScene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Escenario desde una referencia</button>
             <div id="envChips"></div>
-            <p class="lbl">Momento del día</p>
-            <div class="chips" id="ambChips"></div>
             <div id="panoBox" hidden></div>
-            <div id="practicalBox"></div>
-            <label class="check"><input type="checkbox" id="lampShadowChk" checked> Sombras de las lámparas del escenario</label>
             <label class="check"><input type="checkbox" id="envOutlineChk" checked> Contorno de tinta en el escenario</label>
             <p class="note">Modelos, texturas y panoramas 360° de <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> (dominio público, CC0). Cada escenario trae sus propias lámparas, con luz y sombra.</p>
+          </details>
+          <details class="sec" data-sec="ambiente" open>
+            <summary><h3>Ambiente <span>hora del día y lámparas</span></h3></summary>
+            <div class="chips" id="ambChips"></div>
+            <div id="practicalBox"></div>
+            <label class="check"><input type="checkbox" id="lampShadowChk" checked> Sombras de las lámparas del escenario</label>
           </details>
           <details class="sec" data-sec="objetos">
             <summary><h3>Objetos <span>tócalos en el lienzo para moverlos</span></h3></summary>
@@ -434,14 +436,18 @@
 
         <section data-tab="luz" hidden>
           <details class="sec" data-sec="luz" id="secLuz" open>
-            <summary><h3>Luz <span>respecto a la cámara</span></h3></summary>
+            <summary><h3>Luz <span>fija en la escena</span></h3></summary>
             <div class="chips" id="lightChips"></div>
+            <p class="note">Cada estilo coloca la luz según la vista actual; si giras la cámara, la luz se queda donde está. Pulsa otra vez el estilo para recolocarla.</p>
             <div id="lightSliders"></div>
             <label class="check"><input type="checkbox" id="shadowChk" checked> Sombras proyectadas</label>
             <label class="check"><input type="checkbox" id="sunChk" checked> Sol arrastrable en el lienzo (con esta sección abierta)</label>
             <p class="lbl">Luces añadidas · máx. 4</p>
             <div class="row"><button class="btn small" id="addPoint">Bombilla</button><button class="btn small" id="addSpot">Foco</button><button class="btn small" id="clearLights">Quitar todas</button></div>
             <p class="note">Aparecen junto al personaje activo; tócalas en el lienzo para moverlas o cambiar color y fuerza.</p>
+            <p class="note" data-ws="anim">En la película, esta luz y sus deslizadores valen para todos los planos; las bombillas y focos añadidos, solo para este plano. La luz propia de cada plano: Película › «Interpretación, cámara y luz del plano».</p>
+            <p class="note">La hora del día (noche, atardecer…) y las lámparas del escenario están en Escena › Ambiente.</p>
+            <div class="row"><button class="btn small" id="goAmb" type="button">Ir a Ambiente</button></div>
           </details>
         </section>
         <section data-tab="pelicula" hidden>
@@ -582,13 +588,14 @@
             <summary><h3>Objetivo</h3></summary>
             <div class="sl"><label for="focal">Distancia focal</label><output id="focalOut">50 mm</output>
               <input type="range" id="focal" min="14" max="200" step="1" value="50"></div>
-            <div class="lens-ticks" id="lensTicks"></div>
+            <div class="chips" id="lensTicks"></div>
             <label class="check"><input type="checkbox" id="dollyChk" checked> Mantener el tamaño de la figura (dolly zoom)</label>
             <p class="note">El gran angular exagera la perspectiva y el escorzo; el tele la aplana.</p>
           </details>
           <details class="sec" data-sec="vineta">
-            <summary><h3>Viñeta <span>la exportación se recorta</span></h3></summary>
+            <summary><h3>Formato <span>la exportación se recorta</span></h3></summary>
             <div class="chips" id="ratioChips"></div>
+            <p class="note" id="ratioNote" hidden></p>
           </details>
         </section>
       </div>

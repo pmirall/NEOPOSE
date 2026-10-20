@@ -95,6 +95,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chip{border:1.5px solid var(--line);background:transparent;border-radius:var(--sketch);padding:4px 10px;cursor:pointer;font-size:12.5px;font-weight:600}
 .chip:hover{border-color:var(--ink)}
 .chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--page)}
+.chip:disabled{opacity:.4;cursor:default}
 
 .sl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin:8px 0}
 .sl label{font-size:12.5px;font-weight:600}
@@ -119,9 +120,6 @@ form.save input:focus{outline:none;border-bottom-color:var(--blue)}
 .canon{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px}
 .canon strong{font-family:var(--f-hand);font-size:40px;line-height:1;color:var(--blue)}
 .canon span{font-size:12.5px;color:var(--ink-soft)}
-.lens-ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-soft);margin-top:-2px}
-.lens-ticks button{border:0;background:none;padding:0;cursor:pointer;color:inherit;font:inherit}
-.lens-ticks button:hover{color:var(--blue)}
 
 /* practice HUD */
 .hud{position:absolute;top:22px;right:12px;z-index:4;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:10px 14px 12px;min-width:190px;box-shadow:var(--lift);text-align:center}
@@ -183,6 +181,8 @@ body.practicing .cast{display:none}
 /* the sketch is drawn over Estático's picture: the other spaces do not show it, nor the Dibujo tab's way to it */
 body:not([data-ws="static"]) #sketch{visibility:hidden}
 body:not([data-ws="static"]) #styleSketchNote,body:not([data-ws="static"]) #styleToSketch{display:none}
+/* a note of the panel that only applies while making a film */
+body:not([data-ws="anim"]) .page [data-ws~="anim"]{display:none}
 .sketch-bar{position:absolute;left:12px;top:58px;bottom:52px;overflow:auto;z-index:4;width:268px;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:10px 12px;box-shadow:var(--lift);display:grid;gap:6px}
 #sketchBtn[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--page)}
 .search{width:100%;border:0;border-bottom:1.5px solid var(--ink);background:transparent;padding:6px 2px;margin:0 0 8px;font:inherit;color:var(--ink)}

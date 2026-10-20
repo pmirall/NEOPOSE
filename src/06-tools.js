@@ -642,8 +642,13 @@ function clearLights() { for (const g of [...extraLights]) { scene.remove(g); if
 function applySceneExtras(o) {
   if ('project' in o && typeof applyProjectState === 'function') applyProjectState(o.project);
   if (o.anim && typeof applyAnimState === 'function') applyAnimState(o.anim);
-  if (o.env && o.env !== state.env) { setEnv(o.env); $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === o.env))); }
-  if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }
+  // a new set brings its own time of day when it is built: the one asked for is put back after that (before a shot
+  // waiting on state.envReady goes on), unless yet another set has been asked for meanwhile
+  if (o.env && o.env !== state.env) {
+    const env = o.env, want = o.amb;
+    setEnv(env).then(() => { if (want && state.env === env && state.amb !== want) { state.amb = want; applyAmbient(); setPressed($('#ambChips'), want); } });
+    $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === env)));
+  } else if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }
   if (o.props && JSON.stringify(props.map(serializeProp)) !== JSON.stringify(o.props)) {
     if (state.sel && state.sel.kind === 'prop') { tc.detach(); state.sel = null; $('#objCard').hidden = true; }
     clearProps();
@@ -665,12 +670,15 @@ function applySceneExtras(o) {
     }
   }
   if (o.cam) { camera.position.fromArray(o.cam.p); controls.target.fromArray(o.cam.t); $('#focal').value = o.cam.f; setFocal(o.cam.f, false); setRoll(o.cam.r); controls.update(); }
+  // (only what differs is applied: undo steps carry the look too, and most of them do not change it)
   if (o.look) {
-    if (o.look.style) { state.style = o.look.style; setPressed($('#styleChips'), state.style); }
-    if (o.look.lineMode) { state.lineMode = o.look.lineMode; setPressed($('#lineChips'), state.lineMode); }
-    if (o.look.form) setForm(o.look.form);
-    if (o.look.light) { state.light = {...o.look.light}; state.lightPreset = null; syncLightUI(); }
-    applyDrawing();
+    const L = o.look; let changed = false;
+    if (L.style && L.style !== state.style) { state.style = L.style; setPressed($('#styleChips'), state.style); changed = true; }
+    if (L.lineMode && L.lineMode !== state.lineMode) { state.lineMode = L.lineMode; setPressed($('#lineChips'), state.lineMode); changed = true; }
+    if (L.form && L.form !== state.form) { setForm(L.form); changed = true; }
+    if (L.light && JSON.stringify(L.light) !== JSON.stringify(state.light)) { state.light = {...L.light}; state.lightPreset = 'lp' in L ? L.lp ?? null : null; syncLightUI(); changed = true; }
+    else if ('lp' in L && (L.lp ?? null) !== state.lightPreset) { state.lightPreset = L.lp ?? null; syncLightUI(); }
+    if (changed) applyDrawing();
   }
 }
 
@@ -680,6 +688,13 @@ function frameRect(w, h) {
   const r = RATIOS[state.ratio || 'libre'][1]; if (!r) return {x: 0, y: 0, w, h};
   const fw = w / h > r ? h * r * .94 : w * .94, fh = fw / r;
   return {x: (w - fw) / 2, y: (h - fh) / 2, w: fw, h: fh};
+}
+// while the film's format or a comic panel being edited sets the frame, Cámara's ratio chips are locked and say who sets it
+function syncRatioUI() {
+  const lock = !!state.frameAspect, box = $('#ratioChips'); if (!box) return;
+  for (const b of box.querySelectorAll('.chip')) b.disabled = lock;
+  setPressed(box, lock ? '' : (state.ratio || 'libre'));
+  const n = $('#ratioNote'); if (n) { n.hidden = !lock; n.textContent = lock ? tr(state.ratio === '_panel' ? 'Lo marca la viñeta que estás editando.' : 'Lo marca la película: cámbialo en Película › Formato.') : ''; }
 }
 function drawFrame(ctx, w, h) {
   if (!RATIOS[state.ratio || 'libre'][1]) return;
@@ -742,7 +757,7 @@ function renderViews() {
   const box = $('#viewList'); box.innerHTML = '';
   (state.views || []).forEach((v, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = tr('Vista {n}', {n: i + 1});
-    b.onclick = () => { camera.position.fromArray(v.p); controls.target.fromArray(v.t); $('#focal').value = v.f; setFocal(v.f, false); setRoll(v.r); controls.update(); };
+    b.onclick = () => { camera.position.fromArray(v.p); controls.target.fromArray(v.t); $('#focal').value = v.f; setFocal(v.f, false); setRoll(v.r); controls.update(); camTouched(); };
     const x = document.createElement('span'); x.className = 'chipx'; x.textContent = '×'; x.title = tr('Borrar vista');
     x.onclick = e => { e.stopPropagation(); state.views.splice(i, 1); renderViews(); };
     b.appendChild(x); box.appendChild(b);
@@ -761,7 +776,7 @@ function buildToolsUI() {
   // while symmetry is on, a chip by IK/FK says so (it outlives the joint card) and turns it off
   $('#symMode').onclick = () => { state.sym = false; $('#symChk').checked = false; $('#symMode').hidden = true; };
   $('#poseSearch').oninput = () => buildPoseGrid();
-  chips($('#ratioChips'), Object.entries(RATIOS).map(([k, v]) => [k, v[0]]), state.ratio, k => state.ratio = k);
+  chips($('#ratioChips'), Object.entries(RATIOS).map(([k, v]) => [k, v[0]]), state.ratio, k => { if (state.frameAspect) return syncRatioUI(); state.ratio = k; });
   $('#saveView').onclick = () => { if (state.views.length >= 8) state.views.shift(); state.views.push({p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}); renderViews(); };
   renderViews();
   const ga = $('#gAction'); ga.checked = state.guides.action; ga.onchange = () => state.guides.action = ga.checked;

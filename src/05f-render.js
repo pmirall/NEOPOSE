@@ -59,7 +59,7 @@ function sceneTicks() {
 // with the animation dock open, the shot is framed in the part of the canvas above it (what the film will show)
 // a frame of its own shape on the canvas (a comic panel being edited): the camera is that picture's, placed where the
 // frame guide is, so what is inside the guide is exactly what the panel will show (and the canvas around it, the rest)
-function applyFrameAspect(a) { state.frameAspect = a || null; if (!a) { noDockView(); return; } panelFrameView(); }
+function applyFrameAspect(a) { state.frameAspect = a || null; if (!a) noDockView(); else panelFrameView(); if (typeof syncRatioUI === 'function') syncRatioUI(); }
 function panelFrameView() {
   const f = frameRect(W, Hh); camera.aspect = state.frameAspect; camera.setFocalLength(state.focal);
   camera.setViewOffset(f.w, f.h, -f.x, -f.y, W, Hh); camera.updateProjectionMatrix();

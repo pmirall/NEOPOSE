@@ -114,7 +114,7 @@ const DRAG_KINDS = [
   {sel: '#addPoint, #addSpot', target: 'floor', item: el => el.id === 'addSpot' ? 'foco' : 'punto', label: () => tr('Una luz aquí encima'),
     commit: (t, type) => { if (extraLights.length >= 4) return tr('Ya hay 4 luces.'); const g = makeLight(type, t.point.clone().setY(2.2)); selectObj(g); pushHistory(); return tr('Luz añadida'); }},
   {sel: '#envChips .chip[data-v]', target: 'canvas', item: el => el.dataset.v, label: () => tr('Cambiar el escenario'),
-    commit: (t, id) => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id))); setEnv(id); pushHistory(); return null; }},
+    commit: (t, id) => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id))); setEnv(id).then(() => { if (state.env === id) pushHistory(); }); return null; }},
   {sel: '#hairGrid .hairItem:not([disabled])', target: 'char', item: el => el.dataset.v, label: t => tr('Peinar a {x}', {x: nameOf(t.m)}),
     commit: (t, id) => { onActive(t.ci, () => { setHair(mq, id); renderHairUI(); pushHistory(); }); return null; }},
   {sel: '#buildGrid .pose[data-id]', target: 'char', item: el => el.onclick, label: t => tr('Complexión para {x}', {x: nameOf(t.m)}), commit: (t, fn, back, el) => { onActive(t.ci, () => fn.call(el)); return null; }},
@@ -269,7 +269,7 @@ function menuItemsAt(x, y) {
   }
   return {title: null, items: [
     ['Añadir personaje', () => { const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (m) { const p = floorAt(x, y); if (p) { m.joints.hips.position.x = p.x; m.joints.hips.position.z = p.z; } setActive(chars.length - 1); pushHistory(); } }],
-    ['Encuadrar a todos', () => frameAll(), 'F'],
+    ['Encuadrar a todos', () => { frameAll(); camTouched(); }, 'F'],
     ['Buscar…', openPalette, 'Ctrl K']]};
 }
 // the pose of another character, keeping where this one stands and which way it faces
@@ -330,7 +330,7 @@ function paletteIndex() {
   const tabName = id => tabs.find(t => t.dataset.tab === id)?.querySelector('span')?.textContent || id;
   for (const [label, fn, key] of [['Deshacer', () => withGlide(undo), 'Ctrl Z'], ['Rehacer', () => withGlide(redo), 'Ctrl Y'], ['Espejar la pose', () => withGlide(mirrorPose), 'M'],
     ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Poner de pie', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
-    ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', frameAll, 'F'], ['Animación', () => setWorkspace('anim')], ['Exportar', () => $('#exportBtn').click()],
+    ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', () => { frameAll(); camTouched(); }, 'F'], ['Animación', () => setWorkspace('anim')], ['Exportar', () => $('#exportBtn').click()],
     ['Abrir en…', () => $('#openIn').click()], ['Boceto', () => $('#sketchBtn').click()], ['Práctica de gesto', () => $('#practiceBtn').click()], ['Cómo se usa', openHelp, '?'],
     ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar archivo .neopose', saveNeopose, 'Ctrl+S'], ['Tutorial: lo básico', () => tourStart('basico')], ['Tutorial: animar', () => tourStart('animar')], ['Tutorial: del guion a la película', () => tourStart('guion')], ['Tutorial: pelaje y marcas', () => tourStart('pelaje')], ['Abrir archivo .neopose', pickNeopose, 'Ctrl+O'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { setWorkspace('anim'); setTimeout(() => $('#tlClips')?.click(), 50); }]])
     add('cmd', tr(label), fn, key || '');
@@ -339,7 +339,7 @@ function paletteIndex() {
   for (const p of POSES) add('pose', p.label, () => withGlide(() => usePreset(p)), p.find || '');
   for (const n of [2, 3, 4]) for (const p of GROUP_POSES[n] || []) add('pose', p.label, () => withGlide(() => useGroup(p)), tr('{n} personas', {n}));
   for (const [k, v] of Object.entries(OUTFITS)) add('outfit', tr(v[0]), () => { wearOutfit(mq, v[1]); renderGarmentList(); renderLibrary(); renderCast(); pushHistory(); });
-  for (const [k, v] of Object.entries(SCENES)) add('set', tr(v.label), () => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === k))); setEnv(k); pushHistory(); });
+  for (const [k, v] of Object.entries(SCENES)) add('set', tr(v.label), () => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === k))); setEnv(k).then(() => { if (state.env === k) pushHistory(); }); });
   for (const [k, v] of [...Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]]), ...Object.entries(PROPS)]) add('prop', tr(v), () => { const g = makeProp(k, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   for (const b of $$('#exprChips .chip[data-v]')) add('expr', b.textContent, () => b.click());
   for (const c of PROJECT.cast) add('char', c.name, () => placeCharacter(c), tr('Reparto del proyecto'), 'cast:' + c.id);
@@ -353,7 +353,7 @@ function paletteIndex() {
   chipsOf('style', '#styleChips .chip', 'dibujo');
   chipsOf('view', '#viewChips .chip', 'camara', () => tr('Ángulo'));
   chipsOf('view', '#perspChips .chip', 'camara', () => tr('Perspectiva'));
-  chipsOf('light', '#lightChips .chip', 'escena', () => tr('Luz'));
+  chipsOf('light', '#lightChips .chip', 'luz', () => tr('Luz'));
   for (const inp of $$('section[data-tab=dibujo] .checks input')) add('guide', inp.parentElement.textContent.trim(), () => { showTab('dibujo'); inp.click(); }, tr('Guías'), 'guide:' + inp.id);
   for (const c of typeof allClips === 'function' ? allClips() : []) add('anim', c.name, () => { if (!ANIM.open) openTimeline(true); AG.sel = c; AG.cat = 'todas'; AG.q = ''; $('#agSearch').value = ''; openAnimGallery(); }, `${I18N_EN[c.name] || ''} ${c.id} ${c.cat || ''}`, 'anim:' + c.id);
   // settings: language, theme, quality
@@ -424,7 +424,7 @@ function initPalette() {
     }
     if (k === '/') { e.preventDefault(); openPalette(); }
     else if (k === 'm') withGlide(mirrorPose);
-    else if (k === 'f') frameAll();
+    else if (k === 'f') { frameAll(); camTouched(); }
   });
 }
 

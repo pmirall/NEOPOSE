@@ -67,7 +67,7 @@ async function openNeopose(file) {
     sk.strokes = Array.isArray(doc.sketch) ? doc.sketch : []; sk.redo = []; redrawSketch();
     if (doc.ui) {
       if (doc.ui.guides) { Object.assign(state.guides, doc.ui.guides); for (const [id, k] of [['#gThirds', 'thirds'], ['#gPersp', 'persp'], ['#gGrid', 'grid'], ['#gRuler', 'ruler']]) { const el = $(id); if (el) el.checked = !!state.guides[k]; } grid.visible = state.guides.grid; }
-      if (doc.ui.ratio && RATIOS[doc.ui.ratio]) { state.ratio = doc.ui.ratio; setPressed($('#ratioChips'), state.ratio); }
+      if (doc.ui.ratio && RATIOS[doc.ui.ratio]) { state.ratio = doc.ui.ratio; if (typeof syncRatioUI === 'function') syncRatioUI(); }
     }
     pushHistory();
     const newer = doc.version > NP_VERSION;
