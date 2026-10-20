@@ -98,6 +98,11 @@ const FUR_GLSL = `
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
     float kind = floor(w) - 1.0, fr = fract(w) - .5;
+    if (kind > 8.5) return vec3(.24, .11, .13);                   // throat
+    if (kind > 7.5) return mix(vec3(.56, .31, .34), vec3(.46, .25, .28), step(.0, fr) * smoothstep(.7, .9, sin(vFurP.z / uFurK / max(uLip.z, 1e-4) * 140.0)));  // palate, ridged
+    if (kind > 6.5) return vec3(.78, .52, .54);                  // gums
+    if (kind > 5.5) return vec3(.74, .37, .41);                  // tongue
+    if (kind > 4.5) return vec3(.97, .95, .9);                   // teeth
     if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
     if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
     if (kind > 1.5) return uFurLe;                               // nose and pads
@@ -140,6 +145,7 @@ function fCellJS(x, y, z) {
 function furPaintJS(C, E, px, py, pz) {
   const w = -E[3]; if (w < 1.5) return null;
   const kind = Math.floor(w) - 1, fr = fract(w) - .5, mix = (c, d, t) => c.map((v, i) => v + (d[i] - v) * t), M = C.m, slot = (k, c) => k > 1.5 ? C.c2 : k > .5 ? C.c1 : c;
+  if (kind > 4.5) return [[.97, .95, .9], [.74, .37, .41], [.78, .52, .54], [.56, .31, .34], [.24, .11, .13]][Math.min(kind, 9) - 5];  // the mouth
   if (kind > 3.5) return [.86, .81, .7]; if (kind > 2.5) return mix(C.le, [.32, .29, .26], .45); if (kind > 1.5) return C.le;
   let c = C.c0, m; const belly = Math.max(E[0], 0), muz = Math.max(-E[0], 0), dist = E[1], tip = E[2], dors = clamp(fr / .45, 0, 1), mask = clamp(-fr / .45, 0, 1);
   const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly);
@@ -173,7 +179,8 @@ function coatColors(m, mesh) {
 
 /* ---------- where every vertex is, for the coat ----------
    aEye of a vertex that is not an eye = (belly, how far down the limb, along an ear 0..1 or the tail 2..3, packed w).
-   kind: 1 fur, 2 leather (nose, pads), 3 claw or hoof, 4 horn. Eyes and meshes without the attribute are left alone. */
+   kind: 1 fur, 2 leather (nose, pads), 3 claw or hoof, 4 horn; inside the mouth 5 teeth, 6 tongue, 7 gums, 8 palate (ridged
+   when f > .5), 9 throat. Eyes and meshes without the attribute are left alone. */
 function furPack(A, o, belly, dist, tip, kind, dm) { const f = .5 + clamp(dm, -1, 1) * .45; A[o] = belly; A[o + 1] = dist; A[o + 2] = tip; A[o + 3] = -(1 + kind + f); }
 function furAttrsBody(m, P) {
   const nV = FIG.meta.nV, g = m.geo, A = g.attributes.aEye.array, N = g.attributes.normal.array, J = m.J, sz = m.size || 1;

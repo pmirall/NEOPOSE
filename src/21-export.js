@@ -238,7 +238,7 @@ function exportGLB() {
     const coat = coatOf(m.body), skin = new THREE.Color(coat ? coat.c[0] : 0xcfc5b3);  // an anthro in its coat's base colour
     // an anthro's coat and markings go along as vertex colours
     add(`personaje${ci + 1}`, m.body3, skin, coatColors(m, m.body3));
-    for (const a of m.acc || []) if (!a.userData.hull && a.visible && a.isMesh) add(`personaje${ci + 1}_extra`, a, skin, a.userData.mouth ? null : coatColors(m, a));
+    for (const a of m.acc || []) if (!a.userData.hull && a.visible && a.isMesh) add(`personaje${ci + 1}_extra`, a, skin, coatColors(m, a));
     for (const g of m.garments || []) if (g.meshes && g.meshes[0]) add(`personaje${ci + 1}_${g.hair ? 'pelo' : 'ropa'}`, g.meshes[0], new THREE.Color(g.spec.mode === 'tex' ? (g.d && g.d.avg ? `rgb(${g.d.avg.join(',')})` : '#888') : g.spec.colA));
   });
   for (const p of props) p.traverse(o => { if (o.isMesh && !o.userData.isHull && !o.isInstancedMesh) add('objeto', o, o.material && o.material.color ? o.material.color : new THREE.Color(0x999999)); });
