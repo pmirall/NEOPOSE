@@ -28,6 +28,14 @@
   --sketch:255px 12px 225px 12px/12px 225px 12px 255px;
   --lift:0 1px 0 rgba(60,45,20,.06),0 10px 26px -14px rgba(60,45,20,.45);
 }
+/* Japanese, Chinese and Korean: the Latin faces have no such glyphs, so each language falls back to its own system
+   face (a shared Han character then takes that language's form) */
+:root:lang(ja){--f-hand:"Kalam","Klee One","Hiragino Maru Gothic ProN","Yu Gothic UI","Noto Sans JP",cursive;--f-body:"Karla","Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK JP",monospace}
+:root:lang(zh){--f-hand:"Kalam","PingFang SC","Microsoft YaHei UI","Noto Sans SC",cursive;--f-body:"Karla","PingFang SC","Microsoft YaHei UI","Noto Sans SC",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK SC",monospace}
+:root:lang(ko){--f-hand:"Kalam","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",cursive;--f-body:"Karla","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK KR",monospace}
+:lang(ja) body,:lang(zh) body,:lang(ko) body{line-height:1.6}
+:lang(ko) body{word-break:keep-all}
+
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#171614; --page:#211f1b; --stage:#2a2723; --floor:#35312b;
   --ink:#ece5d3; --ink-soft:#a69d89; --line:#4d473d; --rule:#2e2b26;
@@ -2589,8 +2597,8 @@ body.creator .hint:not(.toast){display:none}
   </div>
 </div>
 
-<script>(function () { var all = ["ca", "de", "en", "fr", "it", "pt"], l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}
-  var h = {"ca": "8133ebabaf", "de": "064bfdae09", "en": "1cf98d9665", "fr": "462603fb67", "it": "343c104dca", "pt": "43aca6a23e"};
+<script>(function () { var all = ["ca", "de", "en", "fr", "it", "ja", "ko", "pt", "zh"], l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}
+  var h = {"ca": "8133ebabaf", "de": "064bfdae09", "en": "1cf98d9665", "fr": "462603fb67", "it": "343c104dca", "ja": "a8ed8fc19e", "ko": "3f732b4ee9", "pt": "43aca6a23e", "zh": "99f2d109c8"};
   ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write('<script src="i18n/' + c + '.js?h=' + h[c] + '"><\/script>'); });
 })();</script>
 <script src="vendor/three.min.js"></script>
@@ -2603,7 +2611,7 @@ body.creator .hint:not(.toast){display:none}
 <script>
 (() => {
 const APP_VERSION = "1.6.0";
-const I18N_LANGS = ["ca", "de", "en", "fr", "it", "pt"];
+const I18N_LANGS = ["ca", "de", "en", "fr", "it", "ja", "ko", "pt", "zh"];
 const I18N = window.NEOPOSE_I18N || {en: {}};
 const I18N_EN = I18N.en || {};
 const GARMENT_TR = window.NEOPOSE_GTR || {};
@@ -2619,7 +2627,7 @@ const LANGS = Object.fromEntries(['en', 'es', ...I18N_LANGS.filter(k => k !== 'e
   return [c, n.charAt(0).toLocaleUpperCase(c) + n.slice(1)];
 }));
 // machine translations, waiting for a human review on Weblate
-const LANGS_MACHINE = new Set(['ca', 'fr', 'pt', 'de', 'it']);
+const LANGS_MACHINE = new Set(['ca', 'fr', 'pt', 'de', 'it', 'ja', 'zh', 'ko']);
 const LANG = (() => { try { const v = JSON.parse(localStorage.getItem('cdp.lang')); return LANGS[v] ? v : 'en'; } catch (e) { return 'en'; } })();
 document.documentElement.lang = LANG;
 const I18N_LANG = LANG === 'es' ? null : I18N[LANG] || I18N.en;
@@ -2634,8 +2642,9 @@ const trn = (n, one, many, vars) => tr(n === 1 ? one : many, {n, ...vars});
 // translate data tables in place: {id: {label}} or {id: 'label'}
 const tLabels = (o, k = 'label') => { for (const v of Object.values(o)) if (v && typeof v[k] === 'string') v[k] = tr(v[k]); return o; };
 const tValues = o => { for (const k in o) if (typeof o[k] === 'string') o[k] = tr(o[k]); return o; };
-// decimal point in English, comma in the other languages
-const dec = (v, d = 1) => LANG !== 'en' ? v.toFixed(d).replace('.', ',') : v.toFixed(d);
+// decimal comma in the European languages, point in English, Japanese, Chinese and Korean
+const DEC_COMMA = new Set(['es', 'ca', 'fr', 'pt', 'de', 'it']);
+const dec = (v, d = 1) => DEC_COMMA.has(LANG) ? v.toFixed(d).replace('.', ',') : v.toFixed(d);
 /* static HTML: text nodes and a few attributes are looked up as they are; a run of text with inline markup
    (<b>, <kbd>, <a>…) is looked up as one piece by its innerHTML, so sentences are not cut into fragments */
 const I18N_INLINE = new Set(['B', 'I', 'KBD', 'A', 'EM', 'STRONG', 'BR', 'CODE']);
@@ -11311,7 +11320,7 @@ function crSyncExpr() {
     box.dataset.kind = kind; box.innerHTML = '';
     for (const [k, v] of Object.entries(human ? FACE_EXPR : ANTHRO_EXPR)) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'crface'; b.dataset.v = k; b.innerHTML = crFaceSvg(k);
-      const l = document.createElement('span'); l.textContent = v.label; b.append(l); b.onclick = () => pickExpression(k); box.append(b);
+      const l = document.createElement('span'); l.textContent = tr(v.label); b.append(l); b.onclick = () => pickExpression(k); box.append(b);
     }
   }
   const cur = human ? mq.body.expr || 'neutra' : mq.aexpr || '';

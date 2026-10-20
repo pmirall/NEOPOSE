@@ -175,7 +175,7 @@ function crSyncExpr() {
     box.dataset.kind = kind; box.innerHTML = '';
     for (const [k, v] of Object.entries(human ? FACE_EXPR : ANTHRO_EXPR)) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'crface'; b.dataset.v = k; b.innerHTML = crFaceSvg(k);
-      const l = document.createElement('span'); l.textContent = v.label; b.append(l); b.onclick = () => pickExpression(k); box.append(b);
+      const l = document.createElement('span'); l.textContent = tr(v.label); b.append(l); b.onclick = () => pickExpression(k); box.append(b);
     }
   }
   const cur = human ? mq.body.expr || 'neutra' : mq.aexpr || '';
