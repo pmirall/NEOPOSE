@@ -662,7 +662,7 @@ class Mannequin {
     meta.bones.forEach((n, i) => {
       head[i] = pt(i);
       const d = child[n] ? pt(FIG.jIdx[child[n]]).sub(head[i]) : new V3(0, 1, 0);
-      if (n.startsWith('ankle') && !((legSpec(this.body) || {}).type in {digi: 1, ungu: 1})) d.y = 0;  // a raised animal foot: rings round the metatarsus
+      if (n.startsWith('ankle') && !['digi', 'ungu'].includes((legSpec(this.body) || {}).type)) d.y = 0;  // a raised animal foot: rings round its metatarsus
       d.normalize(); dir[i] = d;
       const r0 = Math.abs(d.dot(Z)) > .8 ? Y : Z;
       ref[i] = r0.clone().addScaledVector(d, -d.dot(r0)).normalize();
