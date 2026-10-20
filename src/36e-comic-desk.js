@@ -3,6 +3,8 @@
    - a gutter (the white between panels) is dragged to move it, and every panel along it follows (Alt: only this
      one); a corner of the chosen panel is dragged to slant its sides. They snap to the margins, the middle, the
      thirds and the other gutters, with the guide shown
+   - a sound effect is dragged to move it, by its round handle to turn it, by its corner to size it; a double click
+     writes in it (36g)
    - a panel's picture is dragged onto another to swap them (they fly to their places); a balloon onto another panel
      to give it to that one
    - over a panel, its toolbar: its scene opened in 3D in one click (the panel grows into the stage), a balloon, cuts
@@ -152,6 +154,8 @@ function drawDeskOverlays(g, now) {
       g.save(); g.translate(mx, my); g.rotate(a); g.fillStyle = '#fff'; g.beginPath(); g.roundRect(-9 * dpr, -3 * dpr, 18 * dpr, 6 * dpr, 3 * dpr); g.fill(); g.stroke(); g.restore(); });
     P.forEach(([x, y]) => { g.fillStyle = '#fff'; g.beginPath(); g.arc(e.ox + x * k, e.oy + y * k, 5 * dpr, 0, Math.PI * 2); g.fill(); g.stroke(); });
     g.restore(); } }
+  // the chosen sound: its box, the round handle that turns it, the corner that sizes it (36g)
+  drawSfxHandles(g);
   // snapping guides
   for (const gd of pv.guides) { const e = entryOf(gd.pg); if (!e) continue; const c = comic(); g.save(); g.strokeStyle = '#b0432c'; g.lineWidth = 1 * dpr; g.setLineDash([6 * dpr, 4 * dpr]); g.beginPath();
     if (gd.x != null) { g.moveTo(e.ox + gd.x * k, e.oy - 10 * dpr); g.lineTo(e.ox + gd.x * k, e.oy + c.page.h * k + 10 * dpr); } else { g.moveTo(e.ox - 10 * dpr, e.oy + gd.y * k); g.lineTo(e.ox + c.page.w * k + 10 * dpr, e.oy + gd.y * k); }
@@ -179,7 +183,8 @@ function pulsePanel(p) { if (p) { pv.pulse = {id: p.id, t0: performance.now()}; 
 /* ---------- what the hand is over ---------- */
 // a balloon or a sound first, then a corner or side of the chosen panel, a gutter, a panel
 function pageHit(x, y) {
-  for (let i = pv.hits.length - 1; i >= 0; i--) { const h = pv.hits[i], B = h.box; if (x >= B.x && x <= B.x + B.w && y >= B.y && y <= B.y + B.h) return h.x ? {x: h.x, pg: h.pg} : {b: h.b, p: h.p, pg: h.pg}; }
+  // (a sound by its box turned with it)
+  for (let i = pv.hits.length - 1; i >= 0; i--) { const h = pv.hits[i], B = h.box; if (h.rb ? inSfxBox(h.rb, x, y, 3 * pv.dpr) : x >= B.x && x <= B.x + B.w && y >= B.y && y <= B.y + B.h) return h.x ? {x: h.x, pg: h.pg} : {b: h.b, p: h.p, pg: h.pg}; }
   const e = entryAt(x, y); if (!e) return null;
   const [mx, my] = toMm(e, x, y), p = panelAt(e.pg, mx, my); return p ? {p, pg: e.pg} : {pg: e.pg};
 }
@@ -295,7 +300,8 @@ const DESK_ICONS = {
 };
 const deskIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DESK_ICONS[n]}</svg>`;
 function placeDeskBar() {
-  const bar = $('#pvBar'); if (!bar) return; const p = (pv.drag ? null : CM.sel || (matchMedia('(hover: hover)').matches ? pv.hover : null));
+  // (not while a sound is chosen: its handles are what the hand is after)
+  const bar = $('#pvBar'); if (!bar) return; const p = (pv.drag || CM.selX ? null : CM.sel || (matchMedia('(hover: hover)').matches ? pv.hover : null));
   // (a small panel shows its toolbar only when it is the chosen one)
   const R = p && panelScreenRect(p); if (!R || (p !== CM.sel && (R.w < 60 || R.h < 40))) { bar.hidden = true; bar._p = null; return; }
   const empty = !panelShot(p); bar.hidden = false; bar.classList.toggle('empty', empty);
@@ -390,8 +396,9 @@ function initPageView() {
     pv.ptrs.set(e.pointerId, at(e)); pv.cv.focus({preventScroll: true});
     if (pv.ptrs.size === 2) { const [a, b2] = [...pv.ptrs.values()]; pv.drag = {kind: 'pinch', d0: Math.hypot(a[0] - b2[0], a[1] - b2[1]), z0: pv.zoom}; return; }
     const [x, y] = at(e); e._x = x; e._y = y; const E = entryAt(x, y); if (E && E.i !== CM.page) { CM.page = E.i; CM.selB = CM.selX = null; }
-    const c0 = cornerAt(x, y), h = c0 ? null : pageHit(x, y), ed = c0 || (h && (h.b || h.x)) ? null : edgeAt(x, y);
-    if (c0) pv.drag = startShapeDrag('corner', c0, e);
+    const sh = sfxHandleAt(x, y), c0 = sh ? null : cornerAt(x, y), h = sh || c0 ? null : pageHit(x, y), ed = sh || c0 || (h && (h.b || h.x)) ? null : edgeAt(x, y);
+    if (sh) pv.drag = startSfxDrag(sh, x, y);
+    else if (c0) pv.drag = startShapeDrag('corner', c0, e);
     else if (h && h.b) { CM.sel = h.p; CM.selB = h.b; CM.selX = null; pv.drag = {kind: 'balloon', b: h.b, p: h.p, x, y, bx: h.b.x, by: h.b.y}; }
     else if (h && h.x) { CM.selX = h.x; CM.selB = null; pv.drag = {kind: 'sfx', sfx: h.x, x, y, bx: h.x.x, by: h.x.y}; }
     else if (ed) { CM.sel = ed.p; CM.selB = CM.selX = null; pv.drag = startShapeDrag('edge', ed, e); }
@@ -402,16 +409,17 @@ function initPageView() {
   pv.cv.addEventListener('pointermove', e => {
     const [x, y] = at(e); if (pv.ptrs.has(e.pointerId)) pv.ptrs.set(e.pointerId, [x, y]); const D = pv.drag;
     if (!D) { // hovering: what would be taken
-      const c0 = cornerAt(x, y), h = c0 ? null : pageHit(x, y), ed = c0 || (h && (h.b || h.x)) ? null : edgeAt(x, y), hv = h && h.p && !h.b ? h.p : null;
+      const sh = sfxHandleAt(x, y), c0 = sh ? null : cornerAt(x, y), h = sh || c0 ? null : pageHit(x, y), ed = c0 || (h && (h.b || h.x)) ? null : edgeAt(x, y), hv = h && h.p && !h.b ? h.p : null;
       const edge = ed ? {...ed, set: moveSet(pageOfPanel(ed.p), ed.p, [ed.j, (ed.j + 1) % panelPts(ed.p).length], e.altKey, true)} : null;
       if (hv !== pv.hover || (edge?.p !== pv.edge?.p || edge?.j !== pv.edge?.j)) { pv.hover = hv; pv.edge = edge; drawPage(); }
-      if (c0) cursor('move'); else if (h && (h.b || h.x)) cursor('grab'); else if (ed) { const P = panelPts(ed.p), d = unit(P[ed.j], P[(ed.j + 1) % P.length]); cursor(Math.abs(d[0]) > Math.abs(d[1]) ? 'ns-resize' : 'ew-resize'); }
+      if (sh) cursor(sh.kind === 'sfxRot' ? 'crosshair' : 'nwse-resize'); else if (c0) cursor('move'); else if (h && (h.b || h.x)) cursor('grab'); else if (ed) { const P = panelPts(ed.p), d = unit(P[ed.j], P[(ed.j + 1) % P.length]); cursor(Math.abs(d[0]) > Math.abs(d[1]) ? 'ns-resize' : 'ew-resize'); }
       else if (h && h.p) cursor('pointer'); else cursor(pv.zoom > 1 ? 'grab' : 'default');
       return; }
     if (D.kind === 'pinch') { const [a, b2] = [...pv.ptrs.values()]; if (b2) { const d = Math.hypot(a[0] - b2[0], a[1] - b2[1]); setZoom(D.z0 * d / D.d0, (a[0] + b2[0]) / 2, (a[1] + b2[1]) / 2); } return; }
     if (D.kind === 'edge' || D.kind === 'corner') { e._x = x; e._y = y; moveShapeDrag(D, x, y, e); drawPage(); return; }
     if (D.kind === 'balloon') { const B = panelBox(D.p); D.b.x = clamp(D.bx + (x - D.x) / (B.w * pv.k), .05, .95); D.b.y = clamp(D.by + (y - D.y) / (B.h * pv.k), .05, .95);
       const h = pageHit(x, y), over = h && h.p && h.p !== D.p && !h.b ? h.p : null; pv.drop = over ? {p: over, label: tr('Soltar: el bocadillo pasa a esta viñeta')} : null; D.over = over; drawPage(); return; }
+    if (D.kind === 'sfxRot' || D.kind === 'sfxSize') { moveSfxDrag(D, x, y, e); drawPage(); return; }
     if (D.kind === 'sfx') { D.sfx.x = D.bx + (x - D.x) / pv.k; D.sfx.y = D.by + (y - D.y) / pv.k; drawPage(); return; }
     if (D.kind === 'pan') { if (pv.zoom > 1 || Math.hypot(x - D.x, y - D.y) > 4) { pv.panX = D.px + x - D.x; pv.panY = D.py + y - D.y; cursor('grabbing'); drawPage(); } return; }
     if (D.kind === 'panel') {
@@ -425,7 +433,7 @@ function initPageView() {
     if (D.kind === 'pinch') { if (pv.ptrs.size) pv.drag = null; return; }
     if ((D.kind === 'edge' || D.kind === 'corner') && D.moved) { CM.cache.clear(); comicSaved(); }
     else if (D.kind === 'balloon') { if (D.over) { rehomeBalloon(D.b, D.p, D.over, x, y); pulsePanel(D.over); } comicSaved(); }
-    else if (D.kind === 'sfx') comicSaved();
+    else if (/^sfx/.test(D.kind)) { comicSaved(); syncComicUI(); }
     else if (D.kind === 'panel' && D.swap && D.over) {
       const a = D.p, b2 = D.over, ra = pxRect(a), rb = pxRect(b2), ia = (CM.last.get(a.id) || {}).img, ib = (CM.last.get(b2.id) || {}).img;
       swapContents(a, b2); flyFrom(b2, {x: x - (ra.w * .25), y: y - (ra.h * .25), w: ra.w * .5, h: ra.h * .5}, ia); if (ib) flyFrom(a, rb, ib);
@@ -437,7 +445,7 @@ function initPageView() {
   // (going from a panel onto its own toolbar keeps the toolbar: it is that panel's)
   const leave = e => { if (pv.drag || !(pv.hover || pv.edge)) return; const to = e.relatedTarget; if (to && (to === pv.cv || to.closest && to.closest('#pvBar'))) { pv.edge = null; drawPage(); return; } pv.hover = null; pv.edge = null; drawPage(); };
   pv.cv.addEventListener('pointerleave', leave); bar.addEventListener('pointerleave', leave);
-  pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.b) { CM.selB = h.b; syncComicUI(); revealBalloonText(); } else if (h && h.p) openPanelScene(h.p); else setZoom(1); });
+  pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.x) { CM.selX = h.x; syncComicUI(); editSfxInline(h.x); } else if (h && h.b) { CM.selB = h.b; syncComicUI(); revealBalloonText(); } else if (h && h.p) openPanelScene(h.p); else setZoom(1); });
   pv.cv.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = at(e);
     if (e.ctrlKey || e.metaKey) setZoom(pv.zoom * Math.exp(-e.deltaY * .0022), x, y);
     else if (pv.zoom > 1.001) { pv.panX -= e.deltaX * pv.dpr; pv.panY -= e.deltaY * pv.dpr; drawPage(); }

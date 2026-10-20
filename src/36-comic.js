@@ -229,13 +229,7 @@ function panelEffect(g, kind, w, h, a) {
   }
   g.restore();
 }
-// a sound written on the page (BLAM, ドン): big letters, white with a thick ink edge, turned, over the panels
-function drawSfx(g, x, k, ox, oy, sel) {
-  const px = x.size * k; g.save(); g.translate(ox + x.x * k, oy + x.y * k); g.rotate((x.rot || 0) * DEG); g.font = SFX_FONT(px); g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineJoin = 'round'; g.lineWidth = px * .2; g.strokeStyle = '#141210'; g.strokeText(x.text, 0, 0); g.fillStyle = x.fill || '#ffffff'; g.fillText(x.text, 0, 0);
-  const wd = g.measureText(x.text).width; if (sel) { g.strokeStyle = '#2b5a9e'; g.lineWidth = 2; g.setLineDash([5, 4]); g.strokeRect(-wd / 2 - 6, -px * .6, wd + 12, px * 1.2); }
-  g.restore(); return {w: wd, h: px * 1.1};
-}
+// (the sounds written on the page, BLAM or ドン, and their looks: 36g-comic-sfx)
 
 /* ---------- balloons ---------- */
 // lines of text that fit a width
@@ -280,7 +274,8 @@ function composePage(g, pg, k, ox, oy, o = {}) {
       g.fillStyle = '#8a8170'; g.font = `600 ${Math.max(10, k * 2.4)}px ${css('--f-mono')}`; g.textAlign = 'left'; const pt = panelPts(p).reduce((a, q) => q[0] + q[1] < a[0] + a[1] ? q : a);
       g.fillText(String(num.get(p)), ox + Math.max(0, pt[0]) * k + 4, oy + Math.max(0, pt[1]) * k + Math.max(12, k * 3)); }
   }
-  if (want('sfx')) for (const x of pg.sfx || []) { const b = drawSfx(g, x, k, ox, oy, o.screen && CM.selX === x); hits.push({x, box: {x: ox + x.x * k - b.w / 2, y: oy + x.y * k - b.h / 2, w: b.w, h: b.h}}); }
+  // (the sounds over everything: hit by their box turned with them, the chosen one's handles drawn by the desk)
+  if (want('sfx')) for (const x of pg.sfx || []) { const b = drawSfx(g, x, k, ox, oy); hits.push({x, box: b.box, rb: b.rb}); }
   return hits;
 }
 // a picture filling a rectangle, cut to its shape (the middle kept)
