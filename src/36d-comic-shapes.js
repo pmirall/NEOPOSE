@@ -10,6 +10,8 @@
      balloon … tail?: off|none, join?: (the id of the balloon it follows) */
 const PANEL_BORDERS = [['', 'Tinta'], ['thick', 'Gruesa'], ['rough', 'A mano'], ['round', 'Redondeada'], ['cloud', 'Nube (recuerdo)'], ['dashed', 'Discontinua (sueño)'], ['none', 'Sin borde']];
 const PANEL_CUTS = [['h', 'Partir ─'], ['v', 'Partir │'], ['s1', 'Partir ╱'], ['s2', 'Partir ╲']];
+// what each cut does, in words (its tooltip and its name for screen readers; the slanted ones are tilted, not corner to corner)
+const CUT_TIPS = {h: 'Partir en dos: arriba y abajo', v: 'Partir en dos: izquierda y derecha', s1: 'Partir con un corte inclinado', s2: 'Partir con un corte inclinado (al otro lado)'};
 const BALLOON_TAILS = [['', 'Al personaje'], ['off', 'Fuera de cuadro'], ['none', 'Sin cola']];
 const BOXY = new Set(['caption', 'narration']);
 const BREAKOUT = 1.35;  // (how far past its panel a figure may go: the picture drawn this much wider)
@@ -232,13 +234,13 @@ function buildComicShapeUI() {
   if (!$('#cmBorder')) return;
   const changed = () => { CM.cache.clear(); drawPage(); syncComicUI(); comicSaved(); };
   const cuts = $('#cmCuts'); cuts.innerHTML = '';
-  for (const [v, label] of PANEL_CUTS) { const btn = document.createElement('button'); btn.className = 'btn small'; btn.type = 'button'; btn.dataset.v = v; btn.textContent = tr(label);
+  for (const [v, label] of PANEL_CUTS) { const btn = document.createElement('button'); btn.className = 'btn small'; btn.type = 'button'; btn.dataset.v = v; btn.textContent = tr(label); btn.title = tr(CUT_TIPS[v]); btn.setAttribute('aria-label', btn.title);
     btn.onclick = () => { const pg = curPage(), p = CM.sel; if (!pg || !p) return; if (!splitPanel(pg, p, v)) { toast(tr('Esta viñeta es demasiado pequeña para partirla.')); return; } changed(); }; cuts.appendChild(btn); }
   chips($('#cmBorder'), PANEL_BORDERS, '', v => { const p = CM.sel; if (!p) return; if (v) p.border = v; else delete p.border; drawPage(); comicSaved(); });
   $('#cmBleed').onchange = e => { const p = CM.sel; if (!p) return; if (e.target.checked) p.bleed = true; else delete p.bleed; changed(); };
   $('#cmBreak').onchange = e => { const p = CM.sel; if (!p) return; if (e.target.checked) p.breakout = true; else delete p.breakout; changed(); };
   $('#cmInset').onclick = () => { const pg = curPage(); if (!pg) return; CM.sel = insetPanel(pg, CM.sel); CM.selB = null; changed(); };
-  $('#cmDelPanel').onclick = () => { const pg = curPage(), p = CM.sel; if (!pg || !p) return; removePanel(pg, p); CM.sel = CM.selB = null; changed(); };
+  $('#cmDelPanel').onclick = () => { const pg = curPage(), p = CM.sel; if (!pg || !p) return; removePanel(pg, p); CM.sel = CM.selB = null; changed(); toast(tr('Viñeta quitada.'), {undo: () => comicUndo(-1)}); };
   chips($('#cmTail'), BALLOON_TAILS, '', v => { const b = CM.selB; if (!b) return; if (v) b.tail = v; else delete b.tail; drawPage(); comicSaved(); });
   $('#cmJoinAdd').onclick = () => { const p = CM.sel, b = CM.selB; if (!p || !b) return; CM.selB = addJoinedBalloon(p, b); drawPage(); syncComicUI(); comicSaved(); const t = $('#cmText'); t.focus(); t.select(); };
   $('#cmJoin').onclick = () => { const p = CM.sel, b = CM.selB; if (!p || !b) return; const prev = p.balloons[p.balloons.indexOf(b) - 1]; if (!prev) return; if (prev.join === b.id) delete prev.join; b.join = prev.id; if (!b.tail) b.tail = 'none'; drawPage(); syncComicUI(); comicSaved(); };

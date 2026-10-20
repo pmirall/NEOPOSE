@@ -34,6 +34,7 @@ function tweenPts(tw, to) {
 // a change of the pages, its panels gliding from where they were to where they end (new ones grow from their parent,
 // or from their middle; the ones gone fade away)
 function morph(fn, o = {}) {
+  if (UX.reduce) { const r = fn(); drawPage(); return r; }  // (with reduced motion, the new shapes at once)
   const c = comic(), before = new Map(); CM.twOn = true;
   for (const pg of c.pages) for (const p of pg.panels) before.set(p.id, {pts: resample(panelPts(p)), pg: pg.id, img: CM.last.get(p.id)});
   CM.twOn = false;
@@ -259,7 +260,7 @@ function swapContents(a, b) {
   if (!a.balloons) a.balloons = []; if (!b.balloons) b.balloons = [];
   if (lb) CM.last.set(a.id, lb); else CM.last.delete(a.id); if (la) CM.last.set(b.id, la); else CM.last.delete(b.id);
 }
-function flyFrom(p, R, img) { if (img) CM.fly.set(p.id, {img, from: R, t0: performance.now(), dur: 520}); }
+function flyFrom(p, R, img) { if (img && !UX.reduce) CM.fly.set(p.id, {img, from: R, t0: performance.now(), dur: 520}); }
 const pxRect = p => { const e = entryOf(pageOfPanel(p)); if (!e) return null; const B = panelBox(p); return {x: e.ox + B.x * pv.k, y: e.oy + B.y * pv.k, w: B.w * pv.k, h: B.h * pv.k}; };
 // a balloon given to another panel: where it was dropped
 function rehomeBalloon(b, from, to, x, y) {
@@ -293,13 +294,17 @@ const DESK_ICONS = {
 const deskIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DESK_ICONS[n]}</svg>`;
 function placeDeskBar() {
   const bar = $('#pvBar'); if (!bar) return; const p = (pv.drag ? null : CM.sel || (matchMedia('(hover: hover)').matches ? pv.hover : null));
-  const R = p && panelScreenRect(p); if (!R || R.w < 60 || R.h < 40) { bar.hidden = true; bar._p = null; return; }
+  // (a small panel shows its toolbar only when it is the chosen one)
+  const R = p && panelScreenRect(p); if (!R || (p !== CM.sel && (R.w < 60 || R.h < 40))) { bar.hidden = true; bar._p = null; return; }
   const empty = !panelShot(p); bar.hidden = false; bar.classList.toggle('empty', empty);
   if (bar._p !== p || bar._e !== empty) { bar._p = p; bar._e = empty;
     bar.querySelector('[data-act=edit] span').textContent = empty ? tr('Montar escena') : tr('Editar escena'); }
   const box = $('#pageView').getBoundingClientRect(), bw = bar.offsetWidth, bh = bar.offsetHeight;
-  // (over the bottom of the panel, where balloons seldom are; an empty one's in its middle)
-  const x = clamp(R.x + R.w / 2 - bw / 2, 6, box.width - bw - 6), y = empty ? clamp(R.y + R.h / 2 - bh / 2, 56, box.height - bh - 6) : clamp(R.y + R.h - bh - 10, 56, box.height - bh - 6);
+  // (over the bottom of the panel, where balloons seldom are; an empty one's in its middle; under or over a chosen panel
+  // too small to hold it, clear of the desk's toolbar above and of the row of pages and the shots below)
+  const x = clamp(R.x + R.w / 2 - bw / 2, 6, box.width - bw - 6); let y;
+  if (p === CM.sel && (R.w < 60 || R.h < bh + 16)) { const ins = deskInsets(), maxY = box.height - ins.b - bh - 4, minY = ins.t; y = clamp(R.y + R.h + 6 <= maxY ? R.y + R.h + 6 : R.y - bh - 6, minY, maxY); }
+  else y = empty ? clamp(R.y + R.h / 2 - bh / 2, 56, box.height - bh - 6) : clamp(R.y + R.h - bh - 10, 56, box.height - bh - 6);
   bar.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
 }
 // one click into a panel's scene: the panel grows into the stage, which opens under it on that shot
@@ -317,6 +322,8 @@ async function openPanelScene(p) {
 }
 // back from 3D: the page settles in and the panel shows it is done
 function deskReturn(p) { const cv = pv.cv; if (cv) { cv.classList.remove('back'); void cv.offsetWidth; cv.classList.add('back'); } pulsePanel(p); }
+// a balloon just added (or double-clicked): its text field in sight in the Cómic tab, ready to type in
+function revealBalloonText(select) { const t = $('#cmText'); if (!t) return; setPanel(true); goSection($('details[data-sec=cmbocadillos]'), false); t.focus({preventScroll: true}); if (select) t.select(); }
 
 /* ---------- pages ---------- */
 function goPage(i, o = {}) {
@@ -344,7 +351,7 @@ function deleteSelection() {
   const pg = curPage(); if (!pg) return false;
   if (CM.selB && CM.sel) { removeBalloon(CM.sel, CM.selB); CM.selB = null; }
   else if (CM.selX) { pg.sfx.splice(pg.sfx.indexOf(CM.selX), 1); CM.selX = null; }
-  else if (CM.sel) { const p = CM.sel, q = pageOfPanel(p); morph(() => removePanel(q, p)); CM.sel = null; }
+  else if (CM.sel) { const p = CM.sel, q = pageOfPanel(p); morph(() => removePanel(q, p)); CM.sel = null; toast(tr('Viñeta quitada.'), {undo: () => comicUndo(-1)}); }
   else return false;
   syncComicUI(); deskChanged(); comicSaved(); return true;
 }
@@ -356,7 +363,7 @@ function initPageView() {
   const b = (act, icon, label, cls = '') => `<button class="pvb ${cls}" type="button" data-act="${act}" title="${tr(label)}" aria-label="${tr(label)}">${icon ? deskIcon(icon) : ''}</button>`;
   el.innerHTML = `<canvas></canvas>
     <div class="pvtools" id="pvTools" role="toolbar" aria-label="${tr('Mesa del cómic')}">${b('undo', 'undo', 'Deshacer (Ctrl+Z)')}${b('redo', 'redo', 'Rehacer (Ctrl+Mayús+Z)')}<i></i>${b('zoomOut', 'minus', 'Alejar')}<button class="pvb pct" type="button" data-act="fit" title="${tr('Ajustar a la pantalla')}">100 %</button>${b('zoomIn', 'plus', 'Acercar (Ctrl+rueda)')}<i></i>${b('spread', 'book', 'Doble página')}${b('shots', 'film', 'Planos de la película')}${b('script', 'script', 'Guion de la página')}</div>
-    <div class="pvbar" id="pvBar" hidden><button class="pvb main" type="button" data-act="edit">${deskIcon('cube')}<span></span></button>${b('balloon', 'talk', 'Añadir bocadillo')}${b('cutH', 'cutH', 'Partir ─')}${b('cutV', 'cutV', 'Partir │')}${b('cutS', 'cutS', 'Partir ╱')}${b('link', 'film', 'Enlazar un plano de la película')}${b('del', 'trash', 'Quitar la viñeta')}</div>`;
+    <div class="pvbar" id="pvBar" hidden><button class="pvb main" type="button" data-act="edit">${deskIcon('cube')}<span></span></button>${b('balloon', 'talk', 'Añadir bocadillo')}${b('cutH', 'cutH', CUT_TIPS.h)}${b('cutV', 'cutV', CUT_TIPS.v)}${b('cutS', 'cutS', CUT_TIPS.s1)}${b('link', 'film', 'Enlazar un plano de la película')}${b('del', 'trash', 'Quitar la viñeta')}</div>`;
   vp.appendChild(el); pv.cv = el.querySelector('canvas'); pv.g = pv.cv.getContext('2d');
   pv.cv.setAttribute('aria-label', tr('Página del cómic')); pv.cv.tabIndex = 0;
   new ResizeObserver(() => pageOn() && drawPage()).observe(el);
@@ -370,10 +377,10 @@ function initPageView() {
   bar.onpointerdown = e => e.stopPropagation();
   bar.onclick = e => { const a = e.target.closest('[data-act]')?.dataset.act, p = bar._p; if (!a || !p) return; CM.sel = p; const pg = pageOfPanel(p);
     if (a === 'edit') openPanelScene(p);
-    else if (a === 'balloon') { const s = panelShot(p), nb = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .72 : .28, y: .16 + p.balloons.length * .1, size: 9}; p.balloons.push(nb); CM.selB = nb; syncComicUI(); deskChanged(); comicSaved(); const t = $('#cmText'); if (t && t.offsetParent) { t.focus(); t.select(); } }
+    else if (a === 'balloon') { const s = panelShot(p), nb = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .72 : .28, y: .16 + p.balloons.length * .1, size: 9}; p.balloons.push(nb); CM.selB = nb; syncComicUI(); deskChanged(); comicSaved(); revealBalloonText(true); }
     else if (/^cut/.test(a)) { let q = null; morph(() => { q = splitPanel(pg, p, a === 'cutH' ? 'h' : a === 'cutV' ? 'v' : 's1'); }, {parent: p.id}); if (!q) toast(tr('Esta viñeta es demasiado pequeña para partirla.')); else { CM.cache.clear(); comicSaved(); deskChanged(); } }
     else if (a === 'link') { const sh = $('#pvShots'); if (sh && sh.hidden) toggleDeskPane('#pvShots', 'cdp.cmShots'); toast(tr('Arrastra un plano a la viñeta (o tócalo para ponerlo en la elegida).')); }
-    else if (a === 'del') deleteSelection();
+    else if (a === 'del') { CM.selB = CM.selX = null; deleteSelection(); }  // (the panel's trash takes the panel; Supr, the most specific thing chosen)
     syncComicUI(); drawPage(); };
   const at = e => { const r = pv.cv.getBoundingClientRect(); return [(e.clientX - r.left) * pv.dpr, (e.clientY - r.top) * pv.dpr]; };
   const cursor = c => { if (pv.cv.style.cursor !== c) pv.cv.style.cursor = c; };
@@ -426,7 +433,7 @@ function initPageView() {
   };
   pv.cv.addEventListener('pointerup', end); pv.cv.addEventListener('pointercancel', end);
   pv.cv.addEventListener('pointerleave', () => { if (!pv.drag && (pv.hover || pv.edge)) { pv.hover = null; pv.edge = null; drawPage(); } });
-  pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.b) { CM.selB = h.b; syncComicUI(); const t = $('#cmText'); if (t) t.focus(); } else if (h && h.p) openPanelScene(h.p); else setZoom(1); });
+  pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.b) { CM.selB = h.b; syncComicUI(); revealBalloonText(); } else if (h && h.p) openPanelScene(h.p); else setZoom(1); });
   pv.cv.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = at(e);
     if (e.ctrlKey || e.metaKey) setZoom(pv.zoom * Math.exp(-e.deltaY * .0022), x, y);
     else if (pv.zoom > 1.001) { pv.panX -= e.deltaX * pv.dpr; pv.panY -= e.deltaY * pv.dpr; drawPage(); }

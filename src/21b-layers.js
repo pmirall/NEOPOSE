@@ -92,6 +92,7 @@ function openInIsBrowser() { const cap = window.Capacitor; return !nativeShell()
 // from the top bar the export window is closed: the news goes to a note on the canvas
 const oiMsg = t => { $('#exMsg').textContent = t; if ($('#exportModal').hidden) toast(t); };
 async function openIn() {
+  if (document.body.classList.contains('paging')) return exportFromTop();  // (the comic's pages go out from their own section, PSD in layers included)
   const N = nativeShell(), cap = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   if (N) {
     const apps = await N.apps().catch(() => []);

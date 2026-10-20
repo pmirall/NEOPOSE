@@ -32,7 +32,7 @@ function presetGallery(box, onPick) {
 }
 const galleryKey = () => { const c = comic(); return [c.format, c.rtl, c.page.w, c.page.h].join(); };
 // a layout put on a page that has panels: they take its shapes in reading order (the pictures, balloons and notes
-// go with them), gliding there; what does not fit is said (and undone with Ctrl+Z)
+// go with them), gliding there; what does not fit is said, with Deshacer at hand
 function applyLayout(pg, key) {
   const c = comic(), old = readingOrder(pg, c), L = presetPanels(key, c), ord = readingOrder({panels: L}, c);
   const lost = old.slice(ord.length).filter(o => panelShot(o) || o.balloons.length).length;
@@ -41,7 +41,7 @@ function applyLayout(pg, key) {
     pg.panels = L;
   });
   CM.sel = null; CM.cache.clear(); comicSaved(); syncComicUI(); deskChanged();
-  if (lost) toast(trn(lost, 'Una viñeta con contenido no cabe en este diseño: Ctrl+Z lo deshace.', '{n} viñetas con contenido no caben en este diseño: Ctrl+Z lo deshace.'));
+  if (lost) toast(trn(lost, 'Una viñeta con contenido no cabía en este diseño y se ha quitado.', '{n} viñetas con contenido no cabían en este diseño y se han quitado.'), {undo: () => comicUndo(-1)});
 }
 
 /* ---------- the row of pages ---------- */
@@ -55,7 +55,7 @@ function renderTracker() {
   const box = $('#pvTrack'); if (!box || !pageOn()) return; const c = comic(), strip = box.querySelector('.pvt-strip'), h0 = box.offsetHeight;
   const n = c.pages.length, panels = c.pages.reduce((a, pg) => a + pg.panels.length, 0), w = c.pages.reduce((a, pg) => a + pageWords(pg), 0), prog = n ? c.pages.reduce((a, pg) => a + statusOf(pg), 0) / (n * (PAGE_STATUS.length - 1)) : 0;
   box.querySelector('.pvt-stats').textContent = [trn(n, '1 página', '{n} páginas'), trn(panels, '1 viñeta', '{n} viñetas'), trn(w, '1 palabra', '{n} palabras')].join(' · ');
-  const bar = box.querySelector('.pvt-bar'); bar.querySelector('i').style.width = Math.round(prog * 100) + '%'; bar.title = tr('{p} % hecho', {p: Math.round(prog * 100)}); box.querySelector('.pvt-pct').textContent = Math.round(prog * 100) + ' %';
+  const bar = box.querySelector('.pvt-bar'); bar.querySelector('i').style.width = Math.round(prog * 100) + '%'; bar.title = tr('{p} % hecho', {p: Math.round(prog * 100)}); box.querySelector('.pvt-pct').textContent = tr('{p} % hecho', {p: Math.round(prog * 100)});
   const before = new Map([...strip.children].map(el => [el.dataset.id, el.getBoundingClientRect()])), old = new Map([...strip.querySelectorAll('.pvcard')].map(el => [el.dataset.id, el])), list = [];
   c.pages.forEach((pg, i) => { const el = old.get(pg.id) || makeCard(pg); old.delete(pg.id); updateCard(el, pg, i); list.push(el); });
   list.push(strip.querySelector('.pvadd') || makeAddCard());
@@ -63,10 +63,11 @@ function renderTracker() {
   for (const el of old.values()) el.remove();
   // (the cards glide to their new places; a new one pops in)
   for (const el of strip.children) { const r0 = before.get(el.dataset.id), r1 = el.getBoundingClientRect();
-    if (!r0) { if (el.dataset.id !== 'add') el.animate([{transform: 'scale(.5)', opacity: 0}, {transform: 'none', opacity: 1}], {duration: 280, easing: 'cubic-bezier(.2,.9,.3,1.25)'}); continue; }
-    const dx = r0.left - r1.left; if (Math.abs(dx) > 1) el.animate([{transform: `translateX(${dx}px)`}, {transform: 'none'}], {duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)'}); }
-  if (box.offsetHeight !== h0 || !box.parentElement.style.getPropertyValue('--trackH')) { box.parentElement.style.setProperty('--trackH', box.offsetHeight + 'px'); drawPage(); }
-  const cur = strip.querySelector('.pvcard.on'); if (cur) { const a = cur.offsetLeft - strip.scrollLeft, b = a + cur.offsetWidth; if (a < 0 || b > strip.clientWidth) strip.scrollTo({left: cur.offsetLeft - strip.clientWidth / 2 + cur.offsetWidth / 2, behavior: 'smooth'}); }
+    if (!r0) { if (el.dataset.id !== 'add' && !UX.reduce) el.animate([{transform: 'scale(.5)', opacity: 0}, {transform: 'none', opacity: 1}], {duration: 280, easing: 'cubic-bezier(.2,.9,.3,1.25)'}); continue; }
+    const dx = r0.left - r1.left; if (Math.abs(dx) > 1 && !UX.reduce) el.animate([{transform: `translateX(${dx}px)`}, {transform: 'none'}], {duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)'}); }
+  // its height: the desk keeps the page clear of it, and the notes of #hint (outside the desk) show just above it
+  if (box.offsetHeight !== h0 || !box.parentElement.style.getPropertyValue('--trackH')) { box.parentElement.style.setProperty('--trackH', box.offsetHeight + 'px'); $('#viewport').style.setProperty('--trackH', box.offsetHeight + 'px'); drawPage(); }
+  const cur = strip.querySelector('.pvcard.on'); if (cur) { const a = cur.offsetLeft - strip.scrollLeft, b = a + cur.offsetWidth; if (a < 0 || b > strip.clientWidth) strip.scrollTo({left: cur.offsetLeft - strip.clientWidth / 2 + cur.offsetWidth / 2, behavior: UX.reduce ? 'auto' : 'smooth'}); }
 }
 function makeCard(pg) {
   const el = document.createElement('div'); el.className = 'pvcard'; el.dataset.id = pg.id; el.setAttribute('role', 'listitem'); el.tabIndex = 0;
@@ -117,8 +118,8 @@ function duplicatePage(pg) {
 }
 function deletePage(pg) {
   const c = comic(), i = c.pages.indexOf(pg); if (i < 0) return;
-  const el = $(`#pvTrack .pvcard[data-id="${pg.id}"]`), go = () => { c.pages.splice(i, 1); if (!c.pages.length) addPage('p4'); CM.page = clamp(CM.page > i ? CM.page - 1 : CM.page, 0, c.pages.length - 1); CM.sel = CM.selB = CM.selX = null; comicSaved(); syncComicUI(); deskChanged(); toast(tr('Página borrada: Ctrl+Z la devuelve.')); };
-  if (el) el.animate([{transform: 'none', opacity: 1}, {transform: 'translateY(30px) scale(.6)', opacity: 0}], {duration: 220, easing: 'ease-in'}).onfinish = go; else go();
+  const el = $(`#pvTrack .pvcard[data-id="${pg.id}"]`), go = () => { c.pages.splice(i, 1); if (!c.pages.length) addPage('p4'); CM.page = clamp(CM.page > i ? CM.page - 1 : CM.page, 0, c.pages.length - 1); CM.sel = CM.selB = CM.selX = null; comicSaved(); syncComicUI(); deskChanged(); toast(tr('Página borrada.'), {undo: () => comicUndo(-1)}); };
+  if (el && !UX.reduce) el.animate([{transform: 'none', opacity: 1}, {transform: 'translateY(30px) scale(.6)', opacity: 0}], {duration: 220, easing: 'ease-in'}).onfinish = go; else go();
 }
 
 /* ---------- the film's shots, to drop on panels ---------- */
@@ -161,7 +162,7 @@ function renderScript(force) {
   if (!force && sig === inner._sig) { mark(); if (!inner.contains(document.activeElement)) for (const el of inner.querySelectorAll('[data-b] .txt')) { const b = findBalloon(pg, el.closest('[data-b]').dataset.b); if (b && el.value !== b.text) el.value = b.text; } return; }
   inner._sig = sig; inner.innerHTML = '';
   const h = document.createElement('div'); h.className = 'pvs-h';
-  h.innerHTML = `<input class="pvs-title" maxlength="60"><div class="chips pvs-st"></div><p class="pvs-sum"></p>`;
+  h.innerHTML = `<input class="pvs-title" maxlength="60"><p class="lbl"></p><div class="chips pvs-st"></div><p class="pvs-sum"></p>`; h.querySelector('.lbl').textContent = tr('Estado de la página');
   const ti = h.querySelector('.pvs-title'); ti.value = pg.title || ''; ti.placeholder = tr('Página {n}: título o escena', {n: CM.page + 1}); ti.setAttribute('aria-label', tr('Título de la página'));
   ti.oninput = () => { pg.title = ti.value; drawPage(); trackerSoon(); syncPageUI(); }; ti.onchange = comicSaved;
   chips(h.querySelector('.pvs-st'), PAGE_STATUS.map(s => [s[0], s[1]]), pg.status || 'guion', v => { pg.status = v; comicSaved(); trackerSoon(); syncPageUI(); });

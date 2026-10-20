@@ -105,7 +105,7 @@ function initPracticeUI() {
   $('#practiceBtn').onclick = () => { if (practice.active) return stopPractice(); if (typeof WS !== 'undefined' && WS.cur !== 'static') setWorkspace('static'); renderStats(); syncPracticeOpts(); $('#practiceModal').hidden = false; $('#practiceModal .sheet').scrollTop = 0; $('#prStart').focus({preventScroll: true}); };
   $('#prCancel').onclick = () => $('#practiceModal').hidden = true;
   $('#practiceModal').onclick = e => { if (e.target.id === 'practiceModal') $('#practiceModal').hidden = true; };
-  $('#prStart').onclick = () => { $('#practiceModal').hidden = true; startPractice(); };
+  $('#prStart').onclick = () => { $('#practiceModal').hidden = true; if (document.body.classList.contains('paging')) showTab('pose'); startPractice(); };  // (the practice is on the figure: from the comic page, to Pose)
   $('#psClose').onclick = () => { $('#prSummary').hidden = true; stopPractice(); };
   $('#psAgain').onclick = () => { $('#prSummary').hidden = true; restartPractice(); };
   syncPracticeOpts();

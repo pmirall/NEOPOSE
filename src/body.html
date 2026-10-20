@@ -490,9 +490,8 @@
           <details class="sec" data-sec="cmpagina" open>
             <summary><h3>Página <span id="cmPageNo"></span></h3></summary>
             <div class="row cmpgnav"><button class="btn small icon" id="cmPrevPage" aria-label="Página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button><input id="cmTitle" maxlength="60" aria-label="Título de la página"><button class="btn small icon" id="cmNextPage" aria-label="Página siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
+            <p class="lbl">Estado de la página</p>
             <div class="chips" id="cmStatus" aria-label="Estado de la página"></div>
-            <p class="lbl">Diseño</p><p class="note">Toca uno: las viñetas toman su forma, con lo que tienen dentro.</p>
-            <div id="cmLayouts" class="cmlayouts"></div>
             <div class="row" style="margin-top:8px"><button class="btn small" id="cmDupPage">Duplicar la página</button><button class="btn small" id="cmDelPage">Borrar esta página</button></div>
             <p class="note">En la página: arrastra los blancos entre viñetas para moverlos, las esquinas de la elegida para inclinarlas, una viñeta sobre otra para intercambiarlas. Ctrl+Z deshace.</p>
           </details>
@@ -501,7 +500,7 @@
             <p class="note" id="cmNoPanel">Toca una viñeta de la página para elegirla; «Editar escena» (o doble clic) la abre en 3D.</p>
             <div id="cmPanelBox" hidden>
               <p class="note" id="cmPanelInfo"></p>
-              <div class="row"><button class="btn small primary" id="cmEdit">Editar escena</button><button class="btn small" id="cmFromStage">Poner lo del lienzo</button><button class="btn small" id="cmClearPanel">Vaciar</button></div>
+              <div class="row"><button class="btn small primary" id="cmEdit">Editar escena</button><button class="btn small" id="cmFromStage" title="Pone en esta viñeta los personajes, el escenario y la cámara que hay ahora en el lienzo 3D (sustituye lo que tenía)">Copiar la escena 3D</button><button class="btn small" id="cmClearPanel" title="Quita su escena y sus bocadillos">Vaciar</button></div>
               <div id="cmBgRow"><p class="lbl">Fondo</p><div class="chips" id="cmBg"></div></div>
               <p class="lbl">Forma <span class="note">partir en dos (recto o inclinado)</span></p>
               <div class="row" id="cmCuts"></div>
@@ -514,6 +513,7 @@
           </details>
           <details class="sec" data-sec="cmbocadillos" open>
             <summary><h3>Bocadillos</h3></summary>
+            <p class="note" id="cmNoBalloon">Elige una viñeta en la página para ponerle bocadillos.</p>
             <div id="cmBalloonBox" hidden>
               <div class="row"><button class="btn small" id="cmAddB">Añadir bocadillo</button></div>
               <div id="cmBalloonEdit" hidden>
@@ -529,6 +529,11 @@
               </div>
             </div>
           </details>
+          <details class="sec" data-sec="cmdiseno" open>
+            <summary><h3>Diseño <span>la forma de las viñetas de esta página</span></h3></summary>
+            <p class="note">Toca uno: las viñetas de esta página toman su forma, con lo que tienen dentro. Para una página nueva, usa el + de la fila de páginas.</p>
+            <div id="cmLayouts" class="cmlayouts"></div>
+          </details>
           <details class="sec" data-sec="cmsfx" open>
             <summary><h3>Onomatopeyas <span>sobre la página</span></h3></summary>
             <div class="row"><input id="cmSfxNew" placeholder="¡BAM!" maxlength="24"><button class="btn small" id="cmSfxAdd">Añadir</button></div>
@@ -540,7 +545,7 @@
             </div>
           </details>
           <details class="sec" data-sec="cmformato">
-            <summary><h3>Formato <span>tamaño de página y lectura</span></h3></summary>
+            <summary><h3>Formato <span id="cmFmtNow"></span></h3></summary>
             <div class="chips" id="cmFormat"></div>
             <label class="check"><input type="checkbox" id="cmRtl"> Se lee de derecha a izquierda (manga)</label>
             <label class="check"><input type="checkbox" id="cmSet" checked> El escenario, tenue, detrás</label>

@@ -44,15 +44,18 @@ async function comicPSD(pg, dpi = 300) {
   return psdBytes(w, h, [layer(tr('Papel'), 'paper'), layer(tr('Viñetas'), 'panels'), layer(tr('Entintado'), null), layer(tr('Bordes'), 'borders'), layer(tr('Fuera de viñeta'), 'breakout'), layer(tr('Bocadillos'), 'balloons'), layer(tr('Onomatopeyas'), 'sfx')]);
 }
 const exportProgress = p => { const b = $('#cmProg'); if (b) { b.hidden = p >= 1; b.querySelector('i').style.width = Math.round(p * 100) + '%'; } };
+// every way out of the pages (png: this page, zip: all of them as PNG), with the progress shown and its buttons off until it is done
 async function exportComic(kind) {
-  const c = comic(), dpi = +$('#cmDpi').value || 300; if (!c.pages.length) return;
+  const c = comic(), dpi = +$('#cmDpi').value || 300, btns = ['#cmExport', '#cmExportAll', '#cmPdf', '#cmCbz', '#cmPsd'].map(s => $(s)).filter(Boolean); if (!c.pages.length) return;
+  for (const b of btns) b.disabled = true;
   try {
-    exportProgress(0); toast(tr('Preparando {n} página(s) a {d} ppp…', {n: kind === 'psd' ? 1 : c.pages.length, d: dpi}));
-    if (kind === 'pdf') saveFile(`${tr('comic')}-${stamp()}.pdf`, await comicPDF(dpi), 'application/pdf');
+    exportProgress(0); toast(tr('Preparando {n} página(s) a {d} ppp…', {n: kind === 'psd' || kind === 'png' ? 1 : c.pages.length, d: dpi}));
+    if (kind === 'png' || kind === 'zip') await exportComicPages(kind === 'zip' ? 'all' : 'page', dpi, true);
+    else if (kind === 'pdf') saveFile(`${tr('comic')}-${stamp()}.pdf`, await comicPDF(dpi), 'application/pdf');
     else if (kind === 'cbz') saveFile(`${tr('comic')}-${stamp()}.cbz`, await comicCBZ(dpi), 'application/vnd.comicbook+zip');
     else if (kind === 'psd') saveFile(`${tr('pagina')}-${CM.page + 1}-${stamp()}.psd`, await comicPSD(curPage(), dpi), 'image/vnd.adobe.photoshop');
   } catch (e) { console.warn('comic export', e); toast(tr('No se ha podido exportar: {e}', {e: e && e.message || e})); }
-  exportProgress(1); drawPage();
+  finally { exportProgress(1); drawPage(); for (const b of btns) b.disabled = false; }
 }
 
 /* ---------- the tab's extra controls ---------- */

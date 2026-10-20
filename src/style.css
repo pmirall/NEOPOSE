@@ -1063,6 +1063,8 @@ a{color:var(--blue);text-underline-offset:2px}
   .joint-card .tip{display:none}
   .joint-card:not([hidden]) ~ .thumbbar,.joint-card:not([hidden]) ~ .hint:not(.toast){display:none}
   .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:64px}
+  body.panelEdit .joint-card{bottom:72px}
+  body.panelEdit .thumbbar{bottom:76px}
 }
 /* phones: the pose library starts higher, so the sheet at half height already shows poses */
 @media (max-width:860px){
@@ -1148,7 +1150,8 @@ body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:n
 .pvbar{position:absolute;left:0;top:0;z-index:3;width:max-content;display:flex;align-items:center;gap:2px;padding:3px;background:var(--ink);color:var(--page);border-radius:12px;box-shadow:0 10px 24px -10px rgba(0,0,0,.55);transition:transform .14s cubic-bezier(.2,.8,.2,1);animation:pvPop .2s ease-out}
 .pvbar .pvb{color:var(--page)}
 .pvbar .pvb:hover{background:rgba(255,255,255,.14);color:#fff}
-.pvbar .main{display:inline-flex;align-items:center;gap:6px;padding:0 11px;background:var(--blue);color:#fff;border-radius:9px}
+/* (in a row: on phones the rule for the app's .main area would stack its icon over its label) */
+.pvbar .main{display:inline-flex;flex-direction:row;align-items:center;gap:6px;padding:0 11px;background:var(--blue);color:#fff;border-radius:9px}
 .pvbar .main:hover{background:#3b6fbd;color:#fff}
 .pvbar.empty{padding:5px}
 .pvbar.empty .main{height:40px;font-size:14px;padding:0 16px}
@@ -1250,9 +1253,9 @@ body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:n
 .pvghost span{display:none}
 @media (max-width:600px){
   .pvtools{left:6px;right:6px;top:6px;overflow-x:auto;justify-content:space-between}
-  .pvtools .pvb{min-width:28px;height:28px;padding:0 4px}
+  .pvtools .pvb{min-width:30px;height:40px;padding:0 4px}
   .pvtools .pct{min-width:46px}
-  .pvscript{left:6px;right:6px;width:auto;top:48px}
+  .pvscript{left:6px;right:6px;width:auto;top:62px}
   .pvtrack{left:6px;right:6px;bottom:6px;padding:2px 6px 0}
   .pvt-h{display:none}
   .pvt-strip{padding:6px 2px 4px}
@@ -1261,11 +1264,14 @@ body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:n
   .pvshots{left:6px;right:6px}
 }
 @media (prefers-reduced-motion: reduce){ #pageView *,#pageView>canvas{animation:none!important;transition:none!important} }
-body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint{display:none}
+body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint:not(.toast){display:none}
+body.paging .hint.toast{z-index:6;bottom:calc(var(--trackH,140px) + 20px)}
+body.paging header .tb.edit{visibility:hidden}
+body.paging #openIn{display:none}
 .cmeditbar{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:5;display:flex;gap:8px;align-items:center;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:6px 8px 6px 12px;box-shadow:var(--lift);max-width:calc(100% - 24px)}
 .cmeditbar .t{font-size:12.5px;color:var(--ink-soft)}
 #cmText{width:100%;font:inherit;font-family:var(--f-hand);font-size:16px;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:6px 8px;margin:6px 0;resize:vertical}
-@media (max-width:600px){ .cmeditbar{top:auto;bottom:calc(var(--sheetH,0px) + 10px);flex-wrap:wrap} .cmeditbar .t{display:none} }
+@media (max-width:600px){ .cmeditbar{top:auto;bottom:10px;flex-wrap:wrap;width:max-content} .cmeditbar .t{display:none} body.panelEdit .hint{bottom:74px} }
 /* the bible's cards: a portrait, the name, what can be done */
 .bblist{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
 .bbcard{border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:6px;display:flex;flex-direction:column;gap:6px}

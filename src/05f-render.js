@@ -153,7 +153,12 @@ function openExport() {
   tourEvent('export'); $('#exportModal').hidden = false; renderExportKind(); $('#exSave').focus();
 }
 function closeExport() { $('#exportModal').hidden = true; }
-$('#exportBtn').onclick = openExport; $('#exClose').onclick = closeExport;
+// the top bar's Exportar (and Ctrl+E): while the comic page is shown, it is the pages that go out, from the Cómic tab's own section
+function exportFromTop() {
+  if (document.body.classList.contains('paging')) { setPanel(true); goSection($('section[data-tab=comic] details[data-sec=cmexport]')); $('#cmExport').focus({preventScroll: true}); toast(tr('Las páginas del cómic se exportan desde aquí: PNG, ZIP, PDF, CBZ o PSD.')); return; }
+  openExport();
+}
+$('#exportBtn').onclick = exportFromTop; $('#exClose').onclick = closeExport;
 $('#exportModal').onclick = e => { if (e.target.id === 'exportModal') closeExport(); };
 bindChipGroup('#exBg', v => { ex.bg = v; renderExport(); });
 bindChipGroup('#exSize', v => { ex.size = +v; renderExport(); });

@@ -938,6 +938,32 @@ const SUITES = {
       const p = linked[0], s = K.panelShot(p), k0 = K.panelKey(p, 100, 100); s.rev = (s.rev || 0) + 1; const k1 = K.panelKey(p, 100, 100);
       return {n, linked: linked.length, said, follows: k0 !== k1}; });
     ok(L.n === f && L.linked === f && L.said >= 2 && L.follows, `${L.n} panels from the ${f} shots of the film, linked (a change in the film redraws them), ${L.said} balloons from its lines`);
+    // «Descartar» after editing a linked panel's scene gives the panel back as it was: linked to the film again
+    const dc = await A(async () => { const K = window.__cdp.comic, p = K.comic().pages.flatMap(pg => pg.panels).find(q => q.link), id = p.link.shotId;
+      await K.editPanel(p); const own = !p.link && !!p.shot; await K.finishPanelEdit(true); return {own, back: !!p.link && p.link.shotId === id && !p.shot}; });
+    ok(dc.own && dc.back, '«Discard» after editing a linked panel\'s scene gives it back its link to the film');
+    // while the page is shown the top bar acts on it: Exportar opens the tab's «Export pages» (its note over the page); B draws over the figure, in Pose
+    await goTab(page, 'comic'); await page.waitForTimeout(500);
+    await A(() => { document.querySelector('details[data-sec=cmexport]').open = false; });
+    await page.click('#exportBtn'); await page.waitForTimeout(500);
+    const tb = await A(() => { const h = document.querySelector('#hint'), r = h.getBoundingClientRect(), at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return {modal: !document.querySelector('#exportModal').hidden, open: document.querySelector('details[data-sec=cmexport]').open, focus: document.activeElement.id, note: !!at && h.contains(at)}; });
+    ok(!tb.modal && tb.open && tb.focus === 'cmExport' && tb.note, `on the comic page, Export opens the tab's «Export pages» (not the 3D export window), with its note over the page ${JSON.stringify(tb)}`);
+    await page.keyboard.press('b'); await page.waitForTimeout(500);
+    const bk = await A(() => ({tab: window.__cdp.state.tab, sk: window.__cdp.sk.on, page: !document.querySelector('#pageView').hidden}));
+    ok(bk.tab === 'pose' && bk.sk && !bk.page, `B on the comic page draws over the figure: to ${bk.tab}, the sketch on, the page put away`);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    // the panel's trash takes the panel, not the balloon chosen in it; the note over the page offers Undo, which brings it back
+    await goTab(page, 'comic'); await page.waitForTimeout(500);
+    await A(() => { const K = window.__cdp.comic; K.goPage(K.comic().pages.findIndex(pg => pg.panels.some(p => p.balloons.length)), {force: true}); }); await page.waitForTimeout(500);
+    const tp = await A(() => { const K = window.__cdp.comic, pg = K.comic().pages[K.CM.page], p = K.readingOrder(pg).find(q => q.balloons.length), R = K.panelScreenRect(p), b = document.querySelector('#pageView').getBoundingClientRect(); return {x: b.left + R.x + R.w * .5, y: b.top + R.y + R.h * .6}; });
+    await page.mouse.click(tp.x, tp.y); await page.waitForTimeout(400);
+    const del = await A(async () => { const K = window.__cdp.comic, pg = K.comic().pages[K.CM.page], p = K.CM.sel, n = pg.panels.length, nb = p.balloons.length; K.CM.selB = p.balloons[0];
+      document.querySelector('#pvBar [data-act=del]').click(); await new Promise(r => setTimeout(r, 400));
+      const h = document.querySelector('#hint'), r = h.getBoundingClientRect(), at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), undo = h.querySelector('.undo');
+      const out = {n, nb, gone: !pg.panels.includes(p) && pg.panels.length === n - 1, note: !!at && h.contains(at) && !!undo};
+      if (undo) undo.click(); await new Promise(r => setTimeout(r, 400)); const pg2 = K.comic().pages[K.CM.page]; out.back = pg2.panels.length === n && pg2.panels.some(q => q.id === p.id && q.balloons.length === nb); return out; });
+    ok(del.gone && del.note && del.back, `the panel's trash takes the panel (not its chosen balloon); the note over the page offers Undo, which brings it back ${JSON.stringify(del)}`);
     // print: the page at 300 dpi; saved in the .neopose and back
     const x = await A(async () => { const K = window.__cdp.comic, C = window.__cdp, cv = await K.pageImage(K.comic().pages[0], 300);
       const bytes = await C.file.neoposeBytes('t'), n = K.comic().pages.length; C.project.applyProjectState(null);
@@ -951,6 +977,18 @@ const SUITES = {
     const m = await ph.evaluate(() => ({x: document.documentElement.scrollWidth - innerWidth, view: !document.querySelector('#pageView').hidden, h: document.querySelector('#pageView').getBoundingClientRect().height}));
     ok(m.view && m.x <= 0 && m.h > 150, `phone: the page shows (${Math.round(m.h)} px tall), no sideways scroll`);
     await ph.screenshot({path: path.join(OUT, 'comic-phone.png')});
+    // phone: a small panel chosen shows its toolbar (next to it, clear of the row of pages); a panel opened in 3D keeps «Back to the page» in sight
+    await ph.evaluate(() => { const K = window.__cdp.comic; K.applyLayout(K.comic().pages[0], 'p9'); }); await ph.waitForTimeout(800);
+    const sp = await ph.evaluate(() => { const K = window.__cdp.comic, p = K.comic().pages[0].panels[4], R = K.panelScreenRect(p), b = document.querySelector('#pageView').getBoundingClientRect(); return {x: b.left + R.x + R.w / 2, y: b.top + R.y + R.h / 2, w: R.w, h: R.h}; });
+    await ph.touchscreen.tap(sp.x, sp.y); await ph.waitForTimeout(400);
+    const sb = await ph.evaluate(() => { const b = document.querySelector('#pvBar'), r = b.getBoundingClientRect(), t = document.querySelector('#pvTrack').getBoundingClientRect(), v = document.querySelector('#pageView').getBoundingClientRect();
+      return {shown: !b.hidden, inside: r.left >= v.left - 1 && r.right <= v.right + 1 && r.top >= v.top && r.bottom <= t.top}; });
+    await ph.screenshot({path: path.join(OUT, 'comic-phone-bar.png')});
+    ok(sb.shown && sb.inside, `phone: a small panel (${Math.round(sp.w)}×${Math.round(sp.h)} px) chosen shows its toolbar, clear of the row of pages ${JSON.stringify(sb)}`);
+    const eb = await ph.evaluate(async () => { const K = window.__cdp.comic; await K.editPanel(K.comic().pages[0].panels[0]); await new Promise(r => setTimeout(r, 300));
+      const r = document.querySelector('#cmEditBar').getBoundingClientRect(), v = document.querySelector('#viewport').getBoundingClientRect(), out = {top: Math.round(r.top), bottom: Math.round(r.bottom), vt: Math.round(v.top), vb: Math.round(v.bottom)};
+      await K.finishPanelEdit(true); return out; });
+    ok(eb.top >= eb.vt && eb.bottom <= eb.vb, `phone: the bar to go back to the page sits at the foot of the canvas (${eb.top}–${eb.bottom} px, the canvas ${eb.vt}–${eb.vb})`);
     await ph.context().close();
   },
   // the comic desk: gutters and corners dragged on the page, layouts that keep what the panels hold, pictures swapped

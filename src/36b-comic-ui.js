@@ -7,6 +7,8 @@ function showPage(on) {
   const el = $('#pageView'); if (!el) return;
   if (on && CM.edit) { finishPanelEdit(); return; }  // (it shows the page when done)
   el.hidden = !on; document.body.classList.toggle('paging', on);
+  // (the top bar acts on the page while it is shown: Exportar takes the pages out; the sketch is drawn over the figure, not the page)
+  $('#exportBtn').title = tr(on ? 'Exportar las páginas del cómic (Ctrl+E)' : 'Exportar imagen, 3D o animación (Ctrl+E)'); if (on && sk.on) setSketch(false);
   if (on) { if (!comic().pages.length) addPage('p4'); if (CMH.i < 0) histReset(); renderTracker(); renderScript(true); syncPageUI(); syncDeskTools(); drawPage(); }
 }
 // every change of the pages: saved soon, kept for undo, shown in the row of pages
@@ -17,10 +19,12 @@ const comicSaved = () => { if (typeof autosaveSoon === 'function') autosaveSoon(
 async function editPanel(p) {
   if (CM.edit) await finishPanelEdit();
   const bench = benchSave();
+  // (what the panel showed, for «Descartar» to give it back as it was: its film link, or nothing at all)
+  const was = {}; for (const k of ['shot', 'link', 'f', 'cam']) was[k] = p[k] === undefined ? undefined : JSON.parse(JSON.stringify(p[k]));
   if (!panelShot(p)) p.shot = shotFromStage();
   // a linked panel is edited as its own copy (the film stays as it is)
-  if (p.link && !p.shot) { const s = panelShot(p); p.shot = JSON.parse(JSON.stringify(s)); p.shot.id = ++shotSeq; p.f = p.link.f; p.link = null; toast(tr('Esta viñeta tiene ahora su propia escena: los cambios en la película ya no la cambian.')); }
-  CM.edit = {p, bench}; $('#pageView').hidden = true; document.body.classList.remove('paging'); document.body.classList.add('panelEdit');
+  if (p.link && !p.shot) { const s = panelShot(p); p.shot = JSON.parse(JSON.stringify(s)); p.shot.id = ++shotSeq; p.f = p.link.f; p.link = null; toast(tr('Esta viñeta tiene ahora su propia escena: los cambios en la película ya no la cambian («Descartar» la deja como estaba).')); }
+  CM.edit = {p, bench, was}; $('#pageView').hidden = true; document.body.classList.remove('paging'); document.body.classList.add('panelEdit');
   await stagePanel(p);
   const B = panelBox(p); RATIOS._panel = ['Viñeta', B.w / B.h]; state.ratio = '_panel'; applyFrameAspect(B.w / B.h);
   ANIM.focus = null;  // (the stage is free to pose: the panel's shot is written back on leaving)
@@ -32,7 +36,7 @@ async function finishPanelEdit(cancel) {
   const E = CM.edit; if (!E) return; CM.edit = null;
   if (!cancel) {
     const s = E.p.shot; s.scene = captureScene(); s.len = Math.max(1, s.len); s.keys = chars.map(m => [{f: 0, pose: basePose(m)}]); s.cam = [{f: 0, c: camState()}]; s.scene.cam = camState(); E.p.f = 0; delete E.p.cam; touchShot(s);
-  }
+  } else for (const k of ['shot', 'link', 'f', 'cam']) { if (E.was[k] === undefined) delete E.p[k]; else E.p[k] = E.was[k]; }  // («Descartar»: the panel as it was)
   $('#cmEditBar').hidden = true; document.body.classList.remove('panelEdit');
   await benchRestore(E.bench); comicSaved();
   if (state.tab === 'comic') { showPage(true); deskReturn(E.p); }
@@ -43,8 +47,11 @@ async function finishPanelEdit(cancel) {
 async function filmToComic(o = {}) {
   if (!ANIM.shots.length) { toast(tr('Primero haz una película (Animación › Guion) o abre una.')); return 0; }
   const c = comic(), per = o.per || 6, tplFor = n => n >= 6 ? 'p6' : n === 5 ? 'p5' : n === 4 ? 'p4' : n === 3 ? 'p3' : n === 2 ? 'p2' : 'p1';
+  histCommit();  // (what was there before is kept, for Deshacer to go back to)
   // (a page with nothing in it yet makes way)
   for (let i = c.pages.length - 1; i >= 0; i--) if (c.pages[i].panels.every(p => !panelShot(p) && !p.balloons.length)) c.pages.splice(i, 1);
+  // (the new pages go after the ones there are: the first of them is shown)
+  const start = c.pages.length, had = c.pages.some(pg => pg.panels.some(p => p.link));
   const bench = benchSave(); let made = 0;
   try {
     // the shots in pages: by the script's scenes (a comic script's PAGE), or six a page
@@ -70,16 +77,18 @@ async function filmToComic(o = {}) {
       }
     }
   } finally { await benchRestore(bench); }
-  CM.page = 0; comicChanged(); comicSaved();
+  CM.page = start; comicChanged(); comicSaved();
+  if (made) toast(had ? trn(c.pages.length - start, 'Página {a} añadida al final; las anteriores siguen ahí.', 'Páginas {a}–{b} añadidas al final; las anteriores siguen ahí.', {a: start + 1, b: c.pages.length}) : tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n: made}), {undo: () => comicUndo(-1)});
   return made;
 }
 
 /* ---------- export ---------- */
-async function exportComicPages(which = 'page', dpi = 300) {
+// (quiet: the export section says it is under way and shows the progress)
+async function exportComicPages(which = 'page', dpi = 300, quiet) {
   const c = comic(), list = which === 'all' ? c.pages : [curPage()].filter(Boolean); if (!list.length) return;
-  toast(tr('Preparando {n} página(s) a {d} ppp…', {n: list.length, d: dpi}));
+  if (!quiet) toast(tr('Preparando {n} página(s) a {d} ppp…', {n: list.length, d: dpi}));
   const files = {}; let first = null;
-  for (const [i, pg] of list.entries()) { const cv = await pageImage(pg, dpi); first = first || cv; const b = await new Promise(r => cv.toBlob(r, 'image/png')); files[`${tr('pagina')}-${String(c.pages.indexOf(pg) + 1).padStart(3, '0')}.png`] = new Uint8Array(await b.arrayBuffer()); void i; }
+  for (const [i, pg] of list.entries()) { const cv = await pageImage(pg, dpi); first = first || cv; const b = await new Promise(r => cv.toBlob(r, 'image/png')); files[`${tr('pagina')}-${String(c.pages.indexOf(pg) + 1).padStart(3, '0')}.png`] = new Uint8Array(await b.arrayBuffer()); exportProgress((i + 1) / list.length); }
   const names = Object.keys(files);
   if (names.length === 1) saveFile(`${tr('comic')}-${stamp()}-${names[0]}`, files[names[0]], 'image/png');
   else saveFile(`${tr('comic')}-${stamp()}.zip`, fflate.zipSync(files, {level: 0}), 'application/zip');
@@ -93,9 +102,11 @@ function syncComicUI() {
   CM.page = clamp(CM.page, 0, Math.max(0, c.pages.length - 1));
   setPressed($('#cmFormat'), c.format); $('#cmRtl').checked = !!c.rtl; $('#cmTone').checked = !!c.look.tone; $('#cmSet').checked = !!c.look.set;
   syncPageUI();
-  $('#cmPanelBox').hidden = !p; $('#cmBalloonBox').hidden = !p; $('#cmNoPanel').hidden = !!p;
+  $('#cmFmtNow').textContent = tr(c.rtl ? '{f} · se lee de derecha a izquierda' : '{f} · se lee de izquierda a derecha', {f: COMIC_FORMATS[c.format] ? COMIC_FORMATS[c.format].label : c.format});
+  $('#cmPanelBox').hidden = !p; $('#cmBalloonBox').hidden = !p; $('#cmNoPanel').hidden = !!p; $('#cmNoBalloon').hidden = !!p;
   if (p) {
-    const s = panelShot(p); $('#cmPanelInfo').textContent = !s ? tr('Vacía: «Poner lo del lienzo» o «Editar en 3D».') : p.link ? tr('Enlazada a «{s}» de la película (fotograma {f}): si cambias la película, cambia la viñeta.', {s: s.name, f: p.link.f + 1}) : tr('Tiene su propia escena.');
+    const s = panelShot(p); $('#cmEdit').textContent = tr(s ? 'Editar escena' : 'Montar escena');
+    $('#cmPanelInfo').textContent = !s ? tr('Vacía: «Montar escena» la abre en 3D para posarla; «Copiar la escena 3D» pone en ella lo que hay ahora en el lienzo.') : p.link ? tr('Enlazada a «{s}» de la película (fotograma {f}): si cambias la película, cambia la viñeta. Si editas su escena, se separa de la película.', {s: s.name, f: p.link.f + 1}) : tr('Tiene su propia escena.');
     const who = $('#cmWho'); who.innerHTML = ''; const cast = s ? s.scene.chars : [];
     chips(who, [['', tr('Nadie (cartela)')], ...cast.map((x, i) => [String(i), `${i + 1} · ${x.body.name || tr('Personaje')}`])], b && b.ci != null ? String(b.ci) : '', v => { if (!CM.selB) return; CM.selB.ci = v === '' ? null : +v; drawPage(); comicSaved(); });
   }
@@ -117,7 +128,7 @@ function buildComicUI() {
   $('#cmDelPage').onclick = () => curPage() && deletePage(curPage());
   $('#cmFromStage').onclick = () => { const p = CM.sel; if (!p) return; const bench = benchSave(); p.shot = shotFromStage(); p.link = null; p.f = 0; void bench; comicChanged(); comicSaved(); };
   $('#cmEdit').onclick = () => CM.sel && openPanelScene(CM.sel);
-  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); };
+  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); toast(tr('Viñeta vaciada.'), {undo: () => comicUndo(-1)}); };
   chips($('#cmKind'), Object.entries(BALLOON_KINDS), 'speech', k => { if (CM.selB) { CM.selB.kind = k; drawPage(); comicSaved(); } });
   $('#cmAddB').onclick = () => { const p = CM.sel; if (!p) return; const s = panelShot(p), b = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .75 : .25, y: .18 + p.balloons.length * .12, size: 9};
     p.balloons.push(b); CM.selB = b; drawPage(); syncComicUI(); comicSaved(); const t = $('#cmText'); t.focus(); t.select(); };
@@ -125,9 +136,8 @@ function buildComicUI() {
   $('#cmText').oninput = e => { if (CM.selB) { CM.selB.text = e.target.value; drawPage(); renderScript(); } }; $('#cmText').onchange = comicSaved;
   $('#cmSize').oninput = e => { if (CM.selB) { CM.selB.size = +e.target.value; drawPage(); } };
   $('#cmFromScript').onclick = () => { SC.target = 'both'; store.set('cdp.scTarget', 'both'); openScript(); setPressed($('#scTarget'), 'both'); };
-  $('#cmFromFilm').onclick = async () => { const n = await filmToComic(); if (n) toast(tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n})); };
-  $('#cmExport').onclick = () => exportComicPages('page', +$('#cmDpi').value || 300);
-  $('#cmExportAll').onclick = () => exportComicPages('all', +$('#cmDpi').value || 300);
+  $('#cmFromFilm').onclick = () => filmToComic();
+  $('#cmExport').onclick = () => exportComic('png'); $('#cmExportAll').onclick = () => exportComic('zip');
   $('#cmBack').onclick = () => { finishPanelEdit(); goTab('comic'); };
   $('#cmCancel').onclick = () => { finishPanelEdit(true); goTab('comic'); };
   buildComicExtraUI(); buildComicShapeUI(); syncComicUI();

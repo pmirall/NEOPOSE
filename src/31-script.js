@@ -1116,7 +1116,7 @@ async function runScript() {
       else setTimeout(closeScript, 900);
       toast(filmReady(r), {undo: undoScript});
       // and its comic: a page per PAGE of a comic script (or six panels a page), each panel a shot, linked
-      if (SC.target === 'both') { setWorkspace('static', {tab: 'comic'}); await new Promise(res => setTimeout(res, 60)); const n = await filmToComic({byScene: SC.pages}); if (n) toast(tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n})); }
+      if (SC.target === 'both') { setWorkspace('static', {tab: 'comic'}); await new Promise(res => setTimeout(res, 60)); await filmToComic({byScene: SC.pages}); }
       else setTimeout(() => { if ($('#scModal').hidden || !r.warn.length) play(true); }, 1000);
     }
   } catch (e) { console.warn('script', e); $('#scMsg').textContent = tr('No se ha podido: {e}', {e: e && e.message || e}); }

@@ -103,6 +103,7 @@ function tourStart(name = 'basico') {
   closeWelcome(); closeHelp && closeHelp();
   TOUR.steps = TOURS[typeof name === 'string' && TOURS[name] ? name : 'basico'];
   TOUR.on = true; $('#tour').hidden = false; TOUR.el = $('#tourCard');
+  if (document.body.classList.contains('paging')) showTab('pose');  // (the tour shows the figure and its tabs, not the comic page)
   tourGo(0);
 }
 function tourEnd(finished) {

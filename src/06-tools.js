@@ -134,6 +134,7 @@ function endStroke() {
 skl.addEventListener('pointerup', endStroke); skl.addEventListener('pointercancel', endStroke);
 function setSketch(on) {
   if (on && typeof WS !== 'undefined' && WS.ready && WS.cur !== 'static') setWorkspace('static');  // drawing over the figure is Estático's
+  if (on && document.body.classList.contains('paging')) showTab('pose');  // (and over the figure, not over the comic page)
   sk.on = on; skl.classList.toggle('on', on); $('#sketchBar').hidden = !on;
   $('#sketchBtn').setAttribute('aria-pressed', String(on));
   if (on) select(null);

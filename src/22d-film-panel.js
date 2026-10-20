@@ -32,6 +32,6 @@ function buildFilmPanelUI() {
   $('#fpScript').onclick = () => $('#tlScript').click(); $('#fpClips').onclick = () => $('#tlClips').click(); $('#fpBoard').onclick = () => $('#tlBoard').click();
   $('#fpMotion').onclick = () => { const p = $('#mvMotion'); if (p.hidden) $('#tlMotion').click(); };
   chips($('#fpFormat'), FILM_FORMATS, String(PROJECT.film.aspect || ''), v => { PROJECT.film.aspect = v ? +v : null; applyFilmFormat(); setPressed($('#fpFormat'), v); autosaveSoon(); });
-  $('#fpComic').onclick = async () => { setWorkspace('static', {tab: 'comic'}); await new Promise(r => setTimeout(r, 60)); const n = await filmToComic(); if (n) toast(tr('{n} viñetas hechas desde la película, enlazadas a sus planos.', {n})); };
+  $('#fpComic').onclick = async () => { setWorkspace('static', {tab: 'comic'}); await new Promise(r => setTimeout(r, 60)); await filmToComic(); };
   renderFilmList();
 }

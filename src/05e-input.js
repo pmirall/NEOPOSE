@@ -164,7 +164,7 @@ addEventListener('keydown', e => {
   else if (k === 'i' && !e.ctrlKey && !e.metaKey && !sk.on && !practice.active) { setIK(!state.ik); }
   // the windows close themselves on Esc (see initModals); here: the tour, the practice, the sketch, the selection
   else if (k === 'escape') { if (TOUR.on) tourEnd(false); else if (practice.active) stopPractice(); else if (sk.on) setSketch(false); else select(null); }
-  else if ((e.ctrlKey || e.metaKey) && k === 'e' && !e.shiftKey && !practice.active) { e.preventDefault(); openExport(); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'e' && !e.shiftKey && !practice.active) { e.preventDefault(); exportFromTop(); }
   else if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[123]$/.test(e.code) && !practice.active) { e.preventDefault(); setWorkspace(WS_ORDER[+e.code.slice(5) - 1]); }
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { const vis = tabs.filter(t => !t.hidden); if (vis[+k - 1]) { turnTo(vis[+k - 1].dataset.tab); setPanel(true); } }
