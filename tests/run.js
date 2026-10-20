@@ -570,6 +570,13 @@ const SUITES = {
     ok(wolf.claws && wolf.claws.kinds === '3' && wolf.pads && wolf.pads.kinds === '2' && wolf.pads.body && !wolf.claws.body && !wolf.claws.nan && !wolf.pads.nan,
       `a wolf's paws: keratin claws on the finger bones, leather pads on the skin (${JSON.stringify(wolf)})`);
     ok(wolf.claws.n + wolf.pads.n < 6000, `the hand parts stay light (${wolf.claws.n + wolf.pads.n} points)`);
+    // rebuilt with the body on every slider drag: as quick as the feet's parts (where pads land on the skin is found once)
+    const speed = await A(() => { const C = window.__cdp, m = C.mq, P = m.geo.attributes.position.array, t = f => { f(); const t0 = performance.now(); for (let i = 0; i < 8; i++) f(); return (performance.now() - t0) / 8; };
+      return {hand: t(() => C.furry.handGeos(m, P)), foot: t(() => C.furry.footGeos(m, P))}; });
+    ok(speed.hand < Math.max(6, speed.foot * 2.5), `the hand parts build in a few milliseconds (${speed.hand.toFixed(1)} ms, the feet's ${speed.foot.toFixed(1)} ms)`);
+    // the pads are inked round their rims, as every bean is in the drawings: a contour ring just inside the edge
+    const rim = await A(() => { const L = window.__hp.parts().pads.geometry.attributes.aLine.array; let neg = 0, pos = 0, on = true; for (let i = 0; i < L.length; i += 4) { if (L[i + 3] < -.5) on = false; if (L[i + 2] < 0) neg++; else pos++; } return {on, neg, pos}; });
+    ok(rim.on && rim.neg > rim.pos && rim.pos > 0, `the pads' rims are inked (${rim.pos} points past the line, ${rim.neg} inside)`);
     // claws: out of the end of each finger and the thumb, rigid on its last segment, past the tip
     const claw = await A(() => { const C = window.__cdp, H = window.__hp, m = C.mq, g = H.parts().claws.geometry, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, P = g.attributes.position, per = P.count / 10;
       let rigid = true; for (let i = 0; i < si.length; i += 4) if (sw[i] !== 1 || !/^f[LR]\d2$/.test(m.accBones[si[i]].name)) rigid = false;
@@ -623,6 +630,11 @@ const SUITES = {
       for (let i = half; i < P.count; i++) r = Math.max(r, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(c));
       return [1, 2, 3, 4].map(f => H.jv(`tipR${f}`).distanceTo(c) / r); });
     ok(hoof.every(x => x < .9), `the hoof takes in the finger tips (${hoof.map(x => x.toFixed(2)).join(' ')} of its reach)`);
+    // a hoof caps the end of the digit (from a little behind the last joint), not the whole hand from the knuckles, so a
+    // closing hand bends at the knuckles below it (the right hand's half over the index and middle fingers)
+    const cap = await A(() => { const H = window.__hp, g = H.parts().claws.geometry, P = g.attributes.position, half = P.count / 2, a = H.jv('fR21'), b = H.jv('fR22'), d = b.clone().sub(a), L = d.length(); d.normalize();
+      let lo = Infinity; for (let i = half; i < half * 1.5; i++) lo = Math.min(lo, new THREE.Vector3().fromBufferAttribute(P, i).sub(a).dot(d) / L); return lo; });
+    ok(cap > .2, `the hoof starts past the fingers' middle joints (${cap.toFixed(2)} of the middle segment)`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

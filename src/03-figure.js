@@ -650,6 +650,10 @@ class Mannequin {
       if (!skin) {
         m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
         m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
+      } else {
+        // drawn a little toward the eye, so the skin it lies on never shows through it where the skinning bends both apart
+        m.onBeforeRender = () => { const t = m.material; t.polygonOffset = true; t.polygonOffsetFactor = -2; t.polygonOffsetUnits = -6; };
+        m.onAfterRender = () => { m.material.polygonOffset = false; };
       }
       if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(sk, I); this.acc.push(o); this.hulls.push(o); }
     }
