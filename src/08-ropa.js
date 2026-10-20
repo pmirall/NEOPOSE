@@ -254,7 +254,7 @@ function updateBodyHide(m) {
   // 1: skin not drawn · .5: skin drawn (it may show through openings) but its ink outline is not, so it cannot poke through loose cloth
   for (const g of order) if (g.spec.hide !== false) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }
   if (m.mouthOpen && m.anthro && m.anthro.lip) for (const i of m.anthro.lip) H[i] = 1;
-  m.geo.attributes.aHide.needsUpdate = true; if (typeof hideFluff === 'function') hideFluff(m, H);
+  m.geo.attributes.aHide.needsUpdate = true; if (typeof hideFluff === 'function') hideFluff(m, H); if (typeof hideHandParts === 'function') hideHandParts(m, H);
   // garments under others: hidden wherever an outer garment lies over them (or they poke out through it a little)
   const outer = [], hole = tailHole(m);
   for (let k = order.length - 1; k >= 0; k--) {

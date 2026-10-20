@@ -643,12 +643,15 @@ class Mannequin {
       mm.visible = !!this.mouthOpen; this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.mouthMeshes.push(mm);
     }
     for (const g of geos) {
-      const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
-      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
-      this.group.add(m); m.bind(this.accSkeleton, I); this.acc.push(m); this.meshes.push(m);
-      m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
-      m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
-      if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.accSkeleton, I); this.acc.push(o); this.hulls.push(o); }
+      // parts laid on the skin (a paw's pads) are skinned as the skin under them: the body's skeleton, highlighted with it
+      const skin = !!g.userData.skin, sk = skin ? this.skeleton : this.accSkeleton, m = new THREE.SkinnedMesh(g, this.lib[this.style]);
+      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true; m.userData.skin = skin;
+      this.group.add(m); m.bind(sk, I); this.acc.push(m); this.meshes.push(m);
+      if (!skin) {
+        m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
+        m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
+      }
+      if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(sk, I); this.acc.push(o); this.hulls.push(o); }
     }
     this.hasTail = !!tsp;
   }
@@ -710,11 +713,11 @@ class Mannequin {
   }
   applyHands() {
     if (!this.handAxes) return;
-    const q = new Q(), q2 = new Q();
+    const q = new Q(), q2 = new Q(), paw = handShape(this.body);  // paws close their own way (10-anthro)
     for (const s of ['L', 'R']) {
       const st = this.hands[s], F = this.fingers[s], A = this.handAxes[s];
       for (let f = 0; f < 5; f++) {
-        const c = st.c[f], ax = A.fingers[f], ang = f === 0 ? [48, 45, 55] : [85, 100, 70];
+        const c = st.c[f], ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
         q2.setFromAxisAngle(A.n, ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
         if (f === 0 && st.t) q2.premultiply(q.setFromAxisAngle(A.along, A.opp * st.t * 60 * DEG));
         F[f][0].quaternion.copy(q2).multiply(q.setFromAxisAngle(ax.curl[0], c * ang[0] * DEG));
@@ -745,7 +748,7 @@ class Mannequin {
     if (hit.object.userData.acc) {
       const si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
       let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(a, k); if (w > bw) { bw = w; best = si.getComponent(a, k); } }
-      return this.accPick[best];
+      return hit.object.userData.skin ? this.bonePick[best] : this.accPick[best];
     }
     return this.bonePick[this.dom[a]];
   }
