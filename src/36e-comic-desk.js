@@ -86,7 +86,8 @@ function deskLayout() {
   pv.pages = idx.map((i, j) => ({i, pg: c.pages[i], ox: x0 + j * c.page.w * k, oy: y0}));
   const cur = pv.pages.find(e => e.i === CM.page) || pv.pages[0]; pv.ox = cur.ox; pv.oy = cur.oy;
 }
-const entryOf = pg => pv.pages.find(e => e.pg === pg);
+// (the layout is computed again if the page was just changed and not drawn yet)
+const entryOf = pg => pv.pages.find(e => e.pg === pg) || (pageOn() && pv.cv && pv.cv.width && comic().pages.includes(pg) && spreadOf(CM.page).includes(comic().pages.indexOf(pg)) ? (deskLayout(), pv.pages.find(e => e.pg === pg)) : null);
 const entryAt = (x, y) => { const c = comic(); return pv.pages.find(e => x >= e.ox - 8 && x <= e.ox + c.page.w * pv.k + 8 && y >= e.oy - 8 && y <= e.oy + c.page.h * pv.k + 8) || null; };
 const toMm = (e, x, y) => [(x - e.ox) / pv.k, (y - e.oy) / pv.k];
 // a panel's rectangle on screen, in CSS px of the page view
