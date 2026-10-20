@@ -396,11 +396,11 @@ const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b &&
    and height; claw: length, base half height, curl; bean and pad: half width and length; mitt: ball to knuckles; slim:
    how much the metatarsus is slimmed (a rabbit's long foot keeps its thickness) */
 const PAWS = {
-  can: {w: .27, n: 4, x: .36, reach: [.18, .27], tw: .145, tt: .15, claw: [.115, .058, -.75], bean: [.075, .11], pad: [.24, .19], mitt: .16},
-  fel: {w: .28, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .14},
+  can: {w: .33, n: 4, x: .36, reach: [.18, .27], tw: .145, tt: .15, claw: [.115, .058, -.75], bean: [.075, .11], pad: [.24, .19], mitt: .33},
+  fel: {w: .34, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .3},
   urs: {w: .4, n: 5, x: .4, reach: [.2, .3], tw: .1, tt: .11, claw: [.2, .06, -.4], bean: [.085, .065], pad: [.34, .5], mitt: .1},
-  rep: {w: .32, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .1, dew: 1, knuckles: 1},
-  lep: {w: .32, n: 4, x: .22, reach: [.36, .44], tw: .14, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .16, slim: .15},
+  rep: {w: .34, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .24, dew: 1, knuckles: 1},
+  lep: {w: .32, n: 4, x: .22, reach: [.36, .44], tw: .14, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .2, slim: .15},
   hoof: {w: .25}
 };
 const pawOf = L => PAWS[L.hoof ? 'hoof' : L.paw] || PAWS.can;
@@ -415,6 +415,14 @@ function pawFrame(L, J, s) {
   else fr.B = new V3(T.x, g, T.z - (K.mitt + .2) * W);
   return fr;
 }
+// the height where clothes over an animal leg end, a little under the hock (ankle height Ay, ground g)
+const hemY = (Ay, g) => Ay - .2 * (Ay - g);
+// what clothes hide on a human foot shows under their hem on an animal leg (the garment's helpers end there)
+function pawsUnderHem(m, Hd) {
+  const L = legSpec(m.body); if (!L || L.type === 'planti' || !m.anchors) return;
+  const P = m.anchors;
+  for (const s of ['L', 'R']) { const ai = FIG.jIdx['ankle' + s], hy = hemY(m.J[ai * 3 + 1], 0) - .004; for (let i = 0; i < FIG.meta.nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < hy) Hd[i] = 0; }
+}
 // the neighbours of each vertex the ankle carries (the mesh's topology never changes: worked out once)
 function footNb(ai) {
   const key = 'nb' + ai; if (FIG[key]) return FIG[key];
@@ -424,7 +432,12 @@ function footNb(ai) {
   for (let t = 0; t < I.length; t += 3) for (let e = 0; e < 3; e++) { const a = I[t + e], b = I[t + (e + 1) % 3]; link(a, b); link(b, a); }
   const ids = [...sets.keys()], off = new Int32Array(ids.length + 1), nb = [];
   ids.forEach((i, j) => { nb.push(...sets.get(i)); off[j + 1] = nb.length; });
-  return (FIG[key] = {ids, nb: Int32Array.from(nb), off});
+  // the clothes' helper points the ankle carries, each with the nearest of these skin vertices (in the base mesh)
+  const hv = [], hn = [], B = FIG.base, HB = FIG.hbase;
+  for (let h = 0; h < FIG.nH; h++) { let w = 0; for (let k = 0; k < 4; k++) if (FIG.hsi[h * 4 + k] === ai) w += FIG.hsw[h * 4 + k]; if (!w) continue;
+    let best = 0, bd = Infinity; ids.forEach((i, j) => { const d = (B[i * 3] - HB[h * 3]) ** 2 + (B[i * 3 + 1] - HB[h * 3 + 1]) ** 2 + (B[i * 3 + 2] - HB[h * 3 + 2]) ** 2; if (d < bd) { bd = d; best = j; } });
+    hv.push(h); hn.push(best); }
+  return (FIG[key] = {ids, nb: Int32Array.from(nb), off, hv: Int32Array.from(hv), hn: Int32Array.from(hn)});
 }
 function remodelLegs(b, P, J, H) {
   const L = legSpec(b); if (!L) return;
@@ -451,18 +464,29 @@ function remodelLegs(b, P, J, H) {
     for (let k = 1; k < NB; k++) if (!isFinite(bx0[k])) { bx0[k] = bx0[k - 1]; bx1[k] = bx1[k - 1]; by0[k] = by0[k - 1]; by1[k] = by1[k - 1]; }
     const band = z => { const f = clamp((z - z0) / (z1 - z0) * NB - .5, 0, NB - 1), k = Math.min(Math.floor(f), NB - 2), t = f - k, l = a => a[k] + (a[k + 1] - a[k]) * t;
       const x0 = l(bx0), x1 = l(bx1), y0 = l(by0), y1 = l(by1); return [(x0 + x1) / 2, Math.max((x1 - x0) / 2, 1e-3), (y0 + y1) / 2, Math.max((y1 - y0) / 2, 1e-3)]; };
-    const len = z1 - z0, zBall = z0 + .68 * len, zToe = z0 + .8 * len, f = new V3(0, 0, 1), o = [0, 0, 0];
+    const gf = Math.min(...foot.map(i => P[i * 3 + 1])), len = z1 - z0, zBall = z0 + .68 * len, zToe = z0 + .8 * len, f = new V3(0, 0, 1), o = [0, 0, 0];
     // 1. the heel and the metatarsus, shaped in the foot's own frame and then turned down about the ankle as a joint
     //    bends (fully below it, fading out up the shin): the heel shortened into the point of the hock, the foot
     //    stretched to the metatarsus' length and slimmed in the middle, its sections brought onto the line from the
     //    ankle to the ball (ungulates: the cannon bone, to the fetlock)
     const th = (L.th || 0) * DEG, rot = L.type === 'planti' ? 0 : Math.PI / 2 - th, ks = L.type === 'planti' ? 1 : L.mt * F / (zBall - A.z);
     const u = new V3(0, -Math.cos(th), Math.sin(th)), n = new V3(0, Math.sin(th), Math.cos(th)), psiU = Math.atan2(u.y, u.z);
-    const dg = rot ? 1 : 0, sl = K.slim ?? 1, shape = (x, y, z, w, out) => {
-      const q = clamp((z - A.z) / (zBall - A.z), 0, 1), [bxc, , bym] = band(clamp(z, z0, zBall));
-      const kx = dg ? 1 - (z < A.z ? .3 * sstep(A.z, z0, z) : sl * (.28 * Math.sin(Math.PI * q) + .24 * q)) : 1.1 + .25 * q, ky = 1 - dg * (z < A.z ? .2 * sstep(A.z, z0, z) : sl * (.3 * Math.sin(Math.PI * q) + .36 * q));
-      const kz = !dg ? 1 : z < A.z ? .5 : ks, rc = dg * sstep(0, 1, q);
+    //    The metatarsus is a bone's shaft, as thick at its end as below the hock (the human foot, high at the instep and
+    //    thin at the ball, would make it a wedge): just past the joint its sections take a constant size, a little
+    //    slimmer down to the ball (Wm, Dm: half width and half depth at q), and the joint itself (the human ankle, as deep
+    //    as the foot is high) is brought to Dj, so the hock is a knob and not the top of a cone (a rabbit's furred foot
+    //    keeps most of its own shape)
+    const dg = rot ? 1 : 0, sl = K.slim ?? 1, Wm = q => W * (.27 - .05 * q), Dm = q => W * (.18 - .035 * q), Dj = .27 * W, hA = band(A.z)[3];
+    const shape = (x, y, z, w, out) => {
+      const q = clamp((z - A.z) / (zBall - A.z), 0, 1), [bxc, bhw, bym, bhh] = band(clamp(z, z0, zBall)), f = sl * sstep(0, .1, q);
+      const kx = dg ? (z < A.z ? 1 - .3 * sstep(A.z, z0, z) : 1 + f * (Wm(q) / bhw - 1)) : 1.1 + .25 * q;
+      const ky = dg ? (z < A.z ? (1 - .2 * sstep(A.z, z0, z)) * (1 + sl * (Dj / hA - 1)) : 1 + sl * (Dj + (Dm(q) - Dj) * sstep(0, .1, q)) / bhh - sl) : 1;
+      // (the stretch to the metatarsus' length starts past the joint: stretched there, the skin of the ankle's front,
+      // half bent, would swing far forward)
+      const kz = !dg ? 1 : z < A.z ? .5 : 1 + (ks - 1) * sstep(0, .3, q), rc = dg * sstep(0, 1, q);
       let lx = (bxc - A.x) * (1 - rc) + (x - bxc) * kx, ly = (bym - A.y) * (1 - rc) + (y - bym) * ky, lz = (z - A.z) * kz;
+      // a bear's sole is flat on the ground from heel to ball: the human arch is let down, the top of the foot stays
+      if (!dg) ly -= (bym - bhh - gf) * clamp(1 - (y - bym + bhh) / (2 * bhh), 0, 1);
       // only what the ankle carries: the shin above keeps its place
       lx = (x - A.x) + (lx - (x - A.x)) * w; ly = (y - A.y) + (ly - (y - A.y)) * w; lz = (z - A.z) + (lz - (z - A.z)) * w;
       const a = rot * w, c = Math.cos(a), sn = Math.sin(a);
@@ -471,7 +495,7 @@ function remodelLegs(b, P, J, H) {
     // 2. the forefoot swept into the paw, in the final frame, from the ball's section as step 1 leaves it, the human toes
     //    drawn in at its end. Rows: human z, centre, the section's tilt ψ (0: upright), half width, half depth
     const [bxB, bhB, , bdB] = band(zBall); shape(bxB, band(zBall)[2], zBall, 1, o);
-    const Bc = new V3(...o), WB = bhB * (dg ? 1 - .24 * sl : 1.35), DB = bdB * (1 - .36 * dg * sl), psiB = dg * psiU;
+    const Bc = new V3(...o), WB = dg ? bhB + sl * (Wm(1) - bhB) : bhB * 1.35, DB = dg ? bdB + sl * (Dm(1) - bdB) : bdB, psiB = dg * psiU;
     let g, T, KF;
     if (L.type === 'ungu') {
       const p = new V3(0, -Math.sin(PASTERN), Math.cos(PASTERN)), C = Bc.clone().addScaledVector(p, .2 * F), psiP = Math.atan2(p.y, p.z), cw = L.hoof === 'single' ? .085 : .07;
@@ -479,22 +503,27 @@ function remodelLegs(b, P, J, H) {
       KF = [[zBall, Bc.x, Bc.y, Bc.z, psiB, WB, DB], [(zBall + zToe) / 2, ...Bc.clone().lerp(C, .5).toArray(), (psiB + psiP) / 2, .075 * F, .07 * F],
         [zToe, ...C.toArray(), psiP, cw * F, .08 * F], [z1, ...C.clone().addScaledVector(p, .025 * F).toArray(), psiP, .045 * F, .04 * F]];
     } else {
-      // digitigrade: the metatarsus goes on down into the ground, which flattens its end into the sole (the toes then make
-      // the paw's top); bears: the human sole stays, broadened, and the forefoot ends in a low dome behind the toes
+      // digitigrade: the metatarsus ends on the big pad and the paw goes on forward from it along the ground, wider than
+      // the shaft (the paw flares out of it), low and flat underneath, rising to the knuckles, where the toes take over
+      // (a compact paw about as long as it is wide); bears: the human sole stays, broadened, and the forefoot ends in a
+      // low dome behind the toes
       const kn = Bc.z + K.mitt * W;
       if (dg) {
         g = Bc.y - DB * Math.cos(psiB) - .02 * W; T = new V3(Bc.x, g + .1 * W, kn + .2 * W);
-        const e = (Bc.y - g) / Math.cos(th) + .12 * W, E = Bc.clone().addScaledVector(u, e);
-        KF = [[zBall, Bc.x, Bc.y, Bc.z, psiB, WB, DB], [zToe, ...E.toArray(), psiB, .4 * W, DB * 1.05], [z1, ...E.clone().addScaledVector(u, .1 * W).toArray(), psiB, .28 * W, DB * .7]];
+        KF = [[zBall, Bc.x, Bc.y, Bc.z, psiB, WB, DB], [(zBall + zToe) / 2, Bc.x, g + .17 * W, Bc.z + .45 * K.mitt * W, 0, .46 * W, .17 * W],
+          [zToe, Bc.x, g + .12 * W, kn, 0, .42 * W, .12 * W], [z1, Bc.x, g + .09 * W, kn + .1 * W, 0, .05 * W, .03 * W]];
       } else {
-        g = Math.min(...foot.map(i => P[i * 3 + 1])); T = new V3(Bc.x, g + .1 * W, kn + .2 * W);
+        g = gf; T = new V3(Bc.x, g + .1 * W, kn + .2 * W);
         const Dk = .15 * W, Kc = new V3(Bc.x, g + Dk, kn);
         KF = [[zBall, Bc.x, Bc.y, Bc.z, 0, WB, DB], [zToe, ...Kc.toArray(), 0, .48 * W, Dk], [z1, ...Kc.clone().addScaledVector(f, .12 * W).toArray(), 0, .34 * W, .6 * Dk]];
       }
     }
-    // the fur of the sole stops a little above the ground where the pads stand on it
-    const fl = g + (padsOn(b) && L.type !== 'ungu' ? .035 * W : 0), sweep = (x, y, z, out) => {
-      const [bxc, bhw, bym, bhh] = band(clamp(z, zBall, zToe)), cap = 1 - .85 * sstep(zToe, z1, z), xn = (x - bxc) / bhw * cap, yn = (y - bym) / bhh * cap;
+    // the fur of the sole stops a little above the ground where the pads stand on it (a bear's sole pad is a thin slab
+    // under the whole sole: just under it). The human toes are not folded into the paw's end, which would crumple it:
+    // their vertices go onto the surface of the closing dome, each by its angle about the foot's axis
+    const fl = g + (padsOn(b) && L.type !== 'ungu' ? (dg ? .035 : .015) * W : 0), zT = zToe - .06 * len, sweep = (x, y, z, out) => {
+      const [bxc, bhw, bym, bhh] = band(clamp(z, zBall, zToe)), r = Math.max(Math.hypot(x - bxc, (y - bym) / bhh * bhw), .2 * bhw) / bhw, k = 1 + sstep(zT, zToe, z) * (1 / r - 1);
+      const xn = (x - bxc) / bhw * k, yn = (y - bym) / bhh * k;
       let i = 0; while (i < KF.length - 2 && z > KF[i + 1][0]) i++;
       const t = clamp((z - KF[i][0]) / (KF[i + 1][0] - KF[i][0]), 0, 1), c = k => crInterp(KF, i, t, k), psi = c(4);
       out[0] = c(1) + xn * c(5); out[1] = Math.max(fl, c(2) + yn * c(6) * Math.cos(psi)); out[2] = c(3) - yn * c(6) * Math.sin(psi);
@@ -503,7 +532,7 @@ function remodelLegs(b, P, J, H) {
       for (let i = 0; i < cnt; i++) {
         const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2], wa = wA(si, sw, i); if (wa < .01) continue;
         const w = wa * sstep(A.y + .06, A.y - .025, y); if (w < .005) continue;
-        if (ws) ws[i] = w;
+        if (ws) ws[i] = z > zT && y < A.y ? -w : w;
         if (z > zBall && y < A.y) { sweep(x, y, z, o); Q[i * 3] += (o[0] - x) * w; Q[i * 3 + 1] += (o[1] - y) * w; Q[i * 3 + 2] += (o[2] - z) * w; }
         else { shape(x, y, z, w, o); Q[i * 3] = o[0]; Q[i * 3 + 1] = Math.max(o[1], fl); Q[i * 3 + 2] = o[2]; }
       }
@@ -511,13 +540,36 @@ function remodelLegs(b, P, J, H) {
     const ws = new Float32Array(FIG.meta.nV); apply(P, FIG.meta.nV, FIG.si, FIG.sw, ws);
     if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
     // the human foot's tendons and bones, drawn out along the metatarsus, would show as long facets: the laid skin is
-    // relaxed (Taubin's smoothing, which keeps the volume), the more the more it was moved
-    const {ids, nb, off} = footNb(ai), tmp = new Float32Array(ids.length * 3);
-    for (let it = 0; it < 8; it++) {
+    // relaxed (Taubin's smoothing, which keeps the volume), the more the more it was moved, and the gathered toes (ws < 0)
+    // fully and for longer. The clothes' helper points ride with the skin vertex nearest to them, so trousers follow
+    // the laid skin (a hem does not let the point of the hock through)
+    const {ids, nb, off, hv, hn} = footNb(ai), tmp = new Float32Array(ids.length * 3), P0 = Float32Array.from(ids.flatMap(i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]]));
+    // the shaft: the skin of the ankle's front, half bent with the shin, and the instep's would still bulge in front of
+    // it; below the hock knob every section is laid on the shaft's ellipse (Wm across, Dm along n) about the line from
+    // the joint to the ball
+    if (dg) { const ax = Bc.clone().sub(A), La = ax.length(), e = new V3(); ax.multiplyScalar(1 / La); const nx = new V3(0, ax.z, -ax.y);
+      for (const i of ids) { if (!(ws[i] > 0)) continue; e.set(P[i * 3] - A.x, P[i * 3 + 1] - A.y, P[i * 3 + 2] - A.z); const t = e.dot(ax) / La, k = sl * ws[i] * sstep(.1, .28, t) * (1 - sstep(.97, 1.03, t)); if (k < .005) continue;
+        const a = e.x, b = e.dot(nx), r = Math.hypot(a / Wm(t), b / Dm(t)) || 1, f = 1 + k * (1 / r - 1);
+        P[i * 3] += a * (f - 1); P[i * 3 + 1] += nx.y * b * (f - 1); P[i * 3 + 2] += nx.z * b * (f - 1); } }
+    for (let it = 0; it < 14; it++) {
       const k = it % 2 ? -.53 : .5;
-      ids.forEach((i, j) => { let ax = 0, ay = 0, az = 0; const a = off[j], c = off[j + 1]; for (let q = a; q < c; q++) { const v = nb[q]; ax += P[v * 3]; ay += P[v * 3 + 1]; az += P[v * 3 + 2]; }
-        const cnt = c - a || 1, kw = k * ws[i]; tmp[j * 3] = P[i * 3] + (ax / cnt - P[i * 3]) * kw; tmp[j * 3 + 1] = P[i * 3 + 1] + (ay / cnt - P[i * 3 + 1]) * kw; tmp[j * 3 + 2] = P[i * 3 + 2] + (az / cnt - P[i * 3 + 2]) * kw; });
+      ids.forEach((i, j) => { const kw = k * (ws[i] < 0 ? 1 : it < 8 ? ws[i] : 0); if (!kw) { tmp[j * 3] = P[i * 3]; tmp[j * 3 + 1] = P[i * 3 + 1]; tmp[j * 3 + 2] = P[i * 3 + 2]; return; }
+        let ax = 0, ay = 0, az = 0; const a = off[j], c = off[j + 1]; for (let q = a; q < c; q++) { const v = nb[q]; ax += P[v * 3]; ay += P[v * 3 + 1]; az += P[v * 3 + 2]; }
+        const cnt = c - a || 1; tmp[j * 3] = P[i * 3] + (ax / cnt - P[i * 3]) * kw; tmp[j * 3 + 1] = P[i * 3 + 1] + (ay / cnt - P[i * 3 + 1]) * kw; tmp[j * 3 + 2] = P[i * 3 + 2] + (az / cnt - P[i * 3 + 2]) * kw; });
       ids.forEach((i, j) => { P[i * 3] = tmp[j * 3]; P[i * 3 + 1] = Math.max(fl, tmp[j * 3 + 1]); P[i * 3 + 2] = tmp[j * 3 + 2]; });
+    }
+    if (H) {
+      for (let q = 0; q < hv.length; q++) { const h = hv[q] * 3, j = hn[q], i = ids[j] * 3; for (let c = 0; c < 3; c++) H[h + c] += P[i + c] - P0[j * 3 + c]; }
+      // and the cloth goes round the point of the hock: behind the joint, no helper point lies in front of the skin's
+      // back at its height (the heel, turned up into the hock, stood out behind the human ankle's helpers)
+      const NB = 10, y0 = A.y - .06, dy = .16 / NB, back = new Float32Array(NB).fill(Infinity), bk = y => Math.floor((y - y0) / dy);
+      for (const i of ids) { const k = bk(P[i * 3 + 1]); if (k >= 0 && k < NB) back[k] = Math.min(back[k], P[i * 3 + 2]); }
+      for (const h of hv) { const y = H[h * 3 + 1], k = bk(y); if (k < 0 || k >= NB || H[h * 3 + 2] > A.z) continue;
+        const b2 = Math.min(back[k], back[Math.max(k - 1, 0)], back[Math.min(k + 1, NB - 1)]); if (isFinite(b2)) H[h * 3 + 2] = Math.min(H[h * 3 + 2], b2 - .004); }
+      // a trouser leg ends at the hock: what a human foot's helpers carried below it (the cloth breaking over the
+      // instep, now the whole front of the metatarsus) is gathered into a short cuff under the hock, and the skin
+      // below shows (pawsUnderHem)
+      if (dg) { const hy = hemY(A.y, g); for (const h of hv) { const y = H[h * 3 + 1]; if (y < hy) H[h * 3 + 1] = hy - (hy - y) * .12; } }
     }
     // the toe point (feet planted, IK, and the frame footGeos reads)
     const ti = FIG.jIdx['toe' + s]; J[ti * 3] = T.x; J[ti * 3 + 1] = T.y; J[ti * 3 + 2] = T.z;
@@ -592,17 +644,19 @@ function footGeos(m, P) {
     const fr = pawFrame(L, m.J, s), {W, F, g, B, K} = fr, o = s === 'L' ? 1 : -1, bone = m.accBones.indexOf(m.bones[FIG.jIdx['ankle' + s]]), weights = () => [[bone, 1]], parts = [];
     // a lofted part (no contour rings: they would ring the toes like nails); fur takes the coat of the foot (socks); a
     // closing ring is drawn into one point (loft keeps a hair's width, a pinhole up close), its normals along `tip` (the
-    // last ring) or `root` (the first)
-    const add = (o2, kind, tip, root) => {
+    // last ring) or `root` (the first). A toe (`seam`) inks its two sides instead, the groove that parts it from the next
+    // one, which no outline draws (the toes touch): the ring line's coordinate is made zero along the side seams and
+    // kept under the smallest ring spacing elsewhere, so the line is drawn there and nowhere else, in every drawing style
+    const add = (o2, kind, tip, root, seam) => {
       const geo = loft({weights, ...o2}), E = furAttrsLoft(geo, kind).attributes.aEye.array, ln = geo.attributes.aLine.array, nm = geo.attributes.normal, pa = geo.attributes.position, r = (o2.radial || 18) + 1;
-      for (let i = 0; i < E.length; i += 4) { if (kind === 1) E[i + 1] = 1; ln[i + 3] = -1; }
+      for (let i = 0; i < E.length; i += 4) { if (kind === 1) E[i + 1] = 1; if (seam) { ln[i + 2] = .004 * ln[i]; ln[i + 3] = 0; } else ln[i + 3] = -1; }
       const close = (i0, d) => { const c = new V3(); for (let i = i0; i < i0 + r; i++) c.x += pa.getX(i) / r, c.y += pa.getY(i) / r, c.z += pa.getZ(i) / r;
         for (let i = i0; i < i0 + r; i++) { pa.setXYZ(i, c.x, c.y, c.z); nm.setXYZ(i, d.x, d.y, d.z); } };
       if (tip) close(pa.count - r, tip); if (root) close(0, root);
       parts.push(geo); return geo;
     };
     // a low leather dome on the ground: a along `side`, b across it; mod shapes its outline
-    const pad = (c, side, a, b, h, mod) => add({origin: new V3(c.x, g + h, c.z), axis: dn, side, radial: mod ? 36 : 14, sub: 1, n: 2.2, mod,
+    const pad = (c, side, a, b, h, mod, n = 2.2) => add({origin: new V3(c.x, g + h, c.z), axis: dn, side, radial: mod ? 36 : 14, sub: 1, n, mod,
       secs: [[0, .55 * a, .55 * b], [.35 * h, .93 * a, .93 * b], [.62 * h, a, b], [.86 * h, .8 * a, .8 * b], [.97 * h, .42 * a, .42 * b], [h, .001, .001]]}, 2, dn);
     // a claw from p along d: as wide as the toe's tip at the root and taller than wide, tilted 10° down and curling, or
     // less tilted if its point would go into the ground
@@ -614,10 +668,12 @@ function footGeos(m, P) {
         secs: [[-.5 * len, .62 * c, c], [0, .64 * c, c], [.35 * len, .5 * c, .8 * c], [.7 * len, .28 * c, .45 * c], [.92 * len, .1 * c, .14 * c], [len, .001, .001]]}, 3, ax);
     };
     // a toe: a bean of fur from inside the paw (buried as deep as a short toe, so a long one does not come out behind)
-    // over its knuckle and down to the tip (dragons: three knuckles)
-    const TOE = K.knuckles ? [[-.5, .001, .001, 1.05], [-.42, .8, .8, 1.1], [0, 1, 1, 1.25], [.28, 1.08, 1.08, 1.35], [.44, .9, .88, 1.18], [.6, .98, .95, 1.08], [.76, .8, .76, .88], [.9, .72, .62, .7], [.975, .36, .32, .62], [1, .001, .001, .6]]
-      : [[-.5, .001, .001, 1], [-.42, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.1, 1.28], [.62, .96, .9, .95], [.84, .76, .66, .7], [.95, .46, .4, .6], [1, .001, .001, .58]];
-    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * (t < 0 ? Math.min(Lt, .32 * W) : Lt), w * tw, h * tt, 0, c * tt])}, 1, d, d.clone().negate());
+    // over its knuckle and down to the tip (dragons: three knuckles). Rows: t, half width, half height, centre height (in
+    // tw, tt); its underside stays a third of tt above the ground over the bean, which stands out under it as its own
+    // oval (a toe sitting on its bean, not a bean cut by the fur)
+    const TOE = K.knuckles ? [[-.5, .001, .001, 1.05], [-.42, .8, .8, 1.1], [0, 1, 1, 1.25], [.28, 1.08, 1.04, 1.36], [.44, .9, .86, 1.2], [.6, .98, .85, 1.17], [.76, .8, .66, .98], [.9, .72, .5, .82], [.975, .36, .3, .66], [1, .001, .001, .62]]
+      : [[-.5, .001, .001, 1], [-.42, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.04, 1.32], [.62, .96, .78, 1.1], [.84, .76, .56, .9], [.95, .46, .34, .68], [1, .001, .001, .62]];
+    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * (t < 0 ? Math.min(Lt, .32 * W) : Lt), w * tw, h * tt, 0, c * tt])}, 1, d, d.clone().negate(), true);
     if (L.hoof) {
       // the hoof under the coronet: its sole on the ground, the front wall at ~55°, the heels lower (horse: one; goats and
       // deer: two halves with the cleft between them, and two dewclaws behind the fetlock)
@@ -652,13 +708,24 @@ function footGeos(m, P) {
       toe(r, d, Lt, .075 * W, .075 * W); claw(r.clone().addScaledVector(d, .8 * Lt).add(new V3(0, .05 * W, 0)), new V3(d.x, 0, d.z).normalize(), K.claw[0] * W * .4, K.claw[1] * W * .55, K.claw[2]);
     }
     if (pads && K.bean) {
-      for (const t of toes) pad(t.root.clone().addScaledVector(t.d, .56 * t.Lt), t.d, K.bean[1] * W, K.bean[0] * W, .06 * W);
+      for (const t of toes) pad(t.root.clone().addScaledVector(t.d, .58 * t.Lt), t.d, K.bean[1] * W, K.bean[0] * W, .075 * W);
       if (L.type === 'planti') {
-        // a bear's sole: one pad from the heel to the ball, broad in front
-        pad(new V3(B.x, 0, B.z + .08 * W - K.pad[1] * W), new V3(0, 0, 1), K.pad[1] * W, K.pad[0] * W, .05 * W, ph => 1 - .34 * Math.max(0, -Math.sin(ph)) ** 1.5);
+        // a bear's plantar pad: a thin slab on the sole's own outline (inset), broad across the ball with a shallow hollow
+        // in front, narrowing to the heel, ending short of the toe beans
+        const ai = FIG.jIdx['ankle' + s], NB = 12, hw = new Float32Array(NB), xc = new Float32Array(NB); let z0 = Infinity, z1 = B.z + .07 * W;
+        const sole = []; for (let i = 0; i < FIG.meta.nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < g + .12 * W && P[i * 3 + 2] < z1) { sole.push(i); z0 = Math.min(z0, P[i * 3 + 2]); }
+        const bin = z => clamp(Math.round((z - z0) / (z1 - z0) * (NB - 1)), 0, NB - 1), lo = new Float32Array(NB).fill(Infinity), hi = new Float32Array(NB).fill(-Infinity);
+        for (const i of sole) { const k = bin(P[i * 3 + 2]); lo[k] = Math.min(lo[k], P[i * 3]); hi[k] = Math.max(hi[k], P[i * 3]); }
+        // (the sole widens from the heel to the ball: its half width read as a running maximum, so a sparse band of
+        // vertices does not notch the pad)
+        for (let k = 0; k < NB; k++) { if (!isFinite(lo[k])) { lo[k] = lo[k - 1] ?? B.x; hi[k] = hi[k - 1] ?? B.x; } xc[k] = (lo[k] + hi[k]) / 2; hw[k] = Math.max((hi[k] - lo[k]) / 2, k ? hw[k - 1] : 0); }
+        const zc = (z0 + z1) / 2, cx = xc.reduce((a, v) => a + v, 0) / NB, len = z1 - z0, inside = (x, z) => { const u = (z - z0) / len, k = bin(z), dx = Math.abs(x - cx) / (hw[k] * .86 * (.72 + .28 * sstep(0, .5, u)) || 1e-4);
+          return u > .03 && dx < 1 && z < z1 - .08 * W * (1 - dx * dx); };
+        const R = ph => { const c = Math.cos(ph), sn = Math.sin(ph); let d = 0; while (d < len && inside(cx + c * d, zc + sn * d)) d += .005 * W; return Math.max(d, .02 * W); };
+        if (sole.length) pad(new V3(cx, 0, zc), new V3(0, 0, 1), 1, 1, .05 * W, R, 2);
       } else {
         // the big pad, trilobed: a rounded point towards the toes, three lobes behind
-        pad(new V3(B.x, 0, B.z - .02 * W), new V3(0, 0, 1), K.pad[1] * W, K.pad[0] * W, .06 * W, ph => {
+        pad(new V3(B.x, 0, B.z + .08 * W), new V3(0, 0, 1), K.pad[1] * W * .92, K.pad[0] * W, .07 * W, ph => {
           const q = ph - Math.PI / 2, d = Math.abs(Math.abs(q) - Math.PI);  // q: from the front; d: from straight back
           return (1 - .6 * Math.max(0, Math.cos(q)) ** 2 * Math.sin(q) ** 2) * (1 + .08 * Math.cos(2 * Math.PI * d / .8) * sstep(1.25, .85, d)); });
       }
