@@ -774,7 +774,7 @@ function buildToolsUI() {
   $('#ghostClr').disabled = true;
   $('#symChk').onchange = e => { state.sym = e.target.checked; $('#symMode').hidden = !state.sym; if (state.sym && state.selected) { mirrorJoint(mq, state.selected); pushHistory(); } };
   // while symmetry is on, a chip by IK/FK says so (it outlives the joint card) and turns it off
-  $('#symMode').onclick = () => { state.sym = false; $('#symChk').checked = false; $('#symMode').hidden = true; };
+  $('#symMode').onclick = e => { const b = e.currentTarget; state.sym = false; $('#symChk').checked = false; if (document.activeElement === b) $('#ikMode .chip[aria-pressed="true"]')?.focus(); b.hidden = true; };
   $('#poseSearch').oninput = () => buildPoseGrid();
   chips($('#ratioChips'), Object.entries(RATIOS).map(([k, v]) => [k, v[0]]), state.ratio, k => { if (state.frameAspect) return syncRatioUI(); state.ratio = k; });
   $('#saveView').onclick = () => { if (state.views.length >= 8) state.views.shift(); state.views.push({p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}); renderViews(); };

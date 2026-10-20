@@ -274,8 +274,8 @@ function framePads() {
   const h = $('#hint'); if (h && h.offsetParent && !h.classList.contains('quiet') && !document.body.classList.contains('anim')) bot = Math.max(bot, vr.bottom - h.getBoundingClientRect().top + 8);
   return {top, bot, H: camera.view && camera.view.enabled ? camera.view.fullHeight : vr.height};
 }
-// the cast chips keep clear of the IK/FK switch, however wide it is (0 while it is hidden)
-{ const mb = $('.modebar'); if (mb && window.ResizeObserver) new ResizeObserver(() => vp.style.setProperty('--mbw', mb.offsetWidth + 'px')).observe(mb); }
+// the cast chips keep clear of the IK/FK switch, however wide it is (0 while it is hidden); --toph is how far down the cast and the switch reach, so a toast moved to the top on phones sits under them, not beneath them
+{ const mb = $('.modebar'), cast = $('#cast'); if (mb && window.ResizeObserver) { const ro = new ResizeObserver(() => { vp.style.setProperty('--mbw', mb.offsetWidth + 'px'); vp.style.setProperty('--toph', Math.max(cast ? cast.offsetTop + cast.offsetHeight : 0, mb.offsetTop + mb.offsetHeight) + 'px'); }); ro.observe(mb); if (cast) ro.observe(cast); } }
 function frameView() {
   const box = castBox(), c = box.getCenter(new V3()), size = box.getSize(new V3());
   const dir = camera.position.clone().sub(controls.target).normalize(), {top, bot, H} = framePads(), tf = Math.tan(camera.fov * DEG / 2);

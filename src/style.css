@@ -1065,7 +1065,7 @@ a{color:var(--blue);text-underline-offset:2px}
   .joint-card .check{margin:2px 0 0}
   .joint-card .tip{display:none}
   .joint-card:not([hidden]) ~ .thumbbar,.joint-card:not([hidden]) ~ .hint:not(.toast){display:none}
-  .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:64px}
+  .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:calc(var(--toph,58px) + 6px)}
   body.panelEdit .joint-card{bottom:72px}
   body.panelEdit .thumbbar{bottom:76px}
 }
