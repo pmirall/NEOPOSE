@@ -17,7 +17,7 @@ for l in I18N:
     open(os.path.join(H, f'app/i18n/{l}.js'), 'w', encoding='utf-8').write('(window.NEOPOSE_I18N = window.NEOPOSE_I18N || {})[' + json.dumps(l) + '] = ' + json.dumps(I18N[l], ensure_ascii=False, separators=(',', ':'))
         + ';\n(window.NEOPOSE_GTR = window.NEOPOSE_GTR || {})[' + json.dumps(l) + '] = ' + json.dumps(GTR.get(l, {}), ensure_ascii=False, separators=(',', ':')) + ';\n')
 import hashlib
-fhash = p => hashlib.sha1(open(os.path.join(H, p), 'rb').read()).hexdigest()[:10]
+fhash = lambda p: hashlib.sha1(open(os.path.join(H, p), 'rb').read()).hexdigest()[:10]
 LOADER = ('<script>(function () { var all = ' + json.dumps(sorted(I18N)) + ', l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}\n'
   + '  var h = ' + json.dumps({l: fhash(f'app/i18n/{l}.js') for l in I18N}) + ';\n'
   + '  ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write(\'<script src="i18n/\' + c + \'.js?h=\' + h[c] + \'"><\\/script>\'); });\n})();</script>\n')
