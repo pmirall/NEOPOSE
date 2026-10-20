@@ -458,14 +458,15 @@ function initSheet() {
   });
   const end = e => {
     if (!d) return; const H = sheetHeights(), dy = e.clientY - d.y, v = dy / Math.max(1, performance.now() - d.t), h = d.h - dy;
-    if (!d.moved) { tapT = performance.now(); step(); }  // a tap on the grip: one step up (and back down from the top)
+    tapT = performance.now();  // (any gesture on the grip, a drag too: the click the browser sends after it is not a second step)
+    if (!d.moved) step();  // a tap on the grip: one step up (and back down from the top)
     else if (v > .5) setSheet(h > H.half ? 'half' : 'peek');  // a flick down
     else if (v < -.5) setSheet(h < H.half ? 'half' : 'full');
     else setSheet(['peek', 'half', 'full'].reduce((a, b) => Math.abs(H[b] - h) < Math.abs(H[a] - h) ? b : a));
     d = null;
   };
   $('#book').addEventListener('pointerup', end); $('#book').addEventListener('pointercancel', end);
-  // the grip pressed from the keyboard or a switch steps the same way (the click that follows a tap is already done)
+  // the grip pressed from the keyboard or a switch steps the same way (the click that follows a tap or a drag is already done)
   grip.onclick = () => { if (performance.now() - tapT < 500) return; step(); };
   // a tab touched while the sheet is lowered brings it up
   tabs.forEach(t => t.addEventListener('click', () => { if (sheetOn() && SHEET.snap === 'peek') setSheet('half'); }));

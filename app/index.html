@@ -1062,8 +1062,8 @@ a{color:var(--blue);text-underline-offset:2px}
 .timeline.tl-compact .tlrow .tlclips{padding:0 8px}
 .timeline.tl-compact .tlrow .tlclips span{display:none}
 .timeline.tl-tight .mvtotal{display:none}
-.timeline.tl-narrow :is(#tlCamRec,#tlLine,#tlBoard,#tlScript,#tlClips,#tlExport,#tlMotion,#tlClose){display:none}
-.timeline.tl-narrow :is(#tlPrev,#tlNext){display:inline-flex}
+.timeline.tl-narrow #tlCamRec,.timeline.tl-narrow #tlLine,.timeline.tl-narrow #tlBoard,.timeline.tl-narrow #tlScript,.timeline.tl-narrow #tlClips,.timeline.tl-narrow #tlExport,.timeline.tl-narrow #tlMotion,.timeline.tl-narrow #tlClose{display:none}
+.timeline.tl-narrow #tlPrev,.timeline.tl-narrow #tlNext{display:inline-flex}
 .timeline.tl-narrow .tlphone{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
 .tlphone .btn{justify-content:flex-start;white-space:normal;text-align:left;line-height:1.15}
 .tlphone .btn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
@@ -5728,7 +5728,7 @@ function wsApply(id, tab) {
   if (id !== 'static' && typeof sk !== 'undefined' && sk.on) setSketch(false);
   if (id !== 'static' && typeof CM !== 'undefined' && CM.edit) finishPanelEdit();
   if (from !== id && typeof SHEET !== 'undefined' && typeof sheetOn === 'function' && sheetOn()) { WS.sheet = WS.sheet || {}; WS.sheet[from] = SHEET.snap; if (WS.sheet[id]) setSheet(WS.sheet[id]); else if (id === 'anim') setSheet('peek'); }  // (the film needs the screen: the sheet folds down)
-  const want = tab || WS.want || WS.last[id] || (id === 'anim' ? 'pelicula' : state.tab); WS.want = null;  // (the first time in Animación: its own tab, the film)
+  const want = tab || WS.want || WS.last[id] || (id === 'anim' && from !== 'anim' ? 'pelicula' : state.tab); WS.want = null;  // (the first time in Animación: its own tab, the film)
   showTab(list.includes(want) ? want : list[0]);
   if (from !== id && typeof wake === 'function') wake();
 }
@@ -5736,7 +5736,7 @@ function wsApply(id, tab) {
 function setWorkspace(id, o = {}) {
   if (!WORKSPACES[id]) return;
   if (o.tab) WS.want = o.tab;
-  if (id === 'anim') { if (!ANIM.open) openTimeline(true); else wsApply('anim', o.tab); return; }
+  if (id === 'anim') { if (!ANIM.open) openTimeline(true); else if (WS.cur !== 'anim' || o.tab) wsApply('anim', o.tab); return; }  // (the space already chosen stays on its tab)
   if (typeof practice !== 'undefined' && practice.active && id !== 'static') stopPractice();
   if (ANIM.open) { WS.next = id; openTimeline(false); return; }
   if (id !== WS.cur || o.tab) wsApply(id, o.tab);
@@ -12710,6 +12710,8 @@ function animHistRestore(h) {
   TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; touchShot(s); Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines})));
   if ('motion' in h) Object.assign(s, JSON.parse(JSON.stringify({motion: h.motion, light: h.light, key: h.key, camStyle: h.camStyle, camBase: h.camBase})));
   chars.forEach(m => { m._prevPose = m.getPose(); }); setFrame(ANIM.f, false); syncMotionUI(); placeFilmKey(s);  // (the shot's light, as it was)
+  if ('motion' in h) { const pr = $('#mvmPresets'); if (pr) setPressed(pr, ''); }  // (a preset undone is no longer the one applied)
+  renderStrip();  // the strip, the Película list and «Duración de este plano» show the length and light put back
 }
 
 /* ======================= the principles of animation, as sliders =======================
@@ -13165,9 +13167,9 @@ function renderFilmList() {
   const tot = ANIM.shots.reduce((a, s) => a + s.len, 0) / ANIM.fps; $('#fpTotal').textContent = trn(ANIM.shots.length, '1 plano · {s} s', '{n} planos · {s} s', {s: dec(tot)});
   ANIM.shots.forEach((s, i) => {
     const row = document.createElement('div'); row.className = 'fpshot' + (i === ANIM.cur ? ' on' : ''); row.setAttribute('role', 'listitem');
-    row.innerHTML = `<button class="fpgo" type="button"><span class="fpth"></span><span class="fpm"><b></b><span></span></span></button><div class="fpbtn"><button class="btn icon small" data-d="-1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button><button class="btn icon small" data-d="1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
-    // the whole row opens the shot; a shot not visited yet shows the strip's numbered placeholder
-    const go = row.querySelector('.fpgo'), th = row.querySelector('.fpth'); th.innerHTML = (s.thumb ? `<img alt="" src="${s.thumb}">` : '<span class="mvph"></span>') + `<span class="mvnum">${i + 1}</span>`; go.setAttribute('aria-label', tr('Ir a {n}', {n: s.name}));
+    row.innerHTML = `<button class="fpgo" type="button"><span class="fpth" aria-hidden="true"></span><span class="fpm"><b></b><span></span></span></button><div class="fpbtn"><button class="btn icon small" data-d="-1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button><button class="btn icon small" data-d="1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
+    // the whole row opens the shot (its visible text, the name and the length, is what a screen reader says); a shot not visited yet shows the strip's numbered placeholder
+    const go = row.querySelector('.fpgo'), th = row.querySelector('.fpth'); th.innerHTML = (s.thumb ? `<img alt="" src="${s.thumb}">` : '<span class="mvph"></span>') + `<span class="mvnum">${i + 1}</span>`;
     go.onclick = () => { if (ANIM.playing) play(false); enterShot(i).then(renderFilmList); };
     row.querySelector('b').textContent = `${i + 1}. ${s.name}`;
     row.querySelector('.fpm span').textContent = `${dec(s.len / ANIM.fps)} s` + (s.lines.some(l => l.text.trim()) ? ' · ' + tr('diálogo') : '') + (s.light && s.light.mood && s.light.mood !== 'auto' ? ' · ' + LIGHT_MOODS[s.light.mood].label : '');
@@ -14947,14 +14949,15 @@ function initSheet() {
   });
   const end = e => {
     if (!d) return; const H = sheetHeights(), dy = e.clientY - d.y, v = dy / Math.max(1, performance.now() - d.t), h = d.h - dy;
-    if (!d.moved) { tapT = performance.now(); step(); }  // a tap on the grip: one step up (and back down from the top)
+    tapT = performance.now();  // (any gesture on the grip, a drag too: the click the browser sends after it is not a second step)
+    if (!d.moved) step();  // a tap on the grip: one step up (and back down from the top)
     else if (v > .5) setSheet(h > H.half ? 'half' : 'peek');  // a flick down
     else if (v < -.5) setSheet(h < H.half ? 'half' : 'full');
     else setSheet(['peek', 'half', 'full'].reduce((a, b) => Math.abs(H[b] - h) < Math.abs(H[a] - h) ? b : a));
     d = null;
   };
   $('#book').addEventListener('pointerup', end); $('#book').addEventListener('pointercancel', end);
-  // the grip pressed from the keyboard or a switch steps the same way (the click that follows a tap is already done)
+  // the grip pressed from the keyboard or a switch steps the same way (the click that follows a tap or a drag is already done)
   grip.onclick = () => { if (performance.now() - tapT < 500) return; step(); };
   // a tab touched while the sheet is lowered brings it up
   tabs.forEach(t => t.addEventListener('click', () => { if (sheetOn() && SHEET.snap === 'peek') setSheet('half'); }));

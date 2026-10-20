@@ -1045,8 +1045,8 @@ a{color:var(--blue);text-underline-offset:2px}
 .timeline.tl-compact .tlrow .tlclips{padding:0 8px}
 .timeline.tl-compact .tlrow .tlclips span{display:none}
 .timeline.tl-tight .mvtotal{display:none}
-.timeline.tl-narrow :is(#tlCamRec,#tlLine,#tlBoard,#tlScript,#tlClips,#tlExport,#tlMotion,#tlClose){display:none}
-.timeline.tl-narrow :is(#tlPrev,#tlNext){display:inline-flex}
+.timeline.tl-narrow #tlCamRec,.timeline.tl-narrow #tlLine,.timeline.tl-narrow #tlBoard,.timeline.tl-narrow #tlScript,.timeline.tl-narrow #tlClips,.timeline.tl-narrow #tlExport,.timeline.tl-narrow #tlMotion,.timeline.tl-narrow #tlClose{display:none}
+.timeline.tl-narrow #tlPrev,.timeline.tl-narrow #tlNext{display:inline-flex}
 .timeline.tl-narrow .tlphone{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
 .tlphone .btn{justify-content:flex-start;white-space:normal;text-align:left;line-height:1.15}
 .tlphone .btn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}

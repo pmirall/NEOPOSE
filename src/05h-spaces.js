@@ -29,7 +29,7 @@ function wsApply(id, tab) {
   if (id !== 'static' && typeof sk !== 'undefined' && sk.on) setSketch(false);
   if (id !== 'static' && typeof CM !== 'undefined' && CM.edit) finishPanelEdit();
   if (from !== id && typeof SHEET !== 'undefined' && typeof sheetOn === 'function' && sheetOn()) { WS.sheet = WS.sheet || {}; WS.sheet[from] = SHEET.snap; if (WS.sheet[id]) setSheet(WS.sheet[id]); else if (id === 'anim') setSheet('peek'); }  // (the film needs the screen: the sheet folds down)
-  const want = tab || WS.want || WS.last[id] || (id === 'anim' ? 'pelicula' : state.tab); WS.want = null;  // (the first time in Animación: its own tab, the film)
+  const want = tab || WS.want || WS.last[id] || (id === 'anim' && from !== 'anim' ? 'pelicula' : state.tab); WS.want = null;  // (the first time in Animación: its own tab, the film)
   showTab(list.includes(want) ? want : list[0]);
   if (from !== id && typeof wake === 'function') wake();
 }
@@ -37,7 +37,7 @@ function wsApply(id, tab) {
 function setWorkspace(id, o = {}) {
   if (!WORKSPACES[id]) return;
   if (o.tab) WS.want = o.tab;
-  if (id === 'anim') { if (!ANIM.open) openTimeline(true); else wsApply('anim', o.tab); return; }
+  if (id === 'anim') { if (!ANIM.open) openTimeline(true); else if (WS.cur !== 'anim' || o.tab) wsApply('anim', o.tab); return; }  // (the space already chosen stays on its tab)
   if (typeof practice !== 'undefined' && practice.active && id !== 'static') stopPractice();
   if (ANIM.open) { WS.next = id; openTimeline(false); return; }
   if (id !== WS.cur || o.tab) wsApply(id, o.tab);

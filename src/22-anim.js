@@ -799,4 +799,6 @@ function animHistRestore(h) {
   TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; touchShot(s); Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines})));
   if ('motion' in h) Object.assign(s, JSON.parse(JSON.stringify({motion: h.motion, light: h.light, key: h.key, camStyle: h.camStyle, camBase: h.camBase})));
   chars.forEach(m => { m._prevPose = m.getPose(); }); setFrame(ANIM.f, false); syncMotionUI(); placeFilmKey(s);  // (the shot's light, as it was)
+  if ('motion' in h) { const pr = $('#mvmPresets'); if (pr) setPressed(pr, ''); }  // (a preset undone is no longer the one applied)
+  renderStrip();  // the strip, the Película list and «Duración de este plano» show the length and light put back
 }
