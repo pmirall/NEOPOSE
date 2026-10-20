@@ -1065,7 +1065,7 @@ a{color:var(--blue);text-underline-offset:2px}
   .joint-card .check{margin:2px 0 0}
   .joint-card .tip{display:none}
   .joint-card:not([hidden]) ~ .thumbbar,.joint-card:not([hidden]) ~ .hint:not(.toast){display:none}
-  .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:calc(var(--toph,58px) + 6px)}
+  body:not(.paging) .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:calc(var(--toph,58px) + 6px)}
   body.panelEdit .joint-card{bottom:72px}
   body.panelEdit .thumbbar{bottom:76px}
 }
@@ -1268,7 +1268,7 @@ body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:n
 }
 @media (prefers-reduced-motion: reduce){ #pageView *,#pageView>canvas{animation:none!important;transition:none!important} }
 body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint:not(.toast){display:none}
-body.paging .hint.toast{z-index:6;bottom:calc(var(--trackH,140px) + 20px)}
+body.paging .hint.toast{z-index:6;bottom:calc(var(--deskB, calc(var(--trackH,140px) + 10px)) + 10px)}
 body.paging header .tb.edit{visibility:hidden}
 body.paging #openIn{display:none}
 .cmeditbar{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:5;display:flex;gap:8px;align-items:center;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:6px 8px 6px 12px;box-shadow:var(--lift);max-width:calc(100% - 24px)}

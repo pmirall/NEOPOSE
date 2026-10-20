@@ -81,6 +81,8 @@ function deskInsets() {
 }
 function deskLayout() {
   const c = comic(), cv = pv.cv, dpr = pv.dpr, ins = deskInsets(), W = cv.width - (ins.l + ins.r) * dpr, H = cv.height - (ins.t + ins.b) * dpr, pad = 22 * dpr, label = 22 * dpr;
+  // notes over the desk sit above everything it keeps at the bottom (the row of pages and, when open, the film's shots)
+  const vp = $('#viewport'), b = Math.round(ins.b) + 'px'; if (vp && vp.style.getPropertyValue('--deskB') !== b) vp.style.setProperty('--deskB', b);
   const idx = spreadOf(CM.page), n = idx.length;
   pv.k0 = Math.max(.1, Math.min((W - pad * 2) / (c.page.w * n), (H - pad * 2 - label) / c.page.h)); const k = pv.k = pv.k0 * pv.zoom;
   const x0 = ins.l * dpr + (W - c.page.w * n * k) / 2 + pv.panX, y0 = ins.t * dpr + (H - label - c.page.h * k) / 2 + pv.panY;

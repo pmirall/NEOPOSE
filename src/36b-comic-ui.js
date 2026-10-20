@@ -128,7 +128,7 @@ function buildComicUI() {
   $('#cmDelPage').onclick = () => curPage() && deletePage(curPage());
   $('#cmFromStage').onclick = () => { const p = CM.sel; if (!p) return; const bench = benchSave(); p.shot = shotFromStage(); p.link = null; p.f = 0; void bench; comicChanged(); comicSaved(); };
   $('#cmEdit').onclick = () => CM.sel && openPanelScene(CM.sel);
-  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); toast(tr('Viñeta vaciada.'), {undo: () => comicUndo(-1)}); };
+  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p || !(p.shot || p.link || p.balloons.length)) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); toast(tr('Viñeta vaciada.'), {undo: () => comicUndo(-1)}); };
   chips($('#cmKind'), Object.entries(BALLOON_KINDS), 'speech', k => { if (CM.selB) { CM.selB.kind = k; drawPage(); comicSaved(); } });
   $('#cmAddB').onclick = () => { const p = CM.sel; if (!p) return; const s = panelShot(p), b = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .75 : .25, y: .18 + p.balloons.length * .12, size: 9};
     p.balloons.push(b); CM.selB = b; drawPage(); syncComicUI(); comicSaved(); const t = $('#cmText'); t.focus(); t.select(); };

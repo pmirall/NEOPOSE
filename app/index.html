@@ -1082,7 +1082,7 @@ a{color:var(--blue);text-underline-offset:2px}
   .joint-card .check{margin:2px 0 0}
   .joint-card .tip{display:none}
   .joint-card:not([hidden]) ~ .thumbbar,.joint-card:not([hidden]) ~ .hint:not(.toast){display:none}
-  .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:calc(var(--toph,58px) + 6px)}
+  body:not(.paging) .joint-card:not([hidden]) ~ .hint.toast{bottom:auto;top:calc(var(--toph,58px) + 6px)}
   body.panelEdit .joint-card{bottom:72px}
   body.panelEdit .thumbbar{bottom:76px}
 }
@@ -1285,7 +1285,7 @@ body[data-ws="anim"] .top [data-ws]:not(.space):not([data-ws~="anim"]){display:n
 }
 @media (prefers-reduced-motion: reduce){ #pageView *,#pageView>canvas{animation:none!important;transition:none!important} }
 body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint:not(.toast){display:none}
-body.paging .hint.toast{z-index:6;bottom:calc(var(--trackH,140px) + 20px)}
+body.paging .hint.toast{z-index:6;bottom:calc(var(--deskB, calc(var(--trackH,140px) + 10px)) + 10px)}
 body.paging header .tb.edit{visibility:hidden}
 body.paging #openIn{display:none}
 .cmeditbar{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:5;display:flex;gap:8px;align-items:center;background:var(--page);border:1.5px solid var(--ink);border-radius:var(--sketch);padding:6px 8px 6px 12px;box-shadow:var(--lift);max-width:calc(100% - 24px)}
@@ -18418,6 +18418,8 @@ function deskInsets() {
 }
 function deskLayout() {
   const c = comic(), cv = pv.cv, dpr = pv.dpr, ins = deskInsets(), W = cv.width - (ins.l + ins.r) * dpr, H = cv.height - (ins.t + ins.b) * dpr, pad = 22 * dpr, label = 22 * dpr;
+  // notes over the desk sit above everything it keeps at the bottom (the row of pages and, when open, the film's shots)
+  const vp = $('#viewport'), b = Math.round(ins.b) + 'px'; if (vp && vp.style.getPropertyValue('--deskB') !== b) vp.style.setProperty('--deskB', b);
   const idx = spreadOf(CM.page), n = idx.length;
   pv.k0 = Math.max(.1, Math.min((W - pad * 2) / (c.page.w * n), (H - pad * 2 - label) / c.page.h)); const k = pv.k = pv.k0 * pv.zoom;
   const x0 = ins.l * dpr + (W - c.page.w * n * k) / 2 + pv.panX, y0 = ins.t * dpr + (H - label - c.page.h * k) / 2 + pv.panY;
@@ -19193,7 +19195,7 @@ function buildComicUI() {
   $('#cmDelPage').onclick = () => curPage() && deletePage(curPage());
   $('#cmFromStage').onclick = () => { const p = CM.sel; if (!p) return; const bench = benchSave(); p.shot = shotFromStage(); p.link = null; p.f = 0; void bench; comicChanged(); comicSaved(); };
   $('#cmEdit').onclick = () => CM.sel && openPanelScene(CM.sel);
-  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); toast(tr('Viñeta vaciada.'), {undo: () => comicUndo(-1)}); };
+  $('#cmClearPanel').onclick = () => { const p = CM.sel; if (!p || !(p.shot || p.link || p.balloons.length)) return; p.shot = null; p.link = null; p.balloons = []; comicChanged(); comicSaved(); toast(tr('Viñeta vaciada.'), {undo: () => comicUndo(-1)}); };
   chips($('#cmKind'), Object.entries(BALLOON_KINDS), 'speech', k => { if (CM.selB) { CM.selB.kind = k; drawPage(); comicSaved(); } });
   $('#cmAddB').onclick = () => { const p = CM.sel; if (!p) return; const s = panelShot(p), b = {id: newId('b'), kind: 'speech', text: tr('…'), ci: s && s.scene.chars.length ? 0 : null, x: comic().rtl ? .75 : .25, y: .18 + p.balloons.length * .12, size: 9};
     p.balloons.push(b); CM.selB = b; drawPage(); syncComicUI(); comicSaved(); const t = $('#cmText'); t.focus(); t.select(); };
