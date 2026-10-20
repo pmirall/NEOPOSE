@@ -87,8 +87,9 @@ renderer.setAnimationLoop(frame);
    side only (one stroke, not two, as a pen would draw the front form's edge); a fold only where the surface turns
    inwards (a convex tooth, claw or finger tip stays clean at any size); a part border on the part in front. The lines
    are depth-tested against the picture, so a table in front of a leg still hides them. Thinner and a little lighter
-   than the contour, which keeps the heavier weight a draughtsman gives the outside (and grows inwards by the same
-   stroke). Solo línea only, with the ink renders (key drawings, comic panels) that use it: the other styles keep their
+   than the contour, which keeps the heavier weight a draughtsman gives the outside. The outside itself is the hull's
+   alone: the buffer has no antialiasing, and a second stroke traced inside along its stairs doubles the contour with
+   specks. Solo línea only, with the ink renders (key drawings, comic panels) that use it: the other styles keep their
    look; and it costs one more draw of the figures alone, nothing of the set. */
 const INK = {rts: new Map(), vp: new THREE.Vector4(), cc: new THREE.Color()};
 INK.mat = new THREE.ShaderMaterial({
@@ -99,20 +100,32 @@ INK.mat = new THREE.ShaderMaterial({
     float Z(vec2 p) { float d = texture2D(tD, p).r; return uOrtho > .5 ? uNear + d * (uFar - uNear) : uNear * uFar / (uFar - d * (uFar - uNear)); }
     vec3 Nr(vec4 s) { vec2 v = s.xy * 2.0 - 1.0; return vec3(v, sqrt(max(0.0, 1.0 - dot(v, v)))); }
     // one direction across the pixel: the neighbours on both sides, at the stroke's width
-    float across(vec2 o, vec4 c, float zc) {
+    float across(vec2 o, vec4 c, float zc, float rim) {
       vec4 a = texture2D(tN, vUv + o), b = texture2D(tN, vUv - o);
-      float za = a.a > .5 ? Z(vUv + o) : zc * 1.5, zb = b.a > .5 ? Z(vUv - o) : zc * 1.5, lap = (za + zb - 2.0 * zc) / zc;
-      float step_ = smoothstep(.004, .012, lap);                                    // a form in front of another: its near side
-      float fold = smoothstep(.22, .55, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * a.a * b.a;  // turning inwards
+      // (an empty neighbour, past the silhouette, takes the depth the surface would have there: no step, which the
+      // hull draws, and no curvature from the slope of a surface turning away)
+      float za = a.a > .5 ? Z(vUv + o) : 0.0, zb = b.a > .5 ? Z(vUv - o) : 0.0;
+      if (a.a < .5) za = b.a > .5 ? 2.0 * zc - zb : zc; if (b.a < .5) zb = a.a > .5 ? 2.0 * zc - za : zc;
+      float lap = (za + zb - 2.0 * zc) / zc;
+      // a form in front of another: its near side; not over the inside of the same part (a garment's edge where what
+      // it covers is hidden, as at a waistband under a shirt: the inside seen past it is no form of its own)
+      float back = max(float(a.a > .5 && a.a < .9 && abs(a.b - c.b) < .5 / 255.0), float(b.a > .5 && b.a < .9 && abs(b.b - c.b) < .5 / 255.0)) * step(.9, c.a);
+      // (where the surface turns away the depth curves fast on its own: a step must be bigger there to be one)
+      float t = .004 / max(Nr(c).z, .25), step_ = smoothstep(t, t * 3.0, lap) * (1.0 - back);
+      float fold = smoothstep(.3, .6, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * step(.5, a.a) * step(.5, b.a) * smoothstep(.2, .4, Nr(c).z) * (1.0 - back);  // turning inwards (not where the surface grazes the eye, the contour's, nor onto a garment's inside at its edge)
       float tol = zc * .004, part = 0.0;                                            // a part ends: on the one in front
       if (a.a > .5 && abs(a.b - c.b) > .5 / 255.0 && (zc < za - tol || (abs(za - zc) <= tol && c.b > a.b))) part = 1.0;
       if (b.a > .5 && abs(b.b - c.b) > .5 / 255.0 && (zc < zb - tol || (abs(zb - zc) <= tol && c.b > b.b))) part = 1.0;
-      return max(max(step_, fold * .85), part);
+      return max(max(step_, fold * .85) * rim, part);
     }
     void main() {
       vec4 c = texture2D(tN, vUv); if (c.a < .5) discard;
       float zc = Z(vUv); vec2 r = uTx * uR;
-      float ink = across(vec2(r.x, 0.0), c, zc) + across(vec2(0.0, r.y), c, zc) + .7 * (across(r, c, zc) + across(vec2(r.x, -r.y), c, zc));
+      // within a few pixels of the silhouette the hull draws the line: steps and folds there (the far side of a sleeve,
+      // a surface curving away fast, the unantialiased stairs of the buffer) would only stipple it from inside
+      vec2 e = r * 3.0; float rim = step(.5, min(min(min(texture2D(tN, vUv + vec2(e.x, 0.0)).a, texture2D(tN, vUv - vec2(e.x, 0.0)).a), min(texture2D(tN, vUv + vec2(0.0, e.y)).a, texture2D(tN, vUv - vec2(0.0, e.y)).a)),
+        min(min(texture2D(tN, vUv + e).a, texture2D(tN, vUv - e).a), min(texture2D(tN, vUv + vec2(e.x, -e.y)).a, texture2D(tN, vUv - vec2(e.x, -e.y)).a))));
+      float ink = across(vec2(r.x, 0.0), c, zc, rim) + across(vec2(0.0, r.y), c, zc, rim) + .7 * (across(r, c, zc, rim) + across(vec2(r.x, -r.y), c, zc, rim));
       ink = clamp(ink * .75, 0.0, 1.0); if (ink < .02) discard;
       gl_FragDepthEXT = texture2D(tD, vUv).r - 2e-6;
       gl_FragColor = vec4(uCol, ink * uA);
@@ -122,10 +135,11 @@ INK.mat = new THREE.ShaderMaterial({
 // handles (which are drawn later, by their renderOrder), so the gizmos stay on top of the ink
 INK.sheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), INK.mat); INK.sheet.frustumCulled = false; INK.sheet.renderOrder = 1; INK.sheet.raycast = () => {};
 const inkWanted = () => LU.uOutW.value > 0 && chars.some(m => m.style === 'contorno' && m.group.visible);
+const inkFree = (k, rt) => { rt.depthTexture.dispose(); rt.dispose(); INK.rts.delete(k); };
 function inkTarget(w, h) {
   const k = w + 'x' + h; let rt = INK.rts.get(k);
-  if (!rt) { // (a few sizes kept: the canvas, the multi-view's panes, an export)
-    if (INK.rts.size > 2) { const [k0, r0] = INK.rts.entries().next().value; r0.depthTexture.dispose(); r0.dispose(); INK.rts.delete(k0); }
+  if (!rt) { // (a few sizes kept: the canvas, the multi-view's panes, an export's or a film's frames, let go as soon as a smaller picture is drawn)
+    if (INK.rts.size > 2) inkFree(...INK.rts.entries().next().value);
     rt = new THREE.WebGLRenderTarget(w, h, {minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)}); INK.rts.set(k, rt);
   }
   return rt;
@@ -134,7 +148,9 @@ function inkTarget(w, h) {
 function inkBuffer(cam) {
   renderer.getCurrentViewport(INK.vp); const w = INK.vp.z, h = INK.vp.w; if (w < 2 || h < 2) return false;
   const rt = inkTarget(w, h), prev = renderer.getRenderTarget(), groups = new Set(chars.map(m => m.group)), off = [];
-  for (const o of scene.children) if (o.visible && !groups.has(o)) { o.visible = false; off.push(o); }
+  // the set's drawables out (not its lights: the lit materials would change program twice a frame)
+  const unset = o => { if (groups.has(o) || !o.visible) return; if (o.isMesh || o.isLine || o.isPoints || o.isSprite) { o.visible = false; off.push(o); } else o.children.forEach(unset); };
+  scene.children.forEach(unset);
   // (what is drawn with a material that writes the ink pass, see inkFrag in 03-figure.js: not the hulls or the gizmos,
   // nor the faded body over the construction forms, which writes no depth to find its lines by)
   const inked = o => o.material && o.material.userData && o.material.userData.ink && !(o.material.transparent && o.material.opacity < 1);
@@ -153,6 +169,7 @@ const drawScene = renderer.render.bind(renderer);
 renderer.render = (s, cam) => {
   if (s !== scene || !inkWanted() || !inkBuffer(cam)) return drawScene(s, cam);
   scene.add(INK.sheet); try { drawScene(s, cam); } finally { scene.remove(INK.sheet); }
+  for (const [k, rt] of INK.rts) if (rt.width * rt.height > INK.vp.z * INK.vp.w) inkFree(k, rt);
 };
 
 /* ---------- export ---------- */
@@ -183,15 +200,7 @@ function renderExportCanvas(subsFrame) {
   let out = document.createElement('canvas'); out.width = Math.round(f.w * k); out.height = Math.round(f.h * k);
   const c = out.getContext('2d');
   c.drawImage(renderer.domElement, f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
-  if (lines) { // keep only the ink: paper-white (and Solo línea's pale hint of the coat) becomes transparent, darker strokes stay
-    const id = c.getImageData(0, 0, out.width, out.height), d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (!d[i + 3]) continue;
-      const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, a = clamp((.86 - L) / .5, 0, 1);
-      d[i + 3] = Math.round(d[i + 3] * a); d[i] *= .6; d[i + 1] *= .6; d[i + 2] *= .6;
-    }
-    c.putImageData(id, 0, 0);
-  }
+  if (lines) inkOnly(out);
   c.save(); c.scale(k, k); c.translate(-f.x, -f.y);
   if ($('#exGuides').checked && (state.guides.thirds || state.guides.persp || state.guides.ruler || state.guides.action)) { c.noFrame = true; drawOverlay(c, W, Hh); }
   c.restore();
@@ -219,9 +228,7 @@ function renderView(o) {
   renderer.setPixelRatio(1); renderer.setSize(w, h, false); LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; LU.uPx.value.set(2 / w, 2 / h);
   updateLights(); updateStools(); renderer.render(scene, camera);
   const out = document.createElement('canvas'); out.width = w; out.height = h; const c = out.getContext('2d'); c.drawImage(renderer.domElement, 0, 0, w, h, 0, 0, w, h);
-  if (lines) { const id = c.getImageData(0, 0, w, h), d = id.data;
-    for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, a = clamp((.86 - L) / .5, 0, 1); d[i + 3] = Math.round(d[i + 3] * a); d[i] *= .6; d[i + 1] *= .6; d[i + 2] *= .6; }
-    c.putImageData(id, 0, 0); }
+  if (lines) inkOnly(out);
   renderer.setPixelRatio(pr); LU.uLineW.value = lw; LU.uDpr.value = dpr; LU.uPx.value.copy(px);
   if (lines) { for (const m of chars) m.setStyle(vis.style); LU.uRender.value = vis.render; LU.uLineA.value = vis.la; LU.uCenter.value = vis.center; }
   tc.visible = vis.tc; scene.background = vis.bg; if (envGroup) envGroup.visible = vis.env; grid.visible = vis.grid; scene.fog = vis.fog; sky.visible = vis.sky; panoSphere.visible = vis.pano;

@@ -10,15 +10,26 @@ const LU = {
   uInk: {value: 0}  // 1 while the ink pass draws the characters' normals and part ids (see INK in 05f-render.js)
 };
 /* the ink pass's output, shared by every material a character is drawn with: the view normal (xy; z is the visible
-   side), and in blue the part: one id per material (body, garment, teeth, tongue…) plus, on the body, what the coat
-   says the skin is there (pad and nose leather, claw, horn: kinds 2–4 of furPack; fur, 0 and 1, is one part), so a line
-   is found where one part meets another, and round the eyes (w = 1: the eyelid's line). Each kind is read halfway
-   between its value and its neighbour's (leather below −3, between fur and leather; the eye above .5 on a bare body,
-   −.25 on a coat's −1.5), so the border runs along the triangles' middle, not on their jagged vertex ring. */
-const inkId = mat => 8 * (1 + mat.id % 30);
+   side), and in blue the part: one id per material (body, garment, teeth, tongue; the paws' pads and claws and the tufts, apart
+   from the body) plus, on
+   every surface, what the coat says the skin is there when it is a part of its own (claw, horn: kinds 3–4 of furPack;
+   fur and leather, 0–2, are one: on the body and the heads leather is the nose, a patch of the mesh's vertices whose
+   border inked would be a jagged polygon, not a nose; the paws' pads are made shapes, apart by their material), so a
+   line is found where one part meets another. Each kind is read halfway between its value and its neighbour's (below
+   −4), so the border runs along the triangles' middle, not on their vertex ring.
+   The eye is no part of its own: its vertices take in a ring of the lid on the coarse body, and a border there is a
+   star round the eye; the lid's line is the depth step where it passes over the eyeball. Alpha tells the inside of a
+   two-sided part (.75) from its outside (1). Skin under loose cloth (aHide .5: drawn, in case it shows through an
+   opening, but not outlined) is left out as the hull leaves it out: a sliver of it at a sleeve's or a shirt's side would
+   be a dotted border along the cloth's edge. (Skin poking through tight cloth: see uInkZ in garmentMat.) */
+// (the ids are handed out in turn as materials are first drawn, 30 of them to the byte with room for the kinds: the
+// body, its parts, the garments and the mouth, drawn together, get different ones, which the materials' own ids, taken
+// modulo, did not promise)
+const INK_IDS = new WeakMap(); let inkNext = 0;
+const inkId = mat => { if (!INK_IDS.has(mat)) INK_IDS.set(mat, 8 * (1 + inkNext++ % 30)); return INK_IDS.get(mat); };
 const inkVert = mat => `vInkN = normalMatrix * ${mat.isMeshBasicMaterial ? '\n#if defined(USE_ENVMAP) || defined(USE_SKINNING)\nobjectNormal\n#else\nnormal\n#endif\n' : 'objectNormal'};`;
-const inkFrag = kind => `#include <dithering_fragment>
-  if (uInk > .5) { vec3 n = normalize(vInkN) * (gl_FrontFacing ? 1.0 : -1.0); gl_FragColor = vec4(n.xy * .5 + .5, (uInkId + ${kind}) / 255.0, 1.0); }`;
+const inkFrag = (kind, cut = '') => `#include <dithering_fragment>
+  if (uInk > .5) { ${cut} vec3 n = normalize(vInkN) * (gl_FrontFacing ? 1.0 : -1.0); gl_FragColor = vec4(n.xy * .5 + .5, (uInkId + ${kind}) / 255.0, gl_FrontFacing ? 1.0 : .75); }`;
 function inkUniforms(sh, mat) { sh.uniforms.uInkId = {value: inkId(mat)}; mat.userData.ink = true; }
 const SKETCH_GLSL = `
   uniform float uRender, uDpr, uThresh, uLevels, uHatch, uTone;
@@ -47,8 +58,9 @@ const SKETCH_GLSL = `
     return mix(uPaper, uGraphite, ink * .78);
   }`;
 function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = null) {
-  mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF); inkUniforms(sh, mat);
+  // (a function, not an arrow: the two-sided twins share it, and each must take its own ink id, see twoSided)
+  mat.onBeforeCompile = function (sh) {
+    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF); inkUniforms(sh, this);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vInkN;\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -84,10 +96,11 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           float d = abs(x) / max(fwidth(x), 1e-5);
           return 1.0 - clamp(d - w * .5 + .5, 0.0, 1.0);
         }`)
-      // (Solo línea is a line drawing on paper: the coat only as a pale wash, a little more on pads, nose and claws,
-      // and its rings at half strength, under the contour and the ink of its interior lines)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, uFurOn${mat.isMeshBasicMaterial ? ' * (.14 + .12 * step(3.0, -vEye.w))' : ''});`)
+      // (Solo línea is a line drawing on paper: no coat, which follows the coarse mesh's vertices and would show round
+      // the eyes and on the nose as polygons the ink does not fit; the rings and the centre line faint, guides under
+      // the contour and the ink of the interior lines. Silueta is flat and has no coat either)
+      .replace('#include <color_fragment>', `#include <color_fragment>${mat.isMeshBasicMaterial ? '' : `
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, uFurOn);`}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: triangles that join the upper snout (+1) to the jaw (-1) are cut
@@ -102,12 +115,12 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
             float ring = gridLine(vLine.z / uStride, uLineW);
             float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW), lineAt(vLine.y, uLineW)) * .85 : 0.0;
             float cen = vLine.w * uCenter * max(lineAt(vLine.y, uLineW * 1.7) * step(0.0, vLine.x), lineAt(vLine.y, uLineW * 1.2) * step(vLine.x, 0.0) * .7);
-            c = mix(c, uLineCol, max(ring, mer) * uLineA${mat.isMeshBasicMaterial ? ' * .5' : ''});
-            c = mix(c, uCenterCol, cen * min(1.0, uLineA * 1.4));
+            c = mix(c, uLineCol, max(ring, mer) * uLineA${mat.isMeshBasicMaterial ? ' * .3' : ''});
+            c = mix(c, uCenterCol, cen * min(1.0, uLineA * 1.4)${mat.isMeshBasicMaterial ? ' * .5' : ''});
           }
           gl_FragColor.rgb = c;
         }`)
-      .replace('#include <dithering_fragment>', inkFrag('(vEye.w > mix(.5, -.25, uFurOn) ? 7.0 : vEye.w < -3.0 ? floor(-vEye.w) - 1.0 : 0.0)'));
+      .replace('#include <dithering_fragment>', inkFrag('(vEye.w < -4.0 ? floor(-vEye.w) - 1.0 : 0.0)', 'if (vHide > .49) discard;'));
   };
   mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type;
   return mat;

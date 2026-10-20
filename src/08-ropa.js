@@ -81,7 +81,7 @@ const TEX_GLSL = `
   vec4 texel() { return uTexOn > .5 ? texture2D(uTex, vTUv) : vec4(1.0); }`;
 function makeGarmentUniforms() {
   return {uColA: {value: new THREE.Color(0xeeeeee)}, uColB: {value: new THREE.Color(0x333333)}, uPat: {value: 0}, uPatS: {value: .08},
-    uTex: {value: null}, uTexOn: {value: 0}, uMode: {value: 0}, uAvgL: {value: .6}, uCut: {value: 0}};
+    uTex: {value: null}, uTexOn: {value: 0}, uMode: {value: 0}, uAvgL: {value: .6}, uCut: {value: 0}, uInkZ: {value: 1}};
 }
 function garmentMat(style, U) {
   const tint = style === 'construccion' || style === 'volumen' || style === 'lapiz' || style === 'valores';
@@ -93,9 +93,14 @@ function garmentMat(style, U) {
     Object.assign(sh.uniforms, LU, U); inkUniforms(sh, mat);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>
-        attribute vec4 aLine; attribute float aHide; varying float vGHide; varying vec4 vL2; varying vec3 vRest; varying vec2 vTUv; varying vec3 vInkN;`)
+        attribute vec4 aLine; attribute float aHide; varying float vGHide; varying vec4 vL2; varying vec3 vRest; varying vec2 vTUv; varying vec3 vInkN; uniform float uInk, uInkZ;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vL2 = aLine; vRest = position; vTUv = vec2(uv.x, uv.y); vGHide = aHide; ${inkVert(mat)}`);
+        vL2 = aLine; vRest = position; vTUv = vec2(uv.x, uv.y); vGHide = aHide; ${inkVert(mat)}`)
+      // in the ink pass each layer lies clearly over what it covers (.6 % of the distance a layer, along the line of
+      // sight, so nothing moves on screen): skin or an inner garment that pokes through it a little cannot win the
+      // depth test there and draw zig-zag borders at a waistband or a hem, and the hem itself is a step the pass inks
+      .replace('#include <project_vertex>', `#include <project_vertex>
+        if (uInk > .5) { if (isPerspectiveMatrix(projectionMatrix)) mvPosition.xyz *= 1.0 - .006 * uInkZ; else mvPosition.z -= .006 * uInkZ * mvPosition.z; gl_Position = projectionMatrix * mvPosition; }`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>\n${PATTERN_GLSL}\n${TEX_GLSL}\n${SKETCH_GLSL}\nvarying float vGHide; uniform float uInk, uInkId; varying vec3 vInkN;`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\n if (vGHide > .999) discard; vec4 tx = texel(); if (uCut > .5 && tx.a < .5) discard;`)
@@ -110,7 +115,7 @@ function garmentMat(style, U) {
 }
 function garmentHullMat(U) {
   return new THREE.ShaderMaterial({
-    uniforms: {...U, uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol}, side: THREE.BackSide,
+    uniforms: {...U, uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol}, side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2,  // (behind the garment's own inside, seen through a sleeve or a collar)
     vertexShader: `#include <common>
       #include <skinning_pars_vertex>
       #include <morphtarget_pars_vertex>
@@ -225,7 +230,7 @@ function updateGarment(m, g) {
    so nothing can poke through. */
 const layerOf = g => (g.d ? g.d.rank : 40) + (g.spec.layer || 0) * 3;
 function layerOrder(m) { return (m.garments || []).filter(g => g.d).map((g, i) => [g, i]).sort((a, b) => layerOf(a[0]) - layerOf(b[0]) || a[1] - b[1]).map(x => x[0]); }
-function setLayerOffset(g) { for (const k in g.mats) { const mt = g.mats[k]; mt.polygonOffsetFactor = -((g.rankIdx ?? 0) + 1) * .5; mt.polygonOffsetUnits = -((g.rankIdx ?? 0) + 1) * 3; } }
+function setLayerOffset(g) { g.U.uInkZ.value = (g.rankIdx ?? 0) + 1; for (const k in g.mats) { const mt = g.mats[k]; mt.polygonOffsetFactor = -((g.rankIdx ?? 0) + 1) * .5; mt.polygonOffsetUnits = -((g.rankIdx ?? 0) + 1) * 3; } }
 // vertices of a garment in a 3 cm grid, for "is this point under that garment" tests
 const GRID = .03;
 function surfaceGrid(geo) {

@@ -1382,7 +1382,7 @@ const SUITES = {
   async furlines(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     const style = st => A(st => document.querySelector(`#styleChips .chip[data-v="${st}"]`).click(), st);
-    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="lobo"]').click()); await page.waitForTimeout(4500);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="lobo"]').click()); await page.waitForTimeout(6000);
     await goTab(page, 'dibujo'); await page.waitForTimeout(300);
     // the camera on the head, from the front and a little to the side
     const aim = (bone, k) => A(([bone, k]) => { const C = window.__cdp, m = C.mq, c = m.joints[bone].getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
@@ -1391,12 +1391,14 @@ const SUITES = {
     await style('construccion'); const off = await A(() => window.__cdp.ink.inkWanted());
     await style('contorno'); await page.waitForTimeout(300); const on = await A(() => window.__cdp.ink.inkWanted());
     ok(on && !off, 'the ink pass runs in Solo línea only (the other styles keep their look)');
-    // the buffer it reads: the head's parts apart (fur, the eyes, the nose leather)
-    const parts = await A(() => { const C = window.__cdp; C.renderView({w: 480, h: 480, bg: 'paper'}); const rt = [...C.ink.INK.rts.values()].pop(), px = new Uint8Array(rt.width * rt.height * 4);
-      C.renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, px); const n = new Map(); let cov = 0;
-      for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { cov++; n.set(px[i + 2], (n.get(px[i + 2]) || 0) + 1); }
-      return {size: rt.width + '×' + rt.height, cov, ids: [...n.values()].filter(v => v > 15).length}; });
-    ok(parts.size === '480×480' && parts.cov > 20000 && parts.ids >= 3, `the ink buffer has the head at the picture's size (${parts.size}, ${parts.cov} px) with its parts apart (${parts.ids} ids)`);
+    // the buffer it reads: the head at the picture's size, seen from outside, its eyes and nose leather no parts of their
+    // own (a border drawn on the mesh's eye or nose vertices is a jagged star or polygon, not a lid or a nose); the
+    // sculpted head and the neck under it, two materials, apart
+    const parts = await A(() => { const C = window.__cdp; C.renderView({w: 480, h: 480, bg: 'paper'}); const rt = C.ink.INK.rts.get('480x480'), px = new Uint8Array(rt.width * rt.height * 4);
+      C.renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, px); const n = new Map(); let cov = 0, out = 0;
+      for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { cov++; if (px[i + 3] > 240) out++; n.set(px[i + 2], (n.get(px[i + 2]) || 0) + 1); }
+      const big = [...n].filter(([, k]) => k > cov * .01).map(([v]) => v); return {size: rt.width + '×' + rt.height, cov, out: out / cov, mats: new Set(big.map(v => v >> 3)).size, leather: big.filter(v => v % 8 === 2 || v % 8 === 7).length}; });
+    ok(parts.size === '480×480' && parts.cov > 20000 && parts.out > .9 && parts.mats >= 2 && !parts.leather, `the ink buffer has the head at the picture's size (${parts.size}, ${parts.cov} px) seen from outside, head and neck apart (${parts.mats}), no eye or nose border (${parts.leather})`);
     // lines inside the silhouette: far more ink away from the outline with the pass than with its lines made invisible
     const inner = async a => A(a => { const C = window.__cdp, U = C.ink.INK.mat.uniforms.uA, a0 = U.value; U.value = a;
       const ink = C.renderView({w: 480, h: 480, bg: 'lines'}).getContext('2d').getImageData(0, 0, 480, 480).data, sil = C.renderView({w: 480, h: 480, bg: 'alpha'}).getContext('2d').getImageData(0, 0, 480, 480).data; U.value = a0;
@@ -1410,6 +1412,19 @@ const SUITES = {
       const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] - d[i + 2] > 40) red++;
       const kept = L.uLineA.value === .8 && L.uCenter.value === 1; L.uLineA.value = la; L.uCenter.value = ce; return {red, kept}; });
     ok(guide.red === 0 && guide.kept, `the ink render leaves out the centre line and the rings, and puts them back (${guide.red} red pixels)`);
+    // a picture bigger than the canvas (an export) lets its buffers go once the canvas is drawn again
+    const mem = await A(() => { const C = window.__cdp; C.renderView({w: 2400, h: 2400, bg: 'paper'}); const big = C.ink.INK.rts.has('2400x2400'); C.frameNow();
+      const b = C.renderer.getDrawingBufferSize(new THREE.Vector2()); return {big, left: [...C.ink.INK.rts.values()].filter(r => r.width * r.height > b.x * b.y).length}; });
+    ok(mem.big && mem.left === 0, `an export's ink buffers are let go after it (${mem.left} bigger than the canvas left)`);
+    // clothes: a clean line, no specks (single ink pixels) and each garment layer over what it covers in the ink pass
+    await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitChips .chip[data-v="camiseta"]').click()); await page.waitForTimeout(6000);
+    await goTab(page, 'dibujo'); await aim('hips', 6);
+        const cloth = await A(() => { const C = window.__cdp, m = C.mq, d = C.renderView({w: 600, h: 600, bg: 'lines'}).getContext('2d').getImageData(0, 0, 600, 600).data, on = (x, y) => d[(y * 600 + x) * 4 + 3] > 100;
+      let ink = 0, lone = 0; for (let y = 1; y < 599; y++) for (let x = 1; x < 599; x++) if (on(x, y)) { ink++; let n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if ((i || j) && on(x + i, y + j)) n++; if (!n) lone++; }
+      const G = (m.garments || []).filter(g => g.d), ranks = G.map(g => [g.rankIdx, g.U.uInkZ.value]); return {n: G.length, ink, lone, layered: ranks.every(([r, z]) => z === r + 1)}; });
+    ok(cloth.n >= 2 && cloth.layered, `each of the ${cloth.n} garments lies over what it covers in the ink pass, by its layer`);
+    ok(cloth.ink > 2000 && cloth.lone < cloth.ink * .004, `clothes drawn with a clean line: ${cloth.lone} lone specks in ${cloth.ink} ink pixels`);
+    await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitNone').click()); await page.waitForTimeout(800); await aim('head', 3.4);
     // an open mouth: teeth and tongue outlined, every part of it in the drawing style
     await goTab(page, 'pose'); await A(() => document.querySelector('#exprChips .chip[data-v="rugido"]').click()); await page.waitForTimeout(800);
     const mouth = async st => { await goTab(page, 'dibujo'); await style(st); await page.waitForTimeout(200);

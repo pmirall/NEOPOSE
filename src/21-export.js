@@ -97,10 +97,12 @@ function renderTurnaround() {
   others.forEach(([o, v]) => o.group.visible = v); restoreStage(); restoreHide(); updateLights();
   return lines ? inkOnly(sheet) : sheet;
 }
-// keep the ink of a line drawing: paper becomes transparent
+/* keep the ink of a line drawing (this sheet, an export, a key drawing, a comic panel): the strokes and the dark of an
+   open mouth stay; paper, light grey shading and a stroke's faint end become transparent, so the line is clean, not
+   smudged */
 function inkOnly(cv) {
   const c = cv.getContext('2d'), id = c.getImageData(0, 0, cv.width, cv.height), d = id.data;
-  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, a = clamp((.93 - L) / .55, 0, 1); d[i + 3] = Math.round(d[i + 3] * a); d[i] *= .6; d[i + 1] *= .6; d[i + 2] *= .6; }
+  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const L = (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255, a = clamp((.7 - L) / .3, 0, 1); d[i + 3] = Math.round(d[i + 3] * a); d[i] *= .6; d[i + 1] *= .6; d[i + 2] *= .6; }
   c.putImageData(id, 0, 0); return cv;
 }
 
