@@ -338,6 +338,7 @@ body.practicing .modebar{display:none}
 .welcome .langrow{justify-content:center}
 .subchecks{margin:0 0 4px 23px}
 .subchecks.off,.check.off{opacity:.45}
+.subchecks.off .chip:disabled{opacity:1}  /* the faded container already dims them */
 .prrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 6px;font-size:13px}
 #tour{position:fixed;inset:0;z-index:30;pointer-events:none}
 #tourHole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(25,20,12,.45);border:2px solid var(--blue);transition:all .25s ease;pointer-events:none}

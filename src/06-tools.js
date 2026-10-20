@@ -647,6 +647,7 @@ function applySceneExtras(o) {
   if (o.env && o.env !== state.env) {
     const env = o.env, want = o.amb;
     setEnv(env).then(() => { if (want && state.env === env && state.amb !== want) { state.amb = want; applyAmbient(); setPressed($('#ambChips'), want); } });
+    if (want && state.amb !== want) { state.amb = want; applyAmbient(); setPressed($('#ambChips'), want); }  // so an undo step pushed straight away already holds the time asked for
     $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === env)));
   } else if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }
   if (o.props && JSON.stringify(props.map(serializeProp)) !== JSON.stringify(o.props)) {

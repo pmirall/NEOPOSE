@@ -39,7 +39,7 @@ function panoAmbient() {
   panoTexture(file).then(t => {
     if (panoOf(state.env) !== file) return;
     if (flat) { t.encoding = THREE.sRGBEncoding; if (!paper) scene.background = t; } else { panoSphere.material.map = t; panoSphere.material.needsUpdate = true; }
-    if (S.group === 'ref' && PANO.aimed !== state.env) { PANO.aimed = state.env; if (!flat) { PANO.sun[file] = PANO.sun[file] || sunFromImage(t.image); aimSun(PANO.sun[file], state.panoRot); } }
+    if (S.group === 'ref' && PANO.aimed !== state.env) { PANO.aimed = state.env; if (!flat) { PANO.sun[file] = PANO.sun[file] || sunFromImage(t.image); aimSun(PANO.sun[file], state.panoRot); if (hist.i >= 0) hist.stack[hist.i] = histStr(); } }  // the automatic aim joins the current undo step, so undo does not take the sun off the photo
     const c = PANO.col[file]; hemi.color.copy(c.sky).lerp(new THREE.Color(0xffffff), .35); hemi.groundColor.copy(c.ground).multiplyScalar(.8);
   }, e => console.warn('pano', e));
 }
@@ -98,7 +98,7 @@ function setMulti(on) {
   resize();
 }
 function buildSceneExtrasUI() {
-  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }});  // the sun turns with a found panorama
+  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }, change: () => { if (hist.i >= 0) hist.stack[hist.i] = histStr(); }});  // the sun turns with a found panorama, and that turn joins the current undo step
   chips($('#perspChips'), Object.entries(PERSP_SHOTS).map(([k, v]) => [k, v[0]]), null, id => { perspShot(id); setPressed($('#perspChips'), ''); camTouched(); });
   $('#multiBtn').onclick = () => setMulti(!MV.on);
 }

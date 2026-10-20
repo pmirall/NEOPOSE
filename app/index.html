@@ -355,6 +355,7 @@ body.practicing .modebar{display:none}
 .welcome .langrow{justify-content:center}
 .subchecks{margin:0 0 4px 23px}
 .subchecks.off,.check.off{opacity:.45}
+.subchecks.off .chip:disabled{opacity:1}  /* the faded container already dims them */
 .prrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 6px;font-size:13px}
 #tour{position:fixed;inset:0;z-index:30;pointer-events:none}
 #tourHole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(25,20,12,.45);border:2px solid var(--blue);transition:all .25s ease;pointer-events:none}
@@ -6417,6 +6418,7 @@ function applySceneExtras(o) {
   if (o.env && o.env !== state.env) {
     const env = o.env, want = o.amb;
     setEnv(env).then(() => { if (want && state.env === env && state.amb !== want) { state.amb = want; applyAmbient(); setPressed($('#ambChips'), want); } });
+    if (want && state.amb !== want) { state.amb = want; applyAmbient(); setPressed($('#ambChips'), want); }  // so an undo step pushed straight away already holds the time asked for
     $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === env)));
   } else if (o.amb && o.amb !== state.amb) { state.amb = o.amb; applyAmbient(); setPressed($('#ambChips'), o.amb); }
   if (o.props && JSON.stringify(props.map(serializeProp)) !== JSON.stringify(o.props)) {
@@ -10363,7 +10365,7 @@ function panoAmbient() {
   panoTexture(file).then(t => {
     if (panoOf(state.env) !== file) return;
     if (flat) { t.encoding = THREE.sRGBEncoding; if (!paper) scene.background = t; } else { panoSphere.material.map = t; panoSphere.material.needsUpdate = true; }
-    if (S.group === 'ref' && PANO.aimed !== state.env) { PANO.aimed = state.env; if (!flat) { PANO.sun[file] = PANO.sun[file] || sunFromImage(t.image); aimSun(PANO.sun[file], state.panoRot); } }
+    if (S.group === 'ref' && PANO.aimed !== state.env) { PANO.aimed = state.env; if (!flat) { PANO.sun[file] = PANO.sun[file] || sunFromImage(t.image); aimSun(PANO.sun[file], state.panoRot); if (hist.i >= 0) hist.stack[hist.i] = histStr(); } }  // the automatic aim joins the current undo step, so undo does not take the sun off the photo
     const c = PANO.col[file]; hemi.color.copy(c.sky).lerp(new THREE.Color(0xffffff), .35); hemi.groundColor.copy(c.ground).multiplyScalar(.8);
   }, e => console.warn('pano', e));
 }
@@ -10422,7 +10424,7 @@ function setMulti(on) {
   resize();
 }
 function buildSceneExtrasUI() {
-  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }});  // the sun turns with a found panorama
+  slider($('#panoBox'), {id: 'panoRot', label: 'Girar el panorama', min: 0, max: 360, step: 1, value: state.panoRot || 0, fmt: v => Math.round(v) + '°', input: v => { state.panoRot = v; const f = panoOf(state.env); if (SCENES[state.env] && SCENES[state.env].group === 'ref' && PANO.sun[f]) aimSun(PANO.sun[f], v); }, change: () => { if (hist.i >= 0) hist.stack[hist.i] = histStr(); }});  // the sun turns with a found panorama, and that turn joins the current undo step
   chips($('#perspChips'), Object.entries(PERSP_SHOTS).map(([k, v]) => [k, v[0]]), null, id => { perspShot(id); setPressed($('#perspChips'), ''); camTouched(); });
   $('#multiBtn').onclick = () => setMulti(!MV.on);
 }
