@@ -592,15 +592,16 @@ function footGeos(m, P) {
     if (m.stumps && m.stumps['leg' + s]) continue;
     const fr = pawFrame(L, m.J, s), {W, F, g, B, K} = fr, o = s === 'L' ? 1 : -1, bone = m.accBones.indexOf(m.bones[FIG.jIdx['ankle' + s]]), weights = () => [[bone, 1]], parts = [];
     // a lofted part (no contour rings: they would ring the toes like nails); fur takes the coat of the foot (socks); the
-    // closed end's normals point along `tip` (its ring is a single point)
+    // closing ring is drawn into one point (loft keeps a hair's width, a pinhole up close), its normals along `tip`
     const add = (o2, kind, tip) => {
-      const geo = loft({weights, ...o2}), E = furAttrsLoft(geo, kind).attributes.aEye.array, ln = geo.attributes.aLine.array, nm = geo.attributes.normal, r = (o2.radial || 18) + 1;
+      const geo = loft({weights, ...o2}), E = furAttrsLoft(geo, kind).attributes.aEye.array, ln = geo.attributes.aLine.array, nm = geo.attributes.normal, pa = geo.attributes.position, r = (o2.radial || 18) + 1;
       for (let i = 0; i < E.length; i += 4) { if (kind === 1) E[i + 1] = 1; ln[i + 3] = -1; }
-      if (tip) for (let i = nm.count - r; i < nm.count; i++) nm.setXYZ(i, tip.x, tip.y, tip.z);
+      if (tip) { const c = new V3(); for (let i = pa.count - r; i < pa.count; i++) c.x += pa.getX(i) / r, c.y += pa.getY(i) / r, c.z += pa.getZ(i) / r;
+        for (let i = pa.count - r; i < pa.count; i++) { pa.setXYZ(i, c.x, c.y, c.z); nm.setXYZ(i, tip.x, tip.y, tip.z); } }
       parts.push(geo); return geo;
     };
     // a low leather dome on the ground: a along `side`, b across it; mod shapes its outline
-    const pad = (c, side, a, b, h, mod) => add({origin: new V3(c.x, g + h, c.z), axis: dn, side, radial: mod ? 48 : 18, sub: 2, n: 2.2, mod,
+    const pad = (c, side, a, b, h, mod) => add({origin: new V3(c.x, g + h, c.z), axis: dn, side, radial: mod ? 36 : 14, sub: 1, n: 2.2, mod,
       secs: [[0, .55 * a, .55 * b], [.35 * h, .93 * a, .93 * b], [.62 * h, a, b], [.86 * h, .8 * a, .8 * b], [.97 * h, .42 * a, .42 * b], [h, .001, .001]]}, 2, dn);
     // a claw from p along d: as wide as the toe's tip at the root and taller than wide, tilted 10° down and curling, or
     // less tilted if its point would go into the ground
@@ -608,13 +609,13 @@ function footGeos(m, P) {
       const drop = a => -Math.sin(a) + curl * Math.cos(a), r = (g + .15 * c - p.y) / len; let a = 10 * DEG;
       if (drop(a) < r) { let lo = -40 * DEG, hi = a; for (let k = 0; k < 14; k++) { a = (lo + hi) / 2; if (drop(a) > r) lo = a; else hi = a; } }
       const ax = new V3(d.x * Math.cos(a), -Math.sin(a), d.z * Math.cos(a)).normalize();
-      add({origin: p, axis: ax, side: new V3(d.z, 0, -d.x), radial: 12, sub: 2, bend: curl,
+      add({origin: p, axis: ax, side: new V3(d.z, 0, -d.x), radial: 8, sub: 2, bend: curl,
         secs: [[-.5 * len, .62 * c, c], [0, .64 * c, c], [.35 * len, .5 * c, .8 * c], [.7 * len, .28 * c, .45 * c], [.92 * len, .1 * c, .14 * c], [len, .001, .001]]}, 3, ax);
     };
     // a toe: a bean of fur from inside the paw over its knuckle and down to the tip (dragons: three knuckles)
     const TOE = K.knuckles ? [[-.45, .8, .8, 1.05], [0, 1, 1, 1.12], [.3, 1.07, 1.06, 1.12], [.46, .9, .88, 1], [.62, .98, .95, .92], [.78, .8, .76, .8], [.9, .74, .64, .68], [.975, .36, .32, .62], [1, .001, .001, .6]]
       : [[-.45, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.1, 1.28], [.62, .96, .9, .95], [.84, .76, .66, .7], [.95, .46, .4, .6], [1, .001, .001, .58]];
-    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 16, sub: 3, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * Lt, w * tw, h * tt, 0, c * tt])}, 1, d);
+    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * Lt, w * tw, h * tt, 0, c * tt])}, 1, d);
     if (L.hoof) {
       // the hoof under the coronet: its sole on the ground, the front wall at ~55°, the heels lower (horse: one; goats and
       // deer: two halves with the cleft between them, and two dewclaws behind the fetlock)
