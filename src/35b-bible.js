@@ -124,6 +124,7 @@ function renderBible() {
       toast(tr('Lugar «{x}» borrado.', {x: l.name}), {undo: () => { PROJECT.locations.splice(Math.min(i, PROJECT.locations.length), 0, l); renderBible(); autosaveSoon(); }}); };
     lb.appendChild(card);
   }
+  if (typeof crRenderCast === 'function') crRenderCast();
 }
 function buildBibleUI() {
   if (!$('section[data-tab=biblia]')) return;

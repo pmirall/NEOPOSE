@@ -365,4 +365,5 @@ function syncCoatUI(light) {
   });
   $('#coatSockBox').hidden = !c.m.socks; $('#coatTipBox').hidden = !c.m.tail;
   if (coatSl.sock) coatSl.sock.set((1 - (c.sock ?? .72)) / .9); if (coatSl.tip) coatSl.tip.set(c.tip ?? .25);
+  if (!light && typeof crCoatSwatches === 'function') crCoatSwatches();
 }

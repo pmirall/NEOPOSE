@@ -238,6 +238,11 @@ const ANTHRO_OF = {sonrisa: 'feliz', risa: 'feliz', guino: 'feliz', triste: 'tri
 // the face: humans get MakeHuman's facial expressions (stored in the body, with an intensity);
 // anthro characters keep the jaw-and-ears expressions of their sculpted heads
 let exprAmtEl = null, exprFor = null;
+// humans: a face baked into the body (with its intensity); anthros: jaw, ears and tail turned at once
+function pickExpression(id) {
+  if (mq.body.species === 'humano' && !mq.avatar) { mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); return; }
+  applyExpression(mq, id); syncExprUI(); syncJointSliders(); pushHistory(); tourEvent('expr');
+}
 function buildExprUI() {
   exprAmtEl = slider($('#exprAmtBox'), {id: 'exprAmt', label: 'Intensidad', min: 0, max: 1.3, step: .01, value: 1, fmt: pctFmt,
     input: v => { mq.body.exprAmt = v; rebuildActive(); }, change: pushHistory});
@@ -248,12 +253,11 @@ function syncExprUI() {
   const human = mq.body.species === 'humano' && !mq.avatar, kind = human ? 'h' : 'a';
   if (exprFor !== kind) {
     exprFor = kind;
-    if (human) chips($('#exprChips'), Object.entries(FACE_EXPR).map(([k, v]) => [k, v.label]), mq.body.expr || 'neutra', id => {
-      mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); });
-    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); syncJointSliders(); pushHistory(); tourEvent('expr'); });
+    chips($('#exprChips'), Object.entries(human ? FACE_EXPR : ANTHRO_EXPR).map(([k, v]) => [k, v.label]), human ? mq.body.expr || 'neutra' : null, pickExpression);
   }
   setPressed($('#exprChips'), human ? mq.body.expr || 'neutra' : mq.aexpr || '');
   $('#exprAmtBox').hidden = !human || !mq.body.expr;
+  if (typeof crSyncExpr === 'function') crSyncExpr();
   exprAmtEl.set(mq.body.exprAmt ?? 1);
   $('#exprNote').textContent = tr(human ? 'Cejas, ojos y boca de MakeHuman. Para abrir más la boca, toca la mandíbula y gírala.'
     : 'Boca, orejas y cola a la vez, con el lenguaje corporal de los animales. También puedes tocar la mandíbula, una oreja o la cola para girarlas a mano.');

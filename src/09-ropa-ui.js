@@ -71,6 +71,7 @@ const gTitle = c => (GARMENT_TR[LANG] || {})[c.title] || c.title;
 function garmentTitle(id) { return ROPA.byId[id] ? gTitle(ROPA.byId[id]) : id; }
 function renderGarmentList() {
   const box = $('#garmentList'); if (!box) return;
+  if (typeof crMarks === 'function') crMarks();
   // the colours to drag only show when someone on the canvas has clothes or hair to take them
   const any = chars.some(c => (c.outfit && c.outfit.length) || c.body.hair); $('#dropColors').hidden = !any; $('.dropnote').hidden = !any;
   box.innerHTML = '';

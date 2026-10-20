@@ -74,6 +74,7 @@ function renderCast() {
   list.appendChild(c2);
   $('#bodyWho').textContent = tr('personaje {n}', {n: active + 1});
   $('#delChar').disabled = chars.length <= 1; $('#delChar').textContent = tr('Quitar a {x}', {x: charLabel(mq)});
+  if (typeof crRenderStage === 'function') crRenderStage();
 }
 
 /* ---------- applying poses to the cast ---------- */

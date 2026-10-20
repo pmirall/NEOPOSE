@@ -1304,3 +1304,123 @@ a.kofi{color:var(--blue);font-weight:600;text-decoration:none;border-bottom:1px 
 a.kofi:hover{border-bottom-style:solid}
 .snaplist{display:flex;flex-direction:column;gap:4px;margin:6px 0;max-height:210px;overflow:auto}
 .snaprow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--rule)}
+
+/* ======================= the character creator: Personajes › Cuerpo and Ropa (20e-creator) =======================
+   wide screens: the rail of categories on the left, the character in the middle, the strip of characters under it,
+   the options on the right; phones: the rail and the strip go into the sheet, the camera buttons stay on the canvas */
+.crrail,.crgallery,.crcam,.crtop{display:none}
+body.creator .crtop{display:block}
+body.creator section[data-tab] > .secnav,body.creator .modebar{display:none}
+@media (min-width:861px){
+  body.creator .main{grid-template-columns:78px minmax(0,1fr) min(400px,40vw);grid-template-rows:minmax(0,1fr) auto}
+  body.creator .crrail{display:flex;flex-direction:column;gap:6px;grid-column:1;grid-row:1/3;overflow-y:auto;min-height:0;padding:2px 3px 8px;scrollbar-width:none}
+  body.creator .stage-wrap{grid-column:2;grid-row:1}
+  body.creator .book{grid-column:3;grid-row:1/3}
+  body.creator .crgallery{display:block;grid-column:2;grid-row:2}
+}
+/* the rail: big icon buttons, the current one inked */
+.crr{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;flex:none;padding:9px 3px 7px;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--page);color:var(--ink-soft);cursor:pointer;font:600 11.5px/1.15 var(--f-body);text-align:center;box-shadow:var(--lift);transition:background var(--dur-1),color var(--dur-1),border-color var(--dur-1)}
+.crr svg,.crcat h3 svg,.crres > svg:not([stroke]){fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.crr svg{width:28px;height:28px}
+.crr:hover{color:var(--ink);border-color:var(--ink)}
+.crr[aria-current="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+/* a category in the panel: its heading on a wash, its dice at the end */
+.crcat{display:flex;align-items:center;gap:8px;margin:20px -8px 6px -18px;padding:7px 8px 7px 14px;border-radius:10px 14px 12px 8px;background:var(--blue-wash);scroll-margin-top:8px}
+.crcat:first-child,.secnav + .crcat{margin-top:0}
+.crcat h3{flex:1;min-width:0;margin:0!important;display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;font-size:21px}
+.crcat h3 svg{width:26px;height:26px;flex:none;color:var(--blue)}
+.crcat h3 span{margin-left:0}
+.crdice{flex:none;background:var(--page)}
+.crdice svg{width:18px;height:18px}
+.crblock{padding:2px 0 10px}
+.finetag{flex:none;font:600 10px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border:1px dashed var(--line);border-radius:999px;padding:3px 7px}
+details.sec.fine > summary h3{font-size:16px;color:var(--ink-soft)}
+/* options as pictures: body types, species, outfits */
+.crtiles:not(.spfam){display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+.spfam.crtiles > .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.spfam.crtiles .famlbl{grid-column:1/-1}
+.crtiles .chip{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:6px 4px;border-radius:8px;font-size:11.5px;line-height:1.15;text-align:center;min-height:0;min-width:0}
+.crtiles .chip[aria-pressed="true"]{background:var(--blue-wash);color:var(--ink);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.crth{display:block;width:100%;aspect-ratio:4/5;background:var(--ink);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.crth.pending{background:var(--rule);-webkit-mask:none;mask:none;border-radius:4px}
+.crtiles .chip[aria-pressed="true"] .crth{background:var(--blue)}
+.crsw{display:block;flex:none;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--ink);background:conic-gradient(from -40deg,var(--c0) 0 56%,var(--c1) 0 80%,var(--c2) 0)}
+.crcoats .chip{display:inline-flex;align-items:center;gap:6px}
+.crcoats .crsw{width:18px;height:18px}
+.crol{display:flex;gap:1px;width:100%;aspect-ratio:3/2;border-radius:4px;overflow:hidden;background:var(--rule)}
+.crol img{flex:1;min-width:0;height:100%;object-fit:cover;background:var(--stage)}
+body.creator .hairgrid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
+body.creator .hairsw .swatches button{width:28px;height:28px}
+body.creator #hairColorBox{margin-bottom:8px}
+/* faces */
+.crgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.crface{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px 5px;border:1.5px solid var(--line);border-radius:8px;background:var(--page);cursor:pointer;font:600 11px/1.15 var(--f-body);color:var(--ink);min-width:0}
+.crface svg{width:44px;height:44px}
+.crface:hover{border-color:var(--ink)}
+.crface[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-wash);color:var(--blue)}
+.crslots{margin-bottom:2px}
+.cracc{max-height:none}
+/* the camera on the canvas */
+body.creator .crcam{display:flex;flex-direction:column;gap:6px;position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:3}
+.crcam .btn{background:var(--page);width:40px;height:40px;justify-content:center;padding:0;box-shadow:var(--lift);border-radius:50%}
+.crcam .btn svg{width:20px;height:20px}
+.crcam .btn[aria-pressed="true"]{background:var(--ink);color:var(--page)}
+/* Tus personajes */
+.crgallery{min-width:0;background:var(--page);border:1.5px solid var(--ink);border-radius:3px;box-shadow:var(--lift);padding:6px 10px 8px}
+.crghead{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+.crgtitle{margin:0;font:700 19px/1.1 var(--f-hand)}
+.crgtoggle{border:0;background:none;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:2px 0}
+.crgtoggle::after{content:"";width:7px;height:7px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);transition:transform .15s;margin-top:-3px}
+.crgallery.folded .crgtoggle::after{transform:rotate(-45deg);margin-top:0}
+.crgtools{display:flex;flex-wrap:wrap;gap:5px;margin-left:auto}
+.crgrow{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 2px;scrollbar-width:thin}
+.crgallery.folded .crgrow{display:none}
+.crgroup{flex:none;display:flex;flex-direction:column;min-width:0}
+.crgroup .lbl{margin:2px 0 4px}
+.crgcards,#crGallery .chargrid{display:flex;gap:6px;align-items:flex-start}
+#crGallery .charcard{width:86px;flex:none;padding:4px 3px}
+#crGallery .charcard .th.img{width:100%;height:92px;aspect-ratio:auto;object-fit:contain;border-radius:4px}
+#crGallery .charcard img.pending{background:var(--rule)}
+#crGallery .charcard > span{font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#crGallery .charcard.on{border-color:var(--blue);background:var(--blue-wash);box-shadow:inset 0 0 0 1px var(--blue)}
+#crGallery .characts{flex-wrap:wrap}
+#crGallery .empty{max-width:230px;font-size:11.5px}
+.crnew{border-style:dashed;align-self:stretch;justify-content:center}
+/* the search over the libraries */
+body.creator .crtop{margin:-4px 0 8px}
+@media (min-width:861px){ body.creator .crtop{position:sticky;top:-16px;z-index:5;margin:-16px -8px 8px -12px;padding:12px 8px 8px 12px;background:var(--page);border-bottom:1px dashed var(--rule)} }
+.crsearch{display:flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:999px;padding:3px 12px;background:var(--paper)}
+.crsearch svg{width:16px;height:16px;flex:none;color:var(--ink-soft)}
+.crsearch input{flex:1;min-width:0;border:0;background:transparent;padding:5px 0;font-size:14px;outline:none}
+.crsearch:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-wash)}
+.crfilt{margin:6px 0 0}
+.crfilt .chip{font-size:11.5px;padding:3px 9px;border-radius:999px;border-width:1px}
+.crresults{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;margin:8px 0 4px;padding:8px;border:1.5px dashed var(--line);border-radius:8px;max-height:min(46vh,430px);overflow:auto;overscroll-behavior:contain}
+.crresults > .empty{grid-column:1/-1}
+.crres{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border:1.5px solid var(--line);border-radius:6px;background:var(--page);cursor:pointer;color:var(--ink);font:inherit;min-width:0}
+.crres img,.crres .crth,.crres > svg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;background:var(--stage)}
+.crres .crth{background:var(--ink)}
+.crres > svg{padding:16%}
+.crres .crsw{width:54px;height:54px;margin:7px 0}
+.crres .lt{font-size:10.5px;line-height:1.15;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;width:100%}
+.crres .ty{font:9.5px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)}
+.crres:hover{border-color:var(--ink)}
+.crres[aria-pressed="true"]{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.crres.blocked{opacity:.4;filter:grayscale(1)}
+@media (pointer:coarse){ .crr{min-height:48px} .crgtools .btn{min-height:40px} .crfilt .chip{min-height:36px} }
+/* phones: the rail is a row of icons that stays at the top of the sheet; the strip folds under its title */
+@media (max-width:860px){
+  body.creator .crrail{display:flex;position:sticky;top:-6px;z-index:5;gap:4px;overflow-x:auto;margin:-6px -14px 8px -30px;padding:6px 10px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule);scrollbar-width:none}
+  body.creator .crrail::-webkit-scrollbar{display:none}
+  body.creator .crrail{-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000);mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000)}
+  body.creator .crrail.end{-webkit-mask:none;mask:none}
+  .crr{width:auto;min-width:64px;padding:5px 6px 4px;box-shadow:none;font-size:11px}
+  .crr svg{width:24px;height:24px}
+  body.creator .crgallery{display:block;border:0;border-bottom:1px dashed var(--line);border-radius:0;box-shadow:none;background:none;padding:0 0 8px;margin-bottom:8px}
+  .crgtools .btn > span{display:none}
+  .crgtools .btn{padding:6px 8px}
+  body.creator .crcam{top:auto;bottom:56px;transform:none;right:10px}
+  .crcat{margin-left:-14px;margin-right:-4px}
+}
+body.creator .hint:not(.toast){display:none}
+#crGallery .charcard > .crplus{font:700 36px/1 var(--f-hand);color:var(--ink-soft);height:92px;display:grid;place-items:center}

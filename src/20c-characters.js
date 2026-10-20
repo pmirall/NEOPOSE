@@ -69,7 +69,26 @@ async function importCharacters(files) {
 /* ---------- the panel and the cast's "+" ---------- */
 const CH_ICONS = {use: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h12M12 6l6 6-6 6"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
-  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'};
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"/></svg>',
+  ren: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>'};
+// a row of small buttons under a card: [icon, label, fn]; the label names the character for screen readers
+function charActs(card, name, list) {
+  const acts = document.createElement('div'); acts.className = 'characts';
+  for (const [k, label, fn] of list) {
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'charact'; x.innerHTML = CH_ICONS[k]; x.title = tr(label); x.setAttribute('aria-label', `${tr(label)}: ${name}`);
+    x.onclick = e => { e.stopPropagation(); fn(); }; acts.appendChild(x);
+  }
+  card.appendChild(acts); return acts;
+}
+// Mis personajes: a copy, a new name, gone with the way back right there
+async function dupSaved(c) { const d = {...characterOf({body: c.body, bodyPreset: c.preset, outfit: c.outfit || []}, tr('{x} (copia)', {x: c.name})), thumb: c.thumb || null}; await charDB.put(d); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: d.name})); }
+async function renameSaved(c) { const n = (prompt(tr('Nombre del personaje'), c.name) || '').trim(); if (!n || n === c.name) return; c.name = n; c.body = {...c.body, name: n}; c.at = Date.now(); await charDB.put(c); await loadCharacters(); }
+async function deleteSaved(c) {
+  await charDB.del(c.id); await loadCharacters();
+  toast(tr('«{x}» borrado de Mis personajes.', {x: c.name}), {undo: async () => { await charDB.put(c); loadCharacters(); }});
+}
 function characterCard(c, onClick) {
   const b = document.createElement('div'); b.className = 'pose charcard'; b.dataset.id = c.id; b.tabIndex = 0; b.setAttribute('role', 'button'); b.title = tr('Poner a «{x}» en la escena', {x: c.name});
   const img = document.createElement('img'); img.className = 'th img'; img.alt = ''; if (c.thumb) img.src = c.thumb;
@@ -81,13 +100,10 @@ function renderCharacters() {
   const grid = $('#charGrid'); if (!grid) return; grid.innerHTML = '';
   if (!SAVED_CHARS.length) grid.innerHTML = `<p class="empty">${tr('Aún no hay personajes guardados. Ajusta uno a tu gusto y pulsa «Guardar este personaje».')}</p>`;
   for (const c of SAVED_CHARS) {
-    const card = characterCard(c, () => placeCharacter(c)), acts = document.createElement('div'); acts.className = 'characts';
-    for (const [k, label, fn] of [['use', 'Aplicar al personaje activo', () => applyCharacter(c)], ['file', 'Exportar a un archivo', () => exportCharacter(c)],
-      ['del', 'Borrar', async () => { if (!confirm(tr('¿Borrar «{x}» de Mis personajes?', {x: c.name}))) return; await charDB.del(c.id); loadCharacters(); }]]) {
-      const x = document.createElement('button'); x.type = 'button'; x.className = 'charact'; x.innerHTML = CH_ICONS[k]; x.title = tr(label); x.setAttribute('aria-label', `${tr(label)}: ${c.name}`);
-      x.onclick = e => { e.stopPropagation(); fn(); }; acts.appendChild(x);
-    }
-    card.appendChild(acts); grid.appendChild(card);
+    const card = characterCard(c, () => placeCharacter(c));
+    charActs(card, c.name, [['use', 'Aplicar al personaje activo', () => applyCharacter(c)], ['dup', 'Duplicar', () => dupSaved(c)], ['ren', 'Cambiar el nombre', () => renameSaved(c)],
+      ['file', 'Exportar a un archivo', () => exportCharacter(c)], ['del', 'Borrar', () => deleteSaved(c)]]);
+    grid.appendChild(card);
   }
 }
 // the cast's "+ Character": a new one, one of the project's cast or one of yours (each list under its name, and only when it has someone)
@@ -112,7 +128,11 @@ function castAddMenu(anchor) {
 function buildCharactersUI() {
   $('#charSave').onclick = () => saveCharacter(mq);
   $('#charImport').onclick = () => $('#charFile').click();
-  $('#charFile').onchange = e => { importCharacters([...e.target.files]); e.target.value = ''; };
+  $('#charFile').onchange = e => {
+    const all = [...e.target.files], models = all.filter(f => /\.(vrm|glb|gltf|fbx)$/i.test(f.name)), json = all.filter(f => !models.includes(f)); e.target.value = '';
+    if (json.length) importCharacters(json);
+    for (const f of models.slice(0, 1)) { if (chars.length < MAX_CHARS) { addChar(chars.length % 2 ? 'mujer' : 'hombre'); setActive(chars.length - 1); } importAvatarFile(f); }
+  };
   vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].filter(f => /\.neopose-personaje\.json$|personaje.*\.json$/i.test(f.name)); if (f.length) { e.preventDefault(); importCharacters(f); } });
   loadCharacters();
 }

@@ -1556,6 +1556,134 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // the character creator (Personajes › Cuerpo and Ropa): a rail of categories, options as pictures, the camera on the
+  // face or the body, the strip of characters (new, copy, rename, remove and back, save, export, import), the dice,
+  // an outfit per occasion, one search over the libraries, a look before choosing; and on a phone
+  async creator(browser) {
+    const SHOTS = process.env.CREATOR_SHOTS || OUT; fs.mkdirSync(SHOTS, {recursive: true});
+    const noise = e => /VALIDATE_STATUS|Too many attributes/.test(e);
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    // the body and the clothes, keys in order (a restored body may list them differently)
+    const sig = () => A(() => { const m = window.__cdp.mq, so = o => o && typeof o === 'object' ? Array.isArray(o) ? o.map(so) : Object.fromEntries(Object.keys(o).sort().map(k => [k, so(o[k])])) : o; return JSON.stringify(so([m.body, m.outfit.map(s => s.id)])); });
+    await goTab(page, 'cuerpo');
+    await page.waitForFunction(() => document.querySelectorAll('#bodyChips .crth:not(.pending)').length >= 16, null, {timeout: 60000}).catch(() => {});
+    const s0 = await A(() => ({on: document.body.classList.contains('creator'), rail: [...document.querySelectorAll('#crRail .crr')].map(b => b.dataset.cat).join(), cur: (document.querySelector('#crRail .crr[aria-current="true"]') || {}).dataset?.cat,
+      cam: getComputedStyle(document.querySelector('#crCam')).display !== 'none', gal: getComputedStyle(document.querySelector('#crGallery')).display !== 'none', stage: document.querySelectorAll('#crStage .charcard:not(.crnew)').length,
+      thumbs: document.querySelectorAll('#bodyChips .chip .crth:not(.pending)').length, sw: document.querySelectorAll('#speciesChips .chip .crsw').length, faces: document.querySelectorAll('#crExpr .crface svg').length,
+      dots: window.__cdp.video.jointDots.head.visible, fine: !document.querySelector('details[data-sec=prop]').open && !!document.querySelector('details[data-sec=prop] .finetag')}));
+    ok(s0.on && s0.rail === 'body,face,hair,species,limbs,clothes,acc' && s0.cur === 'body', `Body opens the creator with its rail (${s0.rail}; on ${s0.cur})`);
+    ok(s0.cam && s0.gal && s0.stage === 1 && !s0.dots, 'the camera buttons and the strip of characters are there; the posing dots are not');
+    ok(s0.thumbs === 16 && s0.sw >= 18 && s0.faces >= 12 && s0.fine, `options as pictures: ${s0.thumbs} body silhouettes, ${s0.sw} fur swatches, ${s0.faces} faces; the sliders folded under “fine tuning”`);
+    // the rail: Hair takes the panel there and the camera to the face; the arrows walk it; Clothes is the other tab
+    await page.click('#crRail .crr[data-cat="hair"]'); await page.waitForTimeout(1500);
+    const s1 = await A(() => { const C = window.__cdp, pg = document.querySelector('#book .page'), h = document.querySelector('#crCatHair').getBoundingClientRect().top - pg.getBoundingClientRect().top, head = C.mq.joints.head.getWorldPosition(C.camera.position.clone());
+      return {h, cur: document.querySelector('#crRail .crr[aria-current="true"]').dataset.cat, d: C.camera.position.distanceTo(head), view: C.creator.CR.view}; });
+    ok(s1.h >= 0 && s1.h < 160 && s1.cur === 'hair' && s1.view === 'face' && s1.d < 2, `Hair: the panel goes there (${Math.round(s1.h)} px from its top), the camera to the face (${s1.d.toFixed(2)} m)`);
+    await page.focus('#crRail .crr[data-cat="hair"]'); await page.keyboard.press('ArrowDown');
+    const kb = await A(() => document.activeElement.dataset.cat); await page.keyboard.press('Enter'); await page.waitForTimeout(1200);
+    ok(kb === 'species' && await A(() => window.__cdp.creator.CR.cat) === 'species', 'the arrow keys walk the rail and Enter opens a category');
+    await page.click('#crRail .crr[data-cat="clothes"]'); await page.waitForTimeout(2500);
+    ok(await A(() => window.__cdp.state.tab === 'ropa' && document.body.classList.contains('creator') && window.__cdp.creator.CR.view === 'body'), 'Clothes: the Ropa tab, still the creator, the whole body in view');
+    await page.waitForFunction(() => document.querySelectorAll('#crAcc .libItem').length > 40 && document.querySelectorAll('#outfitChips .crol img').length > 20, null, {timeout: 60000}).catch(() => {});
+    const acc = await A(() => ({looks: document.querySelectorAll('#outfitChips .chip .crol img').length, n: document.querySelectorAll('#crAcc .libItem').length, cats: document.querySelectorAll('#crAccCats .chip').length}));
+    ok(acc.looks > 20 && acc.n > 40 && acc.cats >= 5, `outfits show their garments (${acc.looks}); accessories as photos (${acc.n}), by kind (${acc.cats})`);
+    const hat = await A(() => document.querySelector('#crAcc .libItem:not(.blocked)').dataset.id);
+    await A(id => document.querySelector(`#crAcc .libItem[data-id="${id}"]`).click(), hat); await page.waitForTimeout(1500);
+    ok(await A(id => window.__cdp.mq.outfit.some(s => s.id === id) && document.querySelector(`#crAcc .libItem[data-id="${id}"]`).classList.contains('on'), hat), `a tap on an accessory puts it on and the tile says so (${hat})`);
+    // an outfit per occasion
+    await page.click('#outfitChips .chip[data-v="traje"]'); await page.waitForTimeout(2500);
+    await page.click('#crSlots .chip[data-v="deporte"]'); await page.waitForTimeout(600);
+    await page.click('#outfitChips .chip[data-v="deporte"]'); await page.waitForTimeout(2500);
+    const o1 = await A(() => window.__cdp.mq.outfit.map(s => s.id).join());
+    await page.click('#crSlots .chip[data-v="diario"]'); await page.waitForTimeout(1500);
+    const o2 = await A(() => ({ids: window.__cdp.mq.outfit.map(s => s.id).join(), slot: window.__cdp.mq.body.outfitSlot}));
+    ok(o2.slot === 'diario' && /elegantsuit/.test(o2.ids) && !/sportsuit/.test(o2.ids) && /sportsuit/.test(o1), `an outfit per occasion: everyday ${o2.ids} · sport ${o1}`);
+    await page.click('#crSlots .chip[data-v="deporte"]'); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.mq.outfit.some(s => /sportsuit/.test(s.id)) && document.querySelector('#crSlots .chip[data-v="deporte"]').getAttribute('aria-pressed') === 'true'), 'and back to the sport one');
+    await page.screenshot({path: path.join(SHOTS, 'creator-desktop-ropa.png')});
+    // the dice, and Ctrl+Z
+    const b0 = await sig(); await page.click('#crDice'); await page.waitForTimeout(3500); const b1 = await sig();
+    await page.keyboard.press('Control+z'); await page.waitForTimeout(2000); const b2 = await sig();
+    ok(b1 !== b0 && b2 === b0, 'the dice makes someone else; Ctrl+Z brings them back');
+    // the strip: new, rename, duplicate, remove and back, portraits
+    await page.click('#crNew'); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.chars.length === 2 && document.querySelectorAll('#crStage .charcard:not(.crnew)').length === 2 && document.querySelectorAll('#crStage .charcard')[1].classList.contains('on')), 'New: a second character, active, in the strip');
+    page.once('dialog', d => d.accept('Bea')); await page.click('#crStage .charcard.on .charact:nth-child(2)'); await page.waitForTimeout(500);
+    ok(await A(() => window.__cdp.mq.body.name === 'Bea' && [...document.querySelectorAll('#cast .chip')].some(b => /Bea/.test(b.textContent))), 'a character is renamed from its card');
+    await page.click('#crStage .charcard.on .charact:nth-child(1)'); await page.waitForTimeout(2500);
+    ok(await A(() => { const C = window.__cdp.chars; return C.length === 3 && /Bea/.test(C[2].body.name) && C[2].body.name !== 'Bea'; }), 'Duplicate: a copy of her joins the scene');
+    await page.click('#crStage .charcard:nth-child(3) .charact:nth-child(3)'); await page.waitForTimeout(800);
+    const gone = await A(() => window.__cdp.chars.length); await page.click('#hint .undo'); await page.waitForTimeout(1500);
+    ok(gone === 2 && await A(() => window.__cdp.chars.length) === 3, 'removing someone from the strip is undone right there');
+    await page.waitForFunction(() => [...document.querySelectorAll('#crStage .charcard:not(.crnew) img')].every(i => /^data:image\/png/.test(i.src)), null, {timeout: 90000}).catch(() => {});
+    ok(await A(() => [...document.querySelectorAll('#crStage .charcard:not(.crnew) img')].every(i => /^data:image\/png/.test(i.src))), 'everyone on stage gets a colour portrait');
+    // My characters: save, rename, duplicate, delete and back, export all, import
+    page.once('dialog', d => d.accept('Ana')); await page.click('#charSave'); await page.waitForTimeout(2500);
+    ok(await A(() => window.__cdp.SAVED_CHARS().some(c => c.name === 'Ana' && c.thumb) && document.querySelectorAll('#charGrid .charcard').length === 1), 'Save: into My characters, shown in the strip');
+    page.once('dialog', d => d.accept('Ana B')); await page.click('#charGrid .charcard .charact:nth-child(3)'); await page.waitForTimeout(800);
+    await page.click('#charGrid .charcard .charact:nth-child(2)'); await page.waitForTimeout(800);
+    const sv = await A(() => window.__cdp.SAVED_CHARS().map(c => c.name));
+    ok(sv.length === 2 && sv.includes('Ana B') && sv.every(n => /^Ana B/.test(n)), `renamed and copied in My characters (${sv.join(' | ')})`);
+    await page.click('#charGrid .charcard .charact:nth-child(5)'); await page.waitForTimeout(800);
+    const n1 = await A(() => window.__cdp.SAVED_CHARS().length); await page.click('#hint .undo'); await page.waitForTimeout(800);
+    ok(n1 === 1 && await A(() => window.__cdp.SAVED_CHARS().length) === 2, 'deleting from My characters asks nothing and is undone right there');
+    const [dl] = await Promise.all([page.waitForEvent('download', {timeout: 20000}), page.click('#crExportAll')]), file = await dl.path(), arr = JSON.parse(fs.readFileSync(file, 'utf8'));
+    ok(Array.isArray(arr) && arr.length === 2 && arr.every(c => c.neopose === 'character' && c.body), `Export all: one file with every saved character (${dl.suggestedFilename()})`);
+    await page.setInputFiles('#charFile', {name: 'mine.neopose-personaje.json', mimeType: 'application/json', buffer: fs.readFileSync(file)}); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.SAVED_CHARS().length) === 4, 'Import reads that file back');
+    // one search: clothes, faces, hair (Enter takes the first), species with a filter
+    await page.fill('#crQ', 'fedora'); await page.waitForTimeout(1500);
+    await page.click('#crResults .crres[data-id="m_fedora01"]'); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.mq.outfit.some(s => s.id === 'm_fedora01') && document.querySelector('#crResults .crres[data-id="m_fedora01"]').getAttribute('aria-pressed') === 'true'), 'search “fedora”: a tap puts the hat on, and the result says so');
+    await page.fill('#crQ', 'smile'); await page.waitForTimeout(600);
+    await page.click('#crResults .crres[data-type="expr"]'); await page.waitForTimeout(1500);
+    ok(await A(() => window.__cdp.mq.body.expr === 'sonrisa'), 'search “smile”: the face smiles');
+    await page.fill('#crQ', 'afro'); await page.waitForTimeout(600); await page.keyboard.press('Enter'); await page.waitForTimeout(3000);
+    ok(await A(() => window.__cdp.mq.body.hair === 'h-afro01'), 'search “afro” and Enter: the first result is put on');
+    await page.fill('#crQ', 'fox'); await page.waitForTimeout(800);
+    const r = await A(() => ({n: document.querySelectorAll('#crResults .crres').length, types: [...new Set([...document.querySelectorAll('#crResults .crres')].map(b => b.dataset.type))].sort().join(), filt: document.querySelectorAll('#crFilt .chip').length}));
+    ok(r.n >= 4 && /head/.test(r.types) && /species/.test(r.types) && r.filt >= 3, `search “fox”: ${r.n} results (${r.types}) and filters by library`);
+    await page.click('#crFilt .chip[data-v="species"]'); await page.waitForTimeout(300);
+    ok(await A(() => [...document.querySelectorAll('#crResults .crres')].every(b => b.dataset.type === 'species')), 'a filter keeps one library');
+    await page.screenshot({path: path.join(SHOTS, 'creator-desktop-search.png')});
+    // a look before choosing: a hair colour under the mouse is tried on, and taken off when the mouse goes
+    await page.fill('#crQ', ''); await page.click('#crRail .crr[data-cat="hair"]'); await page.waitForTimeout(1500);
+    const c0 = await A(() => window.__cdp.mq.body.hairCol); await page.hover('#hairSw button[data-c="#3d55b0"]'); await page.waitForTimeout(200);
+    const c1 = await A(() => window.__cdp.mq.body.hairCol); await page.mouse.move(400, 300); await page.waitForTimeout(200); const c2 = await A(() => window.__cdp.mq.body.hairCol);
+    ok(c1 === '#3d55b0' && c2 === c0, `hovering a hair colour tries it on (${c0} → ${c1} → ${c2})`);
+    await page.fill('#crQ', 'fox'); await page.waitForTimeout(500); await page.click('#crFilt .chip[data-v="species"]').catch(() => {});
+    await page.click('#crResults .crres[data-id="zorro"]'); await page.waitForTimeout(3500);
+    ok(await A(() => window.__cdp.mq.body.species === 'zorro' && document.querySelector('#speciesChips .chip[data-v="zorro"]').getAttribute('aria-pressed') === 'true'), 'search “fox” → Species: a tap makes a fox, as its chip would');
+    await page.fill('#crQ', ''); await page.click('#crRail .crr[data-cat="body"]'); await page.waitForTimeout(3000);
+    await page.screenshot({path: path.join(SHOTS, 'creator-desktop-cuerpo.png')});
+    // the turntable, and leaving
+    await page.click('#crSpin'); await page.waitForTimeout(300);
+    const spin = await A(() => window.__cdp.controls.autoRotate && document.querySelector('#crSpin').getAttribute('aria-pressed') === 'true');
+    await goTab(page, 'pose'); await page.waitForTimeout(800);
+    ok(spin && await A(() => !document.body.classList.contains('creator') && !window.__cdp.controls.autoRotate && getComputedStyle(document.querySelector('#crRail')).display === 'none'), 'the turntable turns; leaving for Pose stops it and puts the creator away');
+    ok(!page.errors.filter(e => !noise(e)).length, 'no errors' + (page.errors.filter(e => !noise(e)).length ? ': ' + page.errors.filter(e => !noise(e)).join(' | ') : ''));
+    await page.context().close();
+    // a phone: the rail and the strip in the sheet, the character in sight
+    const ph = await open(browser, {viewport: {width: 390, height: 844}, mobile: true}), P = (f, a) => ph.evaluate(f, a);
+    await goTab(ph, 'cuerpo'); await ph.waitForTimeout(3000);
+    const m = await P(() => { const r = document.querySelector('#crRail'), pg = document.querySelector('#book .page'), c = document.querySelector('#crCam').getBoundingClientRect();
+      return {x: document.documentElement.scrollWidth - innerWidth, px: pg.scrollWidth - pg.clientWidth, inSheet: pg.contains(r) && pg.contains(document.querySelector('#crGallery')), btn: Math.min(...[...r.querySelectorAll('.crr')].map(b => b.getBoundingClientRect().height)),
+        cam: c.width >= 40 && c.right <= innerWidth && c.left > 0, canvas: document.querySelector('#gl').getBoundingClientRect().height, top: document.querySelector('header.top').getBoundingClientRect().height}; });
+    ok(m.x <= 0 && m.px <= 0 && m.top < 60, `phone: no sideways scroll (page ${m.x}, sheet ${m.px}), the top bar on one line (${Math.round(m.top)} px)`);
+    ok(m.inSheet && m.btn >= 40 && m.cam && m.canvas > 200, `phone: the rail and the strip are in the sheet (rail buttons ${Math.round(m.btn)} px), the character in sight (${Math.round(m.canvas)} px) with its camera buttons`);
+    await ph.screenshot({path: path.join(SHOTS, 'creator-phone-cuerpo.png')});
+    await ph.click('#crRail .crr[data-cat="face"]'); await ph.waitForTimeout(1500);
+    const f = await P(() => { const pg = document.querySelector('#book .page').getBoundingClientRect(), r = document.querySelector('#crRail').getBoundingClientRect(), h = document.querySelector('#crCatFace').getBoundingClientRect(); return {stuck: Math.abs(r.top - pg.top) < 12 || r.top >= pg.top - 8, h: h.top - r.bottom, view: window.__cdp.creator.CR.view}; });
+    ok(f.stuck && f.h >= -4 && f.h < 120 && f.view === 'face', `phone: Face scrolls the sheet there under the rail, which stays (${Math.round(f.h)} px), and looks at the face`);
+    await ph.screenshot({path: path.join(SHOTS, 'creator-phone-face.png')});
+    await ph.fill('#crQ', 'sombrero'); await ph.waitForTimeout(2500);
+    ok(await P(() => document.querySelectorAll('#crResults .crres').length > 0), 'phone: the search finds things too');
+    await ph.click('#crRail .crr[data-cat="clothes"]'); await ph.waitForTimeout(3000);
+    await ph.screenshot({path: path.join(SHOTS, 'creator-phone-ropa.png')});
+    ok(await P(() => window.__cdp.state.tab === 'ropa' && document.body.classList.contains('creator')), 'phone: Clothes from the rail');
+    ok(!ph.errors.filter(e => !noise(e)).length, 'phone: no errors' + (ph.errors.filter(e => !noise(e)).length ? ': ' + ph.errors.filter(e => !noise(e)).join(' | ') : ''));
+    await ph.context().close();
+  },
   async mobile(browser) {
     for (const lang of ['en', 'es']) {
       const page = await open(browser, {lang, viewport: {width: 390, height: 844}, mobile: true});

@@ -1321,6 +1321,126 @@ a.kofi{color:var(--blue);font-weight:600;text-decoration:none;border-bottom:1px 
 a.kofi:hover{border-bottom-style:solid}
 .snaplist{display:flex;flex-direction:column;gap:4px;margin:6px 0;max-height:210px;overflow:auto}
 .snaprow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--rule)}
+
+/* ======================= the character creator: Personajes › Cuerpo and Ropa (20e-creator) =======================
+   wide screens: the rail of categories on the left, the character in the middle, the strip of characters under it,
+   the options on the right; phones: the rail and the strip go into the sheet, the camera buttons stay on the canvas */
+.crrail,.crgallery,.crcam,.crtop{display:none}
+body.creator .crtop{display:block}
+body.creator section[data-tab] > .secnav,body.creator .modebar{display:none}
+@media (min-width:861px){
+  body.creator .main{grid-template-columns:78px minmax(0,1fr) min(400px,40vw);grid-template-rows:minmax(0,1fr) auto}
+  body.creator .crrail{display:flex;flex-direction:column;gap:6px;grid-column:1;grid-row:1/3;overflow-y:auto;min-height:0;padding:2px 3px 8px;scrollbar-width:none}
+  body.creator .stage-wrap{grid-column:2;grid-row:1}
+  body.creator .book{grid-column:3;grid-row:1/3}
+  body.creator .crgallery{display:block;grid-column:2;grid-row:2}
+}
+/* the rail: big icon buttons, the current one inked */
+.crr{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;flex:none;padding:9px 3px 7px;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--page);color:var(--ink-soft);cursor:pointer;font:600 11.5px/1.15 var(--f-body);text-align:center;box-shadow:var(--lift);transition:background var(--dur-1),color var(--dur-1),border-color var(--dur-1)}
+.crr svg,.crcat h3 svg,.crres > svg:not([stroke]){fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.crr svg{width:28px;height:28px}
+.crr:hover{color:var(--ink);border-color:var(--ink)}
+.crr[aria-current="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+/* a category in the panel: its heading on a wash, its dice at the end */
+.crcat{display:flex;align-items:center;gap:8px;margin:20px -8px 6px -18px;padding:7px 8px 7px 14px;border-radius:10px 14px 12px 8px;background:var(--blue-wash);scroll-margin-top:8px}
+.crcat:first-child,.secnav + .crcat{margin-top:0}
+.crcat h3{flex:1;min-width:0;margin:0!important;display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;font-size:21px}
+.crcat h3 svg{width:26px;height:26px;flex:none;color:var(--blue)}
+.crcat h3 span{margin-left:0}
+.crdice{flex:none;background:var(--page)}
+.crdice svg{width:18px;height:18px}
+.crblock{padding:2px 0 10px}
+.finetag{flex:none;font:600 10px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border:1px dashed var(--line);border-radius:999px;padding:3px 7px}
+details.sec.fine > summary h3{font-size:16px;color:var(--ink-soft)}
+/* options as pictures: body types, species, outfits */
+.crtiles:not(.spfam){display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+.spfam.crtiles > .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.spfam.crtiles .famlbl{grid-column:1/-1}
+.crtiles .chip{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:6px 4px;border-radius:8px;font-size:11.5px;line-height:1.15;text-align:center;min-height:0;min-width:0}
+.crtiles .chip[aria-pressed="true"]{background:var(--blue-wash);color:var(--ink);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.crth{display:block;width:100%;aspect-ratio:4/5;background:var(--ink);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.crth.pending{background:var(--rule);-webkit-mask:none;mask:none;border-radius:4px}
+.crtiles .chip[aria-pressed="true"] .crth{background:var(--blue)}
+.crsw{display:block;flex:none;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--ink);background:conic-gradient(from -40deg,var(--c0) 0 56%,var(--c1) 0 80%,var(--c2) 0)}
+.crcoats .chip{display:inline-flex;align-items:center;gap:6px}
+.crcoats .crsw{width:18px;height:18px}
+.crol{display:flex;gap:1px;width:100%;aspect-ratio:3/2;border-radius:4px;overflow:hidden;background:var(--rule)}
+.crol img{flex:1;min-width:0;height:100%;object-fit:cover;background:var(--stage)}
+body.creator .hairgrid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
+body.creator .hairsw .swatches button{width:28px;height:28px}
+body.creator #hairColorBox{margin-bottom:8px}
+/* faces */
+.crgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.crface{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px 5px;border:1.5px solid var(--line);border-radius:8px;background:var(--page);cursor:pointer;font:600 11px/1.15 var(--f-body);color:var(--ink);min-width:0}
+.crface svg{width:44px;height:44px}
+.crface:hover{border-color:var(--ink)}
+.crface[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-wash);color:var(--blue)}
+.crslots{margin-bottom:2px}
+.cracc{max-height:none}
+/* the camera on the canvas */
+body.creator .crcam{display:flex;flex-direction:column;gap:6px;position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:3}
+.crcam .btn{background:var(--page);width:40px;height:40px;justify-content:center;padding:0;box-shadow:var(--lift);border-radius:50%}
+.crcam .btn svg{width:20px;height:20px}
+.crcam .btn[aria-pressed="true"]{background:var(--ink);color:var(--page)}
+/* Tus personajes */
+.crgallery{min-width:0;background:var(--page);border:1.5px solid var(--ink);border-radius:3px;box-shadow:var(--lift);padding:6px 10px 8px}
+.crghead{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap}
+.crgtitle{margin:0;font:700 19px/1.1 var(--f-hand)}
+.crgtoggle{border:0;background:none;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:2px 0}
+.crgtoggle::after{content:"";width:7px;height:7px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);transition:transform .15s;margin-top:-3px}
+.crgallery.folded .crgtoggle::after{transform:rotate(-45deg);margin-top:0}
+.crgtools{display:flex;flex-wrap:wrap;gap:5px;margin-left:auto}
+.crgrow{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 2px;scrollbar-width:thin}
+.crgallery.folded .crgrow{display:none}
+.crgroup{flex:none;display:flex;flex-direction:column;min-width:0}
+.crgroup .lbl{margin:2px 0 4px}
+.crgcards,#crGallery .chargrid{display:flex;gap:6px;align-items:flex-start}
+#crGallery .charcard{width:86px;flex:none;padding:4px 3px}
+#crGallery .charcard .th.img{width:100%;height:92px;aspect-ratio:auto;object-fit:contain;border-radius:4px}
+#crGallery .charcard img.pending{background:var(--rule)}
+#crGallery .charcard > span{font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#crGallery .charcard.on{border-color:var(--blue);background:var(--blue-wash);box-shadow:inset 0 0 0 1px var(--blue)}
+#crGallery .characts{flex-wrap:wrap}
+#crGallery .empty{max-width:230px;font-size:11.5px}
+.crnew{border-style:dashed;align-self:stretch;justify-content:center}
+/* the search over the libraries */
+body.creator .crtop{margin:-4px 0 8px}
+@media (min-width:861px){ body.creator .crtop{position:sticky;top:-16px;z-index:5;margin:-16px -8px 8px -12px;padding:12px 8px 8px 12px;background:var(--page);border-bottom:1px dashed var(--rule)} }
+.crsearch{display:flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:999px;padding:3px 12px;background:var(--paper)}
+.crsearch svg{width:16px;height:16px;flex:none;color:var(--ink-soft)}
+.crsearch input{flex:1;min-width:0;border:0;background:transparent;padding:5px 0;font-size:14px;outline:none}
+.crsearch:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-wash)}
+.crfilt{margin:6px 0 0}
+.crfilt .chip{font-size:11.5px;padding:3px 9px;border-radius:999px;border-width:1px}
+.crresults{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;margin:8px 0 4px;padding:8px;border:1.5px dashed var(--line);border-radius:8px;max-height:min(46vh,430px);overflow:auto;overscroll-behavior:contain}
+.crresults > .empty{grid-column:1/-1}
+.crres{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border:1.5px solid var(--line);border-radius:6px;background:var(--page);cursor:pointer;color:var(--ink);font:inherit;min-width:0}
+.crres img,.crres .crth,.crres > svg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;background:var(--stage)}
+.crres .crth{background:var(--ink)}
+.crres > svg{padding:16%}
+.crres .crsw{width:54px;height:54px;margin:7px 0}
+.crres .lt{font-size:10.5px;line-height:1.15;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;width:100%}
+.crres .ty{font:9.5px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)}
+.crres:hover{border-color:var(--ink)}
+.crres[aria-pressed="true"]{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.crres.blocked{opacity:.4;filter:grayscale(1)}
+@media (pointer:coarse){ .crr{min-height:48px} .crgtools .btn{min-height:40px} .crfilt .chip{min-height:36px} }
+/* phones: the rail is a row of icons that stays at the top of the sheet; the strip folds under its title */
+@media (max-width:860px){
+  body.creator .crrail{display:flex;position:sticky;top:-6px;z-index:5;gap:4px;overflow-x:auto;margin:-6px -14px 8px -30px;padding:6px 10px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule);scrollbar-width:none}
+  body.creator .crrail::-webkit-scrollbar{display:none}
+  body.creator .crrail{-webkit-mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000);mask:linear-gradient(90deg,#000 calc(100% - 28px),#0000)}
+  body.creator .crrail.end{-webkit-mask:none;mask:none}
+  .crr{width:auto;min-width:64px;padding:5px 6px 4px;box-shadow:none;font-size:11px}
+  .crr svg{width:24px;height:24px}
+  body.creator .crgallery{display:block;border:0;border-bottom:1px dashed var(--line);border-radius:0;box-shadow:none;background:none;padding:0 0 8px;margin-bottom:8px}
+  .crgtools .btn > span{display:none}
+  .crgtools .btn{padding:6px 8px}
+  body.creator .crcam{top:auto;bottom:56px;transform:none;right:10px}
+  .crcat{margin-left:-14px;margin-right:-4px}
+}
+body.creator .hint:not(.toast){display:none}
+#crGallery .charcard > .crplus{font:700 36px/1 var(--f-hand);color:var(--ink-soft);height:92px;display:grid;place-items:center}
 </style>
 </head>
 <body>
@@ -1355,6 +1475,7 @@ a.kofi:hover{border-bottom-style:solid}
   </header>
 
   <div class="main">
+    <nav class="crrail" id="crRail" aria-label="Categorías del personaje"></nav>
     <div class="stage-wrap">
       <div id="viewport">
         <canvas id="gl"></canvas>
@@ -1464,6 +1585,13 @@ a.kofi:hover{border-bottom-style:solid}
           <button class="btn small primary" id="ihInstall" hidden>Instalar</button>
           <button class="gx" id="ihClose" aria-label="Cerrar">×</button>
         </div>
+        <div class="crcam" id="crCam" role="toolbar" aria-label="Vista del personaje" aria-orientation="vertical">
+          <button class="btn icon" type="button" id="crFace" aria-pressed="false" title="Acercar a la cara" aria-label="Acercar a la cara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="6"/><path d="M10 10v.5M14 10v.5M10 13.5c1.2.8 2.8.8 4 0M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/></svg></button>
+          <button class="btn icon" type="button" id="crBody" aria-pressed="false" title="Ver todo el cuerpo" aria-label="Ver todo el cuerpo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7m0 0-3 7m3-7 3 7M7 10l5-1 5 1M3 7V3h3M21 7V3h-3M3 17v4h3M21 17v4h-3"/></svg></button>
+          <button class="btn icon" type="button" id="crRotL" title="Girar a la izquierda" aria-label="Girar a la izquierda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/></svg></button>
+          <button class="btn icon" type="button" id="crRotR" title="Girar a la derecha" aria-label="Girar a la derecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v4.5h-4.5"/></svg></button>
+          <button class="btn icon" type="button" id="crSpin" aria-pressed="false" title="Plataforma giratoria" aria-label="Plataforma giratoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="8" ry="3"/><path d="M12 4v9M9.5 6.5 12 4l2.5 2.5"/></svg></button>
+        </div>
         <div class="hint" id="hint" role="status">Arrastra <b>●</b> manos y pies y <i>●</i> el cuerpo · toca una pieza o un punto para girarla</div>
       </div>
     </div>
@@ -1482,6 +1610,15 @@ a.kofi:hover{border-bottom-style:solid}
         <button class="tab" role="tab" data-tab="comic" aria-selected="false" title="Cómic y manga: páginas, viñetas y bocadillos"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z"/></svg><span>Cómic</span></button>
       </div>
       <div class="page">
+        <div class="crtop" id="crTop">
+          <div class="crsearch" role="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input type="search" id="crQ" placeholder="Buscar ropa, pelo, cabezas, especies, cuerpos…" aria-label="Buscar en las bibliotecas: ropa, pelo, cabezas, especies, cuerpos, expresiones y personajes" aria-controls="crResults" autocomplete="off">
+          </div>
+          <div class="chips crfilt" id="crFilt" role="group" aria-label="Filtrar la búsqueda" hidden></div>
+          <p class="sr" id="crCount" aria-live="polite"></p>
+          <div class="crresults" id="crResults" role="group" aria-label="Resultados" hidden></div>
+        </div>
         <section data-tab="pose">
           <div class="quick">
             <button class="btn small" id="mirrorBtn" title="Espejar pose">Espejar</button>
@@ -1573,16 +1710,13 @@ a.kofi:hover{border-bottom-style:solid}
         </section>
 
         <section data-tab="cuerpo" hidden>
-          <details class="sec" data-sec="personajes" open>
-            <summary><h3>Mis personajes <span>en este dispositivo, para cualquier proyecto</span></h3></summary>
-            <div class="pose-grid chargrid" id="charGrid"></div>
-            <div class="row"><button class="btn small" id="charSave">Guardar este personaje</button><button class="btn small" id="charImport">Importar…</button></div>
-            <input type="file" id="charFile" accept=".json,application/json" multiple hidden>
-            <p class="note">Se guardan en este dispositivo y sirven para cualquier proyecto (un guion que los nombra los usa). Para que un cambio llegue a todos los planos y viñetas, añádelo también al reparto en Biblia. Toca una tarjeta para ponerlo en la escena; con sus botones lo aplicas al personaje activo, lo exportas o lo borras.</p>
-          </details>
+          <div class="crcat" data-cat="body" id="crCatBody">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3c-1.5 2.5-1 5 0 6.5L7 21m9-18c1.5 2.5 1 5 0 6.5l1 11.5M8 9.5h8M9 15h6"/></svg>Cuerpo <span>tipo, complexión y proporciones</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="body" title="Cuerpo al azar" aria-label="Cuerpo al azar"></button>
+          </div>
           <details class="sec" data-sec="tipo" open>
             <summary><h3>Tipo de cuerpo <span id="bodyWho"></span></h3></summary>
-            <div class="chips" id="bodyChips"></div>
+            <div class="chips crtiles" id="bodyChips"></div>
             <p class="note">Cambia sexo, edad y estilo, y empieza de cero la complexión. Para cambiar solo músculo y grasa, usa Complexión.</p>
             <div class="canon"><strong id="headsOut">7,5</strong><span>cabezas de alto · real ≈ 7–7½ · niño ≈ 5–6 · anime ≈ 8 · chibi 2–3</span></div>
           </details>
@@ -1591,8 +1725,8 @@ a.kofi:hover{border-bottom-style:solid}
             <div class="pose-grid buildgrid" id="buildGrid"></div>
             <p class="note">Mantiene el sexo y la edad del personaje. Afina cada parte justo debajo, en Proporciones → Ajustes avanzados.</p>
           </details>
-          <details class="sec" data-sec="prop" open>
-            <summary><h3>Proporciones <span>edad, sexo, altura, músculo y grasa</span></h3></summary>
+          <details class="sec fine" data-sec="prop">
+            <summary><h3>Proporciones <span>edad, sexo, altura, músculo y grasa</span></h3><span class="finetag">Ajuste fino</span></summary>
             <div id="bodySliders"></div>
             <details class="more"><summary>Estilización (cabeza, piernas, manos…)</summary>
               <div id="styleSliders"></div>
@@ -1601,14 +1735,36 @@ a.kofi:hover{border-bottom-style:solid}
               <div id="advBody"></div>
             </details>
           </details>
-          <details class="sec" data-sec="extremidades">
-            <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
-            <div id="limbsBox"></div>
-            <p class="note">El muñón se cierra con su forma y la ropa lo acompaña. Con prótesis, se posa como el resto del cuerpo. Silla de ruedas, muletas, andador y bastón: Escena → Objetos.</p>
+          <div class="crcat" data-cat="face" id="crCatFace">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9 10v.5M15 10v.5M8.5 14.5c1.8 2 5.2 2 7 0"/></svg>Cara <span>expresión</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="face" title="Expresión al azar" aria-label="Expresión al azar"></button>
+          </div>
+          <div class="crblock">
+            <div class="crgrid crfaces" id="crExpr" role="group" aria-label="Expresión"></div>
+            <p class="note" id="crExprNote"></p>
+            <details class="more" id="crExprFine"><summary>Ajuste fino: intensidad</summary><div id="crExprAmtBox"></div></details>
+          </div>
+          <div class="crcat" data-cat="hair" id="crCatHair">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 20C4 12 6 5 12 5s8 7 6.5 15"/><path d="M7 10c3 0 6-1.5 8-4M12 5c-1 4-.5 9 1 15"/></svg>Pelo <span>peinado y color</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="hair" title="Pelo al azar" aria-label="Pelo al azar"></button>
+          </div>
+          <details class="sec" data-sec="pelo" open>
+            <summary><h3>Pelo <span id="hairWho"></span></h3></summary>
+            <div id="hairColorBox" hidden>
+              <p class="lbl">Color</p>
+              <div class="hairsw"><div class="swatches" id="hairSw"></div><input type="color" id="hairColor" aria-label="Color del pelo"></div>
+            </div>
+            <div class="hairgrid" id="hairGrid"></div>
+            <p class="note" id="hairNote" hidden></p>
+            <p class="note">Peinados de MakeHuman (CC0): siguen la cabeza, la edad y la pose.</p>
           </details>
+          <div class="crcat" data-cat="species" id="crCatSpecies">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14.5" cy="6" r="1.8"/><circle cx="18" cy="10" r="1.8"/><path d="M7.5 17.5c0-3.2 2.1-5.5 4.7-5.5s4.6 2.3 4.6 5.5c0 2-1.9 3-4.6 2.5-2.8.5-4.7-.5-4.7-2.5Z"/></svg>Especie <span>cabeza, pelaje y avatar</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="species" title="Especie al azar" aria-label="Especie al azar"></button>
+          </div>
           <details class="sec" data-sec="especie" open>
             <summary><h3>Especie</h3></summary>
-            <div class="chips" id="speciesChips"></div>
+            <div class="chips crtiles" id="speciesChips"></div>
             <div id="headStyle" hidden>
               <div><p class="lbl">Cabeza</p>
                 <div class="chips" id="headModelChips"></div></div>
@@ -1632,7 +1788,7 @@ a.kofi:hover{border-bottom-style:solid}
             <summary><h3>Pelaje y marcas</h3></summary>
             <div id="coatBox" hidden>
               <div id="fluffBox"></div>
-              <div class="chips" id="coatChips"></div>
+              <div class="chips crcoats" id="coatChips"></div>
               <div id="coatEdit">
                 <div class="coatcols" id="coatCols"></div>
                 <p class="lbl">Marcas</p>
@@ -1642,16 +1798,6 @@ a.kofi:hover{border-bottom-style:solid}
                 <p class="note">Para una hoja de referencia en colores planos, usa el acabado <b>Solo línea</b> (Estático → Dibujo). El pelaje y las marcas también van en el modelo 3D exportado (GLB).</p>
               </div>
             </div>
-          </details>
-          <details class="sec" data-sec="pelo" open>
-            <summary><h3>Pelo <span id="hairWho"></span></h3></summary>
-            <div class="hairgrid" id="hairGrid"></div>
-            <p class="note" id="hairNote" hidden></p>
-            <div id="hairColorBox" hidden>
-              <p class="lbl">Color</p>
-              <div class="hairsw"><div class="swatches" id="hairSw"></div><input type="color" id="hairColor" aria-label="Color del pelo"></div>
-            </div>
-            <p class="note">Peinados de MakeHuman (CC0): siguen la cabeza, la edad y la pose.</p>
           </details>
           <details class="sec" data-sec="avatar">
             <summary><h3>Avatar importado <span>VRM · GLB · FBX</span></h3></summary>
@@ -1666,13 +1812,29 @@ a.kofi:hover{border-bottom-style:solid}
             <input type="file" id="avFile" accept=".vrm,.glb,.gltf,.fbx" hidden>
             <p class="note">También puedes soltar el archivo sobre el lienzo. Necesita un esqueleto humanoide (caderas, columna, brazos y piernas).</p>
           </details>
+          <div class="crcat" data-cat="limbs" id="crCatLimbs">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6.5l-1.5 5L9 21M15 3v6.5l1 3.5"/><path d="M14.5 13h3l-1 8h-2.5"/></svg>Extremidades <span>amputaciones y prótesis</span></h3>
+          </div>
+          <details class="sec" data-sec="extremidades" open>
+            <summary><h3>Extremidades <span>amputaciones y prótesis</span></h3></summary>
+            <div id="limbsBox"></div>
+            <p class="note">El muñón se cierra con su forma y la ropa lo acompaña. Con prótesis, se posa como el resto del cuerpo. Silla de ruedas, muletas, andador y bastón: Escena → Objetos.</p>
+          </details>
           <p class="note foot-note">Cuerpo basado en la malla anatómica de MakeHuman (dominio público, CC0). Edad, género, musculatura, grasa y altura mezclan sus modelos medidos; la estilización estira el esqueleto.</p>
         </section>
 
         <section data-tab="ropa" hidden>
+          <div class="crcat" data-cat="clothes" id="crCatClothes">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 4 6l2 4 2-1v12h8V9l2 1 2-4-5-3a3 3 0 0 1-6 0Z"/></svg>Ropa <span>conjuntos y armario</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="clothes" title="Conjunto al azar" aria-label="Conjunto al azar"></button>
+          </div>
+          <div class="crblock">
+            <p class="lbl" id="crSlotsLbl">Conjunto para</p>
+            <div class="chips seg crslots" id="crSlots" role="group" aria-labelledby="crSlotsLbl"></div>
+          </div>
           <details class="sec" data-sec="conj" open>
             <summary><h3>Conjuntos</h3></summary>
-            <div class="chips" id="outfitChips"></div>
+            <div class="chips crtiles" id="outfitChips"></div>
             <div class="row" style="margin-top:8px">
               <button class="btn small" id="outfitRandom">Al azar</button>
               <button class="btn small" id="outfitNone">Desvestir</button>
@@ -1681,17 +1843,25 @@ a.kofi:hover{border-bottom-style:solid}
               <div class="row"><button class="btn small" id="outfitAll">Vestir a todos igual</button><button class="btn small" id="outfitEachRandom">Cada uno al azar</button></div>
             </details>
           </details>
-          <details class="sec" data-sec="puestas" open>
-            <summary><h3>Ropa puesta <span>toca una prenda para cambiar su color</span></h3></summary>
-            <div id="garmentList"></div>
-            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
-            <p class="note dropnote">También puedes arrastrar un color hasta una prenda o el pelo en el lienzo.</p>
-          </details>
           <details class="sec" data-sec="armario" open>
             <summary><h3>Armario <span>toca para poner o quitar</span></h3></summary>
             <input type="search" id="ropaSearch" class="search" placeholder="Buscar prenda…" aria-label="Buscar prenda">
             <div id="garmentAdd"></div>
           </details>
+          <details class="sec fine" data-sec="puestas" open>
+            <summary><h3>Ropa puesta <span>toca una prenda para cambiar su color</span></h3><span class="finetag">Ajuste fino</span></summary>
+            <div id="garmentList"></div>
+            <div class="dropcolor" id="dropColors" aria-label="Colores"></div>
+            <p class="note dropnote">También puedes arrastrar un color hasta una prenda o el pelo en el lienzo.</p>
+          </details>
+          <div class="crcat" data-cat="acc" id="crCatAcc">
+            <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.5c3 2 15 2 18 0M6 17l2-9.5C8.3 6 10 5.5 12 5.5s3.7.5 4 2l2 9.5M7.3 12.5c3 1 6.4 1 9.4 0"/></svg>Accesorios <span>sombreros, joyas, guantes y más</span></h3>
+            <button class="btn icon small crdice" type="button" data-dice="acc" title="Accesorios al azar" aria-label="Accesorios al azar"></button>
+          </div>
+          <div class="crblock">
+            <div class="chips crfilt" id="crAccCats" role="group" aria-label="Tipo de accesorio"></div>
+            <div class="lib cracc" id="crAcc"></div>
+          </div>
           <p class="note foot-note">469 prendas de la comunidad MakeHuman (CC0) ajustadas a la malla: siguen cualquier edad, complexión, proporción y pose. La piel que cubren no se dibuja.</p>
         </section>
 
@@ -1926,6 +2096,25 @@ a.kofi:hover{border-bottom-style:solid}
         </section>
       </div>
     </aside>
+    <div class="crgallery" id="crGallery">
+      <div class="crghead">
+        <h2 class="crgtitle" id="crGalTitle"><button class="crgtoggle" type="button" id="crGalToggle" aria-expanded="true" aria-controls="crGalRow">Tus personajes</button></h2>
+        <div class="crgtools" role="toolbar" aria-label="Tus personajes">
+          <button class="btn small" type="button" id="crNew" title="Un personaje nuevo en la escena"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo</span></button>
+          <button class="btn small magic" type="button" id="crDice" title="Al azar: cuerpo, pelo, cara y ropa del personaje activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.1" fill="currentColor"/></svg><span>Al azar</span></button>
+          <button class="btn small" type="button" id="charSave" title="Guardar el personaje activo en Mis personajes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4Z"/></svg><span>Guardar este personaje</span></button>
+          <button class="btn small" type="button" id="crExport" title="Exportar el personaje activo a un archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Exportar</span></button>
+          <button class="btn small" type="button" id="charImport" title="Personajes de NEOPOSE (.json) o avatares VRM, GLB y FBX"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg><span>Importar…</span></button>
+          <button class="btn small" type="button" id="crExportAll" title="Todos los de Mis personajes en un archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h11v13M5 7h11v14H5zM10.5 10v7M8 14.5l2.5 2.5 2.5-2.5"/></svg><span>Exportar todos</span></button>
+          <input type="file" id="charFile" accept=".json,application/json,.vrm,.glb,.gltf,.fbx" multiple hidden>
+        </div>
+      </div>
+      <div class="crgrow" id="crGalRow">
+        <div class="crgroup"><p class="lbl" id="crStageLbl">En escena</p><div class="crgcards" id="crStage" role="group" aria-labelledby="crStageLbl"></div></div>
+        <div class="crgroup"><p class="lbl" id="crMineLbl">Mis personajes</p><div class="pose-grid chargrid" id="charGrid" role="group" aria-labelledby="crMineLbl"></div></div>
+        <div class="crgroup" id="crCastBox"><p class="lbl" id="crCastLbl">Reparto del proyecto</p><div class="crgcards" id="crCast" role="group" aria-labelledby="crCastLbl"></div></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4458,6 +4647,7 @@ function renderCast() {
   list.appendChild(c2);
   $('#bodyWho').textContent = tr('personaje {n}', {n: active + 1});
   $('#delChar').disabled = chars.length <= 1; $('#delChar').textContent = tr('Quitar a {x}', {x: charLabel(mq)});
+  if (typeof crRenderStage === 'function') crRenderStage();
 }
 
 /* ---------- applying poses to the cast ---------- */
@@ -4800,6 +4990,7 @@ function pushHistory() {
   const sig = chars.length + JSON.stringify(chars.map(m => [m.body.species, m.body.headStyle, m.heads, m.size]));
   if (hist.castSig && sig !== hist.castSig) reframeSoon();
   hist.castSig = sig;
+  if (typeof crChanged === 'function') crChanged();
 }
 function restore(s) {
   const o = typeof s === 'string' ? JSON.parse(s) : s;
@@ -4996,12 +5187,14 @@ function showTab(id) {
   $$('.page section').forEach(s => s.hidden = s.dataset.tab !== id);
   state.tab = id;
   // Biblia's turntable is for showing a character off: leaving the tab stops it (the canvas would keep spinning under other work)
-  if (id !== 'biblia' && controls.autoRotate) { controls.autoRotate = false; const s = $('#bbSpin'); if (s) s.checked = false; }
+  if (id !== 'biblia' && !CR_TABS.has(id) && controls.autoRotate) { controls.autoRotate = false; const s = $('#bbSpin'); if (s) s.checked = false; }
   store.set('cdp.tab', id);
   // the garment library (1.3 MB) is fetched the first time it is shown, not at start; it is also drawn then when the palette or Práctica fetched it first
   if (id === 'ropa' && typeof renderLibrary === 'function' && typeof ROPA !== 'undefined' && (!ROPA.catalog || !$('#garmentAdd').childElementCount)) renderLibrary();
   // Estático's comic page shows with its tab (and the 3D canvas with the others)
   if (typeof showPage === 'function') showPage(id === 'comic');
+  // Cuerpo and Ropa are the character creator's (see 20e-creator)
+  if (typeof creatorSync === 'function') creatorSync();
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); setPanel(true); });
 /* collapsible sections remember whether they were open */
@@ -5053,9 +5246,10 @@ $$('.mtnote').forEach(n => n.hidden = !LANGS_MACHINE.has(LANG));
   $('#viewport').addEventListener('pointerdown', () => { if (++n === 3) $('#hint').classList.add('quiet'); store.set('cdp.hintN', n); }); }
 
 /* body */
+const CR_TABS = new Set(['cuerpo', 'ropa']);  // the tabs the character creator lays out (20e-creator)
 let bodyEls = {};
 // what a character keeps when a body type is picked: who they are (name, cast link, species, head, coat, tail, face, hair), their limbs and prostheses and an imported avatar
-const KEEP_ON_TYPE = ['castId','name','species','headStyle','kemo','snout','headModel','feet','coat','tail','tailMove','pads','paws','fluff','expr','exprAmt','hair','hairCol','limbs','avatar','avatarScale'];
+const KEEP_ON_TYPE = ['castId','name','outfits','outfitSlot','species','headStyle','kemo','snout','headModel','feet','coat','tail','tailMove','pads','paws','fluff','expr','exprAmt','hair','hairCol','limbs','avatar','avatarScale'];
 function buildBodyUI() {
   chips($('#bodyChips'), Object.entries(BODY_PRESETS).map(([k, v]) => [k, v.label]), mq.bodyPreset, id => {
     const nb = bodyOf(id); for (const k of KEEP_ON_TYPE) if (mq.body[k] !== undefined) nb[k] = mq.body[k];
@@ -5516,7 +5710,8 @@ function resize() {
 }
 new ResizeObserver(resize).observe(vp);
 function updateHandles() {
-  const show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  // (none in the character creator: it shapes who they are, the posing is Estático's and Animación's)
+  const show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec && !CR.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const n of DOT_JOINTS) {
     const d = jointDots[n], j = mq.joints[n];
     d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n.startsWith('ear') && !mq.hasEars) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
@@ -5708,7 +5903,7 @@ function boot(data, saved) {
   initTour(); initAvatars();
   $$('#ikMode .chip').forEach(c => c.onclick = () => setIK(c.dataset.v === 'ik')); setIK(state.ik);
   $('#dotsChk').checked = state.dots; $('#dotsChk').onchange = e => { state.dots = e.target.checked; store.set('cdp.dots', state.dots); };
-  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI(); buildComicUI(); buildBibleUI(); buildFilmPanelUI(); buildSupportUI(); buildBackupsUI();
+  initThumbs(); buildPoseGrid(); buildMyPoses(); buildUX(); buildWeb(); buildRefsUI(); buildScriptUI(); buildPaper(); buildFileUI(); buildComicUI(); buildBibleUI(); buildCreatorUI(); buildFilmPanelUI(); buildSupportUI(); buildBackupsUI();
   resize(); setView(30, 8); frameAll();
   if (snap && Array.isArray(snap.sketch)) { sk.strokes = snap.sketch; redrawSketch(); }  // (the autosave keeps the sketch too)
   if (snap && snap.cam) applySceneExtras({cam: snap.cam});
@@ -6958,6 +7153,7 @@ const gTitle = c => (GARMENT_TR[LANG] || {})[c.title] || c.title;
 function garmentTitle(id) { return ROPA.byId[id] ? gTitle(ROPA.byId[id]) : id; }
 function renderGarmentList() {
   const box = $('#garmentList'); if (!box) return;
+  if (typeof crMarks === 'function') crMarks();
   // the colours to drag only show when someone on the canvas has clothes or hair to take them
   const any = chars.some(c => (c.outfit && c.outfit.length) || c.body.hair); $('#dropColors').hidden = !any; $('.dropnote').hidden = !any;
   box.innerHTML = '';
@@ -7306,6 +7502,11 @@ const ANTHRO_OF = {sonrisa: 'feliz', risa: 'feliz', guino: 'feliz', triste: 'tri
 // the face: humans get MakeHuman's facial expressions (stored in the body, with an intensity);
 // anthro characters keep the jaw-and-ears expressions of their sculpted heads
 let exprAmtEl = null, exprFor = null;
+// humans: a face baked into the body (with its intensity); anthros: jaw, ears and tail turned at once
+function pickExpression(id) {
+  if (mq.body.species === 'humano' && !mq.avatar) { mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); return; }
+  applyExpression(mq, id); syncExprUI(); syncJointSliders(); pushHistory(); tourEvent('expr');
+}
 function buildExprUI() {
   exprAmtEl = slider($('#exprAmtBox'), {id: 'exprAmt', label: 'Intensidad', min: 0, max: 1.3, step: .01, value: 1, fmt: pctFmt,
     input: v => { mq.body.exprAmt = v; rebuildActive(); }, change: pushHistory});
@@ -7316,12 +7517,11 @@ function syncExprUI() {
   const human = mq.body.species === 'humano' && !mq.avatar, kind = human ? 'h' : 'a';
   if (exprFor !== kind) {
     exprFor = kind;
-    if (human) chips($('#exprChips'), Object.entries(FACE_EXPR).map(([k, v]) => [k, v.label]), mq.body.expr || 'neutra', id => {
-      mq.body.expr = id === 'neutra' ? undefined : id; if (mq.body.exprAmt === undefined) mq.body.exprAmt = 1; rebuildActive(true); syncExprUI(); pushHistory(); });
-    else chips($('#exprChips'), Object.entries(ANTHRO_EXPR).map(([k, v]) => [k, v.label]), null, id => { applyExpression(mq, id); setPressed($('#exprChips'), id); syncJointSliders(); pushHistory(); tourEvent('expr'); });
+    chips($('#exprChips'), Object.entries(human ? FACE_EXPR : ANTHRO_EXPR).map(([k, v]) => [k, v.label]), human ? mq.body.expr || 'neutra' : null, pickExpression);
   }
   setPressed($('#exprChips'), human ? mq.body.expr || 'neutra' : mq.aexpr || '');
   $('#exprAmtBox').hidden = !human || !mq.body.expr;
+  if (typeof crSyncExpr === 'function') crSyncExpr();
   exprAmtEl.set(mq.body.exprAmt ?? 1);
   $('#exprNote').textContent = tr(human ? 'Cejas, ojos y boca de MakeHuman. Para abrir más la boca, toca la mandíbula y gírala.'
     : 'Boca, orejas y cola a la vez, con el lenguaje corporal de los animales. También puedes tocar la mandíbula, una oreja o la cola para girarlas a mano.');
@@ -7650,11 +7850,14 @@ function applyBuild(m, build) {
 /* ---------- the panel ---------- */
 let buildThumbR = null, buildFig = null;
 function buildThumb(build) {  // a silhouette of the build on the active character's sex and age, front and side
+  const fake = {body: {...BODY_BASE, gender: mq.body.gender, age: mq.body.age}}; applyBuild(fake, build);
+  return bodySilhouette(fake.body);
+}
+function bodySilhouette(body) {
   try {
     if (!buildThumbR) { buildThumbR = new THREE.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true}); buildThumbR.setPixelRatio(2); buildThumbR.setSize(96, 120); buildThumbR.setClearColor(0, 0);
       buildFig = new Mannequin({sil: new THREE.MeshBasicMaterial({color: 0xffffff})}, 'sil'); buildFig.noMuscles = true; buildFig.sc = new THREE.Scene(); buildFig.cam = new THREE.PerspectiveCamera(24, 96 / 120, .05, 80); }
-    const fake = {body: {...BODY_BASE, gender: mq.body.gender, age: mq.body.age}}; applyBuild(fake, build);
-    buildFig.build(fake.body); buildFig.joints.hips.position.set(0, buildFig.rootY, 0); applyPreset(buildFig, POSE.pie); buildFig.sc.add(buildFig.group);
+    buildFig.build(body); buildFig.joints.hips.position.set(0, buildFig.rootY, 0); applyPreset(buildFig, POSE.pie); buildFig.sc.add(buildFig.group);
     const box = buildFig.box(8), c = box.getCenter(new V3()), h = box.getSize(new V3()).y;
     buildFig.cam.position.set(c.x + h * .9, c.y, c.z + h * 2.1); buildFig.cam.lookAt(c); buildThumbR.render(buildFig.sc, buildFig.cam);
     return buildThumbR.domElement.toDataURL('image/png');
@@ -8065,6 +8268,7 @@ function syncCoatUI(light) {
   });
   $('#coatSockBox').hidden = !c.m.socks; $('#coatTipBox').hidden = !c.m.tail;
   if (coatSl.sock) coatSl.sock.set((1 - (c.sock ?? .72)) / .9); if (coatSl.tip) coatSl.tip.set(c.tip ?? .25);
+  if (!light && typeof crCoatSwatches === 'function') crCoatSwatches();
 }
 
 /* ======================= sculpted anthro heads (head swap) =======================
@@ -10734,7 +10938,26 @@ async function importCharacters(files) {
 /* ---------- the panel and the cast's "+" ---------- */
 const CH_ICONS = {use: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h12M12 6l6 6-6 6"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
-  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'};
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"/></svg>',
+  ren: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>'};
+// a row of small buttons under a card: [icon, label, fn]; the label names the character for screen readers
+function charActs(card, name, list) {
+  const acts = document.createElement('div'); acts.className = 'characts';
+  for (const [k, label, fn] of list) {
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'charact'; x.innerHTML = CH_ICONS[k]; x.title = tr(label); x.setAttribute('aria-label', `${tr(label)}: ${name}`);
+    x.onclick = e => { e.stopPropagation(); fn(); }; acts.appendChild(x);
+  }
+  card.appendChild(acts); return acts;
+}
+// Mis personajes: a copy, a new name, gone with the way back right there
+async function dupSaved(c) { const d = {...characterOf({body: c.body, bodyPreset: c.preset, outfit: c.outfit || []}, tr('{x} (copia)', {x: c.name})), thumb: c.thumb || null}; await charDB.put(d); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: d.name})); }
+async function renameSaved(c) { const n = (prompt(tr('Nombre del personaje'), c.name) || '').trim(); if (!n || n === c.name) return; c.name = n; c.body = {...c.body, name: n}; c.at = Date.now(); await charDB.put(c); await loadCharacters(); }
+async function deleteSaved(c) {
+  await charDB.del(c.id); await loadCharacters();
+  toast(tr('«{x}» borrado de Mis personajes.', {x: c.name}), {undo: async () => { await charDB.put(c); loadCharacters(); }});
+}
 function characterCard(c, onClick) {
   const b = document.createElement('div'); b.className = 'pose charcard'; b.dataset.id = c.id; b.tabIndex = 0; b.setAttribute('role', 'button'); b.title = tr('Poner a «{x}» en la escena', {x: c.name});
   const img = document.createElement('img'); img.className = 'th img'; img.alt = ''; if (c.thumb) img.src = c.thumb;
@@ -10746,13 +10969,10 @@ function renderCharacters() {
   const grid = $('#charGrid'); if (!grid) return; grid.innerHTML = '';
   if (!SAVED_CHARS.length) grid.innerHTML = `<p class="empty">${tr('Aún no hay personajes guardados. Ajusta uno a tu gusto y pulsa «Guardar este personaje».')}</p>`;
   for (const c of SAVED_CHARS) {
-    const card = characterCard(c, () => placeCharacter(c)), acts = document.createElement('div'); acts.className = 'characts';
-    for (const [k, label, fn] of [['use', 'Aplicar al personaje activo', () => applyCharacter(c)], ['file', 'Exportar a un archivo', () => exportCharacter(c)],
-      ['del', 'Borrar', async () => { if (!confirm(tr('¿Borrar «{x}» de Mis personajes?', {x: c.name}))) return; await charDB.del(c.id); loadCharacters(); }]]) {
-      const x = document.createElement('button'); x.type = 'button'; x.className = 'charact'; x.innerHTML = CH_ICONS[k]; x.title = tr(label); x.setAttribute('aria-label', `${tr(label)}: ${c.name}`);
-      x.onclick = e => { e.stopPropagation(); fn(); }; acts.appendChild(x);
-    }
-    card.appendChild(acts); grid.appendChild(card);
+    const card = characterCard(c, () => placeCharacter(c));
+    charActs(card, c.name, [['use', 'Aplicar al personaje activo', () => applyCharacter(c)], ['dup', 'Duplicar', () => dupSaved(c)], ['ren', 'Cambiar el nombre', () => renameSaved(c)],
+      ['file', 'Exportar a un archivo', () => exportCharacter(c)], ['del', 'Borrar', () => deleteSaved(c)]]);
+    grid.appendChild(card);
   }
 }
 // the cast's "+ Character": a new one, one of the project's cast or one of yours (each list under its name, and only when it has someone)
@@ -10777,7 +10997,11 @@ function castAddMenu(anchor) {
 function buildCharactersUI() {
   $('#charSave').onclick = () => saveCharacter(mq);
   $('#charImport').onclick = () => $('#charFile').click();
-  $('#charFile').onchange = e => { importCharacters([...e.target.files]); e.target.value = ''; };
+  $('#charFile').onchange = e => {
+    const all = [...e.target.files], models = all.filter(f => /\.(vrm|glb|gltf|fbx)$/i.test(f.name)), json = all.filter(f => !models.includes(f)); e.target.value = '';
+    if (json.length) importCharacters(json);
+    for (const f of models.slice(0, 1)) { if (chars.length < MAX_CHARS) { addChar(chars.length % 2 ? 'mujer' : 'hombre'); setActive(chars.length - 1); } importAvatarFile(f); }
+  };
   vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].filter(f => /\.neopose-personaje\.json$|personaje.*\.json$/i.test(f.name)); if (f.length) { e.preventDefault(); importCharacters(f); } });
   loadCharacters();
 }
@@ -10870,6 +11094,504 @@ const ACCESS_CLIPS = [
     [1, {hips: [6, 0, 0], chest: [10, 0, 0], ...sym({shoulderL: [-35, 0, 14], elbowL: [-10]}), hipL: [12, 0, 3], hipR: [12, 0, -3], kneeL: [15], kneeR: [15]}, 'agarre', 0, .85]]},
   {id: 'acc-baston', name: 'Andar con bastón', cat: 'movilidad', loop: true, kit: 'baston', gait: 'cane'}
 ];
+
+/* ======================= the character creator =======================
+   Personajes y lugares' Cuerpo and Ropa tabs are one place to make someone, laid out the way games lay out their
+   character creators (Create-a-Sim above all):
+   - the character large in the middle, on a turntable, the camera on the face or on the whole body;
+   - a rail of big categories (body, face, hair, species, limbs, clothes, accessories) that takes the panel to its part
+     and the camera to where that part is; the panel follows (it is one long page, so everything stays reachable by
+     scrolling, by the keyboard and by the tests);
+   - options as pictures: body types as silhouettes, species and coats as fur swatches, outfits as their garments,
+     expressions as drawn faces, accessories as photos; the sliders fold away under "Ajuste fino";
+   - a strip of everyone you have (on the stage, yours on this device, the project's cast) with portraits, to make,
+     copy, rename, remove (with the way back), save, import and export them; a dice for each part and one for all;
+   - one search over every library (clothes, hair, heads, species, coats, bodies, expressions, characters).
+   Nothing here is a new 3D or garment system: every tile does what the tabs' own chips do (often by pressing them). */
+const CR = {built: false, on: false, cat: 'body', view: null, spin: false, lock: 0, pTimer: 0, portraits: new WeakMap(), thumbs: new Map(), q: '', filt: 'all', acc: 'all', res: []};
+const CR_FACE = new Set(['face', 'hair']);  // categories seen from close up
+const CR_ACC = ['Sombreros, cascos y máscaras', 'Accesorios', 'Joyas', 'Guantes', 'Objetos y armas'];
+const CR_SKIN = ['#e8c4a4', '#c08a62', '#7d5236'];
+const OUTFIT_SLOTS = {diario: 'Diario', formal: 'Formal', deporte: 'Deporte', dormir: 'Para dormir', fiesta: 'Fiesta'};
+const CR_FILTERS = [['all', 'Todos'], ['garment', 'Ropa'], ['hair', 'Pelo'], ['head', 'Cabezas'], ['species', 'Especies'], ['body', 'Cuerpos'], ['expr', 'Expresiones'], ['char', 'Personajes']];
+const CR_TYPE = {garment: 'Prenda', hair: 'Peinado', head: 'Cabeza', species: 'Especie', body: 'Cuerpo', expr: 'Expresión', char: 'Personaje'};
+const CR_DICE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>';
+const crPhone = () => matchMedia('(max-width: 860px)').matches;
+// what stays at the top of the panel while it scrolls: the rail on a phone, the search on a wide screen
+const crStick = () => (crPhone() ? $('#crRail') : $('#crTop')).offsetHeight;
+const crPick = a => a[Math.floor(Math.random() * a.length)];
+const crSpecs = l => (l || []).map(s => ({...s}));
+
+/* ---------- on and off: Cuerpo or Ropa showing in Personajes ---------- */
+function creatorSync() {
+  const on = CR_TABS.has(state.tab) && !(typeof WS !== 'undefined' && WS.ready && WS.cur !== 'chars'), was = CR.on;
+  CR.on = on; document.body.classList.toggle('creator', on);
+  if (!CR.built) return;
+  if (!on) { if (was) crLeave(); return; }
+  if (state.tab === 'ropa' && !$('#crAcc .libItem')) crRenderAcc();
+  if (!was) crEnter(); else crSpy(true);
+}
+function crEnter() {
+  crRenderStage(); crRenderCast(); crDecorate(); crSyncExpr(); crSyncCam(); crSpy(true);
+  // the stage has just changed size (the rail and the strip came): frame once the canvas has followed
+  if (!ANIM.open) requestAnimationFrame(() => requestAnimationFrame(() => { if (CR.on) crFrame(CR_FACE.has(CR.cat) ? 'face' : 'body', true); }));
+}
+function crLeave() { if (CR.spin) crSetSpin(false); if (CR.view === 'face') frameAll(true); CR.view = null; crSyncCam(); }
+// the rail and the strip sit around the stage on a wide screen; on a phone they go into the sheet, above the options
+function crPlace() {
+  const rail = $('#crRail'), gal = $('#crGallery'), pg = $('#book .page'), main = $('.main');
+  if (crPhone()) { if (rail.parentElement !== pg) { pg.prepend(gal); pg.prepend(rail); } }
+  else if (rail.parentElement !== main) { main.prepend(rail); main.append(gal); }
+  crFold(store.get(crPhone() ? 'cdp.crGalP' : 'cdp.crGal', !crPhone()), false);
+}
+function crFold(open, keep = true) {
+  $('#crGallery').classList.toggle('folded', !open); $('#crGalToggle').setAttribute('aria-expanded', String(open));
+  if (keep) store.set(crPhone() ? 'cdp.crGalP' : 'cdp.crGal', open);
+  if (open) crPortraitsSoon(200);
+}
+
+/* ---------- the rail: categories ---------- */
+function crGo(cat, user) {
+  const el = $(`.crcat[data-cat="${cat}"]`); if (!el) return;
+  const tab = el.closest('section[data-tab]').dataset.tab;
+  if (state.tab !== tab) { showTab(tab); setPanel(true); }
+  CR.cat = cat; CR.lock = performance.now(); crMarkRail();
+  if (sheetOn() && SHEET.snap === 'peek') setSheet('half');
+  requestAnimationFrame(() => {
+    const pg = el.closest('.page'), stick = crStick();
+    pg.scrollTo({top: el.getBoundingClientRect().top - pg.getBoundingClientRect().top + pg.scrollTop - stick - 4, behavior: UX.reduce ? 'auto' : 'smooth'});
+  });
+  if (user && !ANIM.open) crFrame(CR_FACE.has(cat) ? 'face' : 'body');
+}
+function crMarkRail() {
+  for (const b of $$('#crRail .crr')) { const on = b.dataset.cat === CR.cat; b.setAttribute('aria-current', String(on)); if (!b.contains(document.activeElement)) b.tabIndex = on ? 0 : -1; }
+}
+// the category the panel is showing: the last heading scrolled past (a click on the rail wins while the page travels)
+function crSpy(force) {
+  if (!CR.on || (!force && performance.now() - CR.lock < 800)) return;
+  const pg = $('#book .page'), line = pg.getBoundingClientRect().top + crStick() + 50;
+  const list = $$(`section[data-tab="${state.tab}"] .crcat`); let cur = list[0];
+  for (const c of list) if (c.getBoundingClientRect().top <= line) cur = c;
+  if (cur) { CR.cat = cur.dataset.cat; crMarkRail(); }
+}
+
+/* ---------- the camera: face, body, a quarter turn, the turntable ---------- */
+function crGlide(p, t) {
+  if (UX.reduce) { CAMG.go = null; controls.target.copy(t); camera.position.copy(p); controls.update(); }
+  else CAMG.go = {p0: camera.position.clone(), t0: controls.target.clone(), p, t, s: performance.now()};
+  wake();
+}
+// the active character, its face or all of it, from where the camera already looks (front, three quarters, at entry)
+function crFrame(kind, front) {
+  const m = mq; if (!m || !m.joints) return;
+  m.group.updateMatrixWorld(true);
+  const tf = Math.tan(camera.fov * DEG / 2), asp = camera.aspect || 1, face = kind === 'face';
+  let t, rv, rh;
+  if (face) { t = m.joints.head.getWorldPosition(new V3()).add(new V3(0, m.headH * .4, 0)); rv = m.headH * 1.3; rh = m.headH * 1.1; }  // (the head's joint is at the skull's base)
+  else { const b = m.box(8), s = b.getSize(new V3()); t = b.getCenter(new V3()); rv = s.y * .56; rh = Math.max(s.x, s.z) * .6; }
+  const d = Math.max(rv / tf, rh / (tf * asp)) * 1.06, v = camera.position.clone().sub(controls.target);
+  const az = front ? m.yaw() + 22 * DEG : Math.atan2(v.x, v.z), el = (face ? 3 : 7) * DEG;
+  // what covers the canvas' top and bottom (the cast, the hint): aim so the character sits in the free band
+  if (!face) { const {top, bot, H} = framePads(); t.y += (top - bot) / H * d * tf; }
+  const p = t.clone().add(new V3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(d)); if (p.y < .06) p.y = .06;
+  crGlide(p, t); CR.view = kind; crSyncCam();
+  if (typeof camTouched === 'function') camTouched();
+}
+function crRotate(deg) {
+  const t = controls.target.clone(), v = camera.position.clone().sub(t).applyAxisAngle(new V3(0, 1, 0), deg * DEG);
+  crGlide(t.clone().add(v), t); if (typeof camTouched === 'function') camTouched();
+}
+function crSetSpin(on) {
+  CR.spin = on; controls.autoRotate = on; controls.autoRotateSpeed = 2.5; const s = $('#bbSpin'); if (s) s.checked = on;
+  crSyncCam(); wake();
+}
+function crSyncCam() {
+  if (!$('#crCam')) return;
+  CR.spin = CR.on && controls.autoRotate;
+  $('#crFace').setAttribute('aria-pressed', String(CR.view === 'face')); $('#crBody').setAttribute('aria-pressed', String(CR.view === 'body'));
+  $('#crSpin').setAttribute('aria-pressed', String(CR.spin));
+}
+
+/* ---------- pictures for the options: silhouettes, fur swatches, outfits, drawn faces ---------- */
+function crSwatch(cols) { const s = document.createElement('span'); s.className = 'crsw'; s.setAttribute('aria-hidden', 'true'); cols.forEach((c, i) => s.style.setProperty('--c' + i, c)); return s; }
+function crDecorate() {
+  const todo = [];
+  for (const b of $$('#bodyChips .chip')) if (!b.querySelector('.crth')) {
+    const th = document.createElement('span'); th.className = 'crth pending'; th.setAttribute('aria-hidden', 'true'); b.prepend(th); todo.push([b.dataset.v, th]);
+  }
+  for (const b of $$('#speciesChips .chip')) if (!b.querySelector('.crsw')) { const sp = SPECIES[b.dataset.v], co = sp && sp.coat && COATS[sp.coat]; b.prepend(crSwatch(co ? co.c : CR_SKIN)); }
+  crCoatSwatches(); crOutfitLooks();
+  // body types on the build thumbnails' renderer, a few per frame
+  const pump = () => {
+    const t0 = performance.now();
+    while (todo.length && performance.now() - t0 < 24) {
+      const [id, th] = todo.shift(); let url = CR.thumbs.get(id);
+      if (!url) { url = bodySilhouette(bodyOf(id)); if (url) CR.thumbs.set(id, url); }
+      if (url) { th.classList.remove('pending'); th.style.setProperty('--m', `url(${url})`); }
+    }
+    if (todo.length) requestAnimationFrame(pump);
+  };
+  if (todo.length) requestAnimationFrame(pump);
+}
+function crCoatSwatches() {
+  for (const b of $$('#coatChips .chip')) if (!b.querySelector('.crsw')) { const c = COATS[b.dataset.v]; b.prepend(crSwatch(c ? c.c : ['var(--page)', 'var(--page)', 'var(--line)'])); }
+}
+function crOutfitLooks() {
+  if (!ROPA.catalog) return;
+  for (const b of $$('#outfitChips .chip')) {
+    const o = OUTFITS[b.dataset.v]; if (!o || b.querySelector('.crol')) continue;
+    const box = document.createElement('span'); box.className = 'crol'; box.setAttribute('aria-hidden', 'true');
+    for (const sp of o[1].slice(0, 3)) { const it = ROPA.byId[sp.id]; if (it && it.thumb) { const im = new Image(); im.alt = ''; im.src = it.thumb; box.append(im); } }
+    b.prepend(box);
+  }
+}
+// a face per expression, drawn like a margin doodle: brows, eyes, mouth
+const CR_DOODLE = {
+  neutra: ['flat', 'dot', 'flat'], sonrisa: ['flat', 'dot', 'smile'], risa: ['up', 'happy', 'laugh'], triste: ['sad', 'dot', 'frown'], enfado: ['angry', 'dot', 'grim'],
+  sorpresa: ['up', 'wide', 'o'], miedo: ['sad', 'wide', 'wobble'], asco: ['angry', 'slit', 'disgust'], grito: ['angry', 'slit', 'shout'], concentrado: ['angry', 'slit', 'flat'],
+  guino: ['flat', 'wink', 'smile'], morros: ['flat', 'dot', 'purse'], dormido: ['flat', 'closed', 'flat'],
+  alerta: ['up', 'wide', 'flat'], feliz: ['flat', 'happy', 'smile'], jadeo: ['flat', 'happy', 'tongue'], aullido: ['sad', 'closed', 'o'], rugido: ['angry', 'slit', 'shout'],
+  curiosa: ['tilt', 'dot', 'purse'], timida: ['sad', 'dot', 'smile']
+};
+const CR_BROW = {flat: 'M7 8h3.4M13.6 8H17', up: 'M7 6.9q1.7-1.1 3.4 0M13.6 6.9q1.7-1.1 3.4 0', sad: 'M7 8.5l3.4-1.3M13.6 7.2 17 8.5', angry: 'M7 7.2l3.4 1.3M13.6 8.5 17 7.2', tilt: 'M7 7.6h3.4M13.6 6.5 17 7.3'};
+const CR_EYES = {dot: '<circle cx="8.7" cy="11" r="1" fill="currentColor"/><circle cx="15.3" cy="11" r="1" fill="currentColor"/>', wide: '<circle cx="8.7" cy="11" r="1.7"/><circle cx="15.3" cy="11" r="1.7"/><circle cx="8.7" cy="11" r=".5" fill="currentColor"/><circle cx="15.3" cy="11" r=".5" fill="currentColor"/>',
+  slit: '<path d="M7.6 11h2.3M14.1 11h2.3"/>', closed: '<path d="M7.5 10.8q1.2 1.1 2.4 0M14.1 10.8q1.2 1.1 2.4 0"/>', happy: '<path d="M7.5 11.5q1.2-1.4 2.4 0M14.1 11.5q1.2-1.4 2.4 0"/>',
+  wink: '<circle cx="8.7" cy="11" r="1" fill="currentColor"/><path d="M14.1 10.9q1.2 1.1 2.4 0"/>'};
+const CR_MOUTH = {flat: '<path d="M9.6 16h4.8"/>', smile: '<path d="M8.8 15q3.2 2.8 6.4 0"/>', laugh: '<path d="M8.6 14.6h6.8q-.4 3.6-3.4 3.6t-3.4-3.6Z"/>', frown: '<path d="M9 17.2q3-2.4 6 0"/>',
+  grim: '<rect x="9" y="15" width="6" height="2.2" rx=".6"/><path d="M11 15v2.2M13 15v2.2"/>', o: '<ellipse cx="12" cy="16.2" rx="1.6" ry="2"/>', wobble: '<path d="M9 16.6q1-1.1 2 0t2 0 2 0"/>',
+  disgust: '<path d="M9 16.6q1.5-1.4 3 0t3-.9"/>', shout: '<path d="M9 14.6h6l-1 3.8h-4Z"/>', purse: '<circle cx="12" cy="16" r="1"/>', tongue: '<path d="M8.8 14.8h6.4q-.5 3-3.2 3t-3.2-3Z"/><path d="M11 17.3q1 1.7 2 0"/>'};
+function crFaceSvg(id) {
+  const [b, e, m] = CR_DOODLE[id] || CR_DOODLE.neutra;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9c5 0 8.5 3.9 8.5 8.9S16.8 21 12 21s-8.6-4.1-8.6-9.2S7.1 2.9 12 2.9Z"/><path d="${CR_BROW[b]}"/>${CR_EYES[e]}${CR_MOUTH[m]}</svg>`;
+}
+let crAmt = null;
+function crSyncExpr() {
+  const box = $('#crExpr'); if (!box || !mq) return;
+  const human = mq.body.species === 'humano' && !mq.avatar, kind = human ? 'h' : 'a';
+  if (box.dataset.kind !== kind) {
+    box.dataset.kind = kind; box.innerHTML = '';
+    for (const [k, v] of Object.entries(human ? FACE_EXPR : ANTHRO_EXPR)) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'crface'; b.dataset.v = k; b.innerHTML = crFaceSvg(k);
+      const l = document.createElement('span'); l.textContent = v.label; b.append(l); b.onclick = () => pickExpression(k); box.append(b);
+    }
+  }
+  const cur = human ? mq.body.expr || 'neutra' : mq.aexpr || '';
+  for (const b of box.children) b.setAttribute('aria-pressed', String(b.dataset.v === cur));
+  $('#crExprFine').hidden = !human || !mq.body.expr; if (crAmt) crAmt.set(mq.body.exprAmt ?? 1);
+  $('#crExprNote').textContent = tr(human ? 'Cejas, ojos y boca de MakeHuman. Para abrir más la boca, toca la mandíbula y gírala.'
+    : 'Boca, orejas y cola a la vez, con el lenguaje corporal de los animales. También puedes tocar la mandíbula, una oreja o la cola para girarlas a mano.');
+}
+
+/* ---------- a look before choosing: hovering a swatch or a face tries it on, leaving takes it off ----------
+   Only where it costs nothing (a colour, a coat, a face): what needs a new body or a garment download waits for the click.
+   on(el) returns what to put back (false: nothing to try); pressing goes back first, so the click is the real change. */
+function crPreview(box, sel, on, off) {
+  let cur = null, st = null;
+  const end = () => { if (cur) { off(cur, st); cur = st = null; wake(); } };
+  box.addEventListener('pointerover', e => {
+    if (e.pointerType !== 'mouse') return; const el = e.target.closest(sel);
+    if (el === cur) return; end();
+    if (el && box.contains(el) && !el.disabled && !ANIM.open) { const s = on(el); if (s !== false) { cur = el; st = s; wake(); } }
+  });
+  box.addEventListener('pointerleave', end);
+  box.addEventListener('pointerdown', end, true);
+}
+const CR_EXPR_JOINTS = ['jaw', 'earL', 'earR', 'head', 'tail1', 'tail2', 'tail3'];
+function crPreviews() {
+  crPreview($('#hairSw'), 'button[data-c]', el => { if (!mq.body.hair || hairBlock(mq)) return false; const old = mq.body.hairCol; mq.body.hairCol = el.dataset.c; syncHair(mq); return old; },
+    (el, old) => { mq.body.hairCol = old; syncHair(mq); });
+  crPreview($('#coatChips'), '.chip', el => { const had = 'coat' in mq.body, old = had ? JSON.parse(JSON.stringify(mq.body.coat)) : undefined; mq.body.coat = el.dataset.v ? {preset: el.dataset.v} : null; applyCoat(mq); return {had, old}; },
+    (el, s) => { if (s.had) mq.body.coat = s.old; else delete mq.body.coat; applyCoat(mq); });
+  crPreview($('#crExpr'), '.crface', el => {
+    if (mq.body.species === 'humano' && !mq.avatar) { if (mq.body.expr || typeof faceNow !== 'function') return false; faceNow(mq, el.dataset.v); return {h: true}; }
+    const s = {a: mq.aexpr, r: CR_EXPR_JOINTS.filter(n => mq.joints[n]).map(n => [n, mq.joints[n].rotation.clone()])}; applyExpression(mq, el.dataset.v); return s;
+  }, (el, s) => { if (s.h) return faceNow(mq, 'neutra'); for (const [n, r] of s.r) mq.joints[n].rotation.copy(r); mq.aexpr = s.a; });
+}
+
+/* ---------- clothes: outfits per occasion, accessories ---------- */
+// each character keeps an outfit per occasion (in its body, so it travels with it: saved, in the cast, in files);
+// the one worn is the character's outfit as always, kept in its slot when another is chosen
+function setOutfitSlot(m, id) {
+  const cur = m.body.outfitSlot || 'diario'; if (id === cur || !OUTFIT_SLOTS[id]) return;
+  const all = {...(m.body.outfits || {}), [cur]: crSpecs(m.outfit)}, next = all[id];
+  m.body.outfits = all; m.body.outfitSlot = id;
+  const p = wearOutfit(m, crSpecs(next || m.outfit));  // (an occasion not dressed yet starts from what is worn)
+  if (m === mq) { crSlotsSync(); renderGarmentList(); renderLibrary(); }
+  renderCast(); pushHistory(); toast(tr('Conjunto para: {x}', {x: tr(OUTFIT_SLOTS[id])}));
+  return p;
+}
+function crSlotsSync() {
+  const box = $('#crSlots'); if (!box || !mq) return;
+  if (!box.childElementCount) chips(box, Object.entries(OUTFIT_SLOTS), mq.body.outfitSlot || 'diario', id => setOutfitSlot(mq, id));
+  setPressed(box, mq.body.outfitSlot || 'diario');
+}
+function crGarmentTile(c) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'libItem'; b.dataset.id = c.id; b.title = gTitle(c);
+  b.innerHTML = c.thumb ? `<img loading="lazy" alt="" src="${c.thumb}">` : `<span class="noimg">${tr('sin imagen')}</span>`;
+  const t = document.createElement('span'); t.className = 'lt'; t.textContent = gTitle(c); b.append(t);
+  b.onclick = () => { const why = !mq.outfit.some(s => s.id === c.id) && garmentBlock(mq, c); if (why) return toast(why); toggleGarment(c.id); };
+  return b;
+}
+async function crRenderAcc() {
+  const box = $('#crAcc'); if (!box) return;
+  if (!ROPA.catalog) {
+    if (state.tab !== 'ropa') return;  // (the library is fetched when Ropa is shown, not before)
+    box.innerHTML = `<p class="empty">${tr('Cargando el armario…')}</p>`;
+    await loadCatalog().catch(() => null);
+    if (!ROPA.catalog) { box.innerHTML = `<p class="empty">${tr('No se pudo cargar el armario.')}</p>`; return; }
+  }
+  crOutfitLooks();
+  const have = new Set(ROPA.catalog.map(c => c.cat));
+  chips($('#crAccCats'), [['all', 'Todos'], ...CR_ACC.filter(c => have.has(c)).map(c => [c, c])], CR.acc, v => { CR.acc = v; crRenderAcc(); });
+  box.innerHTML = '';
+  for (const c of ROPA.catalog) if (CR_ACC.includes(c.cat) && (CR.acc === 'all' || c.cat === CR.acc)) box.append(crGarmentTile(c));
+  crMarks();
+}
+// what the active character wears, marked on the creator's tiles
+function crMarks() {
+  if (!mq) return;
+  const worn = new Set(mq.outfit.map(s => s.id));
+  for (const b of $$('#crAcc .libItem')) {
+    const on = worn.has(b.dataset.id), why = !on && garmentBlock(mq, ROPA.byId[b.dataset.id]);
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.classList.toggle('blocked', !!why); b.toggleAttribute('aria-disabled', !!why);
+  }
+  if (CR.q) crResultMarks();
+}
+
+/* ---------- the dice: one part, or all of it (Ctrl+Z takes it back) ---------- */
+const CR_RAND_TYPES = ['hombre', 'mujer', 'hombre', 'mujer', 'atletico', 'atletica', 'delgado', 'robusta', 'adolescente', 'adolescenta', 'mayor', 'mayora', 'animeM', 'animeF', 'heroico'];
+async function crRandom(what = 'all') {
+  const m = mq, all = what === 'all'; let rebuild = false;
+  if (all || what === 'body') {
+    const id = crPick(CR_RAND_TYPES), nb = bodyOf(id); for (const k of KEEP_ON_TYPE) if (m.body[k] !== undefined) nb[k] = m.body[k];
+    nb.height = clamp(nb.height + (Math.random() - .5) * .4, 0, 1); m.body = nb; m.bodyPreset = id;
+    applyBuild(m, crPick(BODY_BUILDS.filter(b => b.id !== 'embarazo' && b.id !== 'acondroplasia'))); rebuild = true;
+  }
+  if (what === 'species') {
+    const id = crPick(Object.keys(SPECIES).filter(k => k !== 'humano' && k !== m.body.species));
+    m.body.species = id; delete m.body.coat; delete m.body.tail; delete m.body.headModel; delete m.body.pads; rebuild = true;
+  }
+  if ((all || what === 'species') && m.body.species !== 'humano') { const cs = coatPresetsFor(m.body.species); if (cs.length) m.body.coat = {preset: crPick(cs)[0]}; }
+  if (all || what === 'hair') {
+    const why = hairBlock(m);
+    if (why) { if (!all) return toast(why); }
+    else { const l = await loadHairList().catch(() => null); if (l) { m.body.hair = crPick(l).id; m.body.hairCol = crPick(Math.random() < .85 ? HAIR_COLORS.slice(0, 9) : HAIR_COLORS)[0]; } }
+  }
+  const human = m.body.species === 'humano' && !m.avatar;
+  if ((all || what === 'face') && human) { const e = crPick(Object.keys(FACE_EXPR).filter(k => k !== 'dormido')); if (e === 'neutra') delete m.body.expr; else m.body.expr = e; m.body.exprAmt = 1; rebuild = true; }
+  if (rebuild) { if (m === mq) rebuildActive(true); else m.build(m.body); restTail(m); } else syncHair(m);
+  if ((all || what === 'face') && !human) applyExpression(m, crPick(Object.keys(ANTHRO_EXPR)));
+  if (all || what === 'clothes') wearOutfit(m, await randomOutfit());
+  if (what === 'acc') {
+    const cat = await loadCatalog(), keep = m.outfit.filter(s => !CR_ACC.includes((ROPA.byId[s.id] || {}).cat)), pool = cat.filter(c => CR_ACC.slice(0, 4).includes(c.cat) && !garmentBlock(m, c));
+    const add = []; for (let n = 1 + (Math.random() < .5); n > 0 && pool.length; n--) { const c = crPick(pool); if (!add.some(s => s.id === c.id)) add.push(garmentSpec(c.id)); }
+    wearOutfit(m, [...keep, ...add]);
+  }
+  syncBodyUI(); renderGarmentList(); renderLibrary(); renderCast(); pushHistory();
+  toast(tr('Al azar'), {undo: true});
+}
+
+/* ---------- Tus personajes: the stage, Mis personajes, the project's cast ---------- */
+function crRenderStage(again = true) {
+  const box = $('#crStage'); if (!box || !CR.built) return;
+  crSlotsSync(); if (!CR.on) return;
+  // (drawn again on every change of the cast: the keyboard's place in it is kept)
+  const fi = $$('#crStage button, #crStage [tabindex]').indexOf(document.activeElement);
+  box.innerHTML = '';
+  chars.forEach((m, i) => {
+    const name = charLabel(m), p = CR.portraits.get(m), card = characterCard({id: '', name, thumb: p && p.url}, () => setActive(i));
+    delete card.dataset.id; card.title = tr('Hacer activo'); card.classList.toggle('on', i === active); card.setAttribute('aria-pressed', String(i === active)); card.setAttribute('role', 'button');
+    if (!p) card.querySelector('img').classList.add('pending');
+    charActs(card, name, [['dup', 'Duplicar', () => crDuplicate(m)], ['ren', 'Cambiar el nombre', () => crRename(m)], ...(chars.length > 1 ? [['del', 'Quitar de la escena', () => crRemove(i)]] : [])]);
+    box.append(card);
+  });
+  if (chars.length < MAX_CHARS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pose charcard crnew'; b.title = tr('Un personaje nuevo en la escena');
+    b.innerHTML = '<span class="crplus" aria-hidden="true">+</span><span></span>'; b.lastChild.textContent = tr('Nuevo'); b.onclick = crNew; box.append(b);
+  }
+  if (fi >= 0) $$('#crStage button, #crStage [tabindex]')[fi]?.focus();
+  if (again) crPortraitsSoon();
+}
+function crRenderCast() {
+  const box = $('#crCast'); if (!box) return; box.innerHTML = '';
+  $('#crCastBox').hidden = !PROJECT.cast.length;
+  for (const c of PROJECT.cast) {
+    const card = characterCard(c, () => placeCharacter(c)); card.dataset.cast = c.id;
+    charActs(card, c.name, [['save', 'Guardar en Mis personajes', () => crSaveCopy(c)], ['file', 'Exportar a un archivo', () => exportCharacter(c)]]);
+    box.append(card);
+  }
+}
+function crNew() {
+  const m = addChar(chars.length % 2 ? 'mujer' : 'hombre'); if (!m) return toast(tr('Ya hay {n} personajes en la escena.', {n: MAX_CHARS}));
+  setActive(chars.length - 1); pushHistory(); buildPoseGrid(); if (CR.on && !ANIM.open) crFrame('body');
+}
+function crDuplicate(m) {
+  if (chars.length >= MAX_CHARS) return toast(tr('Ya hay {n} personajes en la escena.', {n: MAX_CHARS}));
+  const c = characterOf(m, tr('{x} (copia)', {x: charLabel(m)})); delete c.body.castId;  // (a copy is someone new, not the cast member)
+  placeCharacter(c);
+}
+function crRename(m) { const n = (prompt(tr('Nombre del personaje'), charLabel(m)) || '').trim(); if (!n) return; m.body.name = n; renderCast(); pushHistory(); }
+function crRemove(i) { const n = charLabel(chars[i]); removeChar(i); pushHistory(); toast(tr('{x}: fuera de la escena', {x: n}), {undo: true}); }
+async function crSaveCopy(c) {
+  const d = {...characterOf({body: c.body, bodyPreset: c.preset, outfit: c.outfit || []}, c.name), thumb: c.thumb || null}; delete d.body.castId;
+  await charDB.put(d); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: d.name}));
+}
+function crExportActive() { const c = characterOf(mq, charName(mq)); c.thumb = (CR.portraits.get(mq) || {}).url || characterThumb(mq); exportCharacter(c); }
+function crExportAll() {
+  if (!SAVED_CHARS.length) return toast(tr('Aún no hay personajes guardados. Ajusta uno a tu gusto y pulsa «Guardar este personaje».'));
+  const bytes = new TextEncoder().encode(JSON.stringify(SAVED_CHARS.map(c => ({neopose: 'character', ...c})), null, 1));
+  saveFile(`${tr('personajes')}.neopose-personaje.json`, bytes, 'application/json');
+}
+// colour portraits of the stage's characters, taken a moment after a change settles (one at a time, dressed)
+function crPortraitsSoon(ms = 900) { clearTimeout(CR.pTimer); if (CR.on) CR.pTimer = setTimeout(crPortraits, ms); }
+async function crPortraits() {
+  if (!CR.on || $('#crGallery').classList.contains('folded')) return;
+  if (ANIM.playing || CAMG.go || TWEENS.size || practice.active || (typeof SC !== 'undefined' && SC.busy)) return crPortraitsSoon(1200);
+  let n = 0;
+  for (const m of [...chars]) {
+    const hid = headModelFor(m.body); if (hid && !HEADS[hid]) { crPortraitsSoon(1500); continue; }  // (a sculpted head still on its way)
+    const sig = JSON.stringify([m.body, m.outfit]), p = CR.portraits.get(m); if (p && p.sig === sig) continue;
+    await Promise.all((m.garments || []).map(g => g.ready)).catch(() => {});
+    if (!CR.on || !chars.includes(m) || CAMG.go) return crPortraitsSoon(600);
+    const url = characterThumb(m); if (url) { CR.portraits.set(m, {sig, url}); n++; }
+    await new Promise(r => setTimeout(r, 40));
+  }
+  if (n) crRenderStage(false);
+}
+// every change (the history's step): the portraits, and the search's marks
+function crChanged() { if (!CR.on) return; crPortraitsSoon(); if (CR.q) crResultMarks(); }
+
+/* ---------- one search over the libraries ---------- */
+const crChip = (sel, v) => { const b = $(`${sel} .chip[data-v="${v}"]`); if (b) b.click(); };
+// a species from the search: what its chip does (a fresh head, coat and tail), without the second rebuild a head or coat would add
+function crSpecies(id) { mq.body.species = id; delete mq.body.coat; delete mq.body.tail; delete mq.body.headModel; delete mq.body.pads; }
+function crUseHead(k) {
+  const c = HEAD_CATALOG[k]; if (!c) return;
+  if (mq.body.species === 'humano') crSpecies(SPECIES[c.species[0]] ? c.species[0] : 'lobo');
+  mq.body.headModel = k; mq.body.headStyle = c.style; rebuildActive(true); restTail(mq); syncBodyUI(); pushHistory();
+}
+function crUseCoat(k) {
+  const p = COATS[k]; if (!p) return;
+  const sw = !p.for.includes(mq.body.species); if (sw) crSpecies(p.for[0]);
+  mq.body.coat = {preset: k}; if (sw) { rebuildActive(true); restTail(mq); syncBodyUI(); } else { applyCoat(mq); syncCoatUI(); } pushHistory();
+}
+function crIndex() {
+  const out = [], add = (type, id, label, extra, look, run, on, why) => out.push({type, id, label, n: uxNorm(label + ' ' + (extra || '')), look: look || {}, run, on, why});
+  const worn = id => mq.outfit.some(s => s.id === id);
+  if (ROPA.catalog) for (const c of ROPA.catalog) add('garment', c.id, gTitle(c), `${c.title} ${tr(c.cat)} ${c.cat}`, {img: c.thumb}, () => toggleGarment(c.id), () => worn(c.id), () => !worn(c.id) && garmentBlock(mq, c));
+  for (const [k, v] of Object.entries(OUTFITS)) add('garment', 'outfit:' + k, tr(v[0]), tr('Conjuntos'), {img: ROPA.catalog && (ROPA.byId[v[1][0].id] || {}).thumb}, () => crChip('#outfitChips', k));
+  if (HAIR.list) for (const h of HAIR.list) add('hair', h.id, h.title, `${tr('Pelo')} ${h.id.slice(2).replace(/[_\d]+/g, ' ')}`, {img: h.thumb}, () => { setHair(mq, h.id); renderHairUI(); pushHistory(); }, () => mq.body.hair === h.id, () => hairBlock(mq));
+  for (const [k, c] of Object.entries(HEAD_CATALOG)) add('head', k, c.label, `${tr('Cabeza')} ${c.species.map(s => (SPECIES[s] ? SPECIES[s].label + ' ' : '') + s).join(' ')} ${c.style}`, {icon: 'species'}, () => crUseHead(k), () => headModelFor(mq.body) === k);
+  for (const [k, v] of Object.entries(SPECIES)) { const co = v.coat && COATS[v.coat]; add('species', k, v.label, `${tr('Especie')} ${k}`, {sw: co ? co.c : CR_SKIN}, () => crChip('#speciesChips', k), () => mq.body.species === k); }
+  for (const [k, p] of Object.entries(COATS)) add('species', 'coat:' + k, p.label, `${tr('Pelaje y marcas')} ${p.for.map(s => SPECIES[s] ? SPECIES[s].label + ' ' + s : s).join(' ')}`, {sw: p.c}, () => crUseCoat(k), () => (mq.body.coat || {}).preset === k);
+  for (const [k, v] of Object.entries(BODY_PRESETS)) add('body', k, v.label, tr('Tipo de cuerpo'), {mask: CR.thumbs.get(k)}, () => crChip('#bodyChips', k), () => mq.bodyPreset === k);
+  for (const b of BODY_BUILDS) add('body', 'build:' + b.id, b.label, tr('Complexión'), {icon: 'body'}, () => $(`#buildGrid .pose[data-id="${b.id}"]`)?.click(), () => mq.body.build === b.id);
+  const human = mq.body.species === 'humano' && !mq.avatar;
+  for (const [k, v] of Object.entries(human ? FACE_EXPR : ANTHRO_EXPR)) add('expr', k, v.label, tr('Expresión'), {face: k}, () => pickExpression(k), () => (human ? mq.body.expr || 'neutra' : mq.aexpr) === k);
+  for (const c of SAVED_CHARS) add('char', 'mine:' + c.id, c.name, tr('Mis personajes'), {img: c.thumb}, () => placeCharacter(c));
+  for (const c of PROJECT.cast) add('char', 'cast:' + c.id, c.name, tr('Reparto del proyecto'), {img: c.thumb}, () => placeCharacter(c));
+  return out;
+}
+function crSearch() {
+  const q = $('#crQ').value.trim(), box = $('#crResults'); CR.q = q;
+  $('#crFilt').hidden = box.hidden = !q;
+  if (!q) { $('#crCount').textContent = ''; box.innerHTML = ''; return; }
+  // what is not loaded yet is searched again when it arrives
+  const need = [!ROPA.catalog && loadCatalog(), !HAIR.list && loadHairList()].filter(Boolean);
+  if (need.length) Promise.all(need).then(() => { if (CR.q === q) crSearch(); }, () => {});
+  const w = uxNorm(q).split(/\s+/).filter(Boolean), hits = [], count = {};
+  for (const x of crIndex()) {
+    if (!w.every(t => x.n.includes(t))) continue;
+    count[x.type] = (count[x.type] || 0) + 1; if (CR.filt !== 'all' && x.type !== CR.filt) continue;
+    const l = uxNorm(x.label); hits.push([(l.startsWith(w[0]) ? 0 : l.includes(' ' + w[0]) ? 1 : 2) * 100 + l.length, x]);
+  }
+  const total = Object.values(count).reduce((a, b) => a + b, 0);
+  chips($('#crFilt'), CR_FILTERS.filter(([k]) => k === 'all' || count[k]).map(([k, l]) => [k, `${tr(l)} ${k === 'all' ? total : count[k]}`]), CR.filt, v => { CR.filt = v; crSearch(); });
+  CR.res = hits.sort((a, b) => a[0] - b[0]).slice(0, 60).map(h => h[1]);
+  box.innerHTML = '';
+  if (!CR.res.length) box.innerHTML = `<p class="empty">${tr('Nada coincide con la búsqueda.')}</p>`;
+  for (const x of CR.res) box.append(crTile(x));
+  crResultMarks();
+  $('#crCount').textContent = trn(CR.res.length, '1 resultado', '{n} resultados');
+}
+function crTile(x) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'crres'; b.dataset.type = x.type; b.dataset.id = x.id; b._x = x;
+  const L = x.look;
+  if (L.img) { const im = new Image(); im.alt = ''; im.loading = 'lazy'; im.src = L.img; b.append(im); }
+  else if (L.sw) b.append(crSwatch(L.sw));
+  else if (L.face) b.insertAdjacentHTML('beforeend', crFaceSvg(L.face));
+  else if (L.mask) { const s = document.createElement('span'); s.className = 'crth'; s.style.setProperty('--m', `url(${L.mask})`); b.append(s); }
+  else { const svg = $(`.crcat[data-cat="${L.icon || 'body'}"] svg`); if (svg) b.append(svg.cloneNode(true)); }
+  const l = document.createElement('span'); l.className = 'lt'; l.textContent = x.label;
+  const t = document.createElement('span'); t.className = 'ty'; t.textContent = tr(CR_TYPE[x.type]);
+  b.append(l, t);
+  b.onclick = () => { const why = x.why && x.why(); if (why) return toast(why); x.run(); setTimeout(crResultMarks, 50); };
+  return b;
+}
+function crResultMarks() {
+  for (const b of $$('#crResults .crres')) {
+    const x = b._x, why = x.why && x.why();
+    b.setAttribute('aria-pressed', String(!!(x.on && x.on()))); b.classList.toggle('blocked', !!why); b.title = why || `${x.label} · ${tr(CR_TYPE[x.type])}`;
+  }
+}
+// the arrows walk the results as a grid; Escape goes back to the box
+function crResultKeys(e) {
+  const list = $$('#crResults .crres'), i = list.indexOf(document.activeElement); if (i < 0) return;
+  const cols = Math.max(1, list.filter(b => b.offsetTop === list[0].offsetTop).length);
+  const j = {ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + cols, ArrowUp: i - cols, Home: 0, End: list.length - 1}[e.key];
+  if (e.key === 'Escape') { e.preventDefault(); $('#crQ').focus(); return; }
+  if (j === undefined) return; e.preventDefault();
+  if (j < 0) return $('#crQ').focus();
+  list[Math.min(j, list.length - 1)].focus();
+}
+
+/* ---------- building it ---------- */
+function buildCreatorUI() {
+  const rail = $('#crRail'); if (!rail) return;
+  // the rail is made from the categories' own headings (their icon and name), so the two never disagree
+  for (const c of $$('.crcat[data-cat]')) {
+    const h = c.querySelector('h3'), b = document.createElement('button'), label = [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    b.type = 'button'; b.className = 'crr'; b.dataset.cat = c.dataset.cat; b.setAttribute('aria-controls', c.id); b.title = `${label}: ${h.querySelector('span') ? h.querySelector('span').textContent : ''}`;
+    const s = document.createElement('span'); s.textContent = label; b.append(h.querySelector('svg').cloneNode(true), s);
+    b.onclick = () => crGo(c.dataset.cat, true); rail.append(b);
+  }
+  rail.addEventListener('keydown', e => {
+    const list = $$('#crRail .crr'), i = list.indexOf(document.activeElement); if (i < 0) return;
+    const j = {ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: list.length - 1}[e.key]; if (j === undefined) return;
+    e.preventDefault(); const b = list[(j + list.length) % list.length]; list.forEach(x => x.tabIndex = x === b ? 0 : -1); b.focus();
+  });
+  // (on a phone the rail scrolls sideways: its right edge fades until the end is in sight)
+  const fade = () => rail.classList.toggle('end', rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4);
+  rail.addEventListener('scroll', fade, {passive: true}); new ResizeObserver(fade).observe(rail);
+  for (const b of $$('.crdice')) { b.innerHTML = CR_DICE; b.onclick = () => crRandom(b.dataset.dice); }
+  $('#crDice').onclick = () => crRandom('all');
+  // the camera
+  $('#crFace').onclick = () => crFrame('face'); $('#crBody').onclick = () => crFrame('body');
+  $('#crRotL').onclick = () => crRotate(-45); $('#crRotR').onclick = () => crRotate(45);
+  $('#crSpin').onclick = () => crSetSpin(!controls.autoRotate);
+  $('#bbSpin').addEventListener('change', crSyncCam);
+  // a hand on the canvas ends the camera's own moves (the turntable keeps turning: it is a mode)
+  vp.addEventListener('pointerdown', e => { if (e.target === canvas && CR.on && CR.view) { CR.view = null; crSyncCam(); } });
+  // the strip
+  $('#crGalToggle').onclick = () => crFold($('#crGallery').classList.contains('folded'));
+  $('#crNew').onclick = crNew; $('#crExport').onclick = crExportActive; $('#crExportAll').onclick = crExportAll;
+  // the face's fine tuning, beside the faces
+  crAmt = slider($('#crExprAmtBox'), {id: 'crExprAmt', label: 'Intensidad', min: 0, max: 1.3, step: .01, value: 1, fmt: pctFmt,
+    input: v => { mq.body.exprAmt = v; rebuildActive(); }, change: () => { if (exprAmtEl) exprAmtEl.set(mq.body.exprAmt ?? 1); pushHistory(); }});
+  // the search
+  const q = $('#crQ');
+  q.oninput = () => { CR.filt = CR.filt || 'all'; crSearch(); };
+  q.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); const f = $('#crResults .crres'); if (f) f.click(); }
+    else if (e.key === 'ArrowDown') { const f = $('#crResults .crres'); if (f) { e.preventDefault(); f.focus(); } }
+    else if (e.key === 'Escape' && q.value) { e.preventDefault(); e.stopPropagation(); q.value = ''; crSearch(); }
+  };
+  $('#crResults').addEventListener('keydown', crResultKeys);
+  crPreviews();
+  $('#book .page').addEventListener('scroll', () => { if (!CR.spyT) CR.spyT = requestAnimationFrame(() => { CR.spyT = 0; crSpy(); }); }, {passive: true});
+  matchMedia('(max-width: 860px)').addEventListener('change', crPlace);
+  CR.built = true; crPlace(); CR.on = false; creatorSync();
+}
 
 /* ======================= export, more kinds =======================
    Turnaround sheet: front, three-quarter, profile and back of the active character on one image, with head-height lines.
@@ -14631,7 +15353,7 @@ const DRAG_KINDS = [
       const s = t.g.spec; if (s.mode === 'tex') s.mode = 'tint'; s.colA = c; updateGarment(mq, t.g); t.g.open = true; renderGarmentList(); pushHistory(); return tr('«{p}» teñido', {p: garmentTitle(s.id)}); }); }},
   {sel: '#propChips .chip[data-v]', target: 'floor', item: el => el.dataset.v, label: () => tr('Dejarlo aquí'),
     commit: (t, id) => { const g = makeProp(id, t.point); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); return tr('«{p}» en la escena', {p: tr(PROPS[id] || (ASSET_PROPS[id] || [id])[0])}); }},
-  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id]', target: 'floor', item: el => el.dataset.cast ? castById(el.dataset.cast) : SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
+  {sel: '#charGrid .charcard[data-id], #castPop .charcard[data-id], #crCast .charcard[data-id]', target: 'floor', item: el => el.dataset.cast ? castById(el.dataset.cast) : SAVED_CHARS.find(c => c.id === el.dataset.id), label: () => tr('Que entre aquí'),
     commit: (t, c) => { $('#castPop')?.remove(); const n = chars.length; placeCharacter(c); if (chars.length > n) { const m = chars[chars.length - 1]; m.joints.hips.position.x = t.point.x; m.joints.hips.position.z = t.point.z; m.group.updateMatrixWorld(true); pushHistory(); } return null; }},
   {sel: '#addPoint, #addSpot', target: 'floor', item: el => el.id === 'addSpot' ? 'foco' : 'punto', label: () => tr('Una luz aquí encima'),
     commit: (t, type) => { if (extraLights.length >= 4) return tr('Ya hay 4 luces.'); const g = makeLight(type, t.point.clone().setY(2.2)); selectObj(g); pushHistory(); return tr('Luz añadida'); }},
@@ -17926,6 +18648,7 @@ function renderBible() {
       toast(tr('Lugar «{x}» borrado.', {x: l.name}), {undo: () => { PROJECT.locations.splice(Math.min(i, PROJECT.locations.length), 0, l); renderBible(); autosaveSoon(); }}); };
     lb.appendChild(card);
   }
+  if (typeof crRenderCast === 'function') crRenderCast();
 }
 function buildBibleUI() {
   if (!$('section[data-tab=biblia]')) return;
@@ -19483,7 +20206,7 @@ function start(data) {
     .then(async buf => { parseFigure(buf); const e = await ext; if (e) try { parseFigureExt(e); } catch (err) { console.warn(err); } const eb = await bodyExt; if (eb) try { parseFigureExt(eb); } catch (err) { console.warn(err); } $('#hint').innerHTML = HINT; boot(data, await saved); })
     .catch(err => { console.error(err); $('#hint').textContent = tr('No se ha podido cargar la figura. Recarga la página.'); });
 }
-window.__cdp = {support: {SUP, supportAfterSave, KOFI}, safety: {SNAPS, keepSnap, snapList, beforeReplace, recoverSnap, workData, unlinkPanels, relinkPanels, autosaveNow, readAutosave, openSharedScene, renderSnaps, get shotSeq() { return shotSeq; }}, get FIG() { return FIG; }, bible: {bibleCastFromActive, saveLocation, applyLocation, expressionSheet, lineupSheet, renderBible}, film: {applyFilmFormat, renderFilmList}, comicx: {comicPDF, comicCBZ, comicPSD}, comic: {CM, comic: () => comic(), addPage, editPanel, finishPanelEdit, filmToComic, exportComicPages, readingOrder, panelShot, pageImage, panelKey, layoutPanels, splitPanel, insetPanel, removePanel, panelBox, panelPts, panelAt, setPanelPoly, inPoly, polyArea, drawBalloons, balloonGeom, addJoinedBalloon, removeBalloon, composePage, PANEL_TEMPLATES, BALLOON_KINDS, PANEL_BORDERS, pv, CMH, comicUndo, morph, applyLayout, presetPanels, goPage, swapContents, linkShot, duplicatePage, deletePage, renderTracker, renderScript, comicScriptText, openPanelScene, moveSet, startShapeDrag, moveShapeDrag, PRESET_GROUPS, deskLayout, panelScreenRect, histCommit}, project: {PROJECT, projectState, applyProjectState, castFromChar, propagateCast, eachProjectShot}, renderView, spaces: {WS, WORKSPACES, setWorkspace, goTab, wsTabs}, keys: {shotKeyPoses, exportKeyLines, keyLinesPreview, KEY_EX, drawKeySheet, inkNow, timingSheet}, get renderer() { return renderer; }, tour: {TOUR, TOURS, tourStart}, kb: {kbJoints}, file: {neoposeBytes, openNeopose, migrateScene, NP_VERSION}, furry: {coatOf, COATS, tailOf, tailLife, tailRest, ANTHRO_EXPR, speciesOf, padsOn}, tl: {TL, tlView, tlHit, trackX}, ux: {UX, floorAt, charAt, garmentAt, withGlide, openPalette}, script: {SC, enterShot, play, parseScript, scLang, readAction, castOf, scriptToFilm, planShots, verbPats, emotionOf, shotDirection, placeOf, timeOf, VOICE, sayLine, lineTiming, voiceOf, dialogueWav, SC_SAMPLE}, refs: {REF, refSearch, refToScene, openRefs, blocked, nsfwScore, sunFromImage, REF_SOURCES}, layers: {psdBytes, renderLayerSet, layeredPSD, openIn, showOpenIn}, EXK, motionPoseAt, setFrameAnim: setFrame, DYN, TRAIL, balanceOf, accessTick, SAVED_CHARS: () => SAVED_CHARS, importCharacters, placeCharacter, eachFrame, renderExportCanvas, video: {VID, MP4, exportVideo, pickVideoCodec, pickAudioCodec, get jointDots() { return jointDots; }}, board: {BD, splitPanels, detectIn, openBoard, readBoard, animateBoard, photoOrBoard}, clips: {parseAvatar, framesFromModel, framesFromBVH, retargetFrames, packClip, unpackClip, sampleClip, clipSpeed, insertClip, clipPose, facingOf, loadClipLibrary, allClips, openAnimGallery, clipFromTrack, saveMyClip, importAnimFile, CLIPS, AG}, practice, sceneLink, poseFromImage, applyPhotoPose, ANIM, mouthAt, blinkAt, animBVH, exportGLB, exportBVH, panoReady: () => panoSphere.visible && !!panoSphere.material.map, sitOn, makeProp, enforcePins, LANG, I18N_EN, SETS, loadAsset, surfaces, A, loadHeadModel, HEAD_CATALOG, rebuildActive, applyExpression, garmentSpec, clothState, settleAll, setOutfitNow: setOutfit, frameNow: frame, sk, setSketch, redrawSketch, applyRandom, renderExport, ex, makeGhost, lookAtPoint, lookTarget, snapshot, sceneExtras, restore, props, extraLights, get mq() { return mq; }, camera, controls, POSES, GROUP_POSES, renderThumb, get thumbChars() { return thumbChars; }, get chars() { return chars; }, useGroup, usePreset, setEnv, applyAmbient, state, frameAll, setView, buildPoseGrid};
+window.__cdp = {creator: {CR, crGo, crFrame, crRandom, setOutfitSlot, crSearch, crIndex, OUTFIT_SLOTS}, support: {SUP, supportAfterSave, KOFI}, safety: {SNAPS, keepSnap, snapList, beforeReplace, recoverSnap, workData, unlinkPanels, relinkPanels, autosaveNow, readAutosave, openSharedScene, renderSnaps, get shotSeq() { return shotSeq; }}, get FIG() { return FIG; }, bible: {bibleCastFromActive, saveLocation, applyLocation, expressionSheet, lineupSheet, renderBible}, film: {applyFilmFormat, renderFilmList}, comicx: {comicPDF, comicCBZ, comicPSD}, comic: {CM, comic: () => comic(), addPage, editPanel, finishPanelEdit, filmToComic, exportComicPages, readingOrder, panelShot, pageImage, panelKey, layoutPanels, splitPanel, insetPanel, removePanel, panelBox, panelPts, panelAt, setPanelPoly, inPoly, polyArea, drawBalloons, balloonGeom, addJoinedBalloon, removeBalloon, composePage, PANEL_TEMPLATES, BALLOON_KINDS, PANEL_BORDERS, pv, CMH, comicUndo, morph, applyLayout, presetPanels, goPage, swapContents, linkShot, duplicatePage, deletePage, renderTracker, renderScript, comicScriptText, openPanelScene, moveSet, startShapeDrag, moveShapeDrag, PRESET_GROUPS, deskLayout, panelScreenRect, histCommit}, project: {PROJECT, projectState, applyProjectState, castFromChar, propagateCast, eachProjectShot}, renderView, spaces: {WS, WORKSPACES, setWorkspace, goTab, wsTabs}, keys: {shotKeyPoses, exportKeyLines, keyLinesPreview, KEY_EX, drawKeySheet, inkNow, timingSheet}, get renderer() { return renderer; }, tour: {TOUR, TOURS, tourStart}, kb: {kbJoints}, file: {neoposeBytes, openNeopose, migrateScene, NP_VERSION}, furry: {coatOf, COATS, tailOf, tailLife, tailRest, ANTHRO_EXPR, speciesOf, padsOn}, tl: {TL, tlView, tlHit, trackX}, ux: {UX, floorAt, charAt, garmentAt, withGlide, openPalette}, script: {SC, enterShot, play, parseScript, scLang, readAction, castOf, scriptToFilm, planShots, verbPats, emotionOf, shotDirection, placeOf, timeOf, VOICE, sayLine, lineTiming, voiceOf, dialogueWav, SC_SAMPLE}, refs: {REF, refSearch, refToScene, openRefs, blocked, nsfwScore, sunFromImage, REF_SOURCES}, layers: {psdBytes, renderLayerSet, layeredPSD, openIn, showOpenIn}, EXK, motionPoseAt, setFrameAnim: setFrame, DYN, TRAIL, balanceOf, accessTick, SAVED_CHARS: () => SAVED_CHARS, importCharacters, placeCharacter, eachFrame, renderExportCanvas, video: {VID, MP4, exportVideo, pickVideoCodec, pickAudioCodec, get jointDots() { return jointDots; }}, board: {BD, splitPanels, detectIn, openBoard, readBoard, animateBoard, photoOrBoard}, clips: {parseAvatar, framesFromModel, framesFromBVH, retargetFrames, packClip, unpackClip, sampleClip, clipSpeed, insertClip, clipPose, facingOf, loadClipLibrary, allClips, openAnimGallery, clipFromTrack, saveMyClip, importAnimFile, CLIPS, AG}, practice, sceneLink, poseFromImage, applyPhotoPose, ANIM, mouthAt, blinkAt, animBVH, exportGLB, exportBVH, panoReady: () => panoSphere.visible && !!panoSphere.material.map, sitOn, makeProp, enforcePins, LANG, I18N_EN, SETS, loadAsset, surfaces, A, loadHeadModel, HEAD_CATALOG, rebuildActive, applyExpression, garmentSpec, clothState, settleAll, setOutfitNow: setOutfit, frameNow: frame, sk, setSketch, redrawSketch, applyRandom, renderExport, ex, makeGhost, lookAtPoint, lookTarget, snapshot, sceneExtras, restore, props, extraLights, get mq() { return mq; }, camera, controls, POSES, GROUP_POSES, renderThumb, get thumbChars() { return thumbChars; }, get chars() { return chars; }, useGroup, usePreset, setEnv, applyAmbient, state, frameAll, setView, buildPoseGrid};
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 
 })();

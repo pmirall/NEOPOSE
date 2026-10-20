@@ -11,7 +11,8 @@ function resize() {
 }
 new ResizeObserver(resize).observe(vp);
 function updateHandles() {
-  const show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
+  // (none in the character creator: it shapes who they are, the posing is Estático's and Animación's)
+  const show = !practice.active && !sk.hideFig && !sk.on && !ANIM.rec && !CR.on, coarse = matchMedia('(pointer: coarse)').matches ? 1.6 : 1;
   for (const n of DOT_JOINTS) {
     const d = jointDots[n], j = mq.joints[n];
     d.visible = show && state.dots && !!j && !(n.startsWith('tail') && !mq.hasTail) && !(n.startsWith('ear') && !mq.hasEars) && !(n === 'hips' && state.ik) && !(mq._limbLock && mq._limbLock.has(n));
