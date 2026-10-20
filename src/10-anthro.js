@@ -569,10 +569,11 @@ function remodelHands(b, P, J, H) {
       names.forEach((nm, i) => { const j = FIG.jIdx[nm] * 3; J[j] = n[i].x; J[j + 1] = n[i].y; J[j + 2] = n[i].z; });
     }
     const v = new V3(), out = new V3(), loc = new V3(), rad = new V3();
-    // (cnt: how many points, or the list of the body's that have a hand bone)
-    const apply = (Q, cnt, si, sw) => {
-      for (let c = 0, nc = cnt.length ?? cnt; c < nc; c++) {
-        const i = cnt.length ? cnt[c] : c; let wf = 0; for (let k = 0; k < 4; k++) if (seg.has(si[i * 4 + k])) wf += sw[i * 4 + k] / 255; if (wf < .01) continue;
+    // pts: how many points there are, or which (the body's that have a hand bone)
+    const apply = (Q, pts, si, sw) => {
+      const list = typeof pts === 'number' ? null : pts;
+      for (let c = 0, nc = list ? list.length : pts; c < nc; c++) {
+        const i = list ? list[c] : c; let wf = 0; for (let k = 0; k < 4; k++) if (seg.has(si[i * 4 + k])) wf += sw[i * 4 + k] / 255; if (wf < .01) continue;
         v.set(Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]); out.set(0, 0, 0); let wt = 0;
         for (let k = 0; k < 4; k++) {
           const w = sw[i * 4 + k] / 255; if (!w) continue; const g = seg.get(si[i * 4 + k]);
@@ -642,7 +643,7 @@ function handGeos(m, P) {
     if (padsOn(b) && S !== HAND_SHAPES.pezuna) for (const p of handPads(b, F, G, s)) { const g = padDecal(P, N, s, p, .0007 * sz); if (g) soft.push(g); }
   }
   const out = [];
-  if (hard.length) { const g = mergeLofts(hard); g.userData.hand = 'claws'; out.push(g); }
+  if (hard.length) { const g = mergeLofts(hard); g.userData.hand = 'claws'; out.push(g); }  // (claws or hooves: keratin)
   if (soft.length) { const g = mergeLofts(soft); g.userData.hand = 'pads'; g.userData.skin = g.userData.noHull = true; out.push(g); }
   return out;
 }
