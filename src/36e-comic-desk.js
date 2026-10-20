@@ -434,7 +434,9 @@ function initPageView() {
     cursor('default'); deskChanged();
   };
   pv.cv.addEventListener('pointerup', end); pv.cv.addEventListener('pointercancel', end);
-  pv.cv.addEventListener('pointerleave', () => { if (!pv.drag && (pv.hover || pv.edge)) { pv.hover = null; pv.edge = null; drawPage(); } });
+  // (going from a panel onto its own toolbar keeps the toolbar: it is that panel's)
+  const leave = e => { if (pv.drag || !(pv.hover || pv.edge)) return; const to = e.relatedTarget; if (to && (to === pv.cv || to.closest && to.closest('#pvBar'))) { pv.edge = null; drawPage(); return; } pv.hover = null; pv.edge = null; drawPage(); };
+  pv.cv.addEventListener('pointerleave', leave); bar.addEventListener('pointerleave', leave);
   pv.cv.addEventListener('dblclick', e => { const [x, y] = at(e), h = pageHit(x, y); if (h && h.b) { CM.selB = h.b; syncComicUI(); revealBalloonText(); } else if (h && h.p) openPanelScene(h.p); else setZoom(1); });
   pv.cv.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = at(e);
     if (e.ctrlKey || e.metaKey) setZoom(pv.zoom * Math.exp(-e.deltaY * .0022), x, y);
