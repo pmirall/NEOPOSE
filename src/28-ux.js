@@ -342,7 +342,7 @@ function paletteIndex() {
   for (const [k, v] of Object.entries(SCENES)) add('set', tr(v.label), () => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === k))); setEnv(k).then(() => { if (state.env === k) pushHistory(); }); });
   for (const [k, v] of [...Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]]), ...Object.entries(PROPS)]) add('prop', tr(v), () => { const g = makeProp(k, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   for (const b of $$('#exprChips .chip[data-v]')) add('expr', b.textContent, () => b.click());
-  for (const c of PROJECT.cast) add('char', c.name, () => placeCharacter(c), tr('Reparto del proyecto'), 'cast:' + c.id);
+  for (const c of PROJECT.cast) add('char', c.name + ' · ' + tr('Reparto del proyecto'), () => placeCharacter(c), '', 'cast:' + c.id);
   for (const c of SAVED_CHARS) add('char', c.name, () => placeCharacter(c));
   if (ROPA.catalog) for (const c of ROPA.catalog) add('garment', gTitle(c), () => { if (!mq.outfit.some(s => s.id === c.id)) toggleGarment(c.id); }, c.title + ' ' + tr(c.cat));
   // the chips of the panels, read as they are now (the list of species keeps growing): pressing one is using it

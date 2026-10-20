@@ -35,7 +35,7 @@ async function saveCharacter(m = mq) {
   m.body.name = name.trim(); renderCast();
   const c = characterOf(m, m.body.name); c.thumb = characterThumb(m);
   // Mis personajes is this device's; the way into the project's cast (what its shots and panels follow) is offered right there
-  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}), {act: ['Añadir al reparto del proyecto', () => { if (mq === m) bibleCastFromActive(m.body.name); }]});
+  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}), {act: ['Añadir al reparto del proyecto', () => { if (mq === m) bibleAddActive(m.body.name); }]});
 }
 async function loadCharacters() { SAVED_CHARS = (await charDB.all()).sort((a, b) => (b.at || 0) - (a.at || 0)); renderCharacters(); return SAVED_CHARS; }
 // into the scene: a new character with this body and these clothes, standing where there is room

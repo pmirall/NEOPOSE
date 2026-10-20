@@ -10678,7 +10678,7 @@ async function saveCharacter(m = mq) {
   m.body.name = name.trim(); renderCast();
   const c = characterOf(m, m.body.name); c.thumb = characterThumb(m);
   // Mis personajes is this device's; the way into the project's cast (what its shots and panels follow) is offered right there
-  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}), {act: ['Añadir al reparto del proyecto', () => { if (mq === m) bibleCastFromActive(m.body.name); }]});
+  await charDB.put(c); await loadCharacters(); toast(tr('«{x}» guardado en Mis personajes.', {x: c.name}), {act: ['Añadir al reparto del proyecto', () => { if (mq === m) bibleAddActive(m.body.name); }]});
 }
 async function loadCharacters() { SAVED_CHARS = (await charDB.all()).sort((a, b) => (b.at || 0) - (a.at || 0)); renderCharacters(); return SAVED_CHARS; }
 // into the scene: a new character with this body and these clothes, standing where there is room
@@ -14833,7 +14833,7 @@ function paletteIndex() {
   for (const [k, v] of Object.entries(SCENES)) add('set', tr(v.label), () => { $('#envChips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === k))); setEnv(k).then(() => { if (state.env === k) pushHistory(); }); });
   for (const [k, v] of [...Object.entries(ASSET_PROPS).map(([k, v]) => [k, v[0]]), ...Object.entries(PROPS)]) add('prop', tr(v), () => { const g = makeProp(k, spotNear()); setOutlines(g, state.envOutline); selectObj(g); pushHistory(); });
   for (const b of $$('#exprChips .chip[data-v]')) add('expr', b.textContent, () => b.click());
-  for (const c of PROJECT.cast) add('char', c.name, () => placeCharacter(c), tr('Reparto del proyecto'), 'cast:' + c.id);
+  for (const c of PROJECT.cast) add('char', c.name + ' · ' + tr('Reparto del proyecto'), () => placeCharacter(c), '', 'cast:' + c.id);
   for (const c of SAVED_CHARS) add('char', c.name, () => placeCharacter(c));
   if (ROPA.catalog) for (const c of ROPA.catalog) add('garment', gTitle(c), () => { if (!mq.outfit.some(s => s.id === c.id)) toggleGarment(c.id); }, c.title + ' ' + tr(c.cat));
   // the chips of the panels, read as they are now (the list of species keeps growing): pressing one is using it
@@ -17692,6 +17692,12 @@ function bibleCastFromActive(name) {
   toast(n.shots + n.panels ? tr('«{x}» actualizado en el proyecto, en {s} planos y {p} viñetas.', {x: c.name, s: n.shots, p: n.panels}) : tr('«{x}» está en el reparto del proyecto.', {x: c.name}));
   return c;
 }
+// the active character into the cast under that name; when that name is the cast member it already is, it asks first,
+// since every shot and comic panel that has them is changed with it
+function bibleAddActive(nm) {
+  const cur = mq.body.castId && castById(mq.body.castId); if (cur && scNorm(cur.name) === scNorm(nm) && !confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: cur.name}))) return;
+  return bibleCastFromActive(nm);
+}
 // the names a script has that the cast has not (to be designed)
 function scriptNamesToDesign() {
   const t = store.get('cdp.script', '') || ''; if (!t.trim()) return [];
@@ -17802,7 +17808,7 @@ function buildBibleUI() {
   if (!$('section[data-tab=biblia]')) return;
   // the same name as the cast member the active character came from replaces them everywhere, so it asks first; another name adds someone new
   $('#bbAdd').onclick = () => { const name = prompt(tr('Nombre del personaje'), mq.body.name || charLabel(mq)); if (!name) return;
-    const nm = name.trim(), cur = mq.body.castId && castById(mq.body.castId); if (cur && scNorm(cur.name) === scNorm(nm) && !confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: cur.name}))) return; bibleCastFromActive(nm); };
+    bibleAddActive(name.trim()); };
   $('#bbPlaceAdd').onclick = () => { const name = prompt(tr('Nombre del lugar'), tr(SCENES[state.env] ? SCENES[state.env].label : state.env)); if (name) saveLocation(name.trim()); };
   $('#bbTurn').onclick = () => { openExport(); const c = $('#exKind .chip[data-v="turn"]'); if (c) c.click(); };
   $('#bbExpr').onclick = () => saveSheet('expr'); $('#bbLine').onclick = () => saveSheet('line');

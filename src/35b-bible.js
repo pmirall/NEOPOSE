@@ -13,6 +13,12 @@ function bibleCastFromActive(name) {
   toast(n.shots + n.panels ? tr('«{x}» actualizado en el proyecto, en {s} planos y {p} viñetas.', {x: c.name, s: n.shots, p: n.panels}) : tr('«{x}» está en el reparto del proyecto.', {x: c.name}));
   return c;
 }
+// the active character into the cast under that name; when that name is the cast member it already is, it asks first,
+// since every shot and comic panel that has them is changed with it
+function bibleAddActive(nm) {
+  const cur = mq.body.castId && castById(mq.body.castId); if (cur && scNorm(cur.name) === scNorm(nm) && !confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: cur.name}))) return;
+  return bibleCastFromActive(nm);
+}
 // the names a script has that the cast has not (to be designed)
 function scriptNamesToDesign() {
   const t = store.get('cdp.script', '') || ''; if (!t.trim()) return [];
@@ -123,7 +129,7 @@ function buildBibleUI() {
   if (!$('section[data-tab=biblia]')) return;
   // the same name as the cast member the active character came from replaces them everywhere, so it asks first; another name adds someone new
   $('#bbAdd').onclick = () => { const name = prompt(tr('Nombre del personaje'), mq.body.name || charLabel(mq)); if (!name) return;
-    const nm = name.trim(), cur = mq.body.castId && castById(mq.body.castId); if (cur && scNorm(cur.name) === scNorm(nm) && !confirm(tr('¿Cambiar a «{x}» por el personaje activo en todo el proyecto (planos y viñetas)?', {x: cur.name}))) return; bibleCastFromActive(nm); };
+    bibleAddActive(name.trim()); };
   $('#bbPlaceAdd').onclick = () => { const name = prompt(tr('Nombre del lugar'), tr(SCENES[state.env] ? SCENES[state.env].label : state.env)); if (name) saveLocation(name.trim()); };
   $('#bbTurn').onclick = () => { openExport(); const c = $('#exKind .chip[data-v="turn"]'); if (c) c.click(); };
   $('#bbExpr').onclick = () => saveSheet('expr'); $('#bbLine').onclick = () => saveSheet('line');
