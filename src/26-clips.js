@@ -581,7 +581,7 @@ async function addSelectedClip() {
   const c = AG.sel; if (!c) return;
   if (!ANIM.open) openTimeline(true);
   const ci = AG.who ?? chars.indexOf(mq), n = insertClip(c, ci, ANIM.f, AG.opts);
-  closeAnimGallery(); toast(tr('«{x}» añadida a {w}: {n} fotogramas.', {x: c.name, w: speaker(ci), n}));
+  closeAnimGallery(); toast(tr('«{x}» añadida a {w}: {n} fotogramas.', {x: c.name, w: speaker(ci), n}), {undo: true});
 }
 function buildAnimGalleryUI() {
   $('#tlClips').onclick = openAnimGallery; $('#libClips').onclick = openAnimGallery;
@@ -592,7 +592,7 @@ function buildAnimGalleryUI() {
   $('#agPose').onclick = () => {
     const c = AG.sel; if (!c) return; const i = AG.who ?? chars.indexOf(mq), m = chars[i] || mq, p0 = m.getPose();
     m.setPose(clipPose(m, sampleClip(c, Math.min(AG.t, c.len)), new V3().fromArray(p0.pos), facingOf(p0.q), true, m.rootY / clipRig().rootY, p0.q)); m.group.updateMatrixWorld(true);
-    closeAnimGallery(); pushHistory(); toast(tr('Postura de «{x}» aplicada a {w}.', {x: c.name, w: speaker(i)}));
+    closeAnimGallery(); pushHistory(); toast(tr('Postura de «{x}» aplicada a {w}.', {x: c.name, w: speaker(i)}), {undo: true});
   };
   // files dropped on the gallery window
   const sheet = $('#animGallery'); sheet.addEventListener('dragover', e => e.preventDefault());

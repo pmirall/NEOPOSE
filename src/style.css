@@ -479,7 +479,7 @@ body.practicing .modebar{display:none}
 .mvadd{flex:none;width:64px;border:1.5px dashed var(--line);border-radius:7px;background:transparent;color:var(--ink-soft);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 11px var(--f-body)}
 .mvadd svg{width:20px;height:20px}
 .mvadd:hover{border-color:var(--ink);color:var(--ink)}
-.tlrow{display:flex;align-items:center;gap:4px;min-width:0}
+.tlrow{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
 .tlrow .btn.icon{width:32px;height:32px;padding:0;flex:none;position:relative}
 .tlrow .btn.icon svg{width:18px;height:18px}
 #tlPlay{background:var(--ink);color:var(--page);border-color:var(--ink)}
@@ -508,6 +508,9 @@ body.practicing .modebar{display:none}
 .timeline.min #tlMin svg{transform:rotate(180deg)}
 .tlopts{position:absolute;right:0;bottom:calc(100% + 8px);width:min(560px,100%);box-sizing:border-box;background:var(--page);border:1.5px solid var(--ink);border-radius:10px;box-shadow:var(--lift);padding:10px 12px;display:flex;flex-direction:column;gap:7px;max-height:60vh;overflow:auto}
 .tlchecks{display:flex;flex-wrap:wrap;gap:2px 14px}
+/* the dock's popovers stop below the top bar (a finger-sized one too), and above the panel sheet where there is one */
+@media (min-width:601px){ .tlopts{max-height:clamp(120px,calc(100dvh - var(--dockH,220px) - 96px),60vh)} }
+@media (min-width:601px) and (max-width:860px){ .tlopts{max-height:clamp(120px,calc(100dvh - var(--sheetH,0px) - var(--dockH,220px) - 96px),60vh)} }
 #animBtn[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
 body.anim .hint:not(.toast){display:none}
 .subs{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--dockH, 220px));z-index:3;max-width:min(80%,640px);text-align:center;pointer-events:none}
@@ -536,7 +539,7 @@ body.anim .hint:not(.toast){display:none}
   .tllabels{width:92px}
   .tllab{font-size:10.5px;padding:0 4px;gap:4px}
   #tlShot{max-width:84px}
-  .tlopts{position:fixed;left:8px;right:8px;top:calc(max(10px,env(safe-area-inset-top)) + 48px);bottom:auto;width:auto;max-height:calc(100dvh - 70px);z-index:30}
+  .tlopts{position:fixed;left:8px;right:8px;top:calc(max(10px,env(safe-area-inset-top)) + 48px);bottom:auto;width:auto;max-height:max(160px,calc(100dvh - 70px - var(--sheetH,0px)));z-index:30}
 }
 /* pose from a photo */
 .photoprev{margin:8px 0 4px;border:1.5px solid var(--line);border-radius:6px;overflow:hidden;background:var(--stage)}
@@ -786,7 +789,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .book.live{transition:none}
   .sheetgrip{display:block;flex:none;height:22px;width:100%;border:0;background:none;cursor:grab;touch-action:none;position:relative}
   .sheetgrip::before{content:"";position:absolute;left:50%;top:8px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:var(--line)}
-  .tabs{position:static;background:none;padding-top:0;touch-action:none}
+  .tabs{position:static;background:none;padding-top:0;touch-action:none;padding-right:10px}
   .page{flex:1;min-height:0;overflow:auto;max-height:none;margin:0 10px;overscroll-behavior:contain}
   .book[data-snap="peek"] .page{overflow:hidden}
   body.practicing .book{display:none}
@@ -945,7 +948,8 @@ body{background:var(--tex),var(--paper)}
 @keyframes noteIn{from{transform:translate(-50%,14px) rotate(2deg);opacity:0}}
 .joint-card:not([hidden]),.lineedit:not([hidden]){animation:cardIn .34s var(--spring) both}
 @keyframes cardIn{from{transform:translateY(-8px) rotate(-1.2deg);opacity:0}}
-.timeline:not([hidden]){animation:dockIn .4s var(--spring) both}
+/* (no fill once in: a transform kept after it would hold the phone's fixed «…» panel inside the dock) */
+.timeline:not([hidden]){animation:dockIn .4s var(--spring) backwards}
 @keyframes dockIn{from{transform:translateY(26px);opacity:0}}
 .ctxmenu,.tlselbar,.installhint{animation:cardIn .26s var(--spring) both}
 /* cards lift off the page under the mouse (the shadow fades in on a layer of its own) */
@@ -1031,14 +1035,19 @@ a{color:var(--blue);text-underline-offset:2px}
 #exOptAnim.empty > :not(#exAnimNote){display:none}
 /* the timeline's readout is never cut */
 .tltime{flex:none;overflow:visible}
-/* phones: the timeline row keeps play, the keys and close; the other tools are in the "…" panel */
+/* a narrower dock (a laptop with the panel open, a tablet): first the button labels go, then the film's total; a
+   narrow one (a phone, a small window) keeps play, the keys and the fold in the row, and the other tools, leaving
+   Animación included, wait in the "…" panel. The dock's own width decides (.tl-compact, .tl-tight, .tl-narrow: 22-anim.js) */
 .tlphone{display:none}
+.timeline.tl-compact .tlrow .tlclips{padding:0 8px}
+.timeline.tl-compact .tlrow .tlclips span{display:none}
+.timeline.tl-tight .mvtotal{display:none}
+.timeline.tl-narrow :is(#tlCamRec,#tlLine,#tlBoard,#tlScript,#tlClips,#tlExport,#tlMotion,#tlClose){display:none}
+.timeline.tl-narrow :is(#tlPrev,#tlNext){display:inline-flex}
+.timeline.tl-narrow .tlphone{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
+.tlphone .btn{justify-content:flex-start;white-space:normal;text-align:left;line-height:1.15}
+.tlphone .btn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
 @media (max-width:600px){
-  #tlCamRec,#tlLine,#tlBoard,#tlScript,#tlClips,#tlExport,#tlMotion,#tlMin{display:none}
-  #tlPrev,#tlNext{display:inline-flex}
-  .tlphone{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:8px;border-bottom:1px dashed var(--rule)}
-  .tlphone .btn{justify-content:flex-start;white-space:normal;text-align:left;line-height:1.15}
-  .tlphone .btn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
   .mvshot.on{width:140px}
   .mvact{height:32px;min-width:32px}
 }
@@ -1065,12 +1074,16 @@ a{color:var(--blue);text-underline-offset:2px}
   details.sec[data-sec=lib] > summary{padding:6px 0 4px}
   details.sec[data-sec=lib] .filter{margin:0 0 6px}
 }
-.tlphead{display:none}
+.tlphead{display:flex;justify-content:flex-end;margin:-4px -6px -4px 0}
+.tlphead strong{display:none}
+.tlphead .gx{border:0;background:none;font-size:20px;line-height:1;min-width:28px;min-height:28px;color:var(--ink-soft);cursor:pointer}
 @media (max-width:600px){
   .tlphead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--f-hand);font-size:18px}
+  .tlphead strong{display:inline}
   .tlphead .gx{border:0;background:none;font-size:24px;line-height:1;min-width:40px;min-height:40px;color:var(--ink-soft);cursor:pointer}
   .mvmotion{width:auto}
 }
+@media (pointer:coarse){ .tlphead .gx{min-width:40px;min-height:40px} }
 @media (max-width:480px){
   /* with the dock open, undo, redo and search line up above it instead of climbing over the cast chips */
   body.anim .thumbbar{flex-direction:row}
@@ -1263,13 +1276,15 @@ body.paging #cast,body.paging .modebar,body.paging #jointCard,body.paging .hint{
 .bbcard .row{gap:4px;flex-wrap:wrap}
 /* Película: the shots as a list */
 .fplist{display:flex;flex-direction:column;gap:6px}
-.fpshot{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;border:1.5px solid var(--line);border-radius:var(--sketch);padding:4px;background:var(--paper)}
+.fpshot{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1.5px solid var(--line);border-radius:var(--sketch);padding:4px;background:var(--paper)}
 .fpshot.on{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--red)}
-.fpth{width:96px;height:54px;border:none;padding:0;border-radius:3px;background:var(--stage);cursor:pointer;overflow:hidden}
+.fpgo{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;min-width:0}
+.fpth{position:relative;display:block;width:96px;height:54px;border:none;padding:0;border-radius:3px;background:var(--stage);cursor:pointer;overflow:hidden}
 .fpth img{width:100%;height:100%;object-fit:cover;display:block}
 .fpm{display:flex;flex-direction:column;min-width:0}
 .fpm b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fpm span{font-size:11.5px;color:var(--ink-soft)}
+.fpm b,.fpm span{display:block}
 .fpbtn{display:flex;flex-direction:column;gap:2px}
 #cmSfxNew,#cmSfxText{font:inherit;font-family:Bangers,var(--f-hand);font-size:18px;letter-spacing:.04em;border:1.5px solid var(--line);border-radius:var(--sketch);background:var(--paper);padding:4px 8px;min-width:0;flex:1}
 #cmSfxText{width:100%;margin:6px 0}

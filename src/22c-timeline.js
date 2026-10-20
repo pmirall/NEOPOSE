@@ -194,6 +194,8 @@ function initTimelineKeys() {
     if (mod && c === 'KeyV' && !e.shiftKey && TL.clip && (!UX.clip || TL.clipT >= (UX.clipT || 0))) { tlPaste(); return done(); }
     if (mod && c === 'KeyA' && !e.shiftKey) { tlSelectAll(); return done(); }
     if (e.shiftKey && !mod && c === 'KeyD') { if (tlDuplicate()) return done(); }
+    // Esc closes the open popover (Interpretación or «…»), and the focus goes back to its button («…» when that one is hidden)
+    if (c === 'Escape' && (!$('#mvMotion').hidden || !$('#tlOpts').hidden)) { const was = !$('#mvMotion').hidden ? '#tlMotion' : '#tlMore'; $('#mvMotion').hidden = $('#tlOpts').hidden = true; $('#tlMotion').setAttribute('aria-expanded', 'false'); $('#tlMore').setAttribute('aria-expanded', 'false'); const b = $(was); (b.offsetParent ? b : $('#tlMore')).focus(); return done(); }
     if (c === 'Escape' && tlClear()) return done();
     if (e.altKey && (c === 'Comma' || c === 'Period') && TL.sel.size) { tlShift((c === 'Comma' ? -1 : 1) * (e.shiftKey ? 10 : 1)); return done(); }
     if (mod || e.altKey) return;

@@ -149,34 +149,37 @@ function setMotion(patch, all) {
   for (const ci of all ? chars.map((_, i) => i) : [motionTrack()]) s.motion[ci] = {...motionOf(s, ci), ...patch};
   setFrame(ANIM.f); syncMotionUI(); if (typeof motionTrailsDirty === 'function') motionTrailsDirty(); tourEvent('motion');
 }
+// the film-wide buttons reach every shot, beyond the current shot's undo: each keeps how all of them played, to put back
+const filmSnap = () => ANIM.shots.map(s => [s, JSON.stringify({motion: s.motion || {}, light: s.light || null, key: s.key ?? null, cam: s.cam, camStyle: s.camStyle || null, camBase: s.camBase || null})]);
+const filmBack = snap => () => { for (const [s, j] of snap) { Object.assign(s, JSON.parse(j)); touchShot(s); } if (!ANIM.open) return; setFrame(ANIM.f); syncMotionUI(); renderStrip(); pushHistory(); };
 function buildMotionUI() {
   const box = $('#mvMotion'); if (!box) return; box.innerHTML = '';
   const head = document.createElement('div'); head.className = 'mvmhead'; head.innerHTML = `<p class="advh">${tr('Interpretación')} <span id="mvmWho"></span></p>`; box.appendChild(head);
   const pre = document.createElement('div'); pre.className = 'chips'; pre.id = 'mvmPresets'; box.appendChild(pre);
-  chips(pre, Object.entries(MOTION_PRESETS).map(([k, v]) => [k, v.label]), null, k => { setMotion({...MOTION_DEF, ...MOTION_PRESETS[k].set}); setPressed(pre, k); });
+  chips(pre, Object.entries(MOTION_PRESETS).map(([k, v]) => [k, v.label]), null, k => { setMotion({...MOTION_DEF, ...MOTION_PRESETS[k].set}); setPressed(pre, k); pushHistory(); });
   for (const [k, label, mn, mx] of MOTION_SLIDERS)
     motionEls[k] = slider(box, {id: 'mvm_' + k, label, min: mn, max: mx, step: .05, value: MOTION_DEF[k], fmt: pctFmt, input: v => { setMotion({[k]: v, block: false}); setPressed(pre, ''); }, change: pushHistory});
   const row = document.createElement('div'); row.className = 'filter'; row.innerHTML = `<span>${tr('Ritmo')}</span><div class="chips seg" id="mvmStep"></div>`; box.appendChild(row);
   chips($('#mvmStep'), [['1', tr('A unos')], ['2', tr('A doses')], ['3', tr('A treses')]], '1', v => { setMotion({step: +v}); pushHistory(); });
   const tl = document.createElement('label'); tl.className = 'check'; tl.innerHTML = `<input type="checkbox" id="mvmTrails"> ${tr('Ver trayectorias y espaciado')}`; box.appendChild(tl);
   tl.querySelector('input').onchange = e => { TRAIL.on = e.target.checked; motionTrailsDirty(); updateTrails(); };
-  const all = document.createElement('button'); all.className = 'btn small'; all.textContent = tr('Aplicar a todo el reparto');
+  const all = document.createElement('button'); all.className = 'btn small'; all.textContent = tr('Esta interpretación en todo el reparto');
   all.onclick = () => { setMotion(motionOf(shot(), motionTrack()), true); pushHistory(); toast(tr('Misma interpretación para todo el reparto de este plano.')); }; box.appendChild(all);
-  const film = document.createElement('button'); film.className = 'btn small'; film.textContent = tr('A toda la película');
-  film.onclick = () => { const st = motionOf(shot(), motionTrack()); for (const s of ANIM.shots) { s.motion = {}; s.keys.forEach((_, ci) => s.motion[ci] = {...st}); } setFrame(ANIM.f); pushHistory(); toast(tr('Misma interpretación en todos los planos de la película.')); };
+  const film = document.createElement('button'); film.className = 'btn small'; film.textContent = tr('Esta interpretación en toda la película');
+  film.onclick = () => { const snap = filmSnap(), st = motionOf(shot(), motionTrack()); for (const s of ANIM.shots) { s.motion = {}; s.keys.forEach((_, ci) => s.motion[ci] = {...st}); } setFrame(ANIM.f); pushHistory(); toast(tr('Misma interpretación en todos los planos de la película.'), {undo: filmBack(snap)}); };
   box.appendChild(film);
   // the shot's camera and light, here too: what the shot looks like is part of how it plays
   const camH = document.createElement('p'); camH.className = 'advh'; camH.textContent = tr('Cámara del plano'); box.appendChild(camH);
   const cam = document.createElement('div'); cam.className = 'chips'; cam.id = 'mvmCam'; box.appendChild(cam);
   chips(cam, Object.entries(CAM_STYLES), 'tal', k => { if (!setCamStyle(shot(), k)) { toast(tr('Este plano no tiene cámara animada: graba o pon una clave de cámara primero.')); return; } setPressed(cam, k); setFrame(ANIM.f); renderStrip(); pushHistory(); });
   const camAll = document.createElement('button'); camAll.className = 'btn small'; camAll.textContent = tr('Esta cámara en toda la película');
-  camAll.onclick = () => { const k = shot().camStyle || 'tal'; let n = 0; for (const s of ANIM.shots) if (setCamStyle(s, k)) n++; setFrame(ANIM.f); renderStrip(); pushHistory(); toast(tr('Cámara «{k}» en {n} planos.', {k: CAM_STYLES[k], n})); };
+  camAll.onclick = () => { const snap = filmSnap(), k = shot().camStyle || 'tal'; let n = 0; for (const s of ANIM.shots) if (setCamStyle(s, k)) n++; setFrame(ANIM.f); renderStrip(); pushHistory(); toast(tr('Cámara «{k}» en {n} planos.', {k: CAM_STYLES[k], n}), {undo: filmBack(snap)}); };
   box.appendChild(camAll);
   const litH = document.createElement('p'); litH.className = 'advh'; litH.textContent = tr('Luz del plano'); box.appendChild(litH);
   const lit = document.createElement('div'); lit.className = 'chips'; lit.id = 'mvmLight'; box.appendChild(lit);
   chips(lit, [...Object.entries(LIGHT_MOODS).map(([k, v]) => [k, v.label]), ['ninguna', tr('Solo la del escenario')]], 'auto', k => { setShotLight(shot(), k); setPressed(lit, k); setFrame(ANIM.f); pushHistory(); });
   const litAll = document.createElement('button'); litAll.className = 'btn small'; litAll.textContent = tr('Esta luz en toda la película');
-  litAll.onclick = () => { const k = (shot().light && shot().light.mood) || (shot().key ? 'auto' : 'ninguna'); for (const s of ANIM.shots) setShotLight(s, k); setFrame(ANIM.f); pushHistory(); toast(tr('La misma luz en todos los planos.')); };
+  litAll.onclick = () => { const snap = filmSnap(), k = (shot().light && shot().light.mood) || (shot().key ? 'auto' : 'ninguna'); for (const s of ANIM.shots) setShotLight(s, k); setFrame(ANIM.f); pushHistory(); toast(tr('La misma luz en todos los planos.'), {undo: filmBack(snap)}); };
   box.appendChild(litAll);
   syncMotionUI();
 }

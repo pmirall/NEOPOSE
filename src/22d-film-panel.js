@@ -15,15 +15,17 @@ function renderFilmList() {
   const tot = ANIM.shots.reduce((a, s) => a + s.len, 0) / ANIM.fps; $('#fpTotal').textContent = trn(ANIM.shots.length, '1 plano · {s} s', '{n} planos · {s} s', {s: dec(tot)});
   ANIM.shots.forEach((s, i) => {
     const row = document.createElement('div'); row.className = 'fpshot' + (i === ANIM.cur ? ' on' : ''); row.setAttribute('role', 'listitem');
-    row.innerHTML = `<button class="fpth" type="button"></button><div class="fpm"><b></b><span></span></div><div class="fpbtn"><button class="btn icon small" data-d="-1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button><button class="btn icon small" data-d="1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
-    const th = row.querySelector('.fpth'); th.innerHTML = s.thumb ? `<img alt="" src="${s.thumb}">` : ''; th.setAttribute('aria-label', tr('Ir a {n}', {n: s.name}));
-    th.onclick = () => { if (ANIM.playing) play(false); enterShot(i).then(renderFilmList); };
+    row.innerHTML = `<button class="fpgo" type="button"><span class="fpth"></span><span class="fpm"><b></b><span></span></span></button><div class="fpbtn"><button class="btn icon small" data-d="-1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button><button class="btn icon small" data-d="1" aria-label=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
+    // the whole row opens the shot; a shot not visited yet shows the strip's numbered placeholder
+    const go = row.querySelector('.fpgo'), th = row.querySelector('.fpth'); th.innerHTML = (s.thumb ? `<img alt="" src="${s.thumb}">` : '<span class="mvph"></span>') + `<span class="mvnum">${i + 1}</span>`; go.setAttribute('aria-label', tr('Ir a {n}', {n: s.name}));
+    go.onclick = () => { if (ANIM.playing) play(false); enterShot(i).then(renderFilmList); };
     row.querySelector('b').textContent = `${i + 1}. ${s.name}`;
     row.querySelector('.fpm span').textContent = `${dec(s.len / ANIM.fps)} s` + (s.lines.some(l => l.text.trim()) ? ' · ' + tr('diálogo') : '') + (s.light && s.light.mood && s.light.mood !== 'auto' ? ' · ' + LIGHT_MOODS[s.light.mood].label : '');
     const [up, dn] = row.querySelectorAll('.fpbtn button'); up.setAttribute('aria-label', tr('Antes')); dn.setAttribute('aria-label', tr('Después')); up.disabled = i === 0; dn.disabled = i === ANIM.shots.length - 1;
     for (const b of [up, dn]) b.onclick = async () => { if (i !== ANIM.cur) await enterShot(i); moveShot(+b.dataset.d); pushHistory(); renderFilmList(); };
     box.appendChild(row);
   });
+  if (ANIM.lenEl && shot()) ANIM.lenEl.set(sec(shot().len));  // «Duración de este plano», under the list: the current shot's
 }
 function buildFilmPanelUI() {
   if (!$('section[data-tab=pelicula]')) return;

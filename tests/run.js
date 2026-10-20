@@ -229,6 +229,7 @@ const SUITES = {
     const box = await page.evaluate(() => { const r = document.querySelector('#tlTrack').getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width}; });
     const xOf = f => box.x + 12 + (box.w - 24) * f / 47;
     await page.mouse.click(xOf(24), box.y + 18 + 24 + 12); await page.waitForTimeout(200);
+    await page.click('.tab[data-tab=pose]'); await page.waitForTimeout(200);  // (Animación opens on its Película tab)
     await page.evaluate(() => document.querySelector('details[data-sec=lib]').open = true);
     await page.click('#poseGrid .pose[data-id="salto"]'); await page.waitForTimeout(300);
     const keys = await A(() => window.__cdp.ANIM.shots[0].keys[0].map(k => k.f));
@@ -877,7 +878,9 @@ const SUITES = {
     await page.click('#animBtn'); await page.waitForTimeout(600);
     ok(await A(() => window.__cdp.ANIM.open && document.body.dataset.ws === 'anim' && !document.querySelector('#timeline').hidden), 'Animation opens the timeline');
     await page.click('#animBtn'); await page.waitForTimeout(500);
-    ok(await A(() => !window.__cdp.ANIM.open && document.body.dataset.ws === 'chars'), 'Animation again: back to the space it came from, timeline closed');
+    ok(await A(() => window.__cdp.ANIM.open && document.body.dataset.ws === 'anim' && !document.querySelector('#timeline').hidden), 'Animation again: it stays in Animation, like the other space tabs');
+    await page.click('#tlClose'); await page.waitForTimeout(500);
+    ok(await A(() => !window.__cdp.ANIM.open && document.body.dataset.ws === 'chars'), 'the dock\'s ✕ leaves Animation: back to the space it came from, timeline closed');
     await page.keyboard.press('Alt+Digit2'); await page.waitForTimeout(300); const s2 = await A(() => document.body.dataset.ws);
     await page.keyboard.press('a'); await page.waitForTimeout(500); const s3 = await A(() => document.body.dataset.ws);
     await page.keyboard.press('a'); await page.waitForTimeout(500); const s4 = await A(() => document.body.dataset.ws);
@@ -1290,7 +1293,7 @@ const SUITES = {
     const bytes = await A(async () => Array.from(await window.__cdp.file.neoposeBytes('prueba')));
     ok(bytes[0] === 0x50 && bytes[1] === 0x4b && bytes.length > 1000, `a .neopose is a ZIP (${(bytes.length / 1024).toFixed(0)} kB)`);
     // change everything, then open the file
-    await page.click('#animBtn'); await page.waitForTimeout(300);
+    await page.click('#tlClose'); await page.waitForTimeout(300);
     await A(() => { const C = window.__cdp; C.sk.strokes.length = 0; C.state.guides.thirds = false; C.restore({chars: [{body: {...C.chars[0].body, species: 'humano'}, pose: C.chars[0].getPose()}], active: 0}); });
     await A(async b => { await window.__cdp.file.openNeopose(new File([new Uint8Array(b)], 'prueba.neopose')); }, bytes); await page.waitForTimeout(3500);
     const after = await state();

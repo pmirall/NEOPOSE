@@ -249,9 +249,12 @@ function duplicateShot() {
   storeShot(); const c = JSON.parse(JSON.stringify(shot())); c.id = ++shotSeq; c.name = tr('{n} (copia)', {n: shot().name});
   ANIM.shots.splice(ANIM.cur + 1, 0, c); ANIM.cur++; renderStrip();
 }
+// a shot deleted can be put back from the toast, as it was last left (its cast and set stored first)
 function deleteShot() {
-  if (ANIM.shots.length < 2) return toast(tr('La película necesita al menos un plano.'));
-  ANIM.shots.splice(ANIM.cur, 1); const i = Math.min(ANIM.cur, ANIM.shots.length - 1); ANIM.cur = -1; enterShot(i);
+  if (ANIM.busy) return; if (ANIM.shots.length < 2) return toast(tr('La película necesita al menos un plano.'));
+  storeShot(); thumbNow(); const i = ANIM.cur, gone = ANIM.shots.splice(i, 1)[0]; ANIM.cur = -1;
+  enterShot(Math.min(i, ANIM.shots.length - 1)).then(() => toast(tr('Plano «{n}» borrado.', {n: gone.name}), {undo: () => { if (!ANIM.open || ANIM.busy) return;
+    storeShot(); ANIM.shots.splice(Math.min(i, ANIM.shots.length), 0, gone); ANIM.cur = -1; enterShot(Math.min(i, ANIM.shots.length - 1)); }}));
 }
 function moveShot(d) {
   const i = ANIM.cur, j = i + d; if (j < 0 || j >= ANIM.shots.length) return;
@@ -517,7 +520,7 @@ function renderLabels() {
       rec.onclick = e => { e.stopPropagation(); toggleCamRec(); };
       b.onclick = () => { ANIM.track = 'cam'; renderLabels(); drawTimeline(); };
     } else if (ln === 'lines') {
-      b.innerHTML = `${MV_ICONS.talk}<span>${tr('Diálogo')}</span>`; b.title = tr('Guion: toca para añadir una línea'); b.onclick = () => addLine();
+      b.innerHTML = `${MV_ICONS.talk}<span>${tr('Diálogo')}</span>`; b.title = tr('Diálogo: toca para añadir una línea'); b.onclick = () => addLine();
     } else {
       const sw = document.createElement('i'); sw.style.background = MV_COLS[ln % 4]; const t = document.createElement('span'); t.textContent = speaker(ln);
       b.append(sw, t); b.title = t.textContent; b.onclick = () => { ANIM.track = ln; if (chars[ln] && chars[ln] !== mq) setActive(ln); renderLabels(); drawTimeline(); updateOnion(); syncMotionUI(); };
@@ -641,7 +644,7 @@ function lineAtXY(x, y) {
 
 /* ---------- wiring ---------- */
 function buildAnimUI() {
-  $('#animBtn').onclick = () => openTimeline(!ANIM.open);
+  $('#animBtn').onclick = () => setWorkspace('anim');  // the space tab goes in, or stays in (leaving: the dock's ✕, another space, or A)
   $('#tlClose').onclick = () => openTimeline(false);
   $('#tlPlay').innerHTML = ICON_PLAY; $('#tlPlay').onclick = e => { e.currentTarget.blur(); play(!ANIM.playing); };  // blurred: the space bar must not press it again
   $('#tlKey').onclick = () => { if (hasKey(ANIM.track, ANIM.f)) deleteKey(); else setKey(); pushHistory(); };
@@ -656,7 +659,10 @@ function buildAnimUI() {
   const at = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
   cv.addEventListener('dblclick', e => { const {x, y} = at(e), i = lanes().indexOf('lines'); if (y >= laneY(i) && y <= laneY(i) + LANE() && !lineAtXY(x, y)) addLine(Math.round(trackF(x))); });
   new ResizeObserver(drawTimeline).observe(cv);
-  new ResizeObserver(() => vp.style.setProperty('--dockH', $('#timeline').offsetHeight + 'px')).observe($('#timeline'));
+  // the dock's height for what sits above it, and its width for what fits in its row (style.css: .tl-compact, .tl-tight,
+  // .tl-narrow; finger-sized buttons need a wider dock)
+  new ResizeObserver(() => { const t = $('#timeline'), w = t.offsetWidth / (matchMedia('(pointer: coarse)').matches ? 1.15 : 1); vp.style.setProperty('--dockH', t.offsetHeight + 'px');
+    if (w) { t.classList.toggle('tl-compact', w < 900); t.classList.toggle('tl-tight', w < 780); t.classList.toggle('tl-narrow', w < 680); } }).observe($('#timeline'));
   // the line editor
   leLen = slider($('#leLenBox'), {id: 'leLen', label: 'Duración de la línea', min: .3, max: 15, step: .1, value: 1, fmt: v => dec(v) + ' s',
     input: v => { const s = shot(), l = s.lines[leIndex]; if (!l) return; l.len = clamp(Math.round(v * ANIM.fps), 2, s.len - l.f); l.auto = false; $('#leAuto').checked = false; drawTimeline(); }});
@@ -672,15 +678,15 @@ function buildAnimUI() {
   { const v = $('#tlVoice'); v.checked = VOICE.on; v.onchange = () => { VOICE.on = v.checked; store.set('cdp.tts', VOICE.on); if (!VOICE.on) voiceStop(); }; }
   $('#tlMotion').onclick = () => { const p = $('#mvMotion'); p.hidden = !p.hidden; $('#tlMotion').setAttribute('aria-expanded', String(!p.hidden)); $('#tlOpts').hidden = true; if (!p.hidden) syncMotionUI(); };
   buildMotionUI();
-  // phones: the row keeps play, the keys and close; the other tools wait in the "…" panel, with their names
+  // a narrow dock: the row keeps play, the keys and the fold; the other tools (leaving included) wait in the "…" panel, with their names
   const ph = document.createElement('div'); ph.className = 'tlphone';
-  for (const id of ['tlScript', 'tlClips', 'tlBoard', 'tlLine', 'tlCamRec', 'tlExport', 'tlMotion', 'tlMin']) {
+  for (const id of ['tlScript', 'tlClips', 'tlBoard', 'tlLine', 'tlCamRec', 'tlExport', 'tlMotion', 'tlClose']) {
     const o = $('#' + id), b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.dataset.for = id;
     b.innerHTML = o.querySelector('svg').outerHTML + '<span></span>'; b.querySelector('span').textContent = o.getAttribute('aria-label');
     b.onclick = () => { $('#tlOpts').hidden = true; $('#tlMore').setAttribute('aria-expanded', 'false'); o.click(); }; ph.appendChild(b);
   }
   $('#tlOpts').prepend(ph);
-  // on a phone these panels sit over the canvas, with a way to close them at the top
+  // these panels close with their × (on a phone they sit over the canvas, with their title by it) or with Esc (22c-timeline)
   for (const [box, btn, title] of [['#tlOpts', '#tlMore', 'Opciones de animación'], ['#mvMotion', '#tlMotion', 'Interpretación']]) {
     const h = document.createElement('div'); h.className = 'tlphead'; h.innerHTML = '<strong></strong><button type="button" class="gx">×</button>';
     h.firstChild.textContent = tr(title); h.lastChild.setAttribute('aria-label', tr('Cerrar'));
@@ -779,6 +785,11 @@ function applyAnimState(a) {
   } else { ANIM.fps = a.fps || 12; ANIM.shots = a.shots.map(s => ({...s, id: ++shotSeq, thumb: ''})); ANIM.cur = Math.min(a.cur || 0, ANIM.shots.length - 1); }
   if (ANIM.open) { const i = ANIM.cur; ANIM.cur = -1; enterShot(i); }
 }
-// undo and redo also cover the tracks of the current shot
-const animHist = () => ANIM.open && shot() ? {i: ANIM.cur, len: shot().len, keys: shot().keys, cam: shot().cam, lines: shot().lines} : undefined;
-function animHistRestore(h) { TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; touchShot(s); Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines}))); chars.forEach(m => { m._prevPose = m.getPose(); }); drawTimeline(); updateOnion(); }
+// undo and redo also cover the tracks of the current shot and how it plays (Interpretación, Ritmo, its camera style and
+// light); what is not there is kept as null, not left out, so that undoing puts it back as it was
+const animHist = () => { const s = ANIM.open && shot(); return s ? {i: ANIM.cur, len: s.len, keys: s.keys, cam: s.cam, lines: s.lines, motion: s.motion || {}, light: s.light || null, key: s.key ?? null, camStyle: s.camStyle || null, camBase: s.camBase || null} : undefined; };
+function animHistRestore(h) {
+  TL.sel.clear(); syncSelBar(); const s = ANIM.shots[h.i]; if (!s || h.i !== ANIM.cur) return; touchShot(s); Object.assign(s, JSON.parse(JSON.stringify({len: h.len, keys: h.keys, cam: h.cam, lines: h.lines})));
+  if ('motion' in h) Object.assign(s, JSON.parse(JSON.stringify({motion: h.motion, light: h.light, key: h.key, camStyle: h.camStyle, camBase: h.camBase})));
+  chars.forEach(m => { m._prevPose = m.getPose(); }); setFrame(ANIM.f, false); syncMotionUI(); placeFilmKey(s);  // (the shot's light, as it was)
+}

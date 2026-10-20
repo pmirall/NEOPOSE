@@ -169,7 +169,7 @@ addEventListener('keydown', e => {
   else if (e.ctrlKey || e.metaKey || e.altKey || sk.on) return;
   else if (/^[1-6]$/.test(k) && !practice.active) { const vis = tabs.filter(t => !t.hidden); if (vis[+k - 1]) { turnTo(vis[+k - 1].dataset.tab); setPanel(true); } }
   else if (k === 'b' && !practice.active) setSketch(true);
-  else if (k === 'a' && !practice.active) $('#animBtn').click();
+  else if (k === 'a' && !practice.active) openTimeline(!ANIM.open);  // A goes in and out of Animación (the space tab only goes in)
   else if (k === '\\') setPanel(document.body.classList.contains('nopanel'));
   else if (e.key === '?') openHelp();
 });

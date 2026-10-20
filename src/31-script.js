@@ -1089,7 +1089,7 @@ const filmReady = r => (tourEvent('film'), tr('Película lista: {s}, {n}.', {s: 
 // a film with keys of its own is replaced only on a second, deliberate click (and it can still be recovered)
 const filmUsed = () => ANIM.shots.some(s => s.keys.some(K => K.length) || s.cam.length || s.lines.some(l => l.text.trim()));
 function scriptState() {
-  const go = $('#scGo'); $('#scUndo').disabled = !SC.last || SC.busy;
+  const go = $('#scGo'); $('#scUndo').hidden = !SC.last; $('#scUndo').disabled = !SC.last || SC.busy;  // (only there once a script has replaced a film)
   if (!SC.busy) go.disabled = !$('#scText').value.trim();
   if ($('#scText').value.trim().length > 12) tourEvent('scriptText');
   go.textContent = tr(SC.armed ? 'Sustituir la película actual' : 'Crear la película');
@@ -1134,10 +1134,12 @@ function buildScriptUI() {
   $('#scText').addEventListener('input', () => { if (/^\s*(PAGE|P[AÁÀ]GINA|SEITE|PAGINE)\s+\S+[\s\S]*^\s*(PANEL|VI[ÑN]ETA|VIGNETTE|VIGNETTA|VINHETA|CASE|PANELL)\b/mi.test($('#scText').value) && SC.target !== 'both') { SC.target = 'both'; setPressed($('#scTarget'), 'both'); } });
   $('#tlScript').onclick = openScript; $('#scClose').onclick = closeScript; $('#scModal').onclick = e => { if (e.target.id === 'scModal') closeScript(); };
   $('#scGo').onclick = runScript; $('#scUndo').onclick = undoScript;
-  $('#scSample').onclick = () => { $('#scText').value = SC_SAMPLE[LANG.startsWith('es') ? 'es' : 'en']; scriptState(); };
+  // the example and a file replace what is written: asked first, unless there is nothing to lose
+  $('#scSample').onclick = () => { const ta = $('#scText'), ex = SC_SAMPLE[LANG.startsWith('es') ? 'es' : 'en']; if (ta.value.trim() && ta.value !== ex && !confirm(tr('¿Sustituir tu guion por el ejemplo?'))) return; ta.value = ex; SC.armed = false; scriptState(); };
   $('#scText').addEventListener('input', () => { SC.armed = false; scriptState(); });
   $('#scOpen').onclick = () => $('#scFile').click();
-  $('#scFile').onchange = async e => { const f = e.target.files[0]; if (f) $('#scText').value = await f.text(); e.target.value = ''; scriptState(); };
+  $('#scFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const ta = $('#scText'), t = await f.text();
+    if (ta.value.trim() && ta.value !== t && !confirm(tr('¿Sustituir tu guion por el del archivo?'))) return; ta.value = t; SC.armed = false; scriptState(); };
   $('#scText').addEventListener('drop', async e => { const f = [...e.dataTransfer.files].find(f => /\.(fountain|txt|spmd|md)$/i.test(f.name)); if (f) { e.preventDefault(); $('#scText').value = await f.text(); scriptState(); } });
   $('#scText').addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runScript(); } });
 }

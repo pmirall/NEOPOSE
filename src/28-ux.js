@@ -330,9 +330,9 @@ function paletteIndex() {
   const tabName = id => tabs.find(t => t.dataset.tab === id)?.querySelector('span')?.textContent || id;
   for (const [label, fn, key] of [['Deshacer', () => withGlide(undo), 'Ctrl Z'], ['Rehacer', () => withGlide(redo), 'Ctrl Y'], ['Espejar la pose', () => withGlide(mirrorPose), 'M'],
     ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Poner de pie', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
-    ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', frameAll, 'F'], ['Animar', () => $('#animBtn').click()], ['Exportar', () => $('#exportBtn').click()],
+    ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', frameAll, 'F'], ['Animación', () => setWorkspace('anim')], ['Exportar', () => $('#exportBtn').click()],
     ['Abrir en…', () => $('#openIn').click()], ['Boceto', () => $('#sketchBtn').click()], ['Práctica de gesto', () => $('#practiceBtn').click()], ['Cómo se usa', openHelp, '?'],
-    ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar archivo .neopose', saveNeopose, 'Ctrl+S'], ['Tutorial: lo básico', () => tourStart('basico')], ['Tutorial: animar', () => tourStart('animar')], ['Tutorial: del guion a la película', () => tourStart('guion')], ['Tutorial: pelaje y marcas', () => tourStart('pelaje')], ['Abrir archivo .neopose', pickNeopose, 'Ctrl+O'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
+    ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar archivo .neopose', saveNeopose, 'Ctrl+S'], ['Tutorial: lo básico', () => tourStart('basico')], ['Tutorial: animar', () => tourStart('animar')], ['Tutorial: del guion a la película', () => tourStart('guion')], ['Tutorial: pelaje y marcas', () => tourStart('pelaje')], ['Abrir archivo .neopose', pickNeopose, 'Ctrl+O'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { setWorkspace('anim'); setTimeout(() => $('#tlClips')?.click(), 50); }]])
     add('cmd', tr(label), fn, key || '');
   for (const t of tabs) add('tab', tr('Ir a {x}', {x: tabName(t.dataset.tab)}), () => { showTab(t.dataset.tab); setPanel(true); }, '');
   WS_ORDER.forEach((id, i) => add('cmd', tr('Espacio: {x}', {x: tr(WORKSPACES[id].label)}), () => setWorkspace(id), 'Alt ' + (i + 1)));
@@ -436,6 +436,7 @@ function setSheet(snap, live) {
   document.body.style.setProperty('--sheetH', h + 'px'); $('#book').classList.toggle('live', !!live);
   $('#book').dataset.snap = typeof snap === 'number' ? 'drag' : snap;
   if (!live && typeof snap === 'string') store.set('cdp.sheet', snap);
+  const g = $('.sheetgrip'); if (g && typeof snap === 'string') g.setAttribute('aria-expanded', String(snap !== 'peek'));  // (folded down or not, for screen readers)
 }
 function sheetDuringDrag(on) {
   if (!sheetOn()) return;
@@ -446,7 +447,8 @@ function initSheet() {
   const grip = document.createElement('button'); grip.type = 'button'; grip.className = 'sheetgrip'; grip.setAttribute('aria-label', tr('Ampliar o reducir el panel'));
   $('#book').prepend(grip);
   setSheet(store.get('cdp.sheet', 'half'));
-  let d = null;
+  let d = null, tapT = 0;
+  const step = () => setSheet(SHEET.snap === 'peek' ? 'half' : SHEET.snap === 'half' ? 'full' : 'peek');
   const startOn = el => el === grip || (el.closest('.tabs') && !el.closest('.tab'));
   $('#book').addEventListener('pointerdown', e => { if (!sheetOn() || !startOn(e.target)) return; d = {y: e.clientY, h: $('#book').getBoundingClientRect().height, t: performance.now(), moved: false}; try { e.target.setPointerCapture(e.pointerId); } catch (_) {} });
   $('#book').addEventListener('pointermove', e => {
@@ -455,15 +457,21 @@ function initSheet() {
   });
   const end = e => {
     if (!d) return; const H = sheetHeights(), dy = e.clientY - d.y, v = dy / Math.max(1, performance.now() - d.t), h = d.h - dy;
-    if (!d.moved) setSheet(SHEET.snap === 'peek' ? 'half' : SHEET.snap === 'half' ? 'full' : 'peek');  // a tap on the grip: one step up (and back down from the top)
+    if (!d.moved) { tapT = performance.now(); step(); }  // a tap on the grip: one step up (and back down from the top)
     else if (v > .5) setSheet(h > H.half ? 'half' : 'peek');  // a flick down
     else if (v < -.5) setSheet(h < H.half ? 'half' : 'full');
     else setSheet(['peek', 'half', 'full'].reduce((a, b) => Math.abs(H[b] - h) < Math.abs(H[a] - h) ? b : a));
     d = null;
   };
   $('#book').addEventListener('pointerup', end); $('#book').addEventListener('pointercancel', end);
+  // the grip pressed from the keyboard or a switch steps the same way (the click that follows a tap is already done)
+  grip.onclick = () => { if (performance.now() - tapT < 500) return; step(); };
   // a tab touched while the sheet is lowered brings it up
   tabs.forEach(t => t.addEventListener('click', () => { if (sheetOn() && SHEET.snap === 'peek') setSheet('half'); }));
+  // and so does a tap or the keyboard's focus inside it (not a mouse press: the chip under the pointer would move mid-click)
+  const pg = $('#book .page'), up = () => { if (sheetOn() && SHEET.snap === 'peek') setSheet('half'); };
+  pg.addEventListener('click', up);
+  pg.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) up(); });
   addEventListener('resize', () => { if (typeof SHEET.snap === 'string') setSheet(SHEET.snap); });
 }
 
