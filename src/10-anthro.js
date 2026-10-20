@@ -356,38 +356,39 @@ function eyeSetup(m, P) {
    Hind-limb ratios from comparative anatomy: metatarsus ≈ 0.45 × femur in wolves and dogs (Garland & Janis 1993),
    ≈ 0.6 × femur in goats (tibia 1.14 × femur, metatarsus 0.53 × tibia); rabbits have a long, fully furred foot
    without pads. Anthro construction sheets draw it longer still (the hock near a third of the leg's height), as here.
-   The human foot is a single bone (the ankle), so its rest geometry is laid again along the animal's (a sweep of
-   sections, each human cross-section of the foot taken to its place and size on the new one):
+   The human foot is a single bone (the ankle), so its rest geometry is laid again along the animal's: shaped in its
+   own frame and turned down about the ankle the way a joint bends (so shin and hock stay one skin), then its forefoot
+   swept, section by section, into the paw:
    - the heel becomes the point of the hock: the calcaneus, behind the joint and in line with the metatarsus, the lever
      the Achilles tendon pulls on, so the back of the leg runs taut from the calf to it;
    - the rest of the sole becomes the back of a slim metatarsus, narrower than the joints at both of its ends;
-   - the ball becomes the paw: a low dome flat on the ground (under it the big pad), the human toes folded away
-     inside its front, which the animal's toes (rigid parts on the ankle, see footGeos) cover;
+   - the ball goes on into the ground, which flattens it into the sole (the big pad under it), the human toes drawn
+     in inside its end; the animal's toes (rigid parts on the ankle, see footGeos) make the paw's top;
    - ungulates: the metatarsus is the cannon bone and its end the fetlock; the pastern then slopes forward at ~55°
      into the hoof (horse: one toe; goats and deer: two, the cloven hoof);
-   - bears are plantigrade: the human sole stays on the ground, broader, with their five toes in an arc. */
+   - bears are plantigrade: the human sole stays on the ground, broader, ending in a low dome behind five toes. */
 const ANIMAL_LEGS = {
-  lobo:   {type: 'digi', mt: .82, th: 20, hock: .4, knee: .14, paw: 'can', claws: .022, hand: .014},
-  perro:  {type: 'digi', mt: .78, th: 20, hock: .38, knee: .14, paw: 'can', claws: .02, hand: .012},
-  zorro:  {type: 'digi', mt: .84, th: 20, hock: .4, knee: .14, paw: 'can', pw: .9, claws: .018, hand: .012},
-  gato:   {type: 'digi', mt: .76, th: 18, hock: .38, knee: .14, paw: 'fel', claws: .012, hand: .01},
-  conejo: {type: 'digi', mt: .62, th: 50, hock: .3, knee: .12, paw: 'lep', claws: 0, hand: 0},
-  cabra:  {type: 'ungu', mt: .64, th: 10, hock: .32, knee: .12, hoof: true, claws: 0, hand: 0},
-  dragon: {type: 'digi', mt: .74, th: 22, hock: .38, knee: .14, paw: 'rep', claws: .034, hand: .026},
-  tigre:  {type: 'digi', mt: .72, th: 18, hock: .38, knee: .14, paw: 'fel', pw: 1.12, claws: .018, hand: .016},
-  leon:   {type: 'digi', mt: .72, th: 18, hock: .38, knee: .14, paw: 'fel', pw: 1.12, claws: .018, hand: .016},
+  lobo:   {type: 'digi', mt: .82, th: 20, hock: .4, knee: .14, paw: 'can', hand: .014},
+  perro:  {type: 'digi', mt: .78, th: 20, hock: .38, knee: .14, paw: 'can', hand: .012},
+  zorro:  {type: 'digi', mt: .84, th: 20, hock: .4, knee: .14, paw: 'can', pw: .9, hand: .012},
+  gato:   {type: 'digi', mt: .76, th: 18, hock: .38, knee: .14, paw: 'fel', hand: .01},
+  conejo: {type: 'digi', mt: .62, th: 50, hock: .3, knee: .12, paw: 'lep', hand: 0},
+  cabra:  {type: 'ungu', mt: .64, th: 10, hock: .32, knee: .12, hoof: true, hand: 0},
+  dragon: {type: 'digi', mt: .74, th: 22, hock: .38, knee: .14, paw: 'rep', hand: .026},
+  tigre:  {type: 'digi', mt: .72, th: 18, hock: .38, knee: .14, paw: 'fel', pw: 1.12, hand: .016},
+  leon:   {type: 'digi', mt: .72, th: 18, hock: .38, knee: .14, paw: 'fel', pw: 1.12, hand: .016},
   // bears walk on the whole sole (plantigrade): the human leg stays, with a bear's broad foot and heavy claws
-  oso:    {type: 'planti', paw: 'urs', claws: .03, hand: .024},
+  oso:    {type: 'planti', paw: 'urs', hand: .024},
   // horses stand on one toe (a single hoof), deer on two like goats; both with a long cannon bone
-  caballo:{type: 'ungu', mt: .72, th: 8, hock: .32, knee: .12, hoof: 'single', claws: 0, hand: 0},
-  ciervo: {type: 'ungu', mt: .7, th: 10, hock: .32, knee: .12, hoof: true, claws: 0, hand: 0}
+  caballo:{type: 'ungu', mt: .72, th: 8, hock: .32, knee: .12, hoof: 'single', hand: 0},
+  ciervo: {type: 'ungu', mt: .7, th: 10, hock: .32, knee: .12, hoof: true, hand: 0}
 };
 const legSpec = b => b && b.species !== 'humano' && b.feet !== 'humano' ? ANIMAL_LEGS[legSp(b)] || null : null;
 const animalFeet = m => !!legSpec(m && m.body);
-// pads: on paws with claws and on bears' soles by default; never on hooves (rabbits' feet are furred, so off for them)
-const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b && b.species !== 'humano' && (b.pads ?? !!(L && !L.hoof && (L.claws || L.type === 'planti'))); };
+// pads: on every paw that has beans by default; never on hooves (rabbits' feet are furred, so off for them)
+const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b && b.species !== 'humano' && (b.pads ?? !!(L && !L.hoof && pawOf(L).bean)); };
 /* Paws by kind, sizes in paw widths W (w femur lengths). From the vets' and artists' sheets: canids have four toes in an
-   arc, the middle two longest, oval beans and a trilobed metacarpal pad with its point to the toes, short blunt claws
+   arc, the middle two longest, oval beans and a trilobed metatarsal pad with its point to the toes, short blunt claws
    that reach the ground; felids a rounder, compact paw, round beans and the claws kept in their sheaths; bears five
    toes in a flatter arc, a whole sole pad and long, little curved claws; dragons three long toes and a dewclaw, with
    talons; rabbits a long, narrow foot, the toes close together under the fur, no pads or claws to see.
@@ -396,10 +397,10 @@ const padsOn = b => { const L = legSpec(b) || ANIMAL_LEGS[legSp(b)]; return b &&
    how much the metatarsus is slimmed (a rabbit's long foot keeps its thickness) */
 const PAWS = {
   can: {w: .27, n: 4, x: .36, reach: [.18, .27], tw: .145, tt: .15, claw: [.115, .058, -.75], bean: [.075, .11], pad: [.24, .19], mitt: .16},
-  fel: {w: .28, n: 4, x: .35, reach: [.14, .21], tw: .15, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .14},
+  fel: {w: .28, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .14},
   urs: {w: .4, n: 5, x: .4, reach: [.2, .3], tw: .1, tt: .11, claw: [.2, .06, -.4], bean: [.085, .065], pad: [.34, .5], mitt: .1},
-  rep: {w: .32, n: 3, x: .3, reach: [.6, .75], tw: .11, tt: .13, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .1, dew: 1, knuckles: 1},
-  lep: {w: .32, n: 4, x: .22, reach: [.36, .44], tw: .14, tt: .13, claw: 0, bean: 0, pad: 0, mitt: .16, slim: .3},
+  rep: {w: .32, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .1, dew: 1, knuckles: 1},
+  lep: {w: .32, n: 4, x: .22, reach: [.36, .44], tw: .14, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .16, slim: .15},
   hoof: {w: .25}
 };
 const pawOf = L => PAWS[L.hoof ? 'hoof' : L.paw] || PAWS.can;
@@ -427,7 +428,6 @@ function footNb(ai) {
 }
 function remodelLegs(b, P, J, H) {
   const L = legSpec(b); if (!L) return;
-  const sst = sstep;
   for (const s of ['L', 'R']) {
     const ai = FIG.jIdx['ankle' + s], hi = FIG.jIdx['hip' + s], ki = FIG.jIdx['knee' + s], jv = i => new V3(J[i * 3], J[i * 3 + 1], J[i * 3 + 2]);
     // zig-zag of the hind leg: knee a little forward, hock well back (the shin slopes back to the hock)
@@ -438,7 +438,7 @@ function remodelLegs(b, P, J, H) {
       const legW = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) { const b = si[i * 4 + k]; if (b === hi || b === ki || b === ai) w += sw[i * 4 + k] / 255; } return w; };
       const shear = (Q, cnt, si, sw) => { for (let i = 0; i < cnt; i++) { const w = legW(si, sw, i); if (w > .01) Q[i * 3 + 2] += dz(Q[i * 3 + 1]) * w; } };
       shear(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) shear(H, FIG.nH, FIG.hsi, FIG.hsw);
-      for (const j of [ki, ai, FIG.jIdx['toe' + s]]) if (j !== undefined) J[j * 3 + 2] += dz(J[j * 3 + 1]);
+      for (const j of [ki, ai]) J[j * 3 + 2] += dz(J[j * 3 + 1]);
     }
     const A = jv(ai), F = jv(hi).distanceTo(jv(ki)), K = pawOf(L), W = K.w * (L.pw || 1) * F;
     const wA = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) if (si[i * 4 + k] === ai) w += sw[i * 4 + k] / 255; return w; };
@@ -460,17 +460,16 @@ function remodelLegs(b, P, J, H) {
     const u = new V3(0, -Math.cos(th), Math.sin(th)), n = new V3(0, Math.sin(th), Math.cos(th)), psiU = Math.atan2(u.y, u.z);
     const dg = rot ? 1 : 0, sl = K.slim ?? 1, shape = (x, y, z, w, out) => {
       const q = clamp((z - A.z) / (zBall - A.z), 0, 1), [bxc, , bym] = band(clamp(z, z0, zBall));
-      const kx = dg ? 1 - (z < A.z ? .3 * sst(A.z, z0, z) : sl * (.28 * Math.sin(Math.PI * q) + .24 * q)) : 1.1 + .25 * q, ky = 1 - dg * (z < A.z ? .2 * sst(A.z, z0, z) : sl * (.3 * Math.sin(Math.PI * q) + .36 * q));
-      const kz = !dg ? 1 : z < A.z ? .5 : ks, rc = dg * sst(0, 1, q);
+      const kx = dg ? 1 - (z < A.z ? .3 * sstep(A.z, z0, z) : sl * (.28 * Math.sin(Math.PI * q) + .24 * q)) : 1.1 + .25 * q, ky = 1 - dg * (z < A.z ? .2 * sstep(A.z, z0, z) : sl * (.3 * Math.sin(Math.PI * q) + .36 * q));
+      const kz = !dg ? 1 : z < A.z ? .5 : ks, rc = dg * sstep(0, 1, q);
       let lx = (bxc - A.x) * (1 - rc) + (x - bxc) * kx, ly = (bym - A.y) * (1 - rc) + (y - bym) * ky, lz = (z - A.z) * kz;
       // only what the ankle carries: the shin above keeps its place
       lx = (x - A.x) + (lx - (x - A.x)) * w; ly = (y - A.y) + (ly - (y - A.y)) * w; lz = (z - A.z) + (lz - (z - A.z)) * w;
       const a = rot * w, c = Math.cos(a), sn = Math.sin(a);
       out[0] = A.x + lx; out[1] = A.y + ly * c - lz * sn; out[2] = A.z + ly * sn + lz * c;
     };
-    // 2. the forefoot swept into the paw, in the final frame: from the ball's section (as step 1 leaves it) to a low dome
-    //    flat on the ground behind the toes; the human toes are drawn in under the dome's front (ungulates: the pastern
-    //    down to the coronet, inside the hoof). Rows: human z, centre, the section's tilt ψ (0: upright), half width, depth
+    // 2. the forefoot swept into the paw, in the final frame, from the ball's section as step 1 leaves it, the human toes
+    //    drawn in at its end. Rows: human z, centre, the section's tilt ψ (0: upright), half width, half depth
     const [bxB, bhB, , bdB] = band(zBall); shape(bxB, band(zBall)[2], zBall, 1, o);
     const Bc = new V3(...o), WB = bhB * (dg ? 1 - .24 * sl : 1.35), DB = bdB * (1 - .36 * dg * sl), psiB = dg * psiU;
     let g, T, KF;
@@ -495,7 +494,7 @@ function remodelLegs(b, P, J, H) {
     }
     // the fur of the sole stops a little above the ground where the pads stand on it
     const fl = g + (padsOn(b) && L.type !== 'ungu' ? .035 * W : 0), sweep = (x, y, z, out) => {
-      const [bxc, bhw, bym, bhh] = band(clamp(z, zBall, zToe)), cap = 1 - .55 * sst(zToe, z1, z), xn = (x - bxc) / bhw * cap, yn = (y - bym) / bhh * cap;
+      const [bxc, bhw, bym, bhh] = band(clamp(z, zBall, zToe)), cap = 1 - .85 * sstep(zToe, z1, z), xn = (x - bxc) / bhw * cap, yn = (y - bym) / bhh * cap;
       let i = 0; while (i < KF.length - 2 && z > KF[i + 1][0]) i++;
       const t = clamp((z - KF[i][0]) / (KF[i + 1][0] - KF[i][0]), 0, 1), c = k => crInterp(KF, i, t, k), psi = c(4);
       out[0] = c(1) + xn * c(5); out[1] = Math.max(fl, c(2) + yn * c(6) * Math.cos(psi)); out[2] = c(3) - yn * c(6) * Math.sin(psi);
@@ -503,7 +502,7 @@ function remodelLegs(b, P, J, H) {
     const apply = (Q, cnt, si, sw, ws) => {
       for (let i = 0; i < cnt; i++) {
         const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2], wa = wA(si, sw, i); if (wa < .01) continue;
-        const w = wa * sst(A.y + .06, A.y - .025, y); if (w < .005) continue;
+        const w = wa * sstep(A.y + .06, A.y - .025, y); if (w < .005) continue;
         if (ws) ws[i] = w;
         if (z > zBall && y < A.y) { sweep(x, y, z, o); Q[i * 3] += (o[0] - x) * w; Q[i * 3 + 1] += (o[1] - y) * w; Q[i * 3 + 2] += (o[2] - z) * w; }
         else { shape(x, y, z, w, o); Q[i * 3] = o[0]; Q[i * 3 + 1] = Math.max(o[1], fl); Q[i * 3 + 2] = o[2]; }
@@ -517,7 +516,7 @@ function remodelLegs(b, P, J, H) {
     for (let it = 0; it < 8; it++) {
       const k = it % 2 ? -.53 : .5;
       ids.forEach((i, j) => { let ax = 0, ay = 0, az = 0; const a = off[j], c = off[j + 1]; for (let q = a; q < c; q++) { const v = nb[q]; ax += P[v * 3]; ay += P[v * 3 + 1]; az += P[v * 3 + 2]; }
-        const m = c - a || 1, f = k * ws[i]; tmp[j * 3] = P[i * 3] + (ax / m - P[i * 3]) * f; tmp[j * 3 + 1] = P[i * 3 + 1] + (ay / m - P[i * 3 + 1]) * f; tmp[j * 3 + 2] = P[i * 3 + 2] + (az / m - P[i * 3 + 2]) * f; });
+        const cnt = c - a || 1, kw = k * ws[i]; tmp[j * 3] = P[i * 3] + (ax / cnt - P[i * 3]) * kw; tmp[j * 3 + 1] = P[i * 3 + 1] + (ay / cnt - P[i * 3 + 1]) * kw; tmp[j * 3 + 2] = P[i * 3 + 2] + (az / cnt - P[i * 3 + 2]) * kw; });
       ids.forEach((i, j) => { P[i * 3] = tmp[j * 3]; P[i * 3 + 1] = Math.max(fl, tmp[j * 3 + 1]); P[i * 3 + 2] = tmp[j * 3 + 2]; });
     }
     // the toe point (feet planted, IK, and the frame footGeos reads)
@@ -591,13 +590,15 @@ function footGeos(m, P) {
   for (const s of ['L', 'R']) {
     if (m.stumps && m.stumps['leg' + s]) continue;
     const fr = pawFrame(L, m.J, s), {W, F, g, B, K} = fr, o = s === 'L' ? 1 : -1, bone = m.accBones.indexOf(m.bones[FIG.jIdx['ankle' + s]]), weights = () => [[bone, 1]], parts = [];
-    // a lofted part (no contour rings: they would ring the toes like nails); fur takes the coat of the foot (socks); the
-    // closing ring is drawn into one point (loft keeps a hair's width, a pinhole up close), its normals along `tip`
-    const add = (o2, kind, tip) => {
+    // a lofted part (no contour rings: they would ring the toes like nails); fur takes the coat of the foot (socks); a
+    // closing ring is drawn into one point (loft keeps a hair's width, a pinhole up close), its normals along `tip` (the
+    // last ring) or `root` (the first)
+    const add = (o2, kind, tip, root) => {
       const geo = loft({weights, ...o2}), E = furAttrsLoft(geo, kind).attributes.aEye.array, ln = geo.attributes.aLine.array, nm = geo.attributes.normal, pa = geo.attributes.position, r = (o2.radial || 18) + 1;
       for (let i = 0; i < E.length; i += 4) { if (kind === 1) E[i + 1] = 1; ln[i + 3] = -1; }
-      if (tip) { const c = new V3(); for (let i = pa.count - r; i < pa.count; i++) c.x += pa.getX(i) / r, c.y += pa.getY(i) / r, c.z += pa.getZ(i) / r;
-        for (let i = pa.count - r; i < pa.count; i++) { pa.setXYZ(i, c.x, c.y, c.z); nm.setXYZ(i, tip.x, tip.y, tip.z); } }
+      const close = (i0, d) => { const c = new V3(); for (let i = i0; i < i0 + r; i++) c.x += pa.getX(i) / r, c.y += pa.getY(i) / r, c.z += pa.getZ(i) / r;
+        for (let i = i0; i < i0 + r; i++) { pa.setXYZ(i, c.x, c.y, c.z); nm.setXYZ(i, d.x, d.y, d.z); } };
+      if (tip) close(pa.count - r, tip); if (root) close(0, root);
       parts.push(geo); return geo;
     };
     // a low leather dome on the ground: a along `side`, b across it; mod shapes its outline
@@ -612,10 +613,11 @@ function footGeos(m, P) {
       add({origin: p, axis: ax, side: new V3(d.z, 0, -d.x), radial: 8, sub: 2, bend: curl,
         secs: [[-.5 * len, .62 * c, c], [0, .64 * c, c], [.35 * len, .5 * c, .8 * c], [.7 * len, .28 * c, .45 * c], [.92 * len, .1 * c, .14 * c], [len, .001, .001]]}, 3, ax);
     };
-    // a toe: a bean of fur from inside the paw over its knuckle and down to the tip (dragons: three knuckles)
-    const TOE = K.knuckles ? [[-.45, .8, .8, 1.05], [0, 1, 1, 1.12], [.3, 1.07, 1.06, 1.12], [.46, .9, .88, 1], [.62, .98, .95, .92], [.78, .8, .76, .8], [.9, .74, .64, .68], [.975, .36, .32, .62], [1, .001, .001, .6]]
-      : [[-.45, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.1, 1.28], [.62, .96, .9, .95], [.84, .76, .66, .7], [.95, .46, .4, .6], [1, .001, .001, .58]];
-    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * Lt, w * tw, h * tt, 0, c * tt])}, 1, d);
+    // a toe: a bean of fur from inside the paw (buried as deep as a short toe, so a long one does not come out behind)
+    // over its knuckle and down to the tip (dragons: three knuckles)
+    const TOE = K.knuckles ? [[-.5, .001, .001, 1.05], [-.42, .8, .8, 1.1], [0, 1, 1, 1.25], [.28, 1.08, 1.08, 1.35], [.44, .9, .88, 1.18], [.6, .98, .95, 1.08], [.76, .8, .76, .88], [.9, .72, .62, .7], [.975, .36, .32, .62], [1, .001, .001, .6]]
+      : [[-.5, .001, .001, 1], [-.42, .8, .8, 1.05], [0, 1, 1, 1.2], [.32, 1.04, 1.1, 1.28], [.62, .96, .9, .95], [.84, .76, .66, .7], [.95, .46, .4, .6], [1, .001, .001, .58]];
+    const toe = (root, d, Lt, tw, tt) => add({origin: root, axis: d, side: X, radial: 12, sub: 2, n: 2.2, secs: TOE.map(([t, w, h, c]) => [t * (t < 0 ? Math.min(Lt, .32 * W) : Lt), w * tw, h * tt, 0, c * tt])}, 1, d, d.clone().negate());
     if (L.hoof) {
       // the hoof under the coronet: its sole on the ground, the front wall at ~55°, the heels lower (horse: one; goats and
       // deer: two halves with the cleft between them, and two dewclaws behind the fetlock)
@@ -646,8 +648,8 @@ function footGeos(m, P) {
     if (K.claw) for (const t of toes) claw(t.root.clone().addScaledVector(t.d, .84 * t.Lt).setY(g + .98 * t.tt), t.d, K.claw[0] * W, K.claw[1] * W, K.claw[2]);
     if (K.dew) {
       // a dragon's dewclaw: a short toe high on the inside of the foot, pointing back and down, with its talon
-      const d = new V3(-o * .45, -.35, -.82).normalize(), r = new V3(B.x - o * .24 * W, g + .3 * W, B.z - .02 * W), Lt = .26 * W;
-      toe(r, d, Lt, .075 * W, .075 * W); claw(r.clone().addScaledVector(d, .8 * Lt).add(new V3(0, .05 * W, 0)), new V3(d.x, 0, d.z).normalize(), K.claw[0] * W * .45, K.claw[1] * W * .6, K.claw[2]);
+      const d = new V3(-o * .35, -.6, -.72).normalize(), r = new V3(B.x - o * .24 * W, g + .32 * W, B.z - .02 * W), Lt = .24 * W;
+      toe(r, d, Lt, .075 * W, .075 * W); claw(r.clone().addScaledVector(d, .8 * Lt).add(new V3(0, .05 * W, 0)), new V3(d.x, 0, d.z).normalize(), K.claw[0] * W * .4, K.claw[1] * W * .55, K.claw[2]);
     }
     if (pads && K.bean) {
       for (const t of toes) pad(t.root.clone().addScaledVector(t.d, .56 * t.Lt), t.d, K.bean[1] * W, K.bean[0] * W, .06 * W);
