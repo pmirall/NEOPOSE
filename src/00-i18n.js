@@ -8,7 +8,7 @@ const LANGS = Object.fromEntries(['en', 'es', ...I18N_LANGS.filter(k => k !== 'e
   return [c, n.charAt(0).toLocaleUpperCase(c) + n.slice(1)];
 }));
 // machine translations, waiting for a human review on Weblate
-const LANGS_MACHINE = new Set(['ca', 'fr', 'pt', 'de', 'it']);
+const LANGS_MACHINE = new Set(['ca', 'fr', 'pt', 'de', 'it', 'ja', 'zh', 'ko']);
 const LANG = (() => { try { const v = JSON.parse(localStorage.getItem('cdp.lang')); return LANGS[v] ? v : 'en'; } catch (e) { return 'en'; } })();
 document.documentElement.lang = LANG;
 const I18N_LANG = LANG === 'es' ? null : I18N[LANG] || I18N.en;
@@ -23,8 +23,9 @@ const trn = (n, one, many, vars) => tr(n === 1 ? one : many, {n, ...vars});
 // translate data tables in place: {id: {label}} or {id: 'label'}
 const tLabels = (o, k = 'label') => { for (const v of Object.values(o)) if (v && typeof v[k] === 'string') v[k] = tr(v[k]); return o; };
 const tValues = o => { for (const k in o) if (typeof o[k] === 'string') o[k] = tr(o[k]); return o; };
-// decimal point in English, comma in the other languages
-const dec = (v, d = 1) => LANG !== 'en' ? v.toFixed(d).replace('.', ',') : v.toFixed(d);
+// decimal comma in the European languages, point in English, Japanese, Chinese and Korean
+const DEC_COMMA = new Set(['es', 'ca', 'fr', 'pt', 'de', 'it']);
+const dec = (v, d = 1) => DEC_COMMA.has(LANG) ? v.toFixed(d).replace('.', ',') : v.toFixed(d);
 /* static HTML: text nodes and a few attributes are looked up as they are; a run of text with inline markup
    (<b>, <kbd>, <a>…) is looked up as one piece by its innerHTML, so sentences are not cut into fragments */
 const I18N_INLINE = new Set(['B', 'I', 'KBD', 'A', 'EM', 'STRONG', 'BR', 'CODE']);

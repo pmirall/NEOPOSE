@@ -77,7 +77,7 @@ const SUITES = {
   },
   // the machine-translated languages: every panel translated, no errors, the review note shown
   async languages(browser) {
-    for (const lang of ['ca', 'fr', 'pt', 'de', 'it']) {
+    for (const lang of ['ca', 'fr', 'pt', 'de', 'it', 'ja', 'zh', 'ko']) {
       const D = LANG_DICT(lang), page = await open(browser, {lang}), seen = new Set(), grab = async () => (await texts(page)).forEach(t => seen.add(t));
       await page.evaluate(() => document.querySelectorAll('details').forEach(d => d.open = true));
       for (const tab of ['pose', 'cuerpo', 'ropa', 'dibujo', 'escena', 'camara']) { await goTab(page, tab); await page.waitForTimeout(250); await grab(); }

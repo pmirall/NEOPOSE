@@ -11,6 +11,14 @@
   --sketch:255px 12px 225px 12px/12px 225px 12px 255px;
   --lift:0 1px 0 rgba(60,45,20,.06),0 10px 26px -14px rgba(60,45,20,.45);
 }
+/* Japanese, Chinese and Korean: the Latin faces have no such glyphs, so each language falls back to its own system
+   face (a shared Han character then takes that language's form) */
+:root:lang(ja){--f-hand:"Kalam","Klee One","Hiragino Maru Gothic ProN","Yu Gothic UI","Noto Sans JP",cursive;--f-body:"Karla","Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK JP",monospace}
+:root:lang(zh){--f-hand:"Kalam","PingFang SC","Microsoft YaHei UI","Noto Sans SC",cursive;--f-body:"Karla","PingFang SC","Microsoft YaHei UI","Noto Sans SC",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK SC",monospace}
+:root:lang(ko){--f-hand:"Kalam","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",cursive;--f-body:"Karla","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--f-mono:"Courier Prime","Noto Sans Mono CJK KR",monospace}
+:lang(ja) body,:lang(zh) body,:lang(ko) body{line-height:1.6}
+:lang(ko) body{word-break:keep-all}
+
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#171614; --page:#211f1b; --stage:#2a2723; --floor:#35312b;
   --ink:#ece5d3; --ink-soft:#a69d89; --line:#4d473d; --rule:#2e2b26;

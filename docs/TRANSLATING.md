@@ -25,7 +25,7 @@ Configuración del componente:
 | Idioma de origen | Español |
 | Filtro de idioma | `^(?!es$|en$).*` si el inglés se mantiene en el repositorio, o vacío para traducir también el inglés en Weblate |
 
-Catalán, francés, portugués, alemán e italiano empezaron como traducción automática y esperan revisión.
+Catalán, francés, portugués, alemán, italiano, japonés, chino (simplificado) y coreano empezaron como traducción automática y esperan revisión.
 
 ## Títulos de las prendas
 
