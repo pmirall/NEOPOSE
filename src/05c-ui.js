@@ -98,6 +98,8 @@ function select(name) {
   mq.highlight(name);
   $('#jointName').textContent = JOINT_LABEL[name];
   buildJointSliders(); $('#jointCard').hidden = false;
+  // a joint on the middle line has no other side: the box stays (its state still shows) but cannot be used
+  const c = $('#symChk'), mid = swapSide(name) === name; c.disabled = mid; c.closest('label').title = mid ? tr('Esta articulación está en el centro: no tiene otro lado') : '';
 }
 let jointSliderEls = [];
 function buildJointSliders() {

@@ -690,6 +690,7 @@ function drawAction(ctx, w, h) {
   ctx.save(); ctx.strokeStyle = themeInk.red; ctx.lineWidth = 3.5; ctx.globalAlpha = .85; ctx.lineCap = 'round';
   for (const m of chars) {
     if (!m.group.visible) continue;
+    if (m === mq && DYN.loa && DYN.loaObj && DYN.loaObj.visible) continue;  // the active figure already shows its 3D line of action: one line, not two
     const J = m.joints, wp = o => o.getWorldPosition(new V3());
     const aL = wp(J.ankleL), aR = wp(J.ankleR), s = aL.y < aR.y ? 'L' : 'R';
     const top = wp(J.head).add(new V3(0, 1, 0).applyQuaternion(J.head.getWorldQuaternion(new Q())).multiplyScalar(m.headH * .85));
@@ -752,7 +753,9 @@ function buildToolsUI() {
   $('#ghostBtn').onclick = () => { makeGhost(); $('#ghostClr').disabled = false; };
   $('#ghostClr').onclick = () => { clearGhost(); $('#ghostClr').disabled = true; };
   $('#ghostClr').disabled = true;
-  $('#symChk').onchange = e => { state.sym = e.target.checked; if (state.sym && state.selected) { mirrorJoint(mq, state.selected); pushHistory(); } };
+  $('#symChk').onchange = e => { state.sym = e.target.checked; $('#symMode').hidden = !state.sym; if (state.sym && state.selected) { mirrorJoint(mq, state.selected); pushHistory(); } };
+  // while symmetry is on, a chip by IK/FK says so (it outlives the joint card) and turns it off
+  $('#symMode').onclick = () => { state.sym = false; $('#symChk').checked = false; $('#symMode').hidden = true; };
   $('#poseSearch').oninput = () => buildPoseGrid();
   chips($('#ratioChips'), Object.entries(RATIOS).map(([k, v]) => [k, v[0]]), state.ratio, k => state.ratio = k);
   $('#saveView').onclick = () => { if (state.views.length >= 8) state.views.shift(); state.views.push({p: camera.position.toArray(), t: controls.target.toArray(), f: state.focal, r: state.roll}); renderViews(); };

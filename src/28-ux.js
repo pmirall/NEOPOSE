@@ -90,7 +90,7 @@ const DRAG_KINDS = [
     preview: (t, p) => { const back = keepPose(t.m); poseOnto(t.m, p); return back; },
     commit: (t, p, back) => { back(); onActive(t.ci, () => withGlide(() => usePreset(p))); return tr('Pose «{p}» para {x}', {p: p.label, x: nameOf(t.m)}); }},
   {sel: '#poseGrid .pose[data-id]', target: 'canvas', single: () => state.castN !== 1, item: el => (GROUP_POSES[state.castN] || []).find(p => p.id === el.dataset.id),
-    label: () => tr('Colocar al reparto'), commit: (t, p) => { withGlide(() => useGroup(p)); return tr('Pose «{p}» para el reparto', {p: p.label}); }},
+    label: () => tr('Colocar al reparto'), commit: (t, p) => withGlide(() => useGroup(p)) || tr('Pose «{p}» para el reparto', {p: p.label})},
   {sel: '#gestureChips .chip[data-v]', target: 'hand', item: el => el.dataset.v,
     label: t => tr(t.side === 'L' ? 'Mano izquierda de {x}' : 'Mano derecha de {x}', {x: nameOf(t.m)}),
     preview: (t, id) => { const old = JSON.parse(JSON.stringify(t.m.hands[t.side])); t.m.hands[t.side] = gest(id); t.m.applyHands(); return () => { t.m.hands[t.side] = old; t.m.applyHands(); }; },
@@ -260,7 +260,7 @@ function menuItemsAt(x, y) {
       ['Espejar la pose', act(() => withGlide(mirrorPose)), 'M'],
       ['Al suelo', act(() => withGlide(() => { mq.ground(); pushHistory(); }))],
       ['Pose al azar', act(() => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); }))],
-      ['Pose inicial', act(() => withGlide(() => usePreset(POSE.pie)))],
+      ['Poner de pie', act(() => withGlide(() => usePreset(POSE.pie)))],
       ['Copiar la pose', () => { UX.clip = {pose: m.getPose(), yaw: m.yaw()}; UX.clipT = Date.now(); toast(tr('Pose copiada: pégala en cualquier personaje.')); }, 'Ctrl C'],
       ...(UX.clip ? [['Pegar la pose', act(() => pastePose(mq)), 'Ctrl V']] : []),
       ['Duplicar', act(() => duplicateChar(mq))],
@@ -329,7 +329,7 @@ function paletteIndex() {
   const out = [], add = (type, label, run, extra = '', id = type + ':' + label) => out.push({type, label, run, extra, id, n: uxNorm(label + ' ' + extra)});
   const tabName = id => tabs.find(t => t.dataset.tab === id)?.querySelector('span')?.textContent || id;
   for (const [label, fn, key] of [['Deshacer', () => withGlide(undo), 'Ctrl Z'], ['Rehacer', () => withGlide(redo), 'Ctrl Y'], ['Espejar la pose', () => withGlide(mirrorPose), 'M'],
-    ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Pose inicial', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
+    ['Al suelo', () => { mq.ground(); pushHistory(); }], ['Poner de pie', () => withGlide(() => usePreset(POSE.pie))], ['Pose al azar', () => withGlide(() => { applyRandom(mq, 'cualquiera'); state.posePreset = null; markPose(); syncAll(); pushHistory(); })],
     ['Añadir personaje', () => castAddMenu($('#cast .chip.add') || $('#cast'))], ['Encuadrar a todos', frameAll, 'F'], ['Animar', () => $('#animBtn').click()], ['Exportar', () => $('#exportBtn').click()],
     ['Abrir en…', () => $('#openIn').click()], ['Boceto', () => $('#sketchBtn').click()], ['Práctica de gesto', () => $('#practiceBtn').click()], ['Cómo se usa', openHelp, '?'],
     ['Cambiar entre IK y FK', () => setIK(!state.ik), 'I'], ['Guardar archivo .neopose', saveNeopose, 'Ctrl+S'], ['Tutorial: lo básico', () => tourStart('basico')], ['Tutorial: animar', () => tourStart('animar')], ['Tutorial: del guion a la película', () => tourStart('guion')], ['Tutorial: pelaje y marcas', () => tourStart('pelaje')], ['Abrir archivo .neopose', pickNeopose, 'Ctrl+O'], ['Guardar este personaje', () => saveCharacter(mq)], ['Del guion a la película', () => { if (!ANIM.open) $('#animBtn').click(); openScript(); }], ['Buscar referencias libres', () => openRefs('pose')], ['Buscar GIFs libres', () => openRefs('anim')], ['Escenario desde una referencia', () => openRefs('scene')], ['Animaciones', () => { $('#animBtn').click(); setTimeout(() => $('#tlClips')?.click(), 50); }]])
@@ -534,6 +534,13 @@ function initModals() {
   }, true);
 }
 
+// opens a section of the panel and scrolls the panel (never the page) to it; the tab must be showing already
+function goSection(d, flash = true) {
+  if (!d) return; const sec = d.closest('section[data-tab]'), pg = d.closest('.page'), nav = sec && sec.querySelector(':scope > .secnav');
+  d.open = true; if (typeof sheetOn === 'function' && sheetOn() && SHEET.snap === 'peek') setSheet('half');
+  pg.scrollTo({top: d.getBoundingClientRect().top - pg.getBoundingClientRect().top + pg.scrollTop - (nav ? nav.offsetHeight : 0) - 4, behavior: UX.reduce ? 'auto' : 'smooth'});
+  if (flash) { d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 900); }
+}
 // a long tab gets an index at the top: one tap opens a section and takes you there
 function buildSectionNav() {
   for (const sec of $$('.page section[data-tab]')) {
@@ -542,14 +549,16 @@ function buildSectionNav() {
     for (const d of ds) {
       const h = d.querySelector('summary h3'); if (!h) continue;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
-      // only the panel scrolls, never the page
-      b.onclick = () => { d.open = true; const pg = sec.closest('.page'); nav.scrollTo({left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: UX.reduce ? 'auto' : 'smooth'}); pg.scrollTo({top: d.getBoundingClientRect().top - pg.getBoundingClientRect().top + pg.scrollTop - nav.offsetHeight - 4, behavior: UX.reduce ? 'auto' : 'smooth'}); d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 900); };
+      b.dataset.sec = d.dataset.sec; b.hidden = d.hidden;
+      b.onclick = () => { nav.scrollTo({left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: UX.reduce ? 'auto' : 'smooth'}); goSection(d); };
       nav.appendChild(b);
     }
     sec.prepend(nav);
     // the fade at the right edge says there is more; it goes once the end is in sight
     const fade = () => nav.classList.toggle('end', nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 4);
     nav.addEventListener('scroll', fade, {passive: true}); new ResizeObserver(fade).observe(nav);
+    // a mouse wheel scrolls the row sideways; at either end it goes on to the panel
+    nav.addEventListener('wheel', e => { if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || nav.scrollWidth <= nav.clientWidth) return; const x = nav.scrollLeft; nav.scrollLeft += e.deltaY; if (nav.scrollLeft !== x) e.preventDefault(); }, {passive: false});
   }
 }
 function buildUX() {
@@ -559,5 +568,5 @@ function buildUX() {
     b.onclick = () => toast(tr('Arrastra el color hasta una prenda o el pelo de un personaje.')); dc.appendChild(b); }
   initDrag(); initGestures(); initMenus(); initPalette(); initSheet(); initModals();
   // the handlers that change a pose from the panel glide too
-  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => { usePreset(POSE.pie); toast(tr('Pose inicial'), {undo: true}); }], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) { const b = $(sel); if (b) b.onclick = () => withGlide(fn); }
+  for (const [sel, fn] of [['#mirrorBtn', () => mirrorPose()], ['#resetBtn', () => { usePreset(POSE.pie); toast(tr('Pose de pie neutra'), {undo: true}); }], ['#undo', undo], ['#redo', redo], ['#undoF', undo], ['#redoF', redo]]) { const b = $(sel); if (b) b.onclick = () => withGlide(fn); }
 }

@@ -3,7 +3,7 @@
    offline. The active character takes that pose: pelvis and chest from the hip and shoulder lines, the head from
    the ears and nose, each limb aimed bone by bone, elbows and knees bent by the measured angle and turned so the
    forearm and shin point where the photo says. The photo can stay over the canvas as a reference. */
-const PHOTO = {det: null, loading: null, img: null};
+const PHOTO = {det: null, loading: null, img: null, fromCanvas: false};
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s); }); }
 function poseDetector() {
   if (!PHOTO.loading) PHOTO.loading = (async () => {
@@ -15,7 +15,8 @@ function poseDetector() {
   })().catch(e => { PHOTO.loading = null; throw e; });
   return PHOTO.loading;
 }
-const photoMsg = t => { const el = $('#photoMsg'); if (el) el.textContent = t; };
+// progress and errors go under the button; a photo dropped on the canvas also says them on the canvas, where the person is looking
+const photoMsg = t => { const el = $('#photoMsg'); if (el) el.textContent = t; if (PHOTO.fromCanvas) toast(t); };
 async function poseFromImage(img) {
   photoMsg(tr('Cargando el detector de poses…'));
   const det = await poseDetector();
@@ -130,12 +131,12 @@ async function usePhoto(file) {
 async function photoOrBoard(files) {
   if (!files.length) return;
   if (files.length > 1 || /^video\//.test(files[0].type) || await isAnimatedGif(files[0]) || await isStoryboard(files[0])) return openBoard(files);
-  showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true; usePhoto(files[0]);
+  showTab('pose'); const d = $('details[data-sec=foto]'); if (d) { d.open = true; requestAnimationFrame(() => goSection(d)); } usePhoto(files[0]);
 }
 function buildPhotoUI() {
   $('#photoPick').onclick = () => $('#photoFile').click();
-  $('#photoFile').onchange = e => { photoOrBoard([...e.target.files]); e.target.value = ''; };
+  $('#photoFile').onchange = e => { PHOTO.fromCanvas = false; photoOrBoard([...e.target.files]); e.target.value = ''; };
   $('#photoRef').onchange = showPhotoRef;
   slider($('#photoAlphaBox'), {id: 'photoAlpha', label: 'Transparencia de la foto', min: .1, max: .9, step: .05, value: .4, fmt: pctFmt, input: v => { PHOTO.alpha = v; $('#photoOverlay').style.opacity = v; }});
-  vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].filter(f => /^(image|video)\//.test(f.type)); if (f.length) { e.preventDefault(); photoOrBoard(f); } });
+  vp.addEventListener('drop', e => { const f = [...e.dataTransfer.files].filter(f => /^(image|video)\//.test(f.type)); if (f.length) { e.preventDefault(); PHOTO.fromCanvas = true; photoOrBoard(f); } });
 }

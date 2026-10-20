@@ -59,6 +59,7 @@
             <button class="chip" data-v="ik" aria-pressed="true" title="Arrastrar manos y pies mueve todo el brazo o la pierna (I)">IK</button>
             <button class="chip" data-v="fk" aria-pressed="false" title="Arrastrar una articulación solo gira el hueso que la sostiene (I)">FK</button>
           </div>
+          <button class="chip" id="symMode" type="button" hidden aria-pressed="true" title="Simetría activada: lo que mueves en un lado se copia en el otro. Pulsa para quitarla">Simetría ×</button>
         </div>
         <div class="joint-card" id="jointCard" hidden>
           <h4><span id="jointName">Codo</span><button id="jointClose" aria-label="Quitar selección">×</button></h4>
@@ -139,7 +140,7 @@
           <button class="btn small primary" id="ihInstall" hidden>Instalar</button>
           <button class="gx" id="ihClose" aria-label="Cerrar">×</button>
         </div>
-        <div class="hint" id="hint" role="status">Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla</div>
+        <div class="hint" id="hint" role="status">Arrastra <b>●</b> manos y pies y <i>●</i> el cuerpo · toca una pieza o un punto para girarla</div>
       </div>
     </div>
 
@@ -161,17 +162,17 @@
           <div class="quick">
             <button class="btn small" id="mirrorBtn" title="Espejar pose">Espejar</button>
             <button class="btn small" id="groundBtn" title="Apoyar en el suelo">Al suelo</button>
-            <button class="btn small" id="resetBtn" title="Volver a la pose de pie">Reiniciar</button>
+            <button class="btn small" id="resetBtn" title="Pone al personaje activo en la pose de pie neutra">Poner de pie</button>
           </div>
           <details class="sec" data-sec="lib" open>
             <summary><h3>Biblioteca <span id="poseCount"></span></h3></summary>
             <div class="librow"><input class="search" id="poseSearch" type="search" placeholder="Buscar pose… (salto, sentado, abrazo)" autocomplete="off" aria-label="Buscar pose">
-            <div class="filter"><span>Personas</span><div class="chips seg" id="castChips" aria-label="Número de personajes"></div></div></div>
+            <div class="filter"><span>Personas</span><div class="chips seg" id="castChips" role="group" aria-label="Número de personajes"></div></div></div>
             <div class="chips" id="catChips" style="margin-bottom:8px"></div>
             <div class="blendbar" id="blendBar" hidden></div>
             <div class="pose-grid" id="poseGrid"></div>
             <button class="btn small libclips" id="libClips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="2"/><path d="m8 21 3-6 3 2v5M6 12l3-4h5l3 4M11 15l1-7"/></svg>Más posturas en la galería de animaciones</button>
-            <p class="note">Las poses de una persona se aplican al personaje activo; las de grupo colocan a todo el reparto. Izquierda y derecha son siempre las del personaje.</p>
+            <p class="note">Las poses de una persona se aplican al personaje activo; las de grupo colocan a todo el reparto y añaden o quitan personajes hasta tener los que pide la pose (Ctrl+Z lo deshace). Izquierda y derecha son siempre las del personaje.</p>
           </details>
           <details class="sec" data-sec="manos">
             <summary><h3>Manos</h3></summary>
@@ -196,7 +197,7 @@
             <p class="note" id="exprNote"></p>
           </details>
           <details class="sec" data-sec="foto">
-            <summary><h3>Desde una foto <span>sin conexión</span></h3></summary>
+            <summary><h3>Desde una foto <span>se analiza en tu dispositivo</span></h3></summary>
             <div class="row"><button class="btn small" id="photoPick">Elegir foto…</button><button class="btn small" id="photoBoard" title="Storyboard, varias fotos o un vídeo: se convierten en una animación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2M17 2v2M21 6h-2M19 2l-1 1M6 4v3M4.5 5.5h3M20 14v3M18.5 15.5h3"/></svg>Storyboard o vídeo → animación</button></div>
             <button class="btn small magic refbtn" id="refOpenPose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Buscar referencias libres</button>
             <input type="file" id="photoFile" accept="image/*,video/*" multiple hidden>
@@ -212,7 +213,7 @@
             <div class="chips" id="randChips"></div>
           </details>
           <details class="sec" data-sec="mias">
-            <summary><h3>Mis escenas</h3></summary>
+            <summary><h3>Guardar y abrir <span>escenas, archivo y enlace</span></h3></summary>
             <form class="save" id="saveForm">
               <input id="poseName" maxlength="40" placeholder="Nombre…" autocomplete="off">
               <button class="btn small" type="submit">Guardar</button>
@@ -220,7 +221,7 @@
             <div class="pose-grid" id="myPoses"></div>
             <p class="empty" id="myEmpty">Aún no hay nada guardado. Coloca a los personajes, ponle nombre y pulsa Guardar. Se queda en este navegador.</p>
             <div class="row" style="margin-top:8px"><button class="btn small" id="saveFile" title="Ctrl+S">Guardar archivo…</button><button class="btn small" id="openFile" title="Ctrl+O">Abrir archivo…</button></div>
-            <p class="note">Un archivo <b>.neopose</b> guarda la escena entera: reparto, ropa, escenario, cámara, la película con todos sus planos, el boceto y los avatares importados. Ábrelo en otro dispositivo o suéltalo sobre el lienzo.</p>
+            <p class="note">Un archivo <b>.neopose</b> guarda todo el proyecto: reparto, ropa, escenario, cámara, la película con sus planos, las páginas del cómic, la biblia (reparto y lugares), el boceto y los avatares importados. Ábrelo en otro dispositivo o suéltalo sobre el lienzo.</p>
             <div class="row" style="margin-top:8px"><button class="btn small" id="shareScene">Compartir enlace</button><button class="btn small" id="copyScene">Copiar como texto</button><button class="btn small" id="pasteScene">Pegar escena</button></div>
           </details>
           <details class="sec" data-sec="ayudas">

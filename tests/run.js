@@ -166,7 +166,7 @@ const SUITES = {
   // skeleton construction mode: the bones appear inside a ghost of the figure, follow body changes, and go away again
   async skeleton(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await goTab(page, 'dibujo'); await page.evaluate(() => document.querySelector('[data-sec=constr]').open = true);
+    await goTab(page, 'dibujo'); await page.evaluate(() => document.querySelector('details[data-sec=constr]').open = true);
     await page.click('#formChips .chip[data-v="esqueleto"]');
     await page.waitForFunction(() => window.__cdp.mq.skel && window.__cdp.mq.skel.mesh.visible, null, {timeout: 30000});
     ok(await A(() => !document.querySelector('#skelNote').hidden), 'the skeleton credit is shown');
@@ -183,7 +183,7 @@ const SUITES = {
   // posing helpers: a pinned hand stays put, a library pose can be blended with the one before, a chair can be sat on
   async posing(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
-    await goTab(page, 'pose'); await page.evaluate(() => document.querySelector('[data-sec=ayudas]').open = true);
+    await goTab(page, 'pose'); await page.evaluate(() => document.querySelector('details[data-sec=ayudas]').open = true);
     await page.click('#pinChips .chip[data-v="handL"]');
     const d = await A(() => { const C = window.__cdp, m = C.mq, w0 = m.joints.wristL.getWorldPosition(new THREE.Vector3());
       (window.__cdp.spaces ? window.__cdp.spaces.goTab('pose') : document.querySelector('.tab[data-tab=pose]').click()); m.joints.chest.rotation.x += .25; m.joints.chest.rotation.y += .2; m.group.updateMatrixWorld(true); C.enforcePins(m, 'chest');
@@ -229,7 +229,7 @@ const SUITES = {
     const box = await page.evaluate(() => { const r = document.querySelector('#tlTrack').getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width}; });
     const xOf = f => box.x + 12 + (box.w - 24) * f / 47;
     await page.mouse.click(xOf(24), box.y + 18 + 24 + 12); await page.waitForTimeout(200);
-    await page.evaluate(() => document.querySelector('[data-sec=lib]').open = true);
+    await page.evaluate(() => document.querySelector('details[data-sec=lib]').open = true);
     await page.click('#poseGrid .pose[data-id="salto"]'); await page.waitForTimeout(300);
     const keys = await A(() => window.__cdp.ANIM.shots[0].keys[0].map(k => k.f));
     ok(keys.join() === '0,24', `posing at frame 25 keys that character, keeping the start (${keys})`);
@@ -438,7 +438,7 @@ const SUITES = {
       const r0 = radius(); w.quaternion.setFromAxisAngle(w.position.clone().normalize(), Math.PI / 2); const r1 = radius(); return r1 / r0; });
     ok(keep > .93, `a wrist turned 90° keeps ${(keep * 100).toFixed(0)}% of the forearm's thickness (no sweet-wrapper pinch)`);
     // the body sliders: the muscles follow while they move, not after
-    await goTab(page, 'cuerpo'); await A(() => document.querySelector('[data-sec=prop]').open = true);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('details[data-sec=prop]').open = true);
     await A(() => { const s = document.querySelector('#b_muscle'); s.value = 1; s.dispatchEvent(new Event('input')); });
     await page.waitForTimeout(120); const p1 = await peak();
     await A(() => { const s = document.querySelector('#b_muscle'); s.value = 0; s.dispatchEvent(new Event('input')); });
@@ -471,7 +471,7 @@ const SUITES = {
     ok(apple.d > avgW.d + .01, `the apple build carries its fat on the belly (${(avgW.d * 100).toFixed(1)} → ${(apple.d * 100).toFixed(1)} cm forward)`);
     ok(bb.w > avgS.w + .01, `the bodybuilder is broader at the shoulders (${(avgS.w * 100).toFixed(1)} → ${(bb.w * 100).toFixed(1)} cm)`);
     ok(Math.abs(bb.g - .3) < 1e-6 && Math.abs(bb.age - 1.2) < 1e-6, 'a build keeps the character\'s sex and age');
-    await A(() => { document.querySelector('[data-sec=prop]').open = true; document.querySelector('#advMore').open = true; });
+    await A(() => { document.querySelector('details[data-sec=prop]').open = true; document.querySelector('#advMore').open = true; });
     const hips0 = await girth(null, .5);
     await A(() => { const s = document.querySelector('#adv_hipw'); s.value = 1; s.dispatchEvent(new Event('input')); s.dispatchEvent(new Event('change')); });
     await page.waitForTimeout(150); const hips1 = await girth(null, .5);
@@ -486,7 +486,7 @@ const SUITES = {
   // limb differences: stumps that close, joints that are not there stay still, prostheses that pose, a wheelchair
   async limbs(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
-    await goTab(page, 'cuerpo'); await A(() => document.querySelector('[data-sec=extremidades]').open = true);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('details[data-sec=extremidades]').open = true);
     const reach = () => A(() => { const m = window.__cdp.mq, P = m.anchors, nV = window.__cdp.FIG.meta.nV, s = m.J, i = window.__cdp.FIG.jIdx.shoulderL; let x = 0;
       for (let v = 0; v < nV; v++) if (/shoulderL|elbowL|wristL|^fL/.test(m.bonePick[m.dom[v]] || '') || m.bonePick[m.dom[v]] === 'wristL') x = Math.max(x, Math.hypot(P[v * 3] - s[i * 3], P[v * 3 + 1] - s[i * 3 + 1], P[v * 3 + 2] - s[i * 3 + 2])); return x; });
     const r0 = await reach();
@@ -526,7 +526,7 @@ const SUITES = {
     ok(await A(() => { const T = window.__cdp.TRAIL; return T.group && T.group.visible && T.group.children.length >= 10; }), 'motion trails show the arcs of the head, hands and feet');
     await page.click('#tlClose'); await page.waitForTimeout(200);
     // a still pose: line of action, balance, in-betweens from the ghost
-    await A(() => { document.querySelector('[data-sec=dinamismo]').open = true; document.querySelector('[data-sec=ayudas]').open = true; const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); document.querySelector('#ghostBtn').click(); C.usePreset(C.POSES.find(p => p.id === 'correr')); });
+    await A(() => { document.querySelector('details[data-sec=dinamismo]').open = true; document.querySelector('details[data-sec=ayudas]').open = true; const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); document.querySelector('#ghostBtn').click(); C.usePreset(C.POSES.find(p => p.id === 'correr')); });
     await page.click('#loaChk'); await page.click('#balChk'); await page.click('#inbChips .chip:nth-child(3)'); await page.waitForTimeout(700);
     const dyn = await A(() => { const D = window.__cdp.DYN, b = window.__cdp.balanceOf(window.__cdp.mq); return {loa: !!(D.loaObj && D.loaObj.visible), bal: !!(D.balObj && D.balObj.visible), inb: D.inbMeshes.length, inside: b.inside}; });
     ok(dyn.loa && dyn.bal && dyn.inb === 2, `line of action, balance and two in-betweens from the ghost (${JSON.stringify(dyn)})`);

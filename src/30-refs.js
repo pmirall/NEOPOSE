@@ -170,13 +170,13 @@ function keepCredit(r, what) { REF.credits = [{t: creditOf(r), url: r.page, what
 async function refToPose(r) {
   actMsg(tr('Buscando a la persona…'));
   const blob = await refBlob(r.full), file = new File([blob], fileName(r, 'jpg'), {type: blob.type || 'image/jpeg'});
-  closeRefs(); showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true;
-  await usePhoto(file); PHOTO.credit = creditOf(r); $('#photoCredit').textContent = tr('Referencia: {c}', {c: PHOTO.credit}); keepCredit(r, 'pose');
+  closeRefs(); showTab('pose'); const d = $('details[data-sec=foto]'); if (d) d.open = true;
+  PHOTO.fromCanvas = false; await usePhoto(file); PHOTO.credit = creditOf(r); $('#photoCredit').textContent = tr('Referencia: {c}', {c: PHOTO.credit}); keepCredit(r, 'pose');
 }
 async function refAsOverlay(r) {
   const blob = await refBlob(r.full), img = new Image(); img.src = URL.createObjectURL(blob); await img.decode();
   PHOTO.img = img; drawPhotoPreview(img, null); $('#photoRef').checked = true; showPhotoRef(); PHOTO.credit = creditOf(r); $('#photoCredit').textContent = tr('Referencia: {c}', {c: PHOTO.credit});
-  keepCredit(r, 'overlay'); closeRefs(); showTab('pose'); const d = $('[data-sec=foto]'); if (d) d.open = true;
+  keepCredit(r, 'overlay'); closeRefs(); showTab('pose'); const d = $('details[data-sec=foto]'); if (d) d.open = true;
 }
 // a GIF: its frames through the same window as a video (each frame's pose, trim, smoothing, into a shot)
 async function refToAnim(r) {

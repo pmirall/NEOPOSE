@@ -78,9 +78,9 @@ function setIK(on) {
 }
 // one wording from the start, "tap" for fingers and "click" for a mouse
 const TOUCH = matchMedia('(pointer: coarse)').matches;
-const HINT_IK = TOUCH ? tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · toca una pieza o un punto para girarla')
+const HINT_IK = TOUCH ? tr('Arrastra <b>●</b> manos y pies y <i>●</i> el cuerpo · toca una pieza o un punto para girarla')
   : tr('Arrastra los puntos <b>●</b> para mover manos y pies, el <i>●</i> para mover el cuerpo · haz clic en una pieza o un punto para girarla');
-const HINT_FK = TOUCH ? tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · toca una para girarla con el aro')
+const HINT_FK = TOUCH ? tr('Modo FK: arrastra una articulación ◉ para girar su hueso · tócala para usar el aro')
   : tr('Modo FK: arrastra cualquier articulación ◉ y solo gira el hueso que la sostiene · haz clic en una para girarla con el aro');
 function endDrag() {
   if (drag && drag.id === 'fk' && drag.moved) tourEvent(drag.ik ? 'ik' : 'fk');

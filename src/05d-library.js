@@ -52,12 +52,26 @@ function markPose() { $$('#poseGrid .pose').forEach(el => el.classList.toggle('o
 function buildPoseGrid() {
   const g = $('#poseGrid'); g.innerHTML = '';
   chips($('#castChips'), [1, 2, 3, 4].map(n => [n, String(n)]), state.castN, v => { state.castN = +v; buildPoseGrid(); });
+  $$('#castChips .chip').forEach(b => { const n = +b.dataset.v; b.title = n === 1 ? tr('Poses de 1 persona') : tr('Poses de {n} personas', {n}); b.setAttribute('aria-label', b.title); });
   $('#catChips').hidden = state.castN !== 1;
   chips($('#catChips'), Object.entries(POSE_CATS), state.cat, v => { state.cat = v; buildPoseGrid(); });
-  const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), q = norm($('#poseSearch').value.trim());
-  const list = (state.castN === 1 ? POSES.filter(p => state.cat === 'todas' || p.cat === state.cat) : GROUP_POSES[state.castN]).filter(p => !q || q.split(/\s+/).every(w => norm(p.label + ' ' + (p.find || '')).includes(w)));
+  const norm = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), raw = $('#poseSearch').value.trim(), q = norm(raw);
+  const match = p => !q || q.split(/\s+/).every(w => norm(p.label + ' ' + (p.find || '')).includes(w));
+  const list = (state.castN === 1 ? POSES.filter(p => state.cat === 'todas' || p.cat === state.cat) : GROUP_POSES[state.castN]).filter(match);
   $('#poseCount').textContent = tr('{n} poses', {n: list.length});
-  if (!list.length) g.innerHTML = `<p class="empty">${tr('Ninguna pose coincide con la búsqueda.')}</p>`;
+  // nothing here: say where the search does find poses (another category, another number of people), one click away
+  const elsewhere = [];
+  if (!list.length && q) {
+    if (state.castN === 1 && state.cat !== 'todas') { const c = POSES.filter(match).length; if (c) elsewhere.push([tr(POSE_CATS.todas) + ' (' + c + ')', () => { state.cat = 'todas'; }]); }
+    for (const n of [1, 2, 3, 4]) { if (n === state.castN) continue; const c = (n === 1 ? POSES : GROUP_POSES[n] || []).filter(match).length;
+      if (c) elsewhere.push([(n === 1 ? tr('Poses de 1 persona') : tr('{n} personas', {n})) + ' (' + c + ')', () => { state.castN = n; if (n === 1) state.cat = 'todas'; }]); }
+  }
+  if (elsewhere.length) {
+    const p = document.createElement('div'), row = document.createElement('div'); p.className = 'empty'; p.textContent = tr('Ninguna pose coincide con «{q}» aquí. Prueba en:', {q: raw});
+    row.className = 'chips'; row.style.marginTop = '6px';
+    for (const [label, go] of elsewhere) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.onclick = () => { go(); buildPoseGrid(); }; row.appendChild(b); }
+    p.appendChild(row); g.appendChild(p);
+  } else if (!list.length) g.innerHTML = `<p class="empty">${tr('Ninguna pose coincide con la búsqueda.')}</p>`;
   thumbQueue = [];
   for (const p of list) {
     const el = poseCard(p.label, () => withGlide(() => state.castN === 1 ? usePreset(p) : useGroup(p)), thumbs.get(p.id));
@@ -71,7 +85,9 @@ let myPoses = store.get('cdp.scenes', []);
 function buildMyPoses() {
   const g = $('#myPoses'); g.innerHTML = '';
   $('#myEmpty').hidden = myPoses.length > 0;
-  myPoses.forEach((p, i) => g.appendChild(poseCard(p.name, () => { restore(p.snap); frameAll(); pushHistory(); }, null,
+  // opening a scene replaces the whole stage; the way back keeps the camera and the look too, which the history leaves out
+  myPoses.forEach((p, i) => g.appendChild(poseCard(p.name, () => { const before = {...snapshot(), ...sceneExtras(true)}; restore(p.snap); frameAll(); pushHistory();
+    toast(tr('Escena «{x}» abierta', {x: p.name}), {undo: () => withGlide(() => { restore(before); pushHistory(); })}); }, null,
     () => { myPoses.splice(i, 1); store.set('cdp.scenes', myPoses); buildMyPoses(); $('#myPoses .del')?.focus();
       toast(tr('Escena «{x}» borrada', {x: p.name}), {undo: () => { myPoses.splice(i, 0, p); store.set('cdp.scenes', myPoses); buildMyPoses(); }}); }, p.img)));
 }
@@ -86,7 +102,7 @@ $('#saveForm').onsubmit = e => {
   e.preventDefault();
   const name = $('#poseName').value.trim() || tr('Escena {n}', {n: myPoses.length + 1});
   myPoses.unshift({name, snap: {...snapshot(), ...sceneExtras(true)}, img: viewSnapshot()});
-  if (!store.set('cdp.scenes', myPoses)) $('#myEmpty').textContent = tr('Este navegador no deja guardar datos; solo durará esta sesión.');
+  if (!store.set('cdp.scenes', myPoses)) toast(tr('Este navegador no deja guardar datos; solo durará esta sesión.')); else toast(tr('Escena «{x}» guardada', {x: name}));
   $('#poseName').value = ''; buildMyPoses();
 };
 

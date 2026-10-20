@@ -128,11 +128,18 @@ function separateTrunks(list) {
 }
 function useGroup(def) {
   tourEvent('pose');
+  // who the pose takes out of the scene or brings in, said with the way back
+  const gone = chars.slice(def.n).map(m => nameOf(m)), added = Math.max(0, def.n - chars.length);
   ensureCount(def.n);
   applyGroupTo(chars, def);
   state.posePreset = def.id;
   setActive(Math.min(active, chars.length - 1));
   markPose(); frameAll(); pushHistory();
+  let msg = null;
+  if (gone.length) msg = tr('Pose de {n} personas: se ha quitado a {x}', {n: def.n, x: gone.join(', ')});
+  else if (added) msg = trn(added, 'Pose de {n} personas: se ha añadido 1 personaje', 'Pose de {n} personas: se han añadido {k} personajes', {n: def.n, k: added});
+  if (msg) toast(msg, {undo: true});
+  return msg;
 }
 
 /* ---------- environment and ambience ---------- */
@@ -267,6 +274,8 @@ function framePads() {
   const h = $('#hint'); if (h && h.offsetParent && !h.classList.contains('quiet') && !document.body.classList.contains('anim')) bot = Math.max(bot, vr.bottom - h.getBoundingClientRect().top + 8);
   return {top, bot, H: camera.view && camera.view.enabled ? camera.view.fullHeight : vr.height};
 }
+// the cast chips keep clear of the IK/FK switch, however wide it is (0 while it is hidden)
+{ const mb = $('.modebar'); if (mb && window.ResizeObserver) new ResizeObserver(() => vp.style.setProperty('--mbw', mb.offsetWidth + 'px')).observe(mb); }
 function frameView() {
   const box = castBox(), c = box.getCenter(new V3()), size = box.getSize(new V3());
   const dir = camera.position.clone().sub(controls.target).normalize(), {top, bot, H} = framePads(), tf = Math.tan(camera.fov * DEG / 2);

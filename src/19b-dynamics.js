@@ -111,7 +111,7 @@ function buildDynamicsUI() {
   stretchEl = slider($('#stretchBox'), {id: 'dynStretch', label: 'Estirar y encoger (cartoon)', min: .6, max: 1.4, step: .02, value: 1, fmt: v => Math.round(v * 100) + '%',
     input: v => { mq.body.stretch = v; setFigureStretch(mq, v); }, change: pushHistory});
   stretchEl.inp.ondblclick = () => { mq.body.stretch = 1; stretchEl.set(1); setFigureStretch(mq, 1); pushHistory(); };
-  chips($('#inbChips'), [['0', tr('Ninguno')], ['1', '1'], ['2', '2'], ['3', '3'], ['5', '5']], '0', v => { DYN.inb = +v; if (DYN.inb && !ghostPose) toast(tr('Fija primero un fantasma: los intermedios van del fantasma a la pose actual.')); DYN.inbSig = ''; });
+  chips($('#inbChips'), [['0', tr('Ninguno')], ['1', '1'], ['2', '2'], ['3', '3'], ['5', '5']], '0', v => { DYN.inb = +v; if (DYN.inb && !ghostPose) toast(tr('Fija primero un fantasma: los intermedios van del fantasma a la pose actual.'), {act: ['Fijar fantasma', () => $('#ghostBtn').click()]}); DYN.inbSig = ''; });
   chips($('#spacingChips'), [['lineal', tr('Lineal')], ['suave', tr('Suave')], ['fantasma', tr('Cerca del fantasma')], ['pose', tr('Cerca de la pose')]], DYN.spacing, v => { DYN.spacing = v; DYN.inbSig = ''; });
 }
 function syncDynamicsUI() { if (stretchEl) stretchEl.set(mq.body.stretch ?? 1); }

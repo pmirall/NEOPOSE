@@ -58,7 +58,8 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 #viewport::after{right:18px;transform:rotate(3deg)}
 #gl,#overlay{position:absolute;inset:0;width:100%;height:100%;display:block}
 #overlay{pointer-events:none}
-.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--page);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:12px;color:var(--ink-soft);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;z-index:2}
+.hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--page);border:1px solid var(--line);border-radius:12px;padding:5px 14px;font-size:12px;color:var(--ink-soft);white-space:normal;width:max-content;max-width:min(640px,calc(100% - 24px));text-align:center;line-height:1.3;z-index:2}
+.hint .undo{white-space:nowrap}
 .hint b{color:var(--red);font-weight:700}
 .hint i{color:var(--blue);font-style:normal;font-weight:700}
 
@@ -160,7 +161,8 @@ body.practicing header .tb.edit{visibility:hidden}
 
 /* cast bar, object card, scene thumbnails */
 .brand-sub{font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);letter-spacing:.08em;text-transform:uppercase}
-.cast{position:absolute;left:12px;right:12px;top:20px;z-index:3;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+/* the cast chips stop short of the IK/FK switch (--mbw is its measured width) and wrap to a second row instead */
+.cast{position:absolute;left:12px;right:calc(24px + var(--mbw,96px));top:20px;z-index:3;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
 .cast .chip{pointer-events:auto;background:var(--page);font-size:12px;padding:3px 9px}
 .cast .chip[aria-pressed="true"]{background:var(--ink);color:var(--page)}
 .cast .chip.add{border-style:dashed}
@@ -292,6 +294,8 @@ details.more[open] > summary{margin-bottom:4px}
 
 .hint{transition:opacity .3s}
 .hint.quiet:not(.toast){opacity:0;pointer-events:none}
+/* the standing hint never gets in the way of a drag; a note with a button still takes clicks */
+.hint:not(.toast){pointer-events:none}
 .hint.toast{color:var(--ink);border-color:var(--ink)}
 
 #helpModal .sheet{width:min(740px,100%)}
@@ -314,7 +318,8 @@ kbd{color:var(--ink);font-family:var(--f-mono);font-size:11.5px;border:1.5px sol
 details.sec > summary h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
 /* posing mode switch (IK / FK) on the canvas */
-.modebar{position:absolute;right:12px;top:20px;z-index:3}
+/* the symmetry chip sits under the switch, so the cast keeps its width */
+.modebar{position:absolute;right:12px;top:20px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .modebar .chip{background:var(--page);font-size:12px;padding:3px 12px}
 .modebar .chip[aria-pressed="true"]{background:var(--ink);color:var(--page)}
 body.practicing .modebar{display:none}
@@ -443,6 +448,7 @@ body.practicing .modebar{display:none}
 #viewport.mv #gl,#viewport.mv #overlay{right:34%;width:66%}
 #multiBtn[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
 #viewport.mv .modebar{right:calc(34% + 12px)}
+#viewport.mv .cast{right:calc(34% + 24px + var(--mbw,96px))}
 /* export kinds */
 .exkind{margin:4px 0 10px}
 #exOptTurn,#exOptMap,#exOpt3d,#exOptImg{display:flex;flex-direction:column;gap:6px}
@@ -805,6 +811,8 @@ details.sec.flash > summary h3{animation:flash .9s var(--ease)}
 @keyframes flash{30%{color:var(--blue)}}
 
 @media (pointer:coarse){ .secnav .chip{min-height:34px;font-size:12.5px} }
+/* with a mouse, a thin bar under the index shows it scrolls sideways */
+@media (pointer:fine){ .secnav{scrollbar-width:thin;padding-bottom:4px} .secnav::-webkit-scrollbar{display:block;height:4px} .secnav::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px} }
 
 /* ======================= web app: iPhone, iPad, installed ======================= */
 html,body{overscroll-behavior:none}
@@ -990,10 +998,9 @@ a{color:var(--blue);text-underline-offset:2px}
 @keyframes skel{from{background-position:100% 0}to{background-position:0 0}}
 #refMsg{text-align:center}
 @media (prefers-reduced-motion:reduce){.refskel{animation:none}}
-/* phones: notes wrap instead of being cut, their buttons always whole */
+/* phones: notes leave room for the thumb buttons */
 @media (max-width:600px){
-  .hint{white-space:normal;border-radius:12px;max-width:calc(100% - 80px);text-align:center;line-height:1.3}
-  .hint .undo{white-space:nowrap}
+  .hint{max-width:calc(100% - 80px)}
 }
 /* fingers: everything at least 40 px */
 @media (pointer:coarse){
@@ -1065,7 +1072,8 @@ a{color:var(--blue);text-underline-offset:2px}
   .librow{display:flex;align-items:center;gap:8px;margin:0 0 6px}
   .librow #poseSearch{flex:1;min-width:0;margin:0}
   .librow .filter{margin:0!important}
-  .librow .filter > span{display:none}
+  /* the word "Personas" stays for screen readers; the eye gets a person in its place */
+  .librow .filter > span{font-size:0;width:16px;height:18px;flex:none;background:var(--ink-soft);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='12' cy='7' r='3.5'/%3E%3Cpath d='M5 21c0-4 3-7 7-7s7 3 7 7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='12' cy='7' r='3.5'/%3E%3Cpath d='M5 21c0-4 3-7 7-7s7 3 7 7'/%3E%3C/svg%3E") center/contain no-repeat}
 }
 
 #filmFade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:2}
