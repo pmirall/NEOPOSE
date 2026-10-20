@@ -147,16 +147,17 @@ function shiftAnthro(m, dy) {
      roedor     rabbits (lagomorphs): one long chisel incisor (above, a small peg behind it), a long gap, flat cheek teeth.
      herbivoro  horses: flat spatulate incisors, a long toothless gap (the bars), square grinding cheek teeth.
      reptil     rows of near-equal conical teeth that curve back.
-   gape: where the corners are, from the nose (0) to the eyes (1); xc: widest opening; teeth: [shape, u, length,
+   gape: where the corners are, from the nose (0) to the eyes (1); xc: widest opening; fmin: how small the teeth may get
+   on a short (kemono) muzzle, so a cat keeps its fangs and a rabbit its incisors; teeth: [shape, u, length,
    half-width] with u along the half arch, 0 front middle … 1 corner, and sizes in head heights (i incisor, c canine,
    p premolar, k carnassial, m molar, r reptile cone). */
 const reptRow = (n, l0, l1, w) => Array.from({length: n}, (_, k) => ['r', .06 + .88 * k / (n - 1), l0 + (l1 - l0) * k / (n - 1), w * (1 - .3 * k / (n - 1))]);
 const MOUTHS = {
   canino: {gape: .95, xc: .27, up: [['i', .05, .032, .011], ['i', .11, .034, .012], ['i', .17, .038, .013], ['c', .28, .12, .023], ['p', .45, .042, .024], ['p', .6, .052, .028], ['k', .77, .075, .038], ['m', .92, .032, .028]],
                                lo: [['i', .04, .028, .01], ['i', .09, .03, .011], ['i', .14, .032, .012], ['c', .21, .1, .021], ['p', .38, .038, .022], ['p', .53, .048, .026], ['k', .71, .07, .036], ['m', .87, .035, .028]]},
-  felino: {gape: .9, xc: .27, up: [['i', .05, .018, .009], ['i', .1, .02, .01], ['i', .15, .022, .011], ['c', .27, .14, .026], ['p', .56, .045, .024], ['k', .76, .075, .04]],
+  felino: {gape: .9, xc: .27, fmin: .7, up: [['i', .05, .018, .009], ['i', .1, .02, .01], ['i', .15, .022, .011], ['c', .27, .14, .026], ['p', .56, .045, .024], ['k', .76, .075, .04]],
                               lo: [['i', .04, .017, .008], ['i', .08, .019, .009], ['i', .12, .02, .01], ['c', .2, .115, .023], ['p', .52, .045, .024], ['k', .72, .07, .038]]},
-  roedor: {gape: .45, xc: .15, up: [['i', .07, .085, .026], ['i', .17, .028, .011], ['m', .62, .026, .026], ['m', .73, .026, .026], ['m', .84, .026, .026], ['m', .94, .024, .024]],
+  roedor: {gape: .45, xc: .15, fmin: .85, up: [['i', .07, .085, .026], ['i', .17, .028, .011], ['m', .62, .026, .026], ['m', .73, .026, .026], ['m', .84, .026, .026], ['m', .94, .024, .024]],
                                lo: [['i', .06, .07, .022], ['m', .6, .026, .026], ['m', .71, .026, .026], ['m', .82, .026, .026], ['m', .92, .024, .024]]},
   herbivoro: {gape: .55, xc: .3, up: [['i', .05, .03, .019], ['i', .13, .03, .018], ['i', .21, .028, .017], ['m', .52, .03, .034], ['m', .63, .03, .036], ['m', .74, .03, .036], ['m', .85, .03, .034], ['m', .95, .028, .03]],
                                    lo: [['i', .04, .034, .018], ['i', .12, .034, .017], ['i', .2, .032, .016], ['m', .5, .03, .034], ['m', .61, .03, .036], ['m', .72, .03, .036], ['m', .83, .03, .034], ['m', .93, .028, .03]]},
@@ -238,7 +239,7 @@ function mouthParts(m) {
   const at = (p, u) => { const L = [0]; for (let k = 1; k < p.length; k++) L.push(L[k - 1] + p[k].distanceTo(p[k - 1]));
     const s = u * L[L.length - 1]; let k = 1; while (k < p.length - 1 && L[k] < s) k++; const t = (s - L[k - 1]) / (L[k] - L[k - 1] || 1);
     return {p: p[k - 1].clone().lerp(p[k], t), T: p[k].clone().sub(p[k - 1]).setY(0).normalize(), len: L[L.length - 1]}; };
-  const sideLen = at(arch(1, 1), 1).len, f = clamp(sideLen / (.3 * h), .45, 1.1), teeth = [];
+  const sideLen = at(arch(1, 1), 1).len, f = clamp(sideLen / (.3 * h), F.M.fmin || .45, 1.1), teeth = [];
   for (const [sd, list] of [[1, F.M.up], [-1, F.M.lo]]) for (const side of [1, -1]) {
     const p = arch(sd, side), bone = sd > 0 ? HEAD : JAW, V = new V3(0, -sd, 0);
     for (const [shape, u, l0, w0] of list) {
@@ -280,7 +281,9 @@ function mouthGeo(pos, idx, si, sw, A, face) {
 // the lip line for the shader (rest position, the body's units): its height, the corners, the head height, and how the
 // margin is found: 1 near the line (the body's head), 2 by the distance to the cut edge that aLip carries (a sculpt)
 const lipLine = m => { const F = m.anthro && m.anthro.mouth; return F ? [F.y, F.zc, F.h, m.headSwap ? 2 : 1] : [0, 0, 0, 0]; };
-// the mouth opens: lips part, the inside shows
+// the mouth opens: lips part, the inside shows. Checked by every render of the scene (the view, renderView, exports),
+// not by the animation loop, so a picture taken right after the jaw moves never shows lips apart over an empty mouth
+scene.onBeforeRender = () => anthroTick();
 function anthroTick() {
   for (const m of chars) {
     if (!m.joints || !m.joints.jaw) continue;

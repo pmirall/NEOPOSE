@@ -56,7 +56,7 @@ function frame() {
 }
 // what the scene does every frame besides the animation (also run by the video export, frame by frame)
 function sceneTicks() {
-  updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick(); anthroTick();
+  updateLights(); envTick(); avatarsTick(); limbTick(); accessTick(); muscleTick(); dynamicsTick(); updateOcclusion(); updateHandles(); pinTick(); sceneTick(); updateStools(); updateSun(); clothTick();
   const gone = sk.hideFig || (ANIM.open && ANIM.shots.length && shot() && shot().empty);  // (a film's shot of a place with nobody in it)
   for (const m of chars) { m.group.visible = !gone; if (gone) m.stoolMesh.visible = false; if (ANIM.rec && m.lib && m.lib.uHi) m.lib.uHi.value = -1; }
 }
