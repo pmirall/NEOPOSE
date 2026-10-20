@@ -261,9 +261,9 @@ async function importBrushFiles(files) {
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
         addImportedBrush(`img-${f.name}-${Date.now()}`, f.name.replace(/\.[^.]+$/, ''), tipFromImage(img), .2); URL.revokeObjectURL(url); n++;
       }
-    } catch (e) { msg.textContent = tr('No se ha podido leer {f}: solo se admiten pinceles de muestra (.abr) e imágenes.', {f: f.name}); }
+    } catch (e) { msg.classList.add('said'); msg.textContent = tr('No se ha podido leer {f}: solo se admiten pinceles de muestra (.abr) e imágenes.', {f: f.name}); }
   }
-  if (n) msg.textContent = tr(n > 1 ? '{n} pinceles importados. Se guardan en este navegador.' : '1 pincel importado. Se guarda en este navegador.', {n});
+  if (n) msg.classList.add('said'), msg.textContent = tr(n > 1 ? '{n} pinceles importados. Se guardan en este navegador.' : '1 pincel importado. Se guarda en este navegador.', {n});
   renderBrushGrid();
 }
 function renderBrushGrid() {

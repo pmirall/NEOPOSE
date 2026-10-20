@@ -93,6 +93,7 @@ function openInIsBrowser() { const cap = window.Capacitor; return !nativeShell()
 const oiMsg = t => { $('#exMsg').textContent = t; if ($('#exportModal').hidden) toast(t); };
 async function openIn() {
   if (document.body.classList.contains('paging')) return exportFromTop();  // (the comic's pages go out from their own section, PSD in layers included)
+  if ($('#exportModal').hidden && EXK.kind === 'anim') setExportKind('img');  // from the top bar it is a still picture: back to the picture's size, not the film's 1×
   const N = nativeShell(), cap = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   if (N) {
     const apps = await N.apps().catch(() => []);

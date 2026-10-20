@@ -813,7 +813,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .sketch-bar{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:45%;gap:4px;overscroll-behavior:contain}
   .sketch-bar .brushes{display:flex;overflow-x:auto;gap:4px;scrollbar-width:none}
   .sketch-bar .brush{flex:0 0 68px}
-  #skMsg{display:none}
+  #skMsg:not(.said){display:none}  /* (the hint goes; an import's result stays) */
 }
 /* the index of a long tab */
 .secnav{position:sticky;top:-6px;z-index:4;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin:-6px -14px 8px -30px;padding:8px 14px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule)}

@@ -437,7 +437,8 @@ function animExportPreview() {
       : w === 'bvh' ? tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))}) : '';
     if (w === 'keylines') return keyLinesPreview();
     if (['frames', 'board', 'gif', 'layers'].includes(w)) { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
-      $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
+      const g = w === 'gif' ? Math.min(1, 720 / out.width) : 1;  // (the GIF is scaled down to 720 px wide, as exportGIF does)
+      $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: Math.round(out.width * g), h: Math.round(out.height * g)}); }
     else $('#exMsg').textContent = '';
   } finally { ex.film = false; }
 }

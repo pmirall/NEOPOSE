@@ -830,7 +830,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
   .sketch-bar{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:45%;gap:4px;overscroll-behavior:contain}
   .sketch-bar .brushes{display:flex;overflow-x:auto;gap:4px;scrollbar-width:none}
   .sketch-bar .brush{flex:0 0 68px}
-  #skMsg{display:none}
+  #skMsg:not(.said){display:none}  /* (the hint goes; an import's result stays) */
 }
 /* the index of a long tab */
 .secnav{position:sticky;top:-6px;z-index:4;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin:-6px -14px 8px -30px;padding:8px 14px 6px 30px;background:var(--page);border-bottom:1px dashed var(--rule)}
@@ -6031,9 +6031,9 @@ async function importBrushFiles(files) {
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
         addImportedBrush(`img-${f.name}-${Date.now()}`, f.name.replace(/\.[^.]+$/, ''), tipFromImage(img), .2); URL.revokeObjectURL(url); n++;
       }
-    } catch (e) { msg.textContent = tr('No se ha podido leer {f}: solo se admiten pinceles de muestra (.abr) e imágenes.', {f: f.name}); }
+    } catch (e) { msg.classList.add('said'); msg.textContent = tr('No se ha podido leer {f}: solo se admiten pinceles de muestra (.abr) e imágenes.', {f: f.name}); }
   }
-  if (n) msg.textContent = tr(n > 1 ? '{n} pinceles importados. Se guardan en este navegador.' : '1 pincel importado. Se guarda en este navegador.', {n});
+  if (n) msg.classList.add('said'), msg.textContent = tr(n > 1 ? '{n} pinceles importados. Se guardan en este navegador.' : '1 pincel importado. Se guarda en este navegador.', {n});
   renderBrushGrid();
 }
 function renderBrushGrid() {
@@ -11288,7 +11288,8 @@ function animExportPreview() {
       : w === 'bvh' ? tr('El movimiento de {w} en este plano, para Blender u otro programa 3D.', {w: speaker(chars.indexOf(mq))}) : '';
     if (w === 'keylines') return keyLinesPreview();
     if (['frames', 'board', 'gif', 'layers'].includes(w)) { const out = renderExportCanvas(EXK.subs ? ANIM.f : null); ex.canvas = out; $('#exImg').src = out.toDataURL('image/png');
-      $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: out.width, h: out.height}); }
+      const g = w === 'gif' ? Math.min(1, 720 / out.width) : 1;  // (the GIF is scaled down to 720 px wide, as exportGIF does)
+      $('#exMsg').textContent = tr('Vista previa del fotograma actual: {w} × {h} px.', {w: Math.round(out.width * g), h: Math.round(out.height * g)}); }
     else $('#exMsg').textContent = '';
   } finally { ex.film = false; }
 }
@@ -11474,6 +11475,7 @@ function openInIsBrowser() { const cap = window.Capacitor; return !nativeShell()
 const oiMsg = t => { $('#exMsg').textContent = t; if ($('#exportModal').hidden) toast(t); };
 async function openIn() {
   if (document.body.classList.contains('paging')) return exportFromTop();  // (the comic's pages go out from their own section, PSD in layers included)
+  if ($('#exportModal').hidden && EXK.kind === 'anim') setExportKind('img');  // from the top bar it is a still picture: back to the picture's size, not the film's 1×
   const N = nativeShell(), cap = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   if (N) {
     const apps = await N.apps().catch(() => []);
