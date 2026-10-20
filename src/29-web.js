@@ -50,13 +50,14 @@ async function downloadForOffline() {
   const btn = $('#offlineBtn'), msg = $('#offlineMsg');
   try {
     if (navigator.storage && navigator.storage.persist) await navigator.storage.persist().catch(() => false);
-    const list = await (await fetch('offline.json', {cache: 'no-cache'})).json(), cache = await caches.open('neopose-assets-' + list.version);
+    // (each file goes through the service worker, which keeps it under its content hash)
+    const list = await (await fetch('offline.json', {cache: 'no-cache'})).json(), cache = await caches.open('neopose-files'), keyOf = (f, h) => new URL(f + '?h=' + h, location.href).href;
     const total = list.files.reduce((a, f) => a + f[1], 0); let done = 0, i = 0;
     btn.disabled = true;
     const next = async () => {
       while (i < list.files.length) {
-        const [f, size] = list.files[i++];
-        if (!(await cache.match(f))) { const r = await fetch(f); if (r.ok) await cache.put(f, r); }
+        const [f, size, h] = list.files[i++];
+        if (h && !(await cache.match(keyOf(f, h)))) { const r = await fetch(f); if (r.ok && !navigator.serviceWorker.controller) await cache.put(keyOf(f, h), r); }
         done += size; msg.textContent = tr('Descargando para usar sin conexión: {p} %', {p: Math.floor(done / total * 100)});
       }
     };

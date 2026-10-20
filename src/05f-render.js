@@ -43,10 +43,13 @@ const REST = {last: performance.now(), drawn: 0};
 function wake() { REST.last = performance.now(); }
 for (const t of ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart']) addEventListener(t, wake, {passive: true, capture: true});
 controls.addEventListener('change', wake);
-const resting = now => state.quality !== 'alta' && now - REST.last > 2500 && !ANIM.playing && !ANIM.rec && !TWEENS.size && !CAMG.go && !practice.active && !(typeof SC !== 'undefined' && SC.busy);
+// (in the high quality too, after a longer while, and still at 15 frames a second there: idle motion stays smooth)
+const resting = now => now - REST.last > (state.quality === 'alta' ? 8000 : 2500) && !ANIM.playing && !ANIM.rec && !TWEENS.size && !CAMG.go && !practice.active && !(typeof SC !== 'undefined' && SC.busy);
 function frame() {
   if (!mq) return;
-  const now = performance.now(); if (resting(now) && now - REST.drawn < 250) return; REST.drawn = now;
+  // (the comic page covers the canvas: nothing to draw under it; its panels are drawn on their own)
+  if (typeof pageOn === 'function' && pageOn()) return;
+  const now = performance.now(); if (resting(now) && now - REST.drawn < (state.quality === 'alta' ? 66 : 250)) return; REST.drawn = now;
   glideTick(); camGlideTick(); controls.update(); if (state.roll) camera.rotateZ(-state.roll * DEG); sceneTicks();
   animTick(); dockView(); renderMulti(); renderer.render(scene, camera); drawOverlay(octx, W, Hh);
 }

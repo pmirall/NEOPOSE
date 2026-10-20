@@ -6,7 +6,7 @@
 function showPage(on) {
   const el = $('#pageView'); if (!el) return;
   if (on && CM.edit) { finishPanelEdit(); return; }  // (it shows the page when done)
-  el.hidden = !on; document.body.classList.toggle('paging', on);
+  el.hidden = !on; document.body.classList.toggle('paging', on); if (!on && typeof wake === 'function') wake();
   // (the top bar acts on the page while it is shown: Exportar takes the pages out; the sketch is drawn over the figure, not the page)
   $('#exportBtn').title = tr(on ? 'Exportar las páginas del cómic (Ctrl+E)' : 'Exportar imagen, 3D o animación (Ctrl+E)'); if (on && sk.on) setSketch(false);
   if (on) { if (!comic().pages.length) addPage('p4'); if (CMH.i < 0) histReset(); renderTracker(); renderScript(true); syncPageUI(); syncDeskTools(); drawPage(); }

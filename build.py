@@ -9,11 +9,25 @@ I18N = {f[:-5]: json.load(open(os.path.join(I18D, f), encoding='utf-8')) for f i
 GD = os.path.join(I18D, 'garments')
 GTR = {f[:-5]: json.load(open(os.path.join(GD, f), encoding='utf-8')) for f in sorted(os.listdir(GD)) if f.endswith('.json') and f != 'en.json'} if os.path.isdir(GD) else {}
 VERSION = json.load(open(os.path.join(H, 'package.json')))['version']
-js = ('const APP_VERSION = ' + json.dumps(VERSION) + ';\nconst I18N = ' + json.dumps(I18N, ensure_ascii=False) + ';\nconst I18N_EN = I18N.en;\nconst GARMENT_TR = ' + json.dumps(GTR, ensure_ascii=False) + ';\n'
+# each language is a script of its own (app/i18n/<lang>.js): the page loads English and the chosen one only
+os.makedirs(os.path.join(H, 'app/i18n'), exist_ok=True)
+for f in os.listdir(os.path.join(H, 'app/i18n')):
+    if f.endswith('.js'): os.remove(os.path.join(H, 'app/i18n', f))
+for l in I18N:
+    open(os.path.join(H, f'app/i18n/{l}.js'), 'w', encoding='utf-8').write('(window.NEOPOSE_I18N = window.NEOPOSE_I18N || {})[' + json.dumps(l) + '] = ' + json.dumps(I18N[l], ensure_ascii=False, separators=(',', ':'))
+        + ';\n(window.NEOPOSE_GTR = window.NEOPOSE_GTR || {})[' + json.dumps(l) + '] = ' + json.dumps(GTR.get(l, {}), ensure_ascii=False, separators=(',', ':')) + ';\n')
+import hashlib
+fhash = p => hashlib.sha1(open(os.path.join(H, p), 'rb').read()).hexdigest()[:10]
+LOADER = ('<script>(function () { var all = ' + json.dumps(sorted(I18N)) + ', l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}\n'
+  + '  var h = ' + json.dumps({l: fhash(f'app/i18n/{l}.js') for l in I18N}) + ';\n'
+  + '  ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write(\'<script src="i18n/\' + c + \'.js?h=\' + h[c] + \'"><\\/script>\'); });\n})();</script>\n')
+js = ('const APP_VERSION = ' + json.dumps(VERSION) + ';\nconst I18N_LANGS = ' + json.dumps(sorted(I18N)) + ';\nconst I18N = window.NEOPOSE_I18N || {en: {}};\nconst I18N_EN = I18N.en || {};\nconst GARMENT_TR = window.NEOPOSE_GTR || {};\n'
       + 'const ENV_MANIFEST = ' + rd('app/envs/manifest.json') + ';\n'
       + 'const HEAD_CATALOG = ' + json.dumps(json.load(open(os.path.join(H, 'app/heads/catalog.json'), encoding='utf-8')), ensure_ascii=False) + ';\n'
       + '\n'.join(rd(f'src/{m}.js') for m in MODULES))
-VENDOR = ['three.min.js', 'OrbitControls.js', 'TransformControls.js', 'GLTFLoader.js', 'meshopt_decoder.js', 'fflate.min.js', 'gifenc.min.js', 'NURBSUtils.js', 'NURBSCurve.js', 'FBXLoader.js']
+VENDOR = ['three.min.js', 'OrbitControls.js', 'TransformControls.js', 'GLTFLoader.js', 'meshopt_decoder.js', 'fflate.min.js', 'gifenc.min.js']
+# (loaded when an FBX is imported: see loadFBX)
+LAZY = ['NURBSUtils.js', 'NURBSCurve.js', 'FBXLoader.js']
 html = f'''<!doctype html>
 <html lang="en">
 <head>
@@ -35,7 +49,7 @@ html = f'''<!doctype html>
 </head>
 <body>
 {rd('src/body.html')}
-{''.join(f'<script src="vendor/{v}"></script>' + chr(10) for v in VENDOR)}<script>
+{LOADER}{''.join(f'<script src="vendor/{v}"></script>' + chr(10) for v in VENDOR)}<script>
 (() => {{
 {js}
 }})();
@@ -57,10 +71,11 @@ open(os.path.join(H, 'app/manifest.webmanifest'), 'w', encoding='utf-8').write(j
 APPD = os.path.join(H, 'app')
 files = sorted(os.path.relpath(os.path.join(d, f), APPD).replace(os.sep, '/') for d, _, fs in os.walk(APPD) for f in fs
                if not f.startswith('.') and f not in ('sw.js', 'offline.json') and not f.endswith(('.txt.map', '.md')))
-open(os.path.join(APPD, 'offline.json'), 'w').write(json.dumps({'version': VERSION, 'files': [[f, os.path.getsize(os.path.join(APPD, f))] for f in files]}, separators=(',', ':')))
-CORE = ['./', 'index.html', 'manifest.webmanifest', 'icon.png', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'fonts/fonts.css'] + [f'vendor/{v}' for v in VENDOR] + [f for f in files if f.startswith('fonts/') and f.endswith('.woff2')] + ['figure.txt', 'figure-ext.txt', 'figure-body.txt', 'skeleton.txt']
-CORE = [c for c in dict.fromkeys(CORE) if c == './' or os.path.exists(os.path.join(APPD, c))]
-sw = open(os.path.join(H, 'src/sw.js'), encoding='utf-8').read().replace('__VERSION__', VERSION).replace('__BUILD__', BUILD).replace('__CORE__', json.dumps(CORE))
+HASHES = {f: fhash(os.path.join('app', f)) for f in files if f != 'index.html'}
+open(os.path.join(APPD, 'offline.json'), 'w').write(json.dumps({'version': VERSION, 'files': [[f, os.path.getsize(os.path.join(APPD, f)), HASHES.get(f, '')] for f in files]}, separators=(',', ':')))
+CORE = ['manifest.webmanifest', 'icon.png', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'fonts/fonts.css'] + [f'vendor/{v}' for v in VENDOR] + [f for f in files if f.startswith('fonts/') and f.endswith('.woff2')] + [f for f in files if f.startswith('i18n/')] + ['figure.txt', 'figure-ext.txt', 'figure-body.txt', 'skeleton.txt']
+CORE = [c for c in dict.fromkeys(CORE) if c in HASHES]
+sw = open(os.path.join(H, 'src/sw.js'), encoding='utf-8').read().replace('__VERSION__', VERSION).replace('__BUILD__', BUILD).replace('__CORE__', json.dumps(CORE)).replace('__HASHES__', json.dumps(HASHES, separators=(',', ':')))
 open(os.path.join(APPD, 'sw.js'), 'w', encoding='utf-8').write(sw)
 print('web app', VERSION, BUILD, len(files), 'files', sum(os.path.getsize(os.path.join(APPD, f)) for f in files) // 2**20, 'MB')
 print('app/index.html', len(html) // 1024, 'kB')

@@ -60,9 +60,27 @@ function watchTabs() {
   ch.postMessage({hello: me});
 }
 function buildBackupsUI() {
-  watchTabs();
+  watchTabs(); watchGL(); watchErrors();
   if (!$('#snapList')) return;
   // (the list is read again whenever Settings opens)
   new MutationObserver(() => { if (!$('#setModal').hidden) renderSnaps(); }).observe($('#setModal'), {attributes: true, attributeFilter: ['hidden']});
   $('#snapNow').onclick = async () => { if (await keepSnap(tr('Copia manual'))) toast(tr('Copia guardada en este dispositivo')); };
+}
+// the 3D view lost (the system took the graphics back: a phone sent to the background, a driver reset): three.js
+// takes it again when the system allows; meanwhile the person knows, the work is saved, and a reload is offered if
+// it does not come back
+function watchGL() {
+  const cv = renderer.domElement; let t = 0;
+  cv.addEventListener('webglcontextlost', e => {
+    e.preventDefault(); autosaveNow(true); toast(tr('La vista 3D se ha perdido un momento; recuperándola…'), {ms: 8000});
+    t = setTimeout(() => toast(tr('La vista 3D no ha vuelto. Tu trabajo está guardado: recarga para seguir.'), {act: ['Recargar', () => location.reload()], ms: 60000}), 6000);
+  });
+  cv.addEventListener('webglcontextrestored', () => { clearTimeout(t); if (typeof wake === 'function') wake(); toast(tr('Vista 3D recuperada')); });
+}
+// a fault in the app itself (not a cancelled share or a missing optional file): said once, with the work saved first
+function watchErrors() {
+  let said = false;
+  const say = () => { if (said) return; said = true; try { autosaveNow(true); } catch (_) {} toast(tr('Algo ha fallado. Tu trabajo está guardado; si algo deja de responder, recarga la página.'), {act: ['Recargar', () => location.reload()], ms: 15000}); };
+  addEventListener('error', e => { if (!e.error || /^(chrome|moz|safari)-extension:/.test(e.filename || '') || /ResizeObserver/.test(e.message || '')) return; say(); });
+  addEventListener('unhandledrejection', e => { const r = e.reason; if (r && /^(TypeError|ReferenceError|RangeError|SyntaxError)$/.test(r.name)) say(); });
 }

@@ -3,7 +3,7 @@
    back to English, and then to the Spanish source, instead of breaking. Same text with two meanings:
    'Escalar@objeto' → context after @. Translations live in src/i18n/<lang>.json (Weblate-ready). */
 // every language with a file is offered, named in its own language (a new one from Weblate needs no code)
-const LANGS = Object.fromEntries(['en', 'es', ...Object.keys(I18N).filter(k => k !== 'en').sort()].map(c => {
+const LANGS = Object.fromEntries(['en', 'es', ...I18N_LANGS.filter(k => k !== 'en').sort()].map(c => {
   let n = c; try { n = new Intl.DisplayNames([c], {type: 'language'}).of(c); } catch (_) {}
   return [c, n.charAt(0).toLocaleUpperCase(c) + n.slice(1)];
 }));

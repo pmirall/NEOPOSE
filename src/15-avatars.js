@@ -83,6 +83,7 @@ function glbStripRequired(buf) {
 async function parseAvatar(buf, name) {
   const lower = (name || '').toLowerCase(), isGLB = new DataView(buf).getUint32(0, true) === 0x46546C67;
   if (/\.fbx$/.test(lower) || (!isGLB && /FBX|Kaydara/.test(new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(64, buf.byteLength)))))) {
+    if (!THREE.FBXLoader) for (const v of ['NURBSUtils', 'NURBSCurve', 'FBXLoader']) await loadScript(`vendor/${v}.js`);  // (loaded the first time an FBX comes in)
     const obj = new THREE.FBXLoader().parse(buf, '');
     return {scene: obj, map: guessHumanoid(obj), vrm0: false, meta: {}, animations: obj.animations || []};
   }

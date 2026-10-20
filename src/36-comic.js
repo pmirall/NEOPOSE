@@ -50,7 +50,18 @@ const PANEL_TEMPLATES = {
 const PRESET_GROUPS = [['Rejillas', ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p9']], ['Cine', ['wide3', 'big', 'hero', 'cols2', 'splash', 'splash2']], ['Manga', ['manga7', 'koma4', 'climax', 'tira3']], ['Acción', ['s3', 's4', 's5', 'shards']]];
 const BALLOON_KINDS = {speech: 'Habla', thought: 'Pensamiento', shout: 'Grito', whisper: 'Susurro', radio: 'Radio / teléfono', wavy: 'Tembloroso', black: 'Monstruo', caption: 'Cartela', narration: 'Narración'};
 tValues(BALLOON_KINDS);
-const CM = {sel: null, selB: null, page: 0, edit: null, cache: new Map(), last: new Map(), tw: new Map(), twOn: false, fly: new Map(), view: null, busy: false, queue: Promise.resolve()};
+// drawn panels kept by what they show and their size, the least recently used dropped past a budget of pixels (a print
+// export at 300 dpi would otherwise keep every page's pictures in memory)
+class PanelCache extends Map {
+  constructor(budget) { super(); this.px = 0; this.budget = budget; }
+  size_(r) { return r ? r.img.width * r.img.height + (r.out ? r.out.width * r.out.height : 0) : 0; }
+  get(k) { const v = super.get(k); if (v !== undefined) { super.delete(k); super.set(k, v); } return v; }
+  set(k, v) { if (super.has(k)) this.delete(k); super.set(k, v); this.px += this.size_(v);
+    for (const [old] of this) { if (this.px <= this.budget || old === k) break; this.delete(old); } return this; }
+  delete(k) { const v = super.get(k); if (v !== undefined) this.px -= this.size_(v); return super.delete(k); }
+  clear() { this.px = 0; super.clear(); }
+}
+const CM = {sel: null, selB: null, page: 0, edit: null, cache: new PanelCache(48e6), last: new Map(), tw: new Map(), twOn: false, fly: new Map(), view: null, busy: false, queue: Promise.resolve()};
 const mmPx = (mm, dpi) => mm / 25.4 * dpi;
 
 /* ---------- the model ---------- */
@@ -183,7 +194,7 @@ function drawPanels(list, pxOf) {
     const todo = list.filter(p => panelShot(p) && !CM.cache.has(panelKey(p, ...pxOf(p)))); if (!todo.length || CM.edit) return;
     CM.busy = true; const bench = benchSave(); let prev = null;
     try {
-      for (const p of todo) { const [w, h] = pxOf(p); if (!(await stagePanel(p, prev))) continue; prev = panelShot(p); const r = await drawPanelOnStage(p, w, h); CM.cache.set(panelKey(p, w, h), r); CM.last.set(p.id, r); }
+      for (const p of todo) { const [w, h] = pxOf(p); if (!(await stagePanel(p, prev))) continue; prev = panelShot(p); const r = await drawPanelOnStage(p, w, h); CM.cache.set(panelKey(p, w, h), r); if (w * h <= 1.5e6) CM.last.set(p.id, r); }  // (the last picture shown is a screen-sized one, not a print one)
     } catch (e) { console.warn('comic panels', e); }
     finally { await benchRestore(bench); CM.busy = false; }
     drawPage();
