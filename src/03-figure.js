@@ -173,7 +173,8 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
       d = l > 1e-4 ? d / l : vec2(0.0);
       // an inker's weight: the light comes from above on the left, so the contour swells on the shadow side (below and
       // right, where forms turn away and rest on what is under them) and thins on the lit one, as a brush line does
-      gl_Position.xy += d * uW * (1.0 + .4 * dot(d, vec2(.6, -.8))) * uPx * gl_Position.w;
+      // (never under a pixel there, where a thinner line would break into dots)
+      gl_Position.xy += d * max(uW * (1.0 + .4 * dot(d, vec2(.6, -.8))), min(uW, 1.0)) * uPx * gl_Position.w;
     }`,
   fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
 });

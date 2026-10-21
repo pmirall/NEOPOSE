@@ -130,7 +130,7 @@ function garmentHullMat(U) {
         #include <skinning_vertex>
         #include <project_vertex>
         vec3 nv = normalize(normalMatrix * objectNormal); vec2 d = nv.xy; float l = length(d); d = l > 1e-4 ? d / l : vec2(0.0);
-        gl_Position.xy += d * uW * uPx * gl_Position.w;
+        gl_Position.xy += d * max(uW * (1.0 + .4 * dot(d, vec2(.6, -.8))), min(uW, 1.0)) * uPx * gl_Position.w;  // (weighted as the body's contour, see OUTLINE_MAT)
       }`,
     fragmentShader: `uniform vec3 uCol; uniform sampler2D uTex; uniform float uTexOn, uCut; varying vec2 vTUv; varying float vGHide;
       void main() { if (vGHide > .999) discard; if (uCut > .5 && uTexOn > .5 && texture2D(uTex, vTUv).a < .5) discard; gl_FragColor = vec4(uCol, 1.0); }`

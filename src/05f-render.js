@@ -223,9 +223,11 @@ function renderView(o) {
   const hv = hidden.map(x => x.visible); tc.visible = false; hidden.forEach(x => x.visible = false);
   if (alpha) { scene.background = null; if (envGroup) envGroup.visible = false; grid.visible = false; sky.visible = false; panoSphere.visible = false; scene.fog = null; renderer.setClearColor(0, 0); }
   if (lines) { for (const m of chars) m.setStyle('contorno'); LU.uRender.value = 0; LU.uLineA.value = 0; LU.uCenter.value = 0; }
-  const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, px = LU.uPx.value.clone(), k = h / Hh;
+  // (the contour and the ink as wide as on the canvas, and in a bigger picture, a print's panel, wider with it, as the
+  // same drawing at a finer resolution: a hairline there would vanish on paper)
+  const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, px = LU.uPx.value.clone(), k = h / Hh, kl = Math.max(1, k);
   camera.clearViewOffset(); camera.aspect = w / h; camera.setFocalLength(state.focal); camera.updateProjectionMatrix();
-  renderer.setPixelRatio(1); renderer.setSize(w, h, false); LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; LU.uPx.value.set(2 / w, 2 / h);
+  renderer.setPixelRatio(1); renderer.setSize(w, h, false); LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; LU.uPx.value.set(2 * kl / w, 2 * kl / h);
   updateLights(); updateStools(); renderer.render(scene, camera);
   const out = document.createElement('canvas'); out.width = w; out.height = h; const c = out.getContext('2d'); c.drawImage(renderer.domElement, 0, 0, w, h, 0, 0, w, h);
   if (lines) inkOnly(out);

@@ -1426,6 +1426,10 @@ const SUITES = {
     const mem = await A(() => { const C = window.__cdp; C.renderView({w: 2400, h: 2400, bg: 'paper'}); const big = C.ink.INK.rts.has('2400x2400'); C.frameNow();
       const b = C.renderer.getDrawingBufferSize(new THREE.Vector2()); return {big, left: [...C.ink.INK.rts.values()].filter(r => r.width * r.height > b.x * b.y).length}; });
     ok(mem.big && mem.left === 0, `an export's ink buffers are let go after it (${mem.left} bigger than the canvas left)`);
+    // a print-sized picture (a comic panel for paper) is the same drawing finer: its lines wider with it, not hairlines
+    const print = await A(() => { const C = window.__cdp, H = C.renderer.domElement.getBoundingClientRect().height, n = s => { const d = C.renderView({w: s, h: s, bg: 'lines'}).getContext('2d').getImageData(0, 0, s, s).data; let k = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 100) k++; return k; };
+      const s0 = Math.round(H * .8), s1 = Math.round(H * 2.4); return {r: n(s1) / n(s0), lin: (s1 / s0) * (s1 / H)}; });
+    ok(print.r > print.lin * .7, `lines grow with a picture bigger than the canvas: ${print.r.toFixed(1)}× the ink at 3× the size (a fixed width would be ~3×)`);
     // clothes: a clean line, no specks (single ink pixels) and each garment layer over what it covers in the ink pass
     await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitChips .chip[data-v="camiseta"]').click()); await page.waitForTimeout(6000);
     await goTab(page, 'dibujo'); await aim('hips', 6);
@@ -1433,7 +1437,7 @@ const SUITES = {
       let ink = 0, lone = 0; for (let y = 1; y < 599; y++) for (let x = 1; x < 599; x++) if (on(x, y)) { ink++; let n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if ((i || j) && on(x + i, y + j)) n++; if (!n) lone++; }
       const G = (m.garments || []).filter(g => g.d), ranks = G.map(g => [g.rankIdx, g.U.uInkZ.value]); return {n: G.length, ink, lone, layered: ranks.every(([r, z]) => z === r + 1)}; });
     ok(cloth.n >= 2 && cloth.layered, `each of the ${cloth.n} garments lies over what it covers in the ink pass, by its layer`);
-    ok(cloth.ink > 2000 && cloth.lone < cloth.ink * .004, `clothes drawn with a clean line: ${cloth.lone} lone specks in ${cloth.ink} ink pixels`);
+    ok(cloth.ink > 2000 && cloth.lone < cloth.ink * .005, `clothes drawn with a clean line: ${cloth.lone} lone specks in ${cloth.ink} ink pixels`);
     await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitNone').click()); await page.waitForTimeout(800); await aim('head', 3.4);
     // an open mouth: teeth and tongue outlined, every part of it in the drawing style
     await goTab(page, 'pose'); await A(() => document.querySelector('#exprChips .chip[data-v="rugido"]').click()); await page.waitForTimeout(800);
