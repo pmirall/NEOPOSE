@@ -190,23 +190,33 @@ const SUITES = {
     // every lock (5 rings of 6 vertices): where it grows, its base and tip, its length, how deep it is against how wide
     const locks = () => A(() => {
       const C = window.__cdp, m = C.mq, F = C.FIG, g = m.fluffGeo; if (!g) return null;
-      const P = g.attributes.position.array, R = g.attributes.aRoot.array, E = g.attributes.aEye.array, BP = m.geo.attributes.position.array, J = m.J, j = n => [0, 1, 2].map(k => J[F.jIdx[n] * 3 + k]);
+      const P = g.attributes.position.array, R = g.attributes.aRoot.array, E = g.attributes.aEye.array, BP = m.geo.attributes.position.array, BN = m.geo.attributes.normal.array, J = m.J, j = n => [0, 1, 2].map(k => J[F.jIdx[n] * 3 + k]);
       const v = i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), avg = (o, r) => [0, 1, 2].map(k => { let s = 0; for (let q = 0; q < 6; q++) s += P[(o + r * 6 + q) * 3 + k]; return s / 6; });
       const out = [];
       for (let o = 0; o < R.length; o += 30) {
         const r = R[o], base = avg(o, 0), tip = avg(o, 4), ring = [0, 1, 2, 3, 4, 5].map(q => v(o + 6 + q)), wide = Math.max(...ring.map(a => Math.max(...ring.map(b => d(a, b)))));
-        out.push({part: r < 0 ? 'cheek' : F.region[m.dom[r]], root: r < 0 ? null : [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
+        // a cheek lock on a sculpted head roots in its own skin and hides with the body's head skin it stands in for
+        const part = F.region[m.dom[r]] === 'head' ? 'cheek' : F.region[m.dom[r]], sunk = [0, 1, 2].reduce((a, k) => a + (base[k] - BP[r * 3 + k]) * BN[r * 3 + k], 0);
+        out.push({part, root: [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], sunk, hid: g.attributes.aHide.array[o], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
       }
       return {L: out, n: P.length / 3, size: m.size, chest: j('chest'), elbow: j('elbowL'), wrist: j('wristL'), ankle: j('ankleL')};
     });
     // (the fox's sculpted head loads on its own: wait for its cheeks)
-    await pick('zorro'); await page.waitForFunction(() => { const g = window.__cdp.mq.fluffGeo; return g && g.attributes.aRoot.array.includes(-1); }, null, {timeout: 60000}); const f = await locks();
+    await pick('zorro'); await page.waitForFunction(() => { const m = window.__cdp.mq; return m.headSwap && m.headMesh && m.fluffGeo; }, null, {timeout: 60000}); await page.waitForTimeout(1000); const f = await locks();
     ok(f && f.L.length >= 60 && f.n < 9000, `a fox grows tufts: ${f && f.L.length} locks, ${f && f.n} vertices (modest)`);
     ok(f.L.every(l => l.deep > .65), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
+    // each lock roots under the skin it grows from (a root ring standing proud of a curved neck reads as a cut slab)
+    const body = f.L.filter(l => l.part !== 'cheek');
+    ok(body.every(l => l.sunk < 0), `every lock's root is buried in its skin (${body.filter(l => l.sunk >= 0).length} of ${body.length} stand out)`);
+    // and takes the coat where it grows: a ruff clump straddling the throat marking grades from the bib to the side coat
+    // (side by side locks of one clump, light and dark: each lock coloured at its own root, not the clump's)
+    const ruff = f.L.filter(l => l.part === 'neck'), mixed = ruff.filter((l, i) => i && Math.hypot(...[0, 1, 2].map(k => l.base[k] - ruff[i - 1].base[k])) < .02 * f.size && Math.abs(l.belly - ruff[i - 1].belly) > .3).length;
+    ok(mixed >= 2, `the neck ruff grades from the light throat to the side coat within a clump (${mixed} light/dark neighbours)`);
     const lens = f.L.map(l => l.len / f.size);
     ok(Math.max(...lens) < .12 && Math.min(...lens) > .01, `locks are tufts, not spikes: ${(Math.min(...lens) * 100).toFixed(1)}–${(Math.max(...lens) * 100).toFixed(1)} cm per metre of body`);
     const cheek = f.L.filter(l => l.part === 'cheek');
     ok(cheek.length >= 6 && cheek.filter(l => l.tip[2] < l.base[2]).length >= cheek.length * .8, `cheek ruffs on the sculpted head, swept back (${cheek.length} locks)`);
+    ok(f.L.every(l => !l.hid), `with nothing worn every tuft is drawn, the sculpted head's cheeks too (${f.L.filter(l => l.hid).length} hidden)`);
     const bib = f.L.filter(l => l.part === 'torso' && l.root[2] > f.chest[2] && Math.abs(l.root[0]) < .08 * f.size);
     ok(bib.length >= 10 && bib.filter(l => l.tip[1] < l.base[1]).length >= bib.length * .8, `a chest bib falling down the breastbone (${bib.length} locks)`);
     ok(bib.filter(l => l.belly > .4).length >= bib.length * .8, 'the bib takes the light colour of the fox\'s chest');
@@ -214,6 +224,9 @@ const SUITES = {
     const el = f.L.filter(l => near(l, f.elbow, .08) && l.root[2] < f.elbow[2]), wr = f.L.filter(l => near(l, f.wrist, .09)), hk = f.L.filter(l => near(l, f.ankle, .09) && l.root[2] < f.ankle[2]);
     ok(el.length >= 3 && wr.length >= 6 && hk.length >= 3, `tufts behind the elbow (${el.length}), round the wrist (${wr.length}) and behind the hock (${hk.length})`);
     ok(wr.filter(l => l.tip[1] < l.base[1]).length >= wr.length * .8, 'the wrist tufts point down the arm, to the paw');
+    // the heel fur sits behind the calcaneus: it does not widen the ankle seen from the front
+    const hw = Math.max(...hk.map(l => Math.abs(l.tip[0] - f.ankle[0]))) / f.size;
+    ok(hw < .028, `the hock tufts stay behind the heel, not out to the sides (${(hw * 100).toFixed(1)} cm/m from the ankle's midline)`);
     // the hair lies along the limb and lifts off only at the tips: a lock falls further than it stands out
     const lie = ls => ls.reduce((a, l) => a + (l.base[1] - l.tip[1]) / Math.hypot(l.tip[0] - l.base[0], l.tip[2] - l.base[2]), 0) / ls.length;
     ok(lie(el) > 1 && lie(wr) > 1, `elbow and wrist tufts lie down the forearm, not out from it (fall/stand ${lie(el).toFixed(1)}, ${lie(wr).toFixed(1)})`);
