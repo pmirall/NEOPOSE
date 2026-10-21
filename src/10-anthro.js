@@ -824,7 +824,8 @@ function remodelLegs(b, P, J, H) {
 function kneelPaws(m) {
   const L = legSpec(m.body); if (!L || L.type === 'planti' || !m.J) return;
   const jw = n => m.joints[n].getWorldPosition(new V3()), sc = m.group.getWorldScale(new V3()).y, q = new Q(), J = m.joints, kneel = [], stand = [];
-  const toeOff = s => { const ai = FIG.jIdx['ankle' + s], ti = FIG.jIdx['toe' + s]; return new V3(m.J[ti * 3] - m.J[ai * 3], m.J[ti * 3 + 1] - m.J[ai * 3 + 1], m.J[ti * 3 + 2] - m.J[ai * 3 + 2]).multiplyScalar(sc); };
+  // (a sculpted hind paw's own toe point where it has one: its toes reach well past the rig's, 11b-parts)
+  const toeOff = s => { const ai = FIG.jIdx['ankle' + s], ti = FIG.jIdx['toe' + s], T = m.pawToe && m.pawToe[s]; return new V3((T ? T.x : m.J[ti * 3]) - m.J[ai * 3], (T ? T.y : m.J[ti * 3 + 1]) - m.J[ai * 3 + 1], (T ? T.z : m.J[ti * 3 + 2]) - m.J[ai * 3 + 2]).multiplyScalar(sc); };
   const toeW = s => { J['ankle' + s].getWorldQuaternion(q); return jw('ankle' + s).add(toeOff(s).applyQuaternion(q)); };
   for (const s of ['L', 'R']) {
     if (m.stumps && m.stumps['leg' + s]) continue;
@@ -847,12 +848,13 @@ function kneelPaws(m) {
   }
   for (const s of kneel) {
     const A = J['ankle' + s], x0 = A.rotation.x, floor = jw('knee' + s).y - knee + .1 * W, toeY = a => { A.rotation.x = x0 + a; A.updateMatrixWorld(true); return toeW(s).y - floor; };
-    if (toeY(0) <= 0) { toeY(0); continue; }
-    // the nearest turn either way that brings it down, then bisected
+    // (a sculpted paw, longer than the rig's toes, can reach through the floor instead: it is turned back up onto it)
+    const y0 = toeY(0), up = y0 < -.004 * sc; if (y0 <= 0 && !up) { toeY(0); continue; }
+    // the nearest turn either way that brings it down (or up), then bisected
     let best = null;
-    for (const dir of [1, -1]) for (let a = 5 * DEG; a <= 150 * DEG; a += 5 * DEG) if (toeY(dir * a) <= 0) { if (!best || a < Math.abs(best[1])) best = [dir * (a - 5 * DEG), dir * a]; break; }
+    for (const dir of [1, -1]) for (let a = 5 * DEG; a <= 150 * DEG; a += 5 * DEG) if ((toeY(dir * a) <= 0) !== up) { if (!best || a < Math.abs(best[1])) best = [dir * (a - 5 * DEG), dir * a]; break; }
     if (!best) { toeY(0); continue; }
-    let [lo, hi] = best; for (let k = 0; k < 12; k++) { const mid = (lo + hi) / 2; if (toeY(mid) > 0) lo = mid; else hi = mid; }
+    let [lo, hi] = best; for (let k = 0; k < 12; k++) { const mid = (lo + hi) / 2; if ((toeY(mid) > 0) !== up) lo = mid; else hi = mid; }
     toeY(hi);
   }
   m.group.updateMatrixWorld(true);

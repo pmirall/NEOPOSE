@@ -242,7 +242,9 @@ const OUTLINE_MAT = outlineMat(1), OUTLINE_FINE = outlineMat(.55), OUTLINE_TUFT 
 // body under it, whose neck is left open where the head was cut off: looking up under the jaw, its far inside was
 // culled and the hull behind showed as a black wedge) keep the skin's own drawing, the nose (SKIN, noseMask).
 // Fur twins (the tufts) are the body's own part in the ink pass: a tuft is hair growing out of the skin, inked along
-// its free jagged edge (the depth step, the hull) and not across its root, where a part border drew a flat triangle
+// its free jagged edge (the depth step, the hull) and not across its root, where a part border drew a flat triangle;
+// and so is a sculpted paw (11b-parts), the arm's or the leg's skin going on: its pads and claws are inked, kinds of
+// their own, not a ragged cuff where it comes out of the skin it covers
 const TWO_SIDED = new WeakMap(), TWIN_SKIN = 1, TWIN_FUR = 2;
 function twoSided(mat, kind = 0) {
   let t = TWO_SIDED.get(mat); if (!t) TWO_SIDED.set(mat, t = []);
@@ -769,8 +771,8 @@ class Mannequin {
     for (const mm of this.mouthMeshes) mm.visible = !!this.mouthOpen && (!mm.userData.hull || this.outlineOn !== false);
     for (const g of geos) {
       // parts laid on the skin (a paw's pads) are skinned as the skin under them: the body's skeleton, highlighted with it
-      const skin = !!g.userData.skin, sk = skin ? this.skeleton : this.accSkeleton, m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
-      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true; m.userData.skin = skin;
+      const skin = !!g.userData.skin, sk = skin ? this.skeleton : this.accSkeleton, m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style], g.userData.part ? TWIN_FUR : 0));
+      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true; m.userData.skin = skin; m.userData.part = !!g.userData.part;
       this.group.add(m); m.bind(sk, I); this.acc.push(m); this.meshes.push(m);
       if (!skin) {
         m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
@@ -849,11 +851,12 @@ class Mannequin {
     if (!this.handAxes) return;
     const q = new Q(), q2 = new Q(), paw = handShape(this.body);  // paws close their own way (10-anthro)
     for (const s of ['L', 'R']) {
-      const st = this.hands[s], F = this.fingers[s], A = this.handAxes[s];
+      // (a sculpted paw closes each finger as far as its pad rests on the palm: pawFist, 11b-parts)
+      const st = this.hands[s], F = this.fingers[s], A = this.handAxes[s], lim = this.pawFist && this.pawFist[s];
       // a hoof-hand's fingers are one digit (or a cloven pair) in one hoof: they bend together and never spread
       const one = paw && paw.cv ? (st.c[1] + st.c[2] + st.c[3] + st.c[4]) / 4 : null;
       for (let f = 0; f < 5; f++) {
-        const c = f && one !== null ? one : st.c[f], ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
+        const c = Math.min(f && one !== null ? one : st.c[f], lim ? lim[f] : 1), ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
         q2.setFromAxisAngle(A.n, f && one !== null ? 0 : ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
         if (f === 0 && st.t) q2.premultiply(q.setFromAxisAngle(A.along, A.opp * st.t * 60 * DEG));
         F[f][0].quaternion.copy(q2).multiply(q.setFromAxisAngle(ax.curl[0], c * ang[0] * DEG));
@@ -864,7 +867,7 @@ class Mannequin {
   }
   // a mesh's material in a style: the body as it is, the sculpted head (and the body under it) as skin, the inside of the
   // mouth as the body (one-sided: the inner faces of the lips are seen only from within), the rest as parts
-  matOf(o, style = this.style) { const b = this.lib[style]; return o === this.body3 ? (this.headMesh ? twoSided(b, TWIN_SKIN) : b) : o.userData.mouth ? b : twoSided(b, o === this.headMesh ? TWIN_SKIN : o.userData.fluff ? TWIN_FUR : 0); }
+  matOf(o, style = this.style) { const b = this.lib[style]; return o === this.body3 ? (this.headMesh ? twoSided(b, TWIN_SKIN) : b) : o.userData.mouth ? b : twoSided(b, o === this.headMesh ? TWIN_SKIN : o.userData.fluff || o.userData.part ? TWIN_FUR : 0); }
   setStyle(style) {
     this.style = style;
     for (const m of this.meshes) m.material = this.matOf(m);

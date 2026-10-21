@@ -21,7 +21,7 @@ function renderFilmList() {
     const go = row.querySelector('.fpgo'), th = row.querySelector('.fpth'); th.innerHTML = (s.thumb ? `<img alt="" src="${s.thumb}">` : '<span class="mvph"></span>') + `<span class="mvnum">${i + 1}</span>`;
     go.onclick = () => { if (ANIM.playing) play(false); enterShot(i).then(renderFilmList); };
     row.querySelector('b').textContent = `${i + 1}. ${s.name}`;
-    row.querySelector('.fpm span').textContent = `${dec(s.len / ANIM.fps)} s` + (s.lines.some(l => l.text.trim()) ? ' · ' + tr('diálogo') : '') + (s.light && s.light.mood && s.light.mood !== 'auto' ? ' · ' + LIGHT_MOODS[s.light.mood].label : '');
+    row.querySelector('.fpm span').textContent = `${dec(s.len / ANIM.fps)} s` + (s.lines.some(l => l.text.trim()) ? ' · ' + tr('diálogo') : '') + (s.light && s.light.mood && s.light.mood !== 'auto' ? ' · ' + (LIGHT_MOODS[s.light.mood] ? LIGHT_MOODS[s.light.mood].label : tr('Solo la del escenario')) : '');  // ('ninguna': the set's own light, no preset of its own)
     const [up, dn] = row.querySelectorAll('.fpbtn button'); up.setAttribute('aria-label', tr('Antes')); dn.setAttribute('aria-label', tr('Después')); up.disabled = i === 0; dn.disabled = i === ANIM.shots.length - 1;
     for (const b of [up, dn]) b.onclick = async () => { if (i !== ANIM.cur) await enterShot(i); moveShot(+b.dataset.d); pushHistory(); renderFilmList(); };
     box.appendChild(row);
