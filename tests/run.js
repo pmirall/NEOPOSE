@@ -557,11 +557,29 @@ const SUITES = {
     ok(wolf.shaft.every(r => r > .75 && r < 1.3), `the metatarsus is an even shaft, not a wedge: under the hock ${wolf.shaft.map(r => r.toFixed(2)).join(' / ')} × as deep / wide as above the paw`);
     ok(wolf.pawK > .33, `a compact paw on the ground, ${(wolf.pawK * 100).toFixed(0)}% as long as the metatarsus is high`);
     ok(wolf.loR[1] > .0025, `the toes stand on their beans: the fur stays ${(wolf.loR[1] * 1000).toFixed(1)} mm off the floor`);
+    // the underside of the right foot, standing: a bear's sole pad (the largest leather piece) as wide across its back
+    // quarter as across its front one; a hoof's keratin, how low its middle comes against its rim
+    const under = () => A(() => {
+      const C = window.__cdp, m = C.mq, F = C.FIG.jIdx; C.usePreset(C.POSES.find(p => p.id === 'pie')); const floor = m.box(3).min.y, ab = m.accBones.indexOf(m.bones[F.ankleR]);
+      const mesh = m.acc.find(a => !a.userData.hull && a.geometry.attributes.skinIndex.getX(0) === ab), g = mesh.geometry, n = g.attributes.position.count, I = g.index.array, E = g.attributes.aEye.array;
+      const par = Int32Array.from({length: n}, (_, i) => i), f = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; };
+      for (let t = 0; t < I.length; t += 3) { par[f(I[t + 1])] = f(I[t]); par[f(I[t + 2])] = f(I[t]); }
+      const W = [], v = new THREE.Vector3(), size = new Map();
+      for (let i = 0; i < n; i++) { v.fromBufferAttribute(g.attributes.position, i); mesh.boneTransform(i, v); v.applyMatrix4(mesh.matrixWorld); W.push([v.x, v.y - floor, v.z, Math.floor(-E[i * 4 + 3]) - 1]); size.set(f(i), (size.get(f(i)) || 0) + 1); }
+      const pts = k => W.filter((p, i) => p[3] === k && (k !== 2 || size.get(f(i)) === Math.max(...[...size.keys()].filter(r => W[r][3] === 2).map(r => size.get(r)))));
+      const across = (P, a, b) => { const z0 = Math.min(...P.map(p => p[2])), z1 = Math.max(...P.map(p => p[2])), q = P.filter(p => { const u = (p[2] - z0) / (z1 - z0); return u > a && u < b; }); return Math.max(...q.map(p => p[0])) - Math.min(...q.map(p => p[0])); };
+      const pad = pts(2), hoof = pts(3), cx = hoof.reduce((s, p) => s + p[0], 0) / hoof.length, cz = hoof.reduce((s, p) => s + p[2], 0) / hoof.length;
+      const mid = hoof.filter(p => Math.hypot(p[0] - cx, p[2] - cz) < .015), rim = Math.min(...hoof.map(p => p[1]));
+      const Pa = m.anchors, foot = []; for (let i = 0; i < C.FIG.meta.nV; i++) if (m.dom[i] === F.ankleR && Pa[i * 3 + 1] < .03) foot.push([Pa[i * 3], 0, Pa[i * 3 + 2]]);
+      return {sole: pad.length ? across(pad, .2, .38) / across(pad, .7, .88) : 0, heel: foot.length ? across(foot, .1, .3) / across(foot, .6, .8) : 0, vault: mid.length ? Math.min(...mid.map(p => p[1])) - rim : 0, rim};
+    });
     const kinds = {};
-    for (const sp of ['gato', 'oso', 'conejo', 'dragon', 'caballo', 'cabra']) { await pick(sp); const f = await feet(); kinds[sp] = f.R; if (sp === 'oso') kinds.osoHock = f.hock; }
+    for (const sp of ['gato', 'oso', 'conejo', 'dragon', 'caballo', 'cabra']) { await pick(sp); const f = await feet(); kinds[sp] = f.R; if (sp === 'oso') { kinds.osoHock = f.hock; const u = await under(); kinds.osoSole = u.sole; kinds.osoHeel = u.heel; } if (sp === 'caballo') kinds.hoof = await under(); }
+    ok(kinds.osoSole > .6 && kinds.osoHeel > .8, `a bear's sole is a broad print, not a wedge: the heel ${(kinds.osoHeel * 100).toFixed(0)}% as wide as the ball, its pad ${(kinds.osoSole * 100).toFixed(0)}%`);
+    ok(kinds.hoof.vault > .002 && kinds.hoof.rim < .002, `a hoof stands on the rim of its wall (${(kinds.hoof.rim * 1000).toFixed(1)} mm off the floor), its sole vaulted ${(kinds.hoof.vault * 1000).toFixed(1)} mm inside it`);
     ok(kinds.gato === '4/5/4' && kinds.oso === '5/6/5' && kinds.osoHock < .12, `a cat's paw like a wolf's; a bear has five toes, five beans and its sole, and stands on its heel (${kinds.oso})`);
     ok(kinds.conejo === '4/0/0' && kinds.dragon === '4/4/4', `a rabbit's foot is furred, without pads or claws; a dragon has three toes and a dewclaw, each with its talon (${kinds.conejo}, ${kinds.dragon})`);
-    ok(kinds.caballo === '0/0/1' && kinds.cabra === '0/0/4', `a horse stands on one hoof, a goat on a cloven one with two dewclaws (${kinds.caballo}, ${kinds.cabra})`);
+    ok(kinds.caballo === '0/1/1' && kinds.cabra === '0/0/4', `a horse stands on one hoof with its frog under it, a goat on a cloven one with two dewclaws (${kinds.caballo}, ${kinds.cabra})`);
     // pads off; a leg that ends at the ankle has no paw; "Human feet" give the human foot back
     await pick('lobo'); await A(() => { const c = document.querySelector('#padsChk'); c.checked = false; c.dispatchEvent(new Event('change')); }); await page.waitForTimeout(800);
     ok((await feet()).R === '4/0/4', 'without pads, the paw keeps its toes and claws');
