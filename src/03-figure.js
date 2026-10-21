@@ -753,7 +753,10 @@ class Mannequin {
       g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
       g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
-    for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
+    // a sculpted paw-hand or hind paw (11b-parts) stands for the hand or toes and their lofted pads and claws
+    const handParts = handPartGeos(this), footParts = footPartGeos(this);
+    for (const g of pawGeos(this, this.geo.attributes.position.array, {hands: !handParts, feet: !footParts})) geos.push(g);
+    for (const g of [...handParts || [], ...footParts || []]) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
     this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));
@@ -772,7 +775,7 @@ class Mannequin {
       if (!skin) {
         m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
         m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
-      } else {
+      } else if (!g.userData.part) {
         // drawn a little toward the eye, so the skin it lies on never shows through it where the skinning bends both apart
         m.onBeforeRender = () => { const t = m.material; t.polygonOffset = true; t.polygonOffsetFactor = -2; t.polygonOffsetUnits = -6; };
         m.onAfterRender = () => { m.material.polygonOffset = false; };

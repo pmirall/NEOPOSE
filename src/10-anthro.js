@@ -1050,7 +1050,7 @@ function remodelHands(b, P, J, H) {
   return girth;
 }
 // claws on fingers and paws, hooves on goats, pads: rigid on the finger tips and the ankles (accessory skeleton)
-function pawGeos(m, P) { return [...footGeos(m, P), ...handGeos(m, P)]; }
+function pawGeos(m, P, o = {}) { return [...(o.feet === false ? [] : footGeos(m, P)), ...(o.hands === false ? [] : handGeos(m, P))]; }
 // the shared makers: a claw (keratin cone, bent down) and a pad (low leather dome)
 function pawMakers(m) {
   const L = legSpec(m.body), sz = m.size, jp = n => new V3(m.J[FIG.jIdx[n] * 3], m.J[FIG.jIdx[n] * 3 + 1], m.J[FIG.jIdx[n] * 3 + 2]);
