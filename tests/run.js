@@ -182,7 +182,7 @@ const SUITES = {
       return {...out, up: s(out.up), lo: s(out.lo)}; });
     await pick('lobo');
     let w = await mouth();
-    ok(w.F && w.n === 4 && [5, 6, 7, 8, 9].every(k => w.kinds.includes(k)), `a wolf's mouth: gums, palate, throat, teeth and tongue (kinds ${[...new Set(w.kinds)].join()})`);
+    ok(w.F && w.n >= 4 && [5, 6, 7, 8, 9].every(k => w.kinds.includes(k)), `a wolf's mouth: gums, palate, throat, teeth and tongue (kinds ${[...new Set(w.kinds)].join()})`);
     ok(w.up.n > 300 && w.lo.n > 300 && Math.abs(w.up.xs) < .005 && Math.abs(w.lo.xs) < .005, `teeth in both jaws, rigid on the skull and on the jaw, symmetric (mean x ${w.up.xs.toFixed(4)}, ${w.lo.xs.toFixed(4)} head heights)`);
     ok(w.up.deep > .09 && w.up.deepZ < w.up.front - .02, `the longest upper tooth is a canine (${w.up.deep.toFixed(3)} head heights), not at the very front`);
     ok(w.tongue && w.tongue.jaw && w.tongue.top < 0 && Math.abs(w.tongue.xm) < .01, `the tongue lies on the jaw's floor, in the middle (${JSON.stringify(w.tongue)})`);
@@ -194,6 +194,27 @@ const SUITES = {
       for (let i = 0; i < P.length / 3; i++) { let e = 0; for (let k = 0; k < 4; k++) if (SI[i * 4 + k] >= nB) e += SW[i * 4 + k]; if (e > .5 && jw(i) > .01) ear++; }
       return {bad, n, ear}; });
     ok(cut.n > 20 && cut.bad === 0 && cut.ear === 0, `the lips part cleanly (${cut.n} triangles at the lip line, ${cut.bad} torn) and no ear vertex goes with the jaw (${cut.ear})`);
+    // every tooth stands inside the lip edge in plan (the bag's rim, which runs on round the cheek pouch behind the corners)
+    // and behind the front of the lips, so none shows through the lips or the cheek
+    const inLips = () => A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, parts = m.mouthMeshes.filter(x => !x.userData.hull), rim = [], T = [];
+      for (const p of parts) { const P = p.geometry.attributes.position.array, E = p.geometry.attributes.aEye.array, k = Math.floor(-E[3]) - 1;
+        for (let i = 0; i < P.length / 3; i++) { if (k === 5) T.push([P[i * 3], P[i * 3 + 2]]); else if (k !== 6 && P[i * 3 + 1] === Math.fround(F.y) && p === parts[0]) rim.push([P[i * 3], P[i * 3 + 2]]); } }
+      const inside = ([x, z]) => { let c = false; for (let i = 0, j = rim.length - 1; i < rim.length; j = i++) { const [xi, zi] = rim[i], [xj, zj] = rim[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+      return {n: T.length, rim: rim.length, out: T.filter(p => !inside(p)).length, front: (Math.max(...T.map(p => p[1])) - Math.max(...rim.map(p => p[1]))) / F.h}; });
+    const lipsOf = async sp => { if (sp) await pick(...sp); const r = await inLips(); return `${sp ? sp[0] : 'lobo'} ${r.out}/${r.n} out, front ${r.front.toFixed(3)}` + (r.rim > 20 && r.out === 0 && r.front < -.005 ? '' : ' ✗'); };
+    { const r = [await lipsOf()]; for (const sp of [['zorro'], ['gato'], ['conejo'], ['dragon'], ['cabra'], ['caballo', true]]) r.push(await lipsOf(sp));
+      ok(!r.join().includes('✗'), `teeth inside the lips and the cheeks, behind the lip front (${r.join('; ')})`); }
+    // the fox girl's own modelled mouth is not drawn over the new inside: it is marked away (aLip 4), and close to the
+    // line, well inside the lip edge (the rim's outer envelope), nothing is left as plain skin
+    await pick('zorro');
+    const fox = await A(() => { const d = window.__cdp.mq.headSwap.d, F = d.mouth, P = d.P, rim = d.rim, zf = Math.max(...rim.map(q => q[2])), Cz = F.zc - .3 * (zf - F.zc), NS = 16, R = new Array(NS + 1).fill(0); let tc = 0, bad = 0, n = 0;
+      for (const [x, , z] of rim) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cz))); for (const [x, , z] of rim) { const b = Math.round(Math.abs(Math.atan2(x, z - Cz)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cz)); }
+      for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
+      for (let i = 0; i < d.n; i++) { const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], th = Math.abs(Math.atan2(x, z - Cz)); if (d.K[i] || Math.abs(y - F.y) > .04 || th > tc || z < F.zc) continue;
+        const f = th / tc * NS, k = Math.min(NS - 1, Math.floor(f)), Rt = R[k] + (R[k + 1] - R[k]) * (f - k); if (Math.hypot(x, z - Cz) > Rt - .02) continue; n++; if (d.lip[i] < 3) bad++; }
+      return {n, bad, id: d.id, away: [...d.lip].filter(v => v === 4).length}; });
+    ok(fox.id === 'foxgirl' && fox.away > 100 && fox.n > 5 && fox.bad === 0, `the fox girl's modelled mouth gives way to the new inside (${fox.away} vertices marked away, ${fox.bad} of ${fox.n} close inside the lips left as skin)`);
+    await pick('lobo');
     // hidden while closed; an expression opens it, the margin uniform is set
     await goTab(page, 'pose'); await page.waitForTimeout(300);
     const vis = () => A(() => { const C = window.__cdp, m = C.mq; C.renderView({w: 64, h: 64}); return {open: !!m.mouthOpen, vis: m.mouthMeshes.filter(x => x.visible).length, u: m.lib.uMouth.value, lip: m.lib.uEye.uLip.value.w}; });
@@ -203,13 +224,29 @@ const SUITES = {
     const jawTo = async r => { await A(r => { const C = window.__cdp, m = C.mq; C.applyExpression(m, 'neutra'); m.joints.jaw.rotation.set(r, 0, 0); C.controls.dispatchEvent({type: 'change'}); }, r); await page.waitForTimeout(500); return A(() => [window.__cdp.mq.mouthOpen, window.__cdp.mq.mouthMeshes.some(x => x.visible)]); };
     const talk = [(await jawTo(.18))[0], ...(await jawTo(0))];
     ok(talk.join() === 'true,false,false', `a few degrees of jaw (talking) open the mouth, closing hides it all again (${talk.join()})`);
+    // and through the animation path: a dialogue line's visemes move the jaw frame by frame, the inside shows and goes
+    await A(() => { if (!window.__cdp.ANIM.open) document.querySelector('#animBtn').click(); }); await page.waitForTimeout(500);
+    const said = await A(() => { const C = window.__cdp, s = C.ANIM.shots[C.ANIM.cur], m = C.mq, seen = [];
+      s.lines.push({c: C.chars.indexOf(m), text: 'hola, ¿cómo estás? muy bien, gracias', f: 2, len: 30});
+      for (let f = 0; f < 44; f += 2) { C.setFrameAnim(f); C.renderView({w: 32, h: 32}); seen.push(m.mouthOpen ? 1 : 0); }
+      s.lines.pop(); C.setFrameAnim(0); C.renderView({w: 32, h: 32}); return {open: C.ANIM.open, seen: seen.join(''), after: !!m.mouthOpen || m.mouthMeshes.some(x => x.visible)}; });
+    ok(said.open && /^0+1/.test(said.seen) && /10/.test(said.seen) && /0$/.test(said.seen) && !said.after, `a spoken line opens and closes the mouth as it plays (${said.seen}), shut again after`);
     // a long muzzle opens less for the same expression; a horse's ears fold back instead of flipping
     const jawOf = sp => A(() => { const m = window.__cdp.mq; window.__cdp.applyExpression(m, 'rugido'); return m.joints.jaw.rotation.x; });
     await goTab(page, 'cuerpo'); const wolfJaw = await jawOf(); await pick('caballo'); const horseJaw = await jawOf();
     ok(horseJaw < wolfJaw * .85, `a horse opens its long jaw less (${(horseJaw * 57.3).toFixed(0)}° against ${(wolfJaw * 57.3).toFixed(0)}°)`);
     w = await mouth(); ok(w.up.n > 0 && w.up.deep < .06, `herbivore teeth: flat incisors and molars, no fangs (${w.up.deep.toFixed(3)})`);
+    const upI = () => A(() => window.__cdp.mq.mouthMeshes.filter(x => !x.userData.hull).reduce((a, p) => { const P = p.geometry.attributes.position.array, E = p.geometry.attributes.aEye.array, SI = p.geometry.attributes.skinIndex.array, F = window.__cdp.mq.anthro.mouth;
+      if (Math.floor(-E[3]) - 1 === 5) for (let i = 0; i < P.length / 3; i++) if (SI[i * 4] === 1) a = Math.max(a, (P[i * 3 + 2] - F.zc) / (F.tip - F.zc)); return a; }, 0));
+    { const horse = await upI(); await pick('cabra'); const goat = await upI(); await pick('caballo');
+      ok(horse > .8 && goat < .75, `a horse has upper incisors at the front (${horse.toFixed(2)} of the way to the nose), a goat only a dental pad (${goat.toFixed(2)})`); }
     // other dentitions: a cat's fangs are its longest teeth, a rabbit's longest are its front incisors, a dragon's are many cones
-    await pick('gato'); w = await mouth(); ok(w.up.deep > .09 && w.up.deepZ < w.up.front - .005, `a cat's fangs: its longest teeth, behind the incisors (${w.up.deep.toFixed(3)} at ${w.up.deepZ.toFixed(3)}, front ${w.up.front.toFixed(3)})`);
+    await pick('gato'); w = await mouth();
+    // a kemono cat's short jaw sits right over its neck: roaring, the front of its chin stays in front of the throat
+    const chin = await A(() => { const m = window.__cdp.mq, F = m.anthro.mouth; window.__cdp.applyExpression(m, 'rugido'); const a = m.joints.jaw.rotation.x, z = (F.zc + F.tip) / 2 - F.jz, y = F.chin - F.jy;
+      return {deg: a * 57.3, z: (z * Math.cos(a) + y * Math.sin(a) + F.jz - F.nz) / F.h}; });
+    ok(chin.deg > 20 && chin.z > .03, `a cat roars wide (${chin.deg.toFixed(0)}°) with its chin still ${chin.z.toFixed(2)} head heights in front of its throat`);
+    ok(w.up.deep > .09 && w.up.deepZ < w.up.front - .005, `a cat's fangs: its longest teeth, behind the incisors (${w.up.deep.toFixed(3)} at ${w.up.deepZ.toFixed(3)}, front ${w.up.front.toFixed(3)})`);
     await pick('conejo'); w = await mouth(); ok(w.up.deep > .05 && w.up.deepZ > w.up.front - .05, `a rabbit's long front incisors (${w.up.deep.toFixed(3)} at ${w.up.deepZ.toFixed(3)}, front ${w.up.front.toFixed(3)})`);
     await pick('dragon'); const dr = w = await mouth(); ok(w.up.n > (await pick('lobo'), await mouth()).up.n, `a dragon has more teeth than a wolf (${dr.up.n} vertices)`);
     // the body's own head (no sculpt): the line it is cut along, and an inside too

@@ -52,10 +52,14 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
         ${FUR_GLSL}
         // the lip line (10-anthro.js): its height, the corners' z and the head height in the rest pose; aLip 1 marks the
         // skin along it in front of the corners (−1 its lower side on a head that is not cut; on a cut sculpt 1 … 1.5 is the
-        // distance to the edge), 2 the rest, 3 and 4 a sculpt's own mouth slit (open: 3 not inked, 4 not drawn)
+        // distance to the edge), 2 the rest, 4 a sculpt's own inside of the mouth (not drawn while open)
         float lipCut() { vec3 r = vFurP / uFurK; return step(.5, uLip.w) * step(uLip.y, r.z) * step(abs(r.y - uLip.x), .07 * uLip.z); }
-        float lipMargin() { float a = abs(vLip); if (uLip.w < .5 || a < .999 || a > 1.5) return 0.0; vec3 r = vFurP / uFurK;
-          if (uLip.w > 1.5) { float w = mix(.6, .9, uMouth); return 1.0 - smoothstep(w - .2, w, (a - 1.0) * 2.0); }  // bolder open
+        float lipMargin() { float a = abs(vLip); if (uLip.w < .5 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
+          // a cut sculpt: open, the bold margin round the edge; closed, a thin seam on the line itself (the cut lies exactly
+          // on it) that thins out to nothing at the corners, unbroken however the sculpt's vertices fall
+          if (uLip.w > 1.5) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.7, .9, (a - 1.0) * 2.0);
+            float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * .007 * uLip.z; return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
+          if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
@@ -80,7 +84,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           return 1.0 - clamp(d - w * .5 + .5, 0.0, 1.0);
         }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, ${uFur ? 'max(uFurOn, step(5.9, -vEye.w))' : 'uFurOn'});`)
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, ${uFur ? 'max(uFurOn, step(6.0, -vEye.w))' : 'uFurOn'});`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: on a head that is not cut, triangles that join the upper lip (+1) to the lower (−1) are dropped
