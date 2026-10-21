@@ -26,6 +26,21 @@ def decimate(V, F, target, attr=None):
     bpy.ops.object.modifier_apply(modifier='dec')
     s = ob.modifiers.new('sm', 'CORRECTIVE_SMOOTH'); s.factor = .35; s.iterations = 3; s.use_only_smooth = True; bpy.ops.object.modifier_apply(modifier='sm')
     m2 = ob.data; m2.calc_loop_triangles()
+    # stray specks the decimation leaves (a claw's tip cut off from it): any piece under 2% of the vertices goes
+    import bmesh
+    bm = bmesh.new(); bm.from_mesh(m2); seen = set(); pieces = []
+    for v in bm.verts:
+        if v.index in seen: continue
+        st = [v]; comp = []; seen.add(v.index)
+        while st:
+            x = st.pop(); comp.append(x)
+            for e in x.link_edges:
+                y = e.other_vert(x)
+                if y.index not in seen: seen.add(y.index); st.append(y)
+        pieces.append(comp)
+    small = [x for c in pieces if len(c) < .02 * len(bm.verts) for x in c]
+    if small: bmesh.ops.delete(bm, geom=small, context='VERTS'); bm.to_mesh(m2); m2.update(); m2.calc_loop_triangles()
+    bm.free()
     V2 = np.empty(len(m2.vertices) * 3, np.float32); m2.vertices.foreach_get('co', V2); V2 = V2.reshape(-1, 3)
     F2 = np.empty(len(m2.loop_triangles) * 3, np.int32); m2.loop_triangles.foreach_get('vertices', F2); F2 = F2.reshape(-1, 3)
     A2 = None
@@ -69,7 +84,7 @@ def weights(V, claws=False):
         if claws: Wf[:] = 0; Wf[:, 1 + i_f * 3 + 2] = 1
         else:
             # before the first joint (the knuckle), the palm takes over, smoothly
-            pre = np.clip((.25 - s) / .5, 0, 1) if i_f else np.clip((.55 - s) / .55, 0, 1)
+            pre = np.clip((.25 - s) / .5, 0, 1) if i_f else np.clip((.85 - s) / 1.1, 0, 1)   # (the thumb's root blends over most of its first bone)
             Wf *= (1 - pre)[:, None]; Wf[:, 0] += pre
         W[sel] = Wf
     W[best < 0, 0] = 1
@@ -79,7 +94,8 @@ def weights(V, claws=False):
     W /= np.maximum(W.sum(1, keepdims=True), 1e-6)
     # four strongest
     idx = np.argsort(-W, 1)[:, :4]; w4 = np.take_along_axis(W, idx, 1); w4 /= np.maximum(w4.sum(1, keepdims=True), 1e-6)
-    return idx.astype(np.uint8), np.round(w4 * 255).astype(np.uint8)
+    q = np.floor(w4 * 255).astype(np.int32); q[:, 0] += 255 - q.sum(1)   # exactly 255 in all (rounding left some at 256)
+    return idx.astype(np.uint8), q.astype(np.uint8)
 
 V, F, K = decimate(D['V'], D['F'], NS, D['kind'].astype(np.float32))
 kind = (K > 1).astype(np.uint8) * 2 if K is not None else np.zeros(len(V), np.uint8)

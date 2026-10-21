@@ -15,7 +15,7 @@ def rot_axis(ax, a):
 # width/height, tip radius in d, angle below the digit line (deg); pad: digital pad (width, length, bulge) in d
 SPECIES = {
     'canid': dict(P=.52, W=.53, dig=(.43, .48, .456, .36), d=.23, seg=(1, .67, .57), curl=(14, 26, 14), spread=6,
-                  claw=(1.0, 75, .62, .7, .1, 15), pad=(.82, 1.05, .22), palm_pad=(.6, .5), thumb=(.17, .17, .14)),
+                  claw=(.85, 75, .62, .7, .1, 15), pad=(.82, 1.05, .22), palm_pad=(.6, .5), thumb=(.17, .17, .14)),
     'felid': dict(P=.52, W=.53, dig=(.39, .43, .41, .33), d=.24, seg=(1, .67, .57), curl=(14, 30, 30), spread=6,
                   claw=(1.0, 130, .75, .5, .03, 25), pad=(.8, 1.05, .22), palm_pad=(.75, .55), thumb=(.16, .15, .13)),
     'bear':  dict(P=.56, W=.62, dig=(.3, .33, .32, .27), d=.24, seg=(1, .7, .6), curl=(10, 20, 14), spread=5,
@@ -56,7 +56,7 @@ def build(sp='canid', step=.004):
     def palm(p):
         dd = ellipsoid(p, (0, P * .55, 0), (W * .5, P * .5, T0 * .5))
         dd = smin(dd, ellipsoid(p, (0, P * .2, -.01), (W * .44, P * .32, T1 * .5)), .05)
-        dd = smin(dd, round_cone(p, (0, -.3, 0), (0, .02, -.005), W * .3, W * .33), .06)   # forearm stub (overlaps the body's)
+        dd = smin(dd, round_cone(p, (0, -.3, 0), (0, .02, -.005), W * .17, W * .31), .06)   # forearm stub, tapering into the body's forearm (no cuff)
         for f in (1, 2, 3, 4): dd = smin(dd, round_cone(p, J[f][0] * np.array([.5, .15, 1], np.float32), J[f][0], R[f] * 1.05, R[f] * 1.05), .04)
         return dd
     skin.append((palm, .0))

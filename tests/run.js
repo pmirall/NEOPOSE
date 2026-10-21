@@ -814,7 +814,7 @@ const SUITES = {
     for (const sp of ['gato', 'oso', 'conejo', 'dragon', 'caballo', 'cabra']) { await pick(sp); const f = await feet(); kinds[sp] = f.R; if (sp === 'oso') { kinds.osoHock = f.hock; const u = await under(); kinds.osoSole = u.sole; kinds.osoHeel = u.heel; } if (sp === 'caballo') kinds.hoof = await under(); }
     ok(kinds.osoSole > .6 && kinds.osoHeel > .8, `a bear's sole is a broad print, not a wedge: the heel ${(kinds.osoHeel * 100).toFixed(0)}% as wide as the ball, its pad ${(kinds.osoSole * 100).toFixed(0)}%`);
     ok(kinds.hoof.vault > .002 && kinds.hoof.rim < .002, `a hoof stands on the rim of its wall (${(kinds.hoof.rim * 1000).toFixed(1)} mm off the floor), its sole vaulted ${(kinds.hoof.vault * 1000).toFixed(1)} mm inside it`);
-    ok(kinds.gato === '1/5/0' && kinds.oso === '5/6/5' && kinds.osoHock < .12, `a cat's paw has a wolf's beans, its claws sheathed (${kinds.gato}); a bear has five toes, five beans and its sole, and stands on its heel (${kinds.oso})`);
+    ok(kinds.gato === '1/5/4' && kinds.oso === '5/6/5' && kinds.osoHock < .12, `a cat's paw has a wolf's beans, only the points of its sheathed claws showing (${kinds.gato}); a bear has five toes, five beans and its sole, and stands on its heel (${kinds.oso})`);
     ok(kinds.conejo === '4/0/0' && kinds.dragon === '4/4/4', `a rabbit's foot is furred, without pads or claws; a dragon has three toes and a dewclaw, each with its talon (${kinds.conejo}, ${kinds.dragon})`);
     ok(kinds.caballo === '0/1/1' && kinds.cabra === '0/0/4', `a horse stands on one hoof with its frog under it, a goat on a cloven one with two dewclaws (${kinds.caballo}, ${kinds.cabra})`);
     // pads off; a leg that ends at the ankle has no paw; "Human feet" give the human foot back
@@ -888,7 +888,7 @@ const SUITES = {
     await pick('lobo');
     const curl = await A(() => { const C = window.__cdp, m = C.mq, F = C.FIG, V = THREE.Vector3, a = m.acc.find(x => !x.userData.hull && /^hand/.test(x.geometry.userData.part || '') && x.geometry.attributes.position.array[0] < 0);
       const g = a.geometry, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, pts = [];
-      for (let i = 0; i < g.attributes.position.count; i += 5) if (/^fR\d[12]$/.test(F.meta.bones[si[i * 4]]) && sw[i * 4] > .999) pts.push(i);
+      for (let i = 0; i < g.attributes.position.count; i += 2) if (/^fR\d[12]$/.test(F.meta.bones[si[i * 4]]) && sw[i * 4] > .999) pts.push(i);
       const at = c => { C.usePreset(C.POSES.find(p => p.id === 'saludo')); m.hands.R = {c, s: 0, t: 0}; m.applyHands(); m.group.updateMatrixWorld(true); m.skeleton.update();
         return pts.map(i => { const v = new V().fromBufferAttribute(g.attributes.position, i); a.boneTransform(i, v); v.applyMatrix4(a.matrixWorld); return [v.clone(), v.applyMatrix4(new THREE.Matrix4().copy(m.bones[si[i * 4]].matrixWorld).invert())]; }); };
       const open = at([0, 0, 0, 0, 0]), shut = at([1, 1, 1, 1, 1]); let drift = 0, moved = 0;

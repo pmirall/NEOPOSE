@@ -10,9 +10,9 @@ SPECIES = {
     # Fw width/length; toes: (x, y of the pad centre, pad half width, half length, splay deg) for digits 2..5 (medial to lateral);
     # mt: metatarsal pad (half width, half length, lobes behind); claw: (chord in F, arc deg, height, flat, tip, lift deg); arch: toe knuckle height in toe widths
     'canid': dict(Fw=.85, toes=[(.32, .56, .105, .13, 18), (.125, .8, .118, .15, 4), (-.125, .8, .118, .15, -4), (-.32, .56, .105, .13, -18)],
-                  mt=(.25, .21, 3), claw=(.16, 70, .07, .7, .012, 12), arch=.62, meta=(.22, 55)),
+                  mt=(.25, .21, 3), claw=(.16, 70, .07, .7, .012, 12), arch=.62, meta=(.22, 70)),
     'felid': dict(Fw=1.0, toes=[(.36, .6, .11, .13, 16), (.14, .82, .12, .145, 4), (-.12, .8, .12, .14, -4), (-.36, .58, .11, .13, -16)],
-                  mt=(.34, .23, 3), claw=(0, 0, 0, 0, 0, 0), arch=.55, meta=(.24, 58)),
+                  mt=(.34, .23, 3), claw=(.07, 60, .045, .55, .006, 20), arch=.55, meta=(.24, 70)),   # (retracted: only the points show)
 }
 
 def build(sp='canid', step=.005):
@@ -21,7 +21,7 @@ def build(sp='canid', step=.005):
     # metatarsus stub rising up and back from the paw's heel (overlaps the body's leg)
     mr, ang = S['meta']; ma = np.radians(ang)
     heel = np.array([0, .16, .22], np.float32); top = heel + np.array([0, -np.cos(ma), np.sin(ma)], np.float32) * .55
-    skin.append((lambda p: round_cone(p, heel, top, mr * 1.0, mr * .62), 0))   # tapering into the leg's shaft, which covers its top
+    skin.append((lambda p: round_cone(p, heel, top, mr * .95, mr * .45), 0))   # tapering into the leg's shaft, which covers its top (no cuff)   # tapering into the leg's shaft, which covers its top
     # the paw's body over the main pad: a low dome from the heel to the toes' roots
     skin.append((lambda p: ellipsoid(p, (0, .34, .15), (S['Fw'] * .46, .3, .15)), .08))
     for (x, y, hw, hl, spl) in S['toes']:
