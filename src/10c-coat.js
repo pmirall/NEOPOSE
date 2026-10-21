@@ -394,7 +394,9 @@ function fluffGeo(m) {
       const A = jp('ankle' + sd), toe = jp('toe' + sd), mt = Ls.type === 'planti' ? new V3(0, -1, 0) : toe.clone().sub(A).normalize(), fr = new V3(1, 0, 0).cross(mt).normalize();
       if (fr.z < 0) fr.negate();
       // the heel fur sits behind the calcaneus in a tight clump: it lengthens the back of the hock, it does not widen the front
-      if (on(at[5])) tuft(S3, A.clone().addScaledVector(mt, .02 * sz), fr.clone().negate().addScaledVector(mt, -.3), mt.clone(), .055, .6, at[5], .5);
+      // (aimed at the point of the hock, which the laid leg puts behind the joint in line with the metatarsus: lower, the
+      // ray left the slim shaft under the knob through its inner side, and the clump stood out there)
+      if (on(at[5])) tuft(S3, A.clone().addScaledVector(mt, .02 * sz), fr.clone().negate().addScaledVector(mt, -.6), mt.clone(), .055, .6, at[5], .5);
       // a paw's fringe grows just above the toe knuckles and falls forward over the toes (on a digitigrade paw higher up it
       // would read as a cuff round the shin), at its two sides where it breaks the outline (flat on the front it reads as a
       // sticker), and only on a very furry digitigrade paw (a sleeker one is drawn with just the heel tuft); a plantigrade foot's over the instep
