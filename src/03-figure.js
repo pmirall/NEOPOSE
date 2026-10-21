@@ -6,8 +6,32 @@ const LU = {
   uOutW: {value: 1.6}, uPx: {value: new THREE.Vector2(.002, .002)}, uOutCol: {value: new THREE.Color(0x1e1a15)},
   // 0 normal · 1 pencil hatching · 2 value study · 3 screentone (manga dots; uTone: the dot cell in pixels)
   uRender: {value: 0}, uDpr: {value: 1}, uThresh: {value: .5}, uLevels: {value: 3}, uHatch: {value: .4}, uTone: {value: 7},
-  uPaper: {value: new THREE.Color(0xf4f0e6)}, uGraphite: {value: new THREE.Color(0x2e2a25)}
+  uPaper: {value: new THREE.Color(0xf4f0e6)}, uGraphite: {value: new THREE.Color(0x2e2a25)},
+  uInk: {value: 0}  // 1 while the ink pass draws the characters' normals and part ids (see INK in 05f-render.js)
 };
+/* the ink pass's output, shared by every material a character is drawn with: the view normal (xy; z is the visible
+   side), and in blue the part: one id per material (body, garment, teeth, tongue; the paws' pads and claws and the tufts, apart
+   from the body) plus, on
+   every surface, what the coat says the skin is there when it is a part of its own (claw, horn: kinds 3–4 of furPack;
+   fur and leather, 0–2, are one on the skin, where leather is the nose, a patch of the mesh's vertices whose border
+   inked would be a jagged polygon, filled instead (SKIN, noseMask); the paws' pads, made shapes, keep their kind 2, which
+   tells the filter, as 3–4 do, a hard part whose border is drawn bolder), so a line is found where one part meets another. Each kind is read halfway between its value and its neighbour's (below
+   −4), so the border runs along the triangles' middle, not on their vertex ring; the kinds past 7 (the linings inside
+   a mouth) are one part with 7, which keeps every material's ids within its stride of 8.
+   The eye is no part of its own: its vertices take in a ring of the lid on the coarse body, and a border there is a
+   star round the eye; the lid's line is the depth step where it passes over the eyeball. Alpha tells the inside of a
+   two-sided part (.75) from its outside (1). Skin under loose cloth (aHide .5: drawn, in case it shows through an
+   opening, but not outlined) is left out as the hull leaves it out: a sliver of it at a sleeve's or a shirt's side would
+   be a dotted border along the cloth's edge. (Skin poking through tight cloth: see uInkZ in garmentMat.) */
+// (the ids are handed out in turn as materials are first drawn, 30 of them to the byte with room for the kinds: the
+// body, its parts, the garments and the mouth, drawn together, get different ones, which the materials' own ids, taken
+// modulo, did not promise)
+const INK_IDS = new WeakMap(); let inkNext = 0;
+const inkId = mat => { if (!INK_IDS.has(mat)) INK_IDS.set(mat, 8 * (1 + inkNext++ % 30)); return INK_IDS.get(mat); };
+const inkVert = mat => `vInkN = normalMatrix * ${mat.isMeshBasicMaterial ? '\n#if defined(USE_ENVMAP) || defined(USE_SKINNING)\nobjectNormal\n#else\nnormal\n#endif\n' : 'objectNormal'};`;
+const inkFrag = (kind, cut = '') => `#include <dithering_fragment>
+  if (uInk > .5) { ${cut} vec3 n = normalize(vInkN) * (gl_FrontFacing ? 1.0 : -1.0); gl_FragColor = vec4(n.xy * .5 + .5, (uInkId + ${kind}) / 255.0, gl_FrontFacing ? 1.0 : .75); }`;
+function inkUniforms(sh, mat) { sh.uniforms.uInkId = {value: inkId(mat)}; mat.userData.ink = true; }
 const SKETCH_GLSL = `
   uniform float uRender, uDpr, uThresh, uLevels, uHatch, uTone;
   uniform vec3 uPaper, uGraphite;
@@ -35,19 +59,20 @@ const SKETCH_GLSL = `
     return mix(uPaper, uGraphite, ink * .78);
   }`;
 function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = null) {
-  mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF);
+  // (a function, not an arrow: the two-sided twins share it, and each must take its own ink id, see twoSided)
+  mat.onBeforeCompile = function (sh) {
+    Object.assign(sh.uniforms, LU, {uHi, uMouth}, uEye, uFur || FUR_OFF); inkUniforms(sh, this);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vInkN;\nattribute vec4 aLine;\nattribute float aHide;\nattribute float aLip;\nattribute vec4 aEye;\nuniform float uFurK;\nvarying vec3 vFurP;\nvarying vec4 vEye;\nvarying float vHide;\nvarying float vLip;\nvarying vec4 vLine;\nvarying float vHi;\nuniform float uHi;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye; vFurP = position * uFurK;
+        vLine = aLine; vHi = 0.0; vHide = aHide; vLip = aLip; vEye = aEye; vFurP = position * uFurK; ${inkVert(mat)}
         #ifdef USE_SKINNING
         vHi = dot(skinWeight, vec4(1.0 - step(.5, abs(skinIndex.x - uHi)), 1.0 - step(.5, abs(skinIndex.y - uHi)),
                                    1.0 - step(.5, abs(skinIndex.z - uHi)), 1.0 - step(.5, abs(skinIndex.w - uHi))));
         #endif`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth;
+        varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
         varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil;
         ${FUR_GLSL}
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
@@ -56,13 +81,13 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           if (ang > uIris) return c;
           vec2 uv = d.xy / max(sin(uIris), 1e-3);
           vec3 iris = mix(c, ink, .38), col = iris;
-          float ring = smoothstep(uIris * .9, uIris, ang); col = mix(col, ink, ring * .85);
+          float ring = ${mat.isMeshBasicMaterial ? 'smoothstep(uIris * .93 - fwidth(ang), uIris * .93, ang)' : 'smoothstep(uIris * .9, uIris, ang)'}; col = mix(col, ink, ring * .85);  // (the limbal ring: in the flat styles a crisp inked ring, not shading)
           vec2 pu = uv / uPupil.yz; if (dot(pu, pu) < 1.0) col = mix(ink, ink * .6, .3);
           if (uShine > .5) { vec2 h = uv - vec2(-.32, .38); if (dot(h, h) < .045) col = paper; vec2 h2 = uv - vec2(.28, -.3); if (dot(h2, h2) < .01) col = paper; }
           return col;
         }
         uniform float uStride, uLineW, uLineA, uMer, uCenter;
-        uniform vec3 uLineCol, uCenterCol, uHiCol;
+        uniform vec3 uLineCol, uCenterCol, uHiCol, uOutCol;
         ${SKETCH_GLSL}
         float gridLine(float x, float w) {
           float d = abs(fract(x - .5) - .5) / max(fwidth(x), 1e-5);
@@ -72,38 +97,67 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           float d = abs(x) / max(fwidth(x), 1e-5);
           return 1.0 - clamp(d - w * .5 + .5, 0.0, 1.0);
         }`)
+      // (Solo línea is a line drawing on paper: no coat, which follows the coarse mesh's vertices and would show round
+      // the eyes and on the nose as polygons the ink does not fit; the rings and the centre line faint, guides under
+      // the contour and the ink of the interior lines. Silueta is flat and has no coat either)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * ${mat.isMeshBasicMaterial ? '1.0' : '.58'}, uFurOn);`)
+        noseF = max(fwidth(length(vFurP - uNose.xyz)), 1e-6);${mat.isMeshBasicMaterial ? '' : `
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, uFurOn);`}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: triangles that join the upper snout (+1) to the jaw (-1) are cut
         if (uMouth > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0) discard;`)
       .replace('#include <output_fragment>', `#include <output_fragment>
         {
-          vec3 c = gl_FragColor.rgb;
-          if (vEye.w > .5) c = eyeShade(c, uLineCol, vec3(1.0));
+          vec3 c = gl_FragColor.rgb;${mat.isMeshBasicMaterial ? `
+          // (flat styles are values of the paper's own tint, as the flat greys of an inked drawing: a part painted in
+          // colour, the inside of a mouth, is a darker or lighter grey of it, never darker than a dark grey, which leaves
+          // the black to the ink, the pupils and the lip margin, as the references' open mouths are toned)
+          { float v = dot(c, vec3(.299, .587, .114)) / max(dot(diffuse, vec3(.299, .587, .114)), .05); c = diffuse * (vEye.w < -1.5 ? .32 + .68 * v : v); }` : ''}
+          if (vEye.w > .5) c = eyeShade(c, uLineCol, vec3(1.0));${mat.isMeshBasicMaterial ? `
+          #ifdef SKIN
+          // the nose leather, inked solid as the references fill a nose (noseMask: the pads are parts of their own,
+          // outlined, not filled): what the coat painted, which Solo línea leaves out, but a drawing keeps. And the
+          // closed mouth's line: the mouth's level across the lip seam's triangles (from the snout, +1, to the jaw,
+          // −1), a smooth line where the seam's own middle zigzags across them
+          { float le = noseMask(-vEye.w);
+            float slit = uMouth < .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 ? lineAt(vFurP.y - uLipY, uLineW * .9) : 0.0;
+            c = mix(c, mix(uOutCol, uPaper, .1), max(le, slit)); }
+          #endif` : ''}
           if (uRender > .5) c = sketchify(c);
           c = mix(c, uHiCol, vHi * .4);
-          if (vLine.w > -.5) {
+          // (rings and the centre line on the fur only: the leather of the nose and pads, claws, horns and teeth are
+          // small hard shapes a drawing leaves clean, where rings were stray stripes and dots)
+          // (in Solo línea faint and fine, pencil guides under the ink as on a cleaned-up drawing, and no centre line:
+          // the drawing is the contour and the interior lines, which a striped suit drowned)
+          if (vLine.w > -.5 && vEye.w > -3.0) {${mat.isMeshBasicMaterial ? `
+            float ring = gridLine(vLine.z / uStride, uLineW * .6);
+            float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW * .6), lineAt(vLine.y, uLineW * .6)) * .85 : 0.0;
+            c = mix(c, uLineCol, max(ring, mer) * uLineA * .14);` : `
             float ring = gridLine(vLine.z / uStride, uLineW);
             float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW), lineAt(vLine.y, uLineW)) * .85 : 0.0;
             float cen = vLine.w * uCenter * max(lineAt(vLine.y, uLineW * 1.7) * step(0.0, vLine.x), lineAt(vLine.y, uLineW * 1.2) * step(vLine.x, 0.0) * .7);
             c = mix(c, uLineCol, max(ring, mer) * uLineA);
-            c = mix(c, uCenterCol, cen * min(1.0, uLineA * 1.4));
+            c = mix(c, uCenterCol, cen * min(1.0, uLineA * 1.4));`}
           }
           gl_FragColor.rgb = c;
-        }`);
+        }`)
+      .replace('#include <dithering_fragment>', inkFrag('(vEye.w < -4.0 ? min(floor(-vEye.w) - 1.0, 7.0) : INK_LEATHER)', 'if (vHide > .49) discard;'))
+      .replace('void main() {', '#ifdef SKIN\n#define INK_LEATHER 0.0\n#else\n#define INK_LEATHER (vEye.w < -3.0 ? 2.0 : 0.0)\n#endif\nvoid main() {');
   };
   mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type;
+  mat.defines = {SKIN: ''};  // (the skin's: its nose, see noseMask; the parts' twins leave it out, see twoSided)
   return mat;
 }
 // scenery and construction forms: no contour rings, but they follow the pencil / value modes
 function patchEnv(mat) {
   mat.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, LU);
+    Object.assign(sh.uniforms, LU); inkUniforms(sh, mat);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vInkN;').replace('#include <begin_vertex>', `#include <begin_vertex>\n${inkVert(mat)}`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${SKETCH_GLSL}`)
-      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`);
+      .replace('#include <common>', `#include <common>\nuniform float uInk, uInkId; varying vec3 vInkN;\n${SKETCH_GLSL}`)
+      .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`)
+      .replace('#include <dithering_fragment>', inkFrag('0.0'));
   };
   mat.customProgramCacheKey = () => 'cdp-env-' + mat.type;
   return mat;
@@ -115,15 +169,25 @@ function toonGradient() {
   return t;
 }
 const TOON_GRAD = toonGradient();
-const OUTLINE_MAT = new THREE.ShaderMaterial({
-  uniforms: {uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol},
-  side: THREE.BackSide,
+// (k: the weight against the contour's. The small parts set in rows, teeth and tongue, take a finer line: at the
+// contour's weight a row of incisors two or three pixels wide was all hull, a row of outlined pills. root: a tuft's,
+// whose line starts at nothing where the hair leaves the skin and swells along it, a brush stroke, not a cut-out
+// triangle's border: the weight grows over the first 1.5 cm of the loft, aLine.z)
+const outlineMat = (k, root = false) => new THREE.ShaderMaterial({
+  uniforms: {uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol, uK: {value: k}}, userData: {hull: true}, defines: root ? {ROOT: ''} : {},
+  side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2,  // (behind thin parts' own faces: an ear or a tuft is not blotted by its hull)
   vertexShader: `#include <common>
     #include <skinning_pars_vertex>
     #include <morphtarget_pars_vertex>
-    uniform float uW; uniform vec2 uPx; attribute float aHide; varying float vHide;
+    uniform float uW, uK; uniform vec2 uPx; attribute float aHide; varying float vHide;
+    #ifdef ROOT
+    attribute vec4 aLine;
+    #endif
     void main() {
-      vHide = aHide;
+      vHide = aHide; float k = uK;
+      #ifdef ROOT
+      k *= smoothstep(0.0, .015, aLine.z);
+      #endif
       #include <beginnormal_vertex>
       #include <skinbase_vertex>
       #include <skinnormal_vertex>
@@ -134,10 +198,31 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
       vec3 nv = normalize(normalMatrix * objectNormal);
       vec2 d = nv.xy; float l = length(d);
       d = l > 1e-4 ? d / l : vec2(0.0);
-      gl_Position.xy += d * uW * uPx * gl_Position.w;
+      // an inker's weight: the light comes from above on the left, so the contour swells on the shadow side (below and
+      // right, where forms turn away and rest on what is under them) and thins on the lit one, as a brush line does
+      // (never under a pixel there, where a thinner line would break into dots)
+      gl_Position.xy += d * max(k * uW * (1.0 + .4 * dot(d, vec2(.6, -.8))), min(k * uW, 1.0)) * uPx * gl_Position.w;
     }`,
   fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
 });
+const OUTLINE_MAT = outlineMat(1), OUTLINE_FINE = outlineMat(.55), OUTLINE_TUFT = outlineMat(1, true);
+// the sculpted heads' ears, a hoof's cap, a tuft are single sheets or open shells: seen from behind, a one-sided
+// material shows nothing there and the outline hull behind them comes through as black blots. Everything but the
+// body wears a two-sided twin of the style's material (same shader and uniforms, so the same coat, highlight and ink
+// id); the closed body, most of the pixels, keeps culling its back faces. Skin twins (skin: the sculpted head, and the
+// body under it, whose neck is left open where the head was cut off: looking up under the jaw, its far inside was
+// culled and the hull behind showed as a black wedge) keep the skin's own drawing, the nose (SKIN, noseMask).
+// Fur twins (the tufts) are the body's own part in the ink pass: a tuft is hair growing out of the skin, inked along
+// its free jagged edge (the depth step, the hull) and not across its root, where a part border drew a flat triangle
+const TWO_SIDED = new WeakMap(), TWIN_SKIN = 1, TWIN_FUR = 2;
+function twoSided(mat, kind = 0) {
+  let t = TWO_SIDED.get(mat); if (!t) TWO_SIDED.set(mat, t = []);
+  let c = t[kind];
+  if (!c) { c = t[kind] = mat.clone(); c.side = THREE.DoubleSide; c.defines = kind === TWIN_SKIN ? {...mat.defines} : {}; c.onBeforeCompile = mat.onBeforeCompile; c.customProgramCacheKey = mat.customProgramCacheKey; c.userData.ink = true;
+    if (kind === TWIN_FUR) INK_IDS.set(c, inkId(mat)); }
+  c.transparent = mat.transparent; c.opacity = mat.opacity; c.depthWrite = mat.depthWrite;
+  return c;
+}
 // one material set per character, so each can highlight its own selected joint and fade on its own
 const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}};
 function makeCharMats() {
@@ -319,6 +404,12 @@ function loft({origin, axis, side, secs, n = 2, radial = 18, sub = 3, weights, b
   g.setIndex(idx); g.computeVertexNormals();
   const nm = g.attributes.normal, v = new V3();
   if (!arc) for (let j = 0; j < R; j++) { const i0 = j * C, i1 = j * C + radial; v.set(nm.getX(i0) + nm.getX(i1), nm.getY(i0) + nm.getY(i1), nm.getZ(i0) + nm.getZ(i1)).normalize(); nm.setXYZ(i0, v.x, v.y, v.z); nm.setXYZ(i1, v.x, v.y, v.z); }
+  // a pole (the ring a pad's crown or a claw's point closes in, shrunk to a point): one normal there, the ring's mean,
+  // as a welded vertex has; each facet's own fanned out round it, and the light and the ink lines showed a dot there
+  for (const j of [0, R - 1]) if (Math.max(rings[j][1], rings[j][2]) < 2.5e-3) {
+    v.set(0, 0, 0); for (let i = 0; i < C; i++) v.x += nm.getX(j * C + i), v.y += nm.getY(j * C + i), v.z += nm.getZ(j * C + i);
+    v.normalize(); for (let i = 0; i < C; i++) nm.setXYZ(j * C + i, v.x, v.y, v.z);
+  }
   g.boundingSphere = new THREE.Sphere(new V3(), 20);
   return g;
 }
@@ -565,13 +656,15 @@ class Mannequin {
       const m = this.lib[k]; if (!m || !m.isMaterial) continue;
       m.transparent = ghost; m.opacity = ghost ? (mode === 'esqueleto' ? .16 : .3) : 1; m.depthWrite = !ghost; m.needsUpdate = true;
     }
+    for (const m of this.meshes) if (m !== this.body3) { m.material = this.matOf(m); m.material.needsUpdate = true; }
+    this.body3.material = this.matOf(this.body3);
     applySkeletonVis(this);
     if (this.garments) applyGarmentVis(this);
   }
   setFormMode(mode) { this.formMode = mode; this.buildForms(); }
   buildAccessories(sp, tl, tsp = tailOf(this.body)) {
     for (const m of this.acc) { this.group.remove(m); if (!m.userData.hull) m.geometry.dispose(); }
-    this.acc = []; this.meshes = [this.body3]; this.hulls = this.hulls.slice(0, 1);
+    this.acc = []; this.meshes = [this.body3]; this.hulls = this.hulls.slice(0, 1); this.headMesh = null;
     const hd = this.headBox, hh = this.headH, hw = (hd.x1 - hd.x0) / 2, hdep = hd.z1 - hd.z0, cz = (hd.z0 + hd.z1) / 2;
     const HEAD = 1, rigidHead = () => [[HEAD, 1]];
     const geos = [];
@@ -632,18 +725,20 @@ class Mannequin {
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     // fluff tufts are skinned like the skin under them: the body's skeleton, not the accessories'
     this.fluffGeo = null;
-    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, this.lib[this.style]); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
+    { const g = fluffGeo(this); this.fluffGeo = g; if (g) { const I0 = new THREE.Matrix4(), fm = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style], TWIN_FUR)); fm.castShadow = fm.receiveShadow = true; fm.frustumCulled = false; fm.userData.fluff = true;
       this.group.add(fm); fm.bind(this.skeleton, I0); this.acc.push(fm); this.meshes.push(fm);
-      if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.skeleton, I0); this.acc.push(o); this.hulls.push(o); } } }
+      if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, OUTLINE_TUFT); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.skeleton, I0); this.acc.push(o); this.hulls.push(o); } } }
     const I = new THREE.Matrix4();
     // inside of the mouth (hidden until the jaw opens)
     this.mouthMeshes = [];
     for (const p of mouthParts(this)) {
-      const mm = new THREE.SkinnedMesh(p.geo, mouthMat(p.kind === 'cavity' ? 'cavity' : p.kind)); mm.frustumCulled = false; mm.userData.acc = true; mm.userData.mouth = true;
+      const mm = new THREE.SkinnedMesh(p.geo, mouthMat(p.kind, this.style)); mm.frustumCulled = false; mm.userData.acc = true; mm.userData.mouth = true; mm.userData.kind = p.kind;
       mm.visible = !!this.mouthOpen; this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.mouthMeshes.push(mm);
+      // teeth and tongue outlined like every other part (the hull hangs from its part, so it opens and closes with it)
+      if (this.lib.outline && p.kind !== 'cavity') { const o = new THREE.SkinnedMesh(p.geo, OUTLINE_FINE); o.frustumCulled = false; o.userData.hull = true; mm.add(o); o.bind(this.accSkeleton, I); this.hulls.push(o); }
     }
     for (const g of geos) {
-      const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
+      const m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
       m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
       this.group.add(m); m.bind(this.accSkeleton, I); this.acc.push(m); this.meshes.push(m);
       m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
@@ -723,9 +818,12 @@ class Mannequin {
       }
     }
   }
+  // a mesh's material in a style: the body as it is, the sculpted head (and the body under it) as skin, the rest as parts
+  matOf(o, style = this.style) { const b = this.lib[style]; return o === this.body3 ? (this.headMesh ? twoSided(b, TWIN_SKIN) : b) : twoSided(b, o === this.headMesh ? TWIN_SKIN : o.userData.fluff ? TWIN_FUR : 0); }
   setStyle(style) {
     this.style = style;
-    for (const m of this.meshes) m.material = this.lib[style];
+    for (const m of this.meshes) m.material = this.matOf(m);
+    for (const m of this.mouthMeshes || []) m.material = mouthMat(m.userData.kind, style);
     this.hulls.forEach(o => o.visible = this.outlineOn !== false);
     if (this.formMode && this.formMode !== 'figura') this.applyFormVis();
     if (this.garments) applyGarmentVis(this);

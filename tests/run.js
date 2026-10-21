@@ -1377,6 +1377,119 @@ const SUITES = {
     ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
     await page.context().close();
   },
+  // Solo línea as a line drawing: interior lines from the ink pass (overlaps, folds, part borders), the small parts
+  // (teeth, tongue, the inside of the mouth) outlined and in every style, the ink renders without the guides
+  async furlines(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    const style = st => A(st => document.querySelector(`#styleChips .chip[data-v="${st}"]`).click(), st);
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="lobo"]').click()); await page.waitForTimeout(6000);
+    await goTab(page, 'dibujo'); await page.waitForTimeout(300);
+    // the camera on the head, from the front and a little to the side
+    const aim = (bone, k) => A(([bone, k]) => { const C = window.__cdp, m = C.mq, c = m.joints[bone].getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
+      C.controls.target.copy(c); C.camera.position.copy(c).add(new THREE.Vector3(.35, .05, 1).normalize().applyQuaternion(q).multiplyScalar(m.headH * k)); C.camera.lookAt(c); C.controls.update(); }, [bone, k]);
+    await aim('head', 3.4);
+    await style('construccion'); const off = await A(() => window.__cdp.ink.inkWanted());
+    await style('contorno'); await page.waitForTimeout(300); const on = await A(() => window.__cdp.ink.inkWanted());
+    ok(on && !off, 'the ink pass runs in Solo línea only (the other styles keep their look)');
+    // the buffer it reads: the head at the picture's size, seen from outside, its eyes and nose leather no parts of their
+    // own (a border drawn on the mesh's eye or nose vertices is a jagged star or polygon, not a lid or a nose); the
+    // sculpted head and the neck under it, two materials, apart
+    const parts = await A(() => { const C = window.__cdp; C.renderView({w: 480, h: 480, bg: 'paper'}); const rt = C.ink.INK.rts.get('480x480'), px = new Uint8Array(rt.width * rt.height * 4);
+      C.renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, px); const n = new Map(); let cov = 0, out = 0;
+      for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { cov++; if (px[i + 3] > 240) out++; n.set(px[i + 2], (n.get(px[i + 2]) || 0) + 1); }
+      const big = [...n].filter(([, k]) => k > cov * .01).map(([v]) => v); return {size: rt.width + '×' + rt.height, cov, out: out / cov, mats: new Set(big.map(v => v >> 3)).size, leather: big.filter(v => v % 8 === 2 || v % 8 === 7).length}; });
+    ok(parts.size === '480×480' && parts.cov > 20000 && parts.out > .9 && parts.mats >= 2 && !parts.leather, `the ink buffer has the head at the picture's size (${parts.size}, ${parts.cov} px) seen from outside, head and neck apart (${parts.mats}), no eye or nose border (${parts.leather})`);
+    // the nose is drawn: filled with the ink's dark (the sphere round the snout's tip, noseMask), not left blank paper
+    const nose = await A(() => { const C = window.__cdp, U = C.mq.lib.uFur.uNose.value, r = U.w, dark = () => { const d = C.renderView({w: 480, h: 480, bg: 'paper'}).getContext('2d').getImageData(0, 0, 480, 480).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 200) n++; return n; };
+      const on = dark(); U.w = 0; const off = dark(); U.w = r; return {r, on, off}; });
+    ok(nose.r > 0 && nose.on - nose.off > 300, `the nose leather is inked solid: ${nose.on - nose.off} dark pixels more with it than without (radius ${nose.r.toFixed(3)})`);
+    // Solo línea's guides are faint pencil under the ink: the rings barely tint the paper, no red centre line
+    const rings = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value, shot = a => { L.uLineA.value = a; L.uCenter.value = 1; return C.renderView({w: 480, h: 480, bg: 'paper'}).getContext('2d').getImageData(0, 0, 480, 480).data; };
+      const on = shot(.8), off = shot(0); L.uLineA.value = la; L.uCenter.value = ce; let max = 0, red = 0;
+      for (let i = 0; i < on.length; i += 4) { max = Math.max(max, Math.abs(on[i + 1] - off[i + 1])); if (on[i] - on[i + 2] > 40 && on[i] > 120) red++; } return {max, red}; });
+    ok(rings.max > 3 && rings.max < 40 && rings.red === 0, `rings faint in Solo línea (at most ${rings.max}/255 darker), no centre line (${rings.red} red pixels)`);
+    // lines inside the silhouette: far more ink away from the outline with the pass than with its lines made invisible
+    const inner = async a => A(a => { const C = window.__cdp, U = C.ink.INK.mat.uniforms.uA, a0 = U.value; U.value = a;
+      const ink = C.renderView({w: 480, h: 480, bg: 'lines'}).getContext('2d').getImageData(0, 0, 480, 480).data, sil = C.renderView({w: 480, h: 480, bg: 'alpha'}).getContext('2d').getImageData(0, 0, 480, 480).data; U.value = a0;
+      let n = 0; for (let y = 5; y < 475; y++) for (let x = 5; x < 475; x++) { const i = (y * 480 + x) * 4; if (ink[i + 3] < 128) continue; let inside = true;
+        for (let dy = -5; dy <= 5 && inside; dy += 5) for (let dx = -5; dx <= 5; dx += 5) if (!sil[((y + dy) * 480 + x + dx) * 4 + 3]) { inside = false; break; } if (inside) n++; }
+      return n; }, a);
+    const withInk = await inner(1), without = await inner(0);
+    ok(withInk > without * 1.3 && withInk - without > 150, `interior lines: ${withInk} ink pixels inside the head against ${without} with the outline alone`);
+    // the ink render is the drawing's line: no rings, no red centre line, and the guides are back afterwards
+    const guide = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value; L.uLineA.value = .8; L.uCenter.value = 1;
+      const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] - d[i + 2] > 40) red++;
+      const kept = L.uLineA.value === .8 && L.uCenter.value === 1; L.uLineA.value = la; L.uCenter.value = ce; return {red, kept}; });
+    ok(guide.red === 0 && guide.kept, `the ink render leaves out the centre line and the rings, and puts them back (${guide.red} red pixels)`);
+    // rings are the fur's guides: the claws (their own part in the ink buffer, kind 3) are the same with the rings on or off
+    await aim('wristL', 2.2);
+    const hard = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value, shot = a => { L.uLineA.value = a; L.uCenter.value = 0; return C.renderView({w: 480, h: 480, bg: 'paper'}).getContext('2d').getImageData(0, 0, 480, 480).data; };
+      const on = shot(.8), rt = C.ink.INK.rts.get('480x480'), id = new Uint8Array(480 * 480 * 4); C.renderer.readRenderTargetPixels(rt, 0, 0, 480, 480, id); const off = shot(0); L.uLineA.value = la; L.uCenter.value = ce;
+      const n = {claw: 0, clawRing: 0, fur: 0, furRing: 0};
+      for (let y = 0; y < 480; y++) for (let x = 0; x < 480; x++) { const j = ((479 - y) * 480 + x) * 4, i = (y * 480 + x) * 4; if (id[j + 3] < 240) continue; const k = id[j + 2] % 8 === 3 ? 'claw' : id[j + 2] % 8 === 0 ? 'fur' : null; if (!k) continue;
+        n[k]++; if (Math.abs(on[i] - off[i]) > 4) n[k + 'Ring']++; }
+      return n; });
+    ok(hard.claw > 30 && hard.clawRing <= hard.claw * .02 && hard.furRing > hard.fur * .02, `no rings on the claws (${hard.clawRing} of ${hard.claw} px changed), on the fur they stay (${hard.furRing} of ${hard.fur})`);
+    await aim('head', 3.4);
+    // a picture bigger than the canvas (an export) lets its buffers go once the canvas is drawn again
+    const mem = await A(() => { const C = window.__cdp; C.renderView({w: 2400, h: 2400, bg: 'paper'}); const big = C.ink.INK.rts.has('2400x2400'); C.frameNow();
+      const b = C.renderer.getDrawingBufferSize(new THREE.Vector2()); return {big, left: [...C.ink.INK.rts.values()].filter(r => r.width * r.height > b.x * b.y).length}; });
+    ok(mem.big && mem.left === 0, `an export's ink buffers are let go after it (${mem.left} bigger than the canvas left)`);
+    // the multi-view draws the canvas and three panes each frame: their buffers stay, none is made again frame after frame
+    const multi = () => A(() => document.querySelector('#multiBtn').click());
+    await multi(); await page.waitForTimeout(800);
+    const churn = await A(() => { const C = window.__cdp, seen = new Set(); for (let f = 0; f < 6; f++) { C.frameNow(); for (const rt of C.ink.INK.rts.values()) seen.add(rt); }
+      const first = seen.size; for (let f = 0; f < 6; f++) { C.frameNow(); for (const rt of C.ink.INK.rts.values()) seen.add(rt); } return {first, made: seen.size - first, kept: C.ink.INK.rts.size}; });
+    await multi(); await page.waitForTimeout(300);
+    ok(churn.kept >= 2 && churn.made === 0, `with the multi-view on, the canvas's and the panes' ink buffers (${churn.kept}) stay: ${churn.made} new ones over 6 more frames`);
+    // a print-sized picture (a comic panel for paper) is the same drawing finer: its lines wider with it, not hairlines
+    const print = await A(() => { const C = window.__cdp, H = C.renderer.domElement.getBoundingClientRect().height, n = s => { const d = C.renderView({w: s, h: s, bg: 'lines'}).getContext('2d').getImageData(0, 0, s, s).data; let k = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 100) k++; return k; };
+      const s0 = Math.round(H * .8), s1 = Math.round(H * 2.4); return {r: n(s1) / n(s0), lin: (s1 / s0) * (s1 / H)}; });
+    ok(print.r > print.lin * .7, `lines grow with a picture bigger than the canvas: ${print.r.toFixed(1)}× the ink at 3× the size (a fixed width would be ~3×)`);
+    // the seat a pose sits on is a prop, no part of the drawing: the ink render leaves it out (a shaded block there), the canvas has it back
+    await aim('hips', 7);
+    const seat = await A(() => { const C = window.__cdp, m = C.mq, n = () => { const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let k = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 100) k++; return k; };
+      const st = m.stool; m.stool = false; const off = n(); m.stool = true; const on = n(); C.frameNow(); const back = m.stoolMesh.visible; m.stool = st; return {on, off, back}; });
+    ok(seat.off > 1000 && Math.abs(seat.on - seat.off) < seat.off * .01 && seat.back, `the stool stays out of the ink render (${seat.on} ink pixels with it, ${seat.off} without) and is back on the canvas`);
+    // clothes: a clean line, no specks (single ink pixels) and each garment layer over what it covers in the ink pass
+    await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitChips .chip[data-v="camiseta"]').click()); await page.waitForTimeout(6000);
+    await goTab(page, 'dibujo'); await aim('hips', 6);
+        const cloth = await A(() => { const C = window.__cdp, m = C.mq, d = C.renderView({w: 600, h: 600, bg: 'lines'}).getContext('2d').getImageData(0, 0, 600, 600).data, on = (x, y) => d[(y * 600 + x) * 4 + 3] > 100;
+      let ink = 0, lone = 0; for (let y = 1; y < 599; y++) for (let x = 1; x < 599; x++) if (on(x, y)) { ink++; let n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if ((i || j) && on(x + i, y + j)) n++; if (!n) lone++; }
+      const G = (m.garments || []).filter(g => g.d), ranks = G.map(g => [g.rankIdx, g.U.uInkZ.value]); return {n: G.length, ink, lone, layered: ranks.every(([r, z]) => z === r + 1)}; });
+    ok(cloth.n >= 2 && cloth.layered, `each of the ${cloth.n} garments lies over what it covers in the ink pass, by its layer`);
+    ok(cloth.ink > 2000 && cloth.lone < cloth.ink * .005, `clothes drawn with a clean line: ${cloth.lone} lone specks in ${cloth.ink} ink pixels`);
+    await goTab(page, 'ropa'); await A(() => document.querySelector('#outfitNone').click()); await page.waitForTimeout(800); await aim('head', 3.4);
+    // an open mouth: teeth and tongue outlined, every part of it in the drawing style
+    await goTab(page, 'pose'); await A(() => document.querySelector('#exprChips .chip[data-v="rugido"]').click()); await page.waitForTimeout(800);
+    const mouth = async st => { await goTab(page, 'dibujo'); await style(st); await page.waitForTimeout(200);
+      return A(() => { const m = window.__cdp.mq, M = m.mouthMeshes; return {n: M.length, open: M.every(x => x.visible), types: [...new Set(M.map(x => x.material.type))].join(), cols: [...new Set(M.map(x => x.material.color.getHex()))],
+        hulls: M.filter(x => x.children.some(h => h.userData.hull && h.visible)).length, teeth: M.filter(x => x.userData.kind !== 'cavity').length}; }); };
+    const mc = await mouth('contorno'), ms = await mouth('silueta'), mk = await mouth('construccion');
+    ok(mc.n > 4 && mc.open && mc.hulls === mc.teeth && mk.hulls === mk.teeth, `an open mouth: its ${mc.teeth} teeth and tongue outlined, in Solo línea and in Construcción`);
+    ok(mc.types === 'MeshBasicMaterial' && ms.cols.length === 1 && ms.cols[0] === 0x2a2620 && ms.hulls === 0 && mk.types === 'MeshToonMaterial', `the mouth takes the style: flat paper and greys in Solo línea, the figure's dark in Silueta (no outline there), shaded in Construcción`);
+    // the sculpted head's ears, hoof caps, tufts are single sheets: drawn from both sides with the body's own shader (and ink id); the closed body culls
+    const head = await A(() => { const m = window.__cdp.mq, b = m.lib[m.style], rest = m.meshes.filter(x => x !== m.body3);
+      return {n: rest.length, side: rest.every(x => x.material.side === THREE.DoubleSide), same: rest.every(x => x.material.onBeforeCompile === b.onBeforeCompile && x.material.userData.ink), head: rest.includes(m.headMesh), body: m.body3.material.onBeforeCompile === b.onBeforeCompile && m.body3.material.side === (m.headMesh ? THREE.DoubleSide : THREE.FrontSide) && 'SKIN' in m.body3.material.defines && !rest.some(x => x !== m.headMesh && 'SKIN' in x.material.defines), style: m.style}; });
+    ok(head.n > 3 && head.side && head.same && head.head && head.body, `the sculpted head and the ${head.n - 1} other parts are drawn from both sides with the style's own shader, and so is the body under the head (its neck open at the cut) (${head.style})`);
+    // small parts take a finer hull (teeth), a tuft's swells from its root
+    const hulls = await A(() => { const m = window.__cdp.mq, H = m.hulls.map(h => h.material); return {fine: m.mouthMeshes.filter(x => x.userData.kind !== 'cavity').every(x => x.children[0].material.uniforms.uK.value < .7), root: m.hulls.some(h => h.geometry === m.fluffGeo && 'ROOT' in h.material.defines), body: H[0].uniforms.uK.value === 1}; });
+    ok(hulls.fine && hulls.root && hulls.body, `teeth and tongue outlined finer than the body, tufts' outlines grown from the root`);
+    // a human in Solo línea: the ink pass too, and nothing of a coat
+    await goTab(page, 'cuerpo'); await A(() => document.querySelector('#speciesChips .chip[data-v="humano"]').click()); await page.waitForTimeout(3000);
+    await goTab(page, 'dibujo'); await style('contorno'); await aim('head', 3.4);
+    const hum = await inner(1), hum0 = await inner(0);
+    ok(hum > hum0 && await A(() => window.__cdp.mq.lib.uFur.uFurOn.value === 0 && window.__cdp.mq.lib.uFur.uNose.value.w === 0), `a human's face gets its interior lines too (${hum} against ${hum0}), no coat and no nose leather`);
+    // the contour's weight: seen from the front, the torso's right side (the shadow side, the light being up on the left) is drawn heavier than its left
+    const weight = await A(() => { const C = window.__cdp, m = C.mq, c = m.joints.chest.getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
+      C.controls.target.copy(c); C.camera.position.copy(c).add(new THREE.Vector3(0, 0, 1).applyQuaternion(q).multiplyScalar(m.headH * 6)); C.camera.lookAt(c); C.controls.update();
+      const d = C.renderView({w: 600, h: 600, bg: 'lines'}).getContext('2d').getImageData(0, 0, 600, 600).data, on = (x, y) => d[(y * 600 + x) * 4 + 3] > 90; let l = 0, r = 0;
+      for (let y = 240; y < 360; y++) { let x = 0; while (x < 600 && !on(x, y)) x++; while (x < 600 && on(x, y)) { l++; x++; } x = 599; while (x >= 0 && !on(x, y)) x--; while (x >= 0 && on(x, y)) { r++; x--; } }
+      return {l, r}; });
+    ok(weight.l > 100 && weight.r > weight.l * 1.15, `a heavier contour on the shadow side: ${weight.r} px of line on the right against ${weight.l} on the left`);
+    ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
+    await page.context().close();
+  },
   async scripts(browser) {
     const page = await open(browser, {lang: 'es'}), A = (f, a) => page.evaluate(f, a), DIR = path.join(__dirname, 'scripts'), EXP = JSON.parse(fs.readFileSync(path.join(DIR, 'expect.json'), 'utf8'));
     await page.click('#animBtn'); await page.waitForTimeout(400);

@@ -62,8 +62,9 @@ function shotKeyPoses(s, withBreakdowns) {
 
 /* ---------- drawing them ---------- */
 const KEY_EX = {bd: false, ghost: true, set: false};
-// the ink alone (transparent elsewhere) of the current frame, at the export's size
-function inkNow() { const old = ex.bg; ex.bg = 'lines'; try { return renderExportCanvas(null); } finally { ex.bg = old; } }
+// the ink alone (transparent elsewhere) of the current frame, at the export's size: contours and interior lines, not
+// the rings or the centre line (guides for the eye, not a drawing's line)
+function inkNow() { const old = ex.bg, la = LU.uLineA.value, ce = LU.uCenter.value; ex.bg = 'lines'; LU.uLineA.value = 0; LU.uCenter.value = 0; try { return renderExportCanvas(null); } finally { ex.bg = old; LU.uLineA.value = la; LU.uCenter.value = ce; } }
 function recolor(cv, hex, alpha) {
   const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height; const c = out.getContext('2d');
   c.drawImage(cv, 0, 0); c.globalCompositeOperation = 'source-in'; c.fillStyle = hex; c.fillRect(0, 0, out.width, out.height);
