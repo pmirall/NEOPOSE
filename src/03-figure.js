@@ -81,7 +81,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           if (ang > uIris) return c;
           vec2 uv = d.xy / max(sin(uIris), 1e-3);
           vec3 iris = mix(c, ink, .38), col = iris;
-          float ring = smoothstep(uIris * .9, uIris, ang); col = mix(col, ink, ring * .85);
+          float ring = ${mat.isMeshBasicMaterial ? 'smoothstep(uIris * .93 - fwidth(ang), uIris * .93, ang)' : 'smoothstep(uIris * .9, uIris, ang)'}; col = mix(col, ink, ring * .85);  // (the limbal ring: in the flat styles a crisp inked ring, not shading)
           vec2 pu = uv / uPupil.yz; if (dot(pu, pu) < 1.0) col = mix(ink, ink * .6, .3);
           if (uShine > .5) { vec2 h = uv - vec2(-.32, .38); if (dot(h, h) < .045) col = paper; vec2 h2 = uv - vec2(.28, -.3); if (dot(h2, h2) < .01) col = paper; }
           return col;
