@@ -73,8 +73,22 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
-        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil;
+        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil; uniform vec4 uLip; uniform float uFurK;
         ${FUR_GLSL}
+        // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
+        // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
+        // line, ±2 the rest, on a head that is not cut; on a cut sculpt 1 … 1.5 is the distance to the edge, 2 the rest), 4
+        // a sculpt's own inside of the mouth (not drawn while open)
+        float lipCut() { vec3 r = vFurP / uFurK; return step(uLip.y, r.z) * step(abs(r.y - uLip.x), .3 * uLip.z) * step(abs(r.x), abs(uLip.w)); }
+        float lipMargin() { float a = abs(vLip); if (uLip.w == 0.0 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
+          // a cut sculpt: open, the bold margin round the edge, a band of the lip line's height near the edge (the cut lies
+          // exactly on the line; the distance to the edge per vertex drew a saw-toothed band on a coarse sculpt), as wide on
+          // a small mouth as on a big one; closed, a thin seam on the line itself that thins out to nothing at the corners,
+          // unbroken however the sculpt's vertices fall
+          if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.016 * uLip.z, .022 * uLip.z, abs(r.y - uLip.x));
+            float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * .007 * uLip.z; return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
+          if (a > 1.5) return 0.0;
+          return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
           vec3 d = normalize(vEye.xyz); float ang = acos(clamp(d.z, -1.0, 1.0));
@@ -101,12 +115,13 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
       // the eyes and on the nose as polygons the ink does not fit; the rings and the centre line faint, guides under
       // the contour and the ink of the interior lines. Silueta is flat and has no coat either)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        noseF = max(fwidth(length(vFurP - uNose.xyz)), 1e-6);${mat.isMeshBasicMaterial ? '' : `
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, uFurOn);`}`)
+        noseF = max(fwidth(length(vFurP - uNose.xyz)), 1e-6);${mat.isMeshBasicMaterial ? (uFur ? `
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb), step(6.0, -vEye.w));  // (but the inside of an open mouth, toned below)` : '') : `
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, ${uFur ? 'max(uFurOn, step(6.0, -vEye.w))' : 'uFurOn'});`}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
-        // open mouth: triangles that join the upper snout (+1) to the jaw (-1) are cut
-        if (uMouth > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0) discard;`)
+        // open mouth: on a head that is not cut, triangles that join the upper lip (+1) to the lower (−1) are dropped
+        if (uMouth > .5 && (vLip > -.999 && vLip < .999 && vLip != 0.0 && lipCut() > .5 || vLip > 3.5)) discard;`)
       .replace('#include <output_fragment>', `#include <output_fragment>
         {
           vec3 c = gl_FragColor.rgb;${mat.isMeshBasicMaterial ? `
@@ -118,12 +133,14 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           #ifdef SKIN
           // the nose leather, inked solid as the references fill a nose (noseMask: the pads are parts of their own,
           // outlined, not filled): what the coat painted, which Solo línea leaves out, but a drawing keeps. And the
-          // closed mouth's line: the mouth's level across the lip seam's triangles (from the snout, +1, to the jaw,
-          // −1), a smooth line where the seam's own middle zigzags across them
+          // closed mouth's line: the mouth's level across the lip seam's triangles (from the upper lip, +1, to the lower,
+          // −1), a smooth line where the seam's own middle zigzags across them; only in front of the corners, where the
+          // mouth opens (lipCut: ±2 elsewhere meet at the same level all round the head)
           { float le = noseMask(-vEye.w);
-            float slit = uMouth < .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 ? lineAt(vFurP.y - uLipY, uLineW * .9) : 0.0;
+            float slit = uMouth < .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && lipCut() > .5 ? lineAt(vFurP.y - uLipY, uLineW * .9) : 0.0;
             c = mix(c, mix(uOutCol, uPaper, .1), max(le, slit)); }
           #endif` : ''}
+          ${uFur ? `c = mix(c, ${mat.isMeshBasicMaterial ? 'mix(uOutCol, uPaper, .1)' : 'mix(uFurLe, uLineCol, .6)'}, lipMargin());  // the dark lip margin round the mouth (in the flat styles, ink)` : ''}
           if (uRender > .5) c = sketchify(c);
           c = mix(c, uHiCol, vHi * .4);
           // (rings and the centre line on the fur only: the leather of the nose and pads, claws, horns and teeth are
@@ -145,7 +162,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
       .replace('#include <dithering_fragment>', inkFrag('(vEye.w < -4.0 ? min(floor(-vEye.w) - 1.0, 7.0) : INK_LEATHER)', 'if (vHide > .49) discard;'))
       .replace('void main() {', '#ifdef SKIN\n#define INK_LEATHER 0.0\n#else\n#define INK_LEATHER (vEye.w < -3.0 ? 2.0 : 0.0)\n#endif\nvoid main() {');
   };
-  mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type;
+  mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type + (uFur ? '' : '-flat');
   mat.defines = {SKIN: ''};  // (the skin's: its nose, see noseMask; the parts' twins leave it out, see twoSided)
   return mat;
 }
@@ -173,18 +190,19 @@ const TOON_GRAD = toonGradient();
 // contour's weight a row of incisors two or three pixels wide was all hull, a row of outlined pills. root: a tuft's,
 // whose line starts at nothing where the hair leaves the skin and swells along it, a brush stroke, not a cut-out
 // triangle's border: the weight grows over the first 1.5 cm of the loft, aLine.z)
+// uLipO, uOpenO: the open mouth of the body being drawn (its hull and the sculpted head's set them, on OUTLINE_MAT), cut like the skin
 const outlineMat = (k, root = false) => new THREE.ShaderMaterial({
-  uniforms: {uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol, uK: {value: k}}, userData: {hull: true}, defines: root ? {ROOT: ''} : {},
+  uniforms: {uW: LU.uOutW, uPx: LU.uPx, uCol: LU.uOutCol, uK: {value: k}, uLipO: {value: new THREE.Vector4()}, uOpenO: {value: 0}}, userData: {hull: true}, defines: root ? {ROOT: ''} : {},
   side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2,  // (behind thin parts' own faces: an ear or a tuft is not blotted by its hull)
   vertexShader: `#include <common>
     #include <skinning_pars_vertex>
     #include <morphtarget_pars_vertex>
-    uniform float uW, uK; uniform vec2 uPx; attribute float aHide; varying float vHide;
+    uniform float uW, uK; uniform vec2 uPx; attribute float aHide, aLip; varying float vHide, vLip; varying vec3 vRest, vRN;
     #ifdef ROOT
     attribute vec4 aLine;
     #endif
     void main() {
-      vHide = aHide; float k = uK;
+      vHide = aHide; vLip = aLip; vRest = position; vRN = normal; float k = uK;
       #ifdef ROOT
       k *= smoothstep(0.0, .015, aLine.z);
       #endif
@@ -203,7 +221,16 @@ const outlineMat = (k, root = false) => new THREE.ShaderMaterial({
       // (never under a pixel there, where a thinner line would break into dots)
       gl_Position.xy += d * max(k * uW * (1.0 + .4 * dot(d, vec2(.6, -.8))), min(k * uW, 1.0)) * uPx * gl_Position.w;
     }`,
-  fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
+  fragmentShader: `uniform vec3 uCol; uniform vec4 uLipO; uniform float uOpenO; varying float vHide, vLip; varying vec3 vRest, vRN;
+    void main() { if (vHide > .49) discard;
+      if (uOpenO > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && vRest.z > uLipO.y && abs(vRest.y - uLipO.x) < .3 * uLipO.z && abs(vRest.x) < abs(uLipO.w)) discard;
+      // open, the inside of the lips and of the cheeks by the corners (skin there facing in towards the mouth) is seen from
+      // within, and its ink stood in the opening as black blocks (round a rabbit's lower incisors, at a cat's corners)
+      if (uOpenO > .5 && vLip != 0.0 && abs(vLip) < 2.5 && abs(vRest.y - uLipO.x) < .12 * uLipO.z && abs(vRest.x) < abs(uLipO.w) + .05 * uLipO.z
+        && vRest.z > uLipO.y - .3 * uLipO.z && dot(vRN.xz, vec2(vRest.x, vRest.z - uLipO.y + .2 * uLipO.z)) < 0.0) discard;
+      // a cut sculpt: the inside of the lips is inked only as far as the lip margin
+      if (uOpenO > .5 && (uLipO.w < 0.0 && vLip > 1.45 && vLip < 1.501 || vLip > 2.5)) discard;
+      gl_FragColor = vec4(uCol, 1.0); }`
 });
 const OUTLINE_MAT = outlineMat(1), OUTLINE_FINE = outlineMat(.55), OUTLINE_TUFT = outlineMat(1, true);
 // the sculpted heads' ears, a hoof's cap, a tuft are single sheets or open shells: seen from behind, a one-sided
@@ -224,9 +251,9 @@ function twoSided(mat, kind = 0) {
   return c;
 }
 // one material set per character, so each can highlight its own selected joint and fade on its own
-const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}};
+const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}};
 function makeCharMats() {
-  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}}, uFur = makeFurU();
+  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
   const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye, uFur);
   return {uHi, uMouth, uEye, uFur,
     construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),
@@ -469,7 +496,8 @@ class Mannequin {
     const m = new THREE.SkinnedMesh(g, this.lib[this.style]);
     m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     this.group.add(m); this.body3 = m; this.meshes = [m]; this.hulls = [];
-    if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; this.group.add(o); this.hulls.push(o); }
+    if (this.lib.outline) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; this.group.add(o); this.hulls.push(o);
+      o.onBeforeRender = () => { const U = OUTLINE_MAT.uniforms; U.uOpenO.value = this.mouthOpen ? 1 : 0; U.uLipO.value.copy(this.lib.uEye.uLip.value); OUTLINE_MAT.uniformsNeedUpdate = true; }; }
     if (g.morphAttributes.position) for (const x of [m, ...this.hulls]) x.updateMorphTargets();
     this.acc = [];
     const hinge = n => ({obj: this.joints[n], hinge: HINGE[n].map(v => v * DEG)});
@@ -512,7 +540,7 @@ class Mannequin {
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
     remodelLegs(this.body, P, J, H); remodelHands(this.body, P, J, H);
-    anthroHead(this, P); eyeSetup(this, P);
+    anthroHead(this, P, J); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
     for (let i = 1; i < H.length; i += 3) H[i] -= minY;
@@ -725,14 +753,15 @@ class Mannequin {
     }
     for (const g of pawGeos(this, this.geo.attributes.position.array)) geos.push(g);
     const I = new THREE.Matrix4();
-    // inside of the mouth (hidden until the jaw opens)
-    this.mouthMeshes = [];
+    // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
+    this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));
     for (const p of mouthParts(this)) {
-      const mm = new THREE.SkinnedMesh(p.geo, mouthMat(p.kind, this.style)); mm.frustumCulled = false; mm.userData.acc = true; mm.userData.mouth = true; mm.userData.kind = p.kind;
-      mm.visible = !!this.mouthOpen; this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.mouthMeshes.push(mm);
-      // teeth and tongue outlined like every other part (the hull hangs from its part, so it opens and closes with it)
-      if (this.lib.outline && p.kind !== 'cavity') { const o = new THREE.SkinnedMesh(p.geo, OUTLINE_FINE); o.frustumCulled = false; o.userData.hull = true; mm.add(o); o.bind(this.accSkeleton, I); this.hulls.push(o); }
+      const mm = new THREE.SkinnedMesh(p.geo, this.lib[this.style]); mm.frustumCulled = false; mm.userData.acc = mm.userData.mouth = true;
+      this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.meshes.push(mm); this.mouthMeshes.push(mm);
+      // teeth and tongue outlined like every other part, a finer line
+      if (p.hull && this.lib.outline) { const o = new THREE.SkinnedMesh(p.geo, OUTLINE_FINE); o.frustumCulled = false; o.userData.hull = o.userData.mouth = true; this.group.add(o); o.bind(this.accSkeleton, I); this.acc.push(o); this.hulls.push(o); this.mouthMeshes.push(o); }
     }
+    for (const mm of this.mouthMeshes) mm.visible = !!this.mouthOpen && (!mm.userData.hull || this.outlineOn !== false);
     for (const g of geos) {
       const m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
       m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
@@ -814,13 +843,13 @@ class Mannequin {
       }
     }
   }
-  // a mesh's material in a style: the body as it is, the sculpted head (and the body under it) as skin, the rest as parts
-  matOf(o, style = this.style) { const b = this.lib[style]; return o === this.body3 ? (this.headMesh ? twoSided(b, TWIN_SKIN) : b) : twoSided(b, o === this.headMesh ? TWIN_SKIN : o.userData.fluff ? TWIN_FUR : 0); }
+  // a mesh's material in a style: the body as it is, the sculpted head (and the body under it) as skin, the inside of the
+  // mouth as the body (one-sided: the inner faces of the lips are seen only from within), the rest as parts
+  matOf(o, style = this.style) { const b = this.lib[style]; return o === this.body3 ? (this.headMesh ? twoSided(b, TWIN_SKIN) : b) : o.userData.mouth ? b : twoSided(b, o === this.headMesh ? TWIN_SKIN : o.userData.fluff ? TWIN_FUR : 0); }
   setStyle(style) {
     this.style = style;
     for (const m of this.meshes) m.material = this.matOf(m);
-    for (const m of this.mouthMeshes || []) m.material = mouthMat(m.userData.kind, style);
-    this.hulls.forEach(o => o.visible = this.outlineOn !== false);
+    this.hulls.forEach(o => o.visible = this.outlineOn !== false && (!o.userData.mouth || !!this.mouthOpen));
     if (this.formMode && this.formMode !== 'figura') this.applyFormVis();
     if (this.garments) applyGarmentVis(this);
   }

@@ -23,8 +23,8 @@ const HEAD_RECIPES = {
   oso:    {face: [['x3487f', 1]],             ears: [['x3487e', 1]], toon: [['x3486f', 1]], kemono: [['x3486f', 1]], kemonoEars: [['x3486e', 1]], pupil: 'redonda', mouth: 'canino'},
   conejo: {face: [['x3152f', 1]],             ears: [['x3152e', 1]], kemono: [['x3489f', 1]], kemonoEars: [['x3489e', 1]], pupil: 'redonda', mouth: 'roedor', side: 1},
   caballo:{face: [['x2952f', 1.45]],             ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
-  cabra:  {face: [['x2952f', .6]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
-  ciervo: {face: [['x2952f', .8]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1},
+  cabra:  {face: [['x2952f', .6]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1, pad: 1},
+  ciervo: {face: [['x2952f', .8]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1, pad: 1},
   dragon: {face: [['x2931', 1]],              ears: [],                                                        pupil: 'rendija', mouth: 'reptil'}
 };
 const HEAD_STYLES = {real: 'Occidental realista', toon: 'Occidental toony', kemono: 'Kemono'};
@@ -60,35 +60,71 @@ function mouthLine(m, P, L) {
   for (let i = 0; i < nV; i++) if (m.dom[i] === Jw && Math.abs(P[i * 3]) < .25 * L.hw) my = Math.max(my, P[i * 3 + 1]);
   return isFinite(my) ? my : L.chin + .2 * L.hh;
 }
-// the snout of a target head opens along its mouth line: lower half goes to the jaw, the seam is marked for cutting
-function anthroHead(m, P) {
+/* The mouth opens along a lip line, not across the face: in front of the corners of the mouth (the commissures) the upper
+   and lower lips come apart, behind them the cheek stretches from the skull to the jaw. A sculpted head is cut along
+   that line (11-heads.js); this head, the body's own mesh, keeps its triangles, so the ones that cross the line in front
+   of the corners are dropped by the shader while the mouth is open and the rest stretch. aLip is ±1 round the mouth in
+   front of the corners and ±2 elsewhere, the sign by the side of the line: a triangle is dropped where it interpolates
+   strictly between −1 and 1, which only one joining the two lips does (one from 1 to 2 or from −1 to −2 never passes
+   through that band, so the skin round the opening is never cut half way, as a side marked 2 against a lower lip at −1
+   was, leaving slivers and flaps in the opening). The ±1 reach well above and below the line (and the shader's cut as
+   far): MakeHuman's lips roll in to a mouth whose roof and floor are joined by long triangles across it, which, cut only
+   near the line, stood stretched in the opening as grey shards.
+   Both carry the same jaw weights (mouthFrame, jawWeight). */
+function anthroHead(m, P, J) {
   const SI = m.geo.attributes.skinIndex.array, SW = m.geo.attributes.skinWeight.array;
   if (m.anthroSkinned) { for (let i = 0; i < SI.length; i++) { SI[i] = FIG.si[i]; SW[i] = FIG.sw[i] / 255; } m.anthroSkinned = false; }
   if (!m.geo.attributes.aLip) m.geo.setAttribute('aLip', new THREE.BufferAttribute(new Float32Array(FIG.meta.nV), 1));
-  const LIP = m.geo.attributes.aLip.array; LIP.fill(1); m.geo.attributes.aLip.needsUpdate = true;
+  const LIP = m.geo.attributes.aLip.array; m.geo.attributes.aLip.needsUpdate = true;
+  if (m.geo.index.array !== FIG.index) m.geo.setIndex(new THREE.BufferAttribute(FIG.index, 1));
   m.geo.attributes.skinIndex.needsUpdate = m.geo.attributes.skinWeight.needsUpdate = true;
   const r = HEAD_RECIPES[headSp(m.body)];
-  if (!r) { m.anthro = null; return; }
-  const nV = FIG.meta.nV, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, L = headLandmarks(m, P), hh = L.hh, hw = L.hw, mY = mouthLine(m, P, L);
+  if (!r) { m.anthro = null; LIP.fill(2); return; }
+  const nV = FIG.meta.nV, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, L = headLandmarks(m, P), hh = L.hh, mY = mouthLine(m, P, L);
+  for (let i = 0; i < nV; i++) LIP[i] = P[i * 3 + 1] < mY ? -2 : 2;
   let tip = null, tipZ = -Infinity;
   for (let i = 0; i < nV; i++) {
     const d = m.dom[i]; if ((d !== H && d !== Jw) || FIG.eye[i]) continue;
     const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
-    // snout: in front of the eyes, below them, inside the cheeks
-    const w = sstep(L.eyeZ - .06 * hh, L.eyeZ + .06 * hh, z) * sstep(L.eyeY - .02 * hh, L.eyeY - .12 * hh, y) * (1 - sstep(.5 * hw, .95 * hw, Math.abs(x)));
     if (Math.abs(x) < .012 * hh && y > mY && z > tipZ) { tipZ = z; tip = [0, y, z]; }
-    if (w <= 0 || y >= mY - .004 * hh) continue;
-    if (w > .04) LIP[i] = -1;
-    const o = i * 4; let jw = 0;
-    for (let k = 0; k < 4; k++) if (SI[o + k] === Jw) jw += SW[o + k];
-    if (w <= jw) continue;
-    for (let k = 0; k < 4; k++) SW[o + k] *= (1 - w) / Math.max(1e-6, 1 - jw);
+  }
+  // a kemonomimi keeps its human mouth (MakeHuman's own jaw weights and lips)
+  const F = tip && (m.body.kemo ?? 3) > 1 ? jawRoom(m, P, J, mouthFrame(r.mouth, mY, tip[2], L.eyeZ, J[Jw * 3 + 2], hh, L.chin)) : null;
+  if (F) for (let i = 0; i < nV; i++) {
+    const d = m.dom[i]; if ((d !== H && d !== Jw) || FIG.eye[i]) continue;
+    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], o = i * 4;
+    if (z > F.zc - .1 * hh && Math.abs(x) < F.xc + .05 * hh && Math.abs(y - mY) < .3 * hh) LIP[i] = y < mY ? -1 : 1;
+    // the lips in front of the corners go wholly with the skull or the jaw; elsewhere the human jaw weights stay if larger
+    let jw = 0; for (let k = 0; k < 4; k++) if (SI[o + k] === Jw) jw += SW[o + k];
+    const w = jawWeight(F, x, y, z), open = z > F.zc && Math.abs(x) < F.xc;
+    if (open ? Math.abs(w - jw) < 1e-3 : w <= jw) continue;
+    for (let k = 0; k < 4; k++) SW[o + k] = SI[o + k] === Jw ? 0 : SW[o + k] * (1 - w) / Math.max(1e-6, 1 - jw);
     let slot = -1; for (let k = 0; k < 4; k++) if (SI[o + k] === Jw) slot = k;
     if (slot < 0) { slot = 0; for (let k = 1; k < 4; k++) if (SW[o + k] < SW[o + slot]) slot = k; SI[o + slot] = Jw; }
     SW[o + slot] = w;
-    const sum = SW[o] + SW[o + 1] + SW[o + 2] + SW[o + 3]; for (let k = 0; k < 4; k++) SW[o + k] /= sum;
+    const sum = SW[o] + SW[o + 1] + SW[o + 2] + SW[o + 3]; for (let k = 0; k < 4; k++) SW[o + k] /= sum || 1;
+    if (!(sum > 0)) { SI[o] = H; SW[o] = 1; }
     m.anthroSkinned = true;
   }
+  // inside those lips MakeHuman's mouth is a shallow pocket, its walls joined to the lips and on into the cheeks behind
+  // the corners: open, they stretched in front of the new inside as grey shards and, seen from behind and inked, black
+  // flaps. Skin inside the lip edge (in plan) near the line that faces into the mouth, towards its middle or the other
+  // jaw, or lies flat on the line (where the lips meet) is that pocket (the outer skin under the edge in plan, the
+  // chin's underside, faces down and away); its
+  // triangles go to the end of this body's own index and are left out of the draw while the mouth is open (anthroTick),
+  // whole triangles, which no cut by a per-vertex mark can do
+  let pocket = 0;
+  if (F) { const pts = lipCross(m, F, P);
+    if (pts.length > 5) { const {Cb, inside} = mouthOutline(pts, F, 10), I = FIG.index, N = new Float32Array(nV * 3), inner = new Uint8Array(nV), ok = i => (m.dom[i] === H || m.dom[i] === Jw) && !FIG.eye[i];
+      for (let t = 0; t < I.length; t += 3) { const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+        for (const v of [a, b, c]) { N[v] += uy * vz - uz * vy; N[v + 1] += uz * vx - ux * vz; N[v + 2] += ux * vy - uy * vx; } }
+      for (let i = 0; i < nV; i++) { const x = P[i * 3], y = P[i * 3 + 1] - mY, z = P[i * 3 + 2], dz = Math.max(z - Cb, 0), r = Math.hypot(x, dz) || 1e-6; if (!ok(i) || Math.abs(y) > .2 * hh || inside(x, z) < .01 * hh) continue;
+        const n = Math.hypot(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]) || 1, ny = N[i * 3 + 1] / n;
+        inner[i] = (N[i * 3] * x + N[i * 3 + 2] * dz) / (r * n) < -.1 || ny * Math.sign(y) < -.3 || Math.abs(y) < .02 * hh && Math.abs(ny) > .5 ? 1 : 0; }
+      // and any triangle across the line well inside the edge, which the opening would stretch from roof to floor
+      const across = (a, b, c) => { const ys = [a, b, c].map(i => P[i * 3 + 1] - mY); return Math.min(...ys) < 0 && Math.max(...ys) >= 0 && [a, b, c].every(ok) && inside((P[a * 3] + P[b * 3] + P[c * 3]) / 3, (P[a * 3 + 2] + P[b * 3 + 2] + P[c * 3 + 2]) / 3) > .01 * hh; };
+      const keep = [], drop = []; for (let t = 0; t < I.length; t += 3) (inner[I[t]] || inner[I[t + 1]] || inner[I[t + 2]] || across(I[t], I[t + 1], I[t + 2]) ? drop : keep).push(I[t], I[t + 1], I[t + 2]);
+      if (drop.length) { pocket = keep.length; m.geo.setIndex(new THREE.BufferAttribute(new I.constructor([...keep, ...drop]), 1)); } } }
   // ears: the vertices the species' ear target lifts away from the skull belong to the ear bones; their base is the pivot
   const earW = new Float32Array(nV), mor = {...speciesMorphs(m.body), ...(m.body.morphs || {})};
   for (const [name, wt] of Object.entries(mor)) {
@@ -96,13 +132,14 @@ function anthroHead(m, P) {
     const x = FIG.xsets[name]; if (!x) continue; const q = FIG.meta.q * wt;
     for (let k = 0; k < x.iv.length; k++) { const d = Math.hypot(x.dv[k * 3], x.dv[k * 3 + 1], x.dv[k * 3 + 2]) * q; earW[x.iv[k]] = Math.max(earW[x.iv[k]], d); }
   }
-  const earBase = {}, acc = {L: [0, 0, 0, 0], R: [0, 0, 0, 0]}, EL = FIG.meta.bones.length, lo = .015 * hh, hi = .13 * hh;
+  const earBase = {}, earDir = {}, acc = {L: [0, 0, 0, 0], R: [0, 0, 0, 0]}, tipAcc = {L: [0, 0, 0, 0], R: [0, 0, 0, 0]}, EL = FIG.meta.bones.length, lo = .015 * hh, hi = .13 * hh;
   for (let i = 0; i < nV; i++) {
     if (earW[i] < lo * .5 || FIG.eye[i]) { earW[i] = 0; continue; }
     const y = P[i * 3 + 1]; if (y < L.eyeY) { earW[i] = 0; continue; }
     const w = sstep(lo, hi, earW[i]); earW[i] = w;
     const k = P[i * 3] > 0 ? 'L' : 'R';
     if (w > .15 && w < .45) { const a = acc[k]; a[0] += P[i * 3]; a[1] += P[i * 3 + 1]; a[2] += P[i * 3 + 2]; a[3]++; }
+    if (w > .8) { const a = tipAcc[k]; a[0] += P[i * 3]; a[1] += P[i * 3 + 1]; a[2] += P[i * 3 + 2]; a[3]++; }
     if (w > .02) {
       const o = i * 4, bone = EL + (k === 'L' ? 0 : 1);
       for (let j = 0; j < 4; j++) SW[o + j] *= 1 - w;
@@ -112,93 +149,258 @@ function anthroHead(m, P) {
       m.anthroSkinned = true;
     }
   }
-  for (const k of ['L', 'R']) if (acc[k][3] > 3) earBase[k] = new V3(acc[k][0] / acc[k][3], acc[k][1] / acc[k][3], acc[k][2] / acc[k][3]);
-  // snout length decides whether there is a muzzle to open
+  for (const k of ['L', 'R']) if (acc[k][3] > 3) { earBase[k] = new V3(acc[k][0] / acc[k][3], acc[k][1] / acc[k][3], acc[k][2] / acc[k][3]);
+    if (tipAcc[k][3]) earDir[k] = new V3(tipAcc[k][0] / tipAcc[k][3], tipAcc[k][1] / tipAcc[k][3], tipAcc[k][2] / tipAcc[k][3]).sub(earBase[k]).normalize(); }
   const snout = tip ? (tip[2] - L.eyeZ) / hh : 0;
-  m.anthro = {L, mouthY: mY, tip, spec: {snout, nose: r.mouth}, recipe: r, earBase: Object.keys(earBase).length ? earBase : null};
+  m.anthro = {L, mouthY: mY, tip, spec: {snout, nose: r.mouth}, recipe: r, mouth: F, pocket, earBase: Object.keys(earBase).length ? earBase : null, earDir};
 }
 // after the body is lifted onto the ground, landmarks move with it
 function shiftAnthro(m, dy) {
   const an = m.anthro; if (!an) return;
   an.L.eyeY -= dy; an.L.chin -= dy; an.L.crown -= dy; an.mouthY -= dy; if (an.tip) an.tip[1] -= dy;
+  if (an.mouth) { an.mouth.y -= dy; an.mouth.chin -= dy; an.mouth.jy -= dy; }
   if (an.earBase) for (const k in an.earBase) an.earBase[k].y -= dy;
 }
-/* inside of the snout, shown when the jaw opens: palate and floor (dark), tongue, and teeth with canines */
-// they take the drawing style like the body: in Solo línea flat paper teeth, a pale tongue and the dark of the mouth
-// (as inked mouths are drawn: outlined teeth against a dark inside), in Silueta all of the figure's flat dark
-const MOUTH_MATS = {};
-function mouthMat(kind, style) {
-  const k = kind + (style === 'contorno' || style === 'silueta' ? style : ''), col = kind === 'teeth' ? 0xf1ece0 : kind === 'tongue' ? 0xb0646a : 0x4a2a2a;
-  if (!MOUTH_MATS[k]) MOUTH_MATS[k] = patchEnv(style === 'silueta' ? new THREE.MeshBasicMaterial({color: 0x2a2620, side: THREE.DoubleSide})
-    : style === 'contorno' ? new THREE.MeshBasicMaterial({color: kind === 'teeth' ? 0xf8f5ee : kind === 'tongue' ? 0xd2c8bf : 0x58504a, side: THREE.DoubleSide})
-    : new THREE.MeshToonMaterial({color: col, gradientMap: TOON_GRAD, side: THREE.DoubleSide}));
-  return MOUTH_MATS[k];
+/* ---------- the open mouth ----------
+   Research: Evans & de Lahunta (Miller's Anatomy of the Dog), Reighard & Jennings (Anatomy of the Cat) for the teeth;
+   furry and creature artists' open-mouth sheets for how it reads in a drawing. Open, a predator's mouth is a black lip
+   margin round the opening, then the gums along both jaws with the teeth set in them as separate teeth, the ridged palate
+   above, the tongue lying on the floor between the lower rows (rounded tip, a groove down the middle) and the dark
+   throat behind. The gape is long in carnivores and reptiles (the corner of the mouth under the eye) and short in
+   herbivores and rodents (but a kemono rabbit's muzzle is so short that its corners sit well back, under the cheeks).
+   Dental formulas, simplified, per half jaw from the front:
+     canino     I3 C1 P4 M2: small incisors, a long canine curving back, spaced triangular premolars, the carnassial (the
+                biggest blade: upper P4, lower M1) and a molar.
+     felino     I3 C1 P3/2 M1: tiny incisors, very long canines, a gap, then two blades (the second is the carnassial).
+     roedor     rabbits (lagomorphs): one long chisel incisor (above, a small peg behind it), a long gap, flat cheek teeth.
+     herbivoro  horses: flat spatulate incisors, a long toothless gap (the bars), square grinding cheek teeth; ruminants
+                (goat, deer: recipe pad) have no upper incisors, a hard dental pad bites on the lower ones instead.
+     reptil     rows of near-equal conical teeth that curve back.
+   gape: where the corners are, from the nose (0) to the eyes (1); xc: widest opening; fmin: how small the teeth may get
+   on a short (kemono) muzzle, so a cat keeps its fangs and a rabbit its incisors; teeth: [shape, u, length,
+   half-width] with u along the half arch, 0 front middle … 1 corner, and sizes in head heights (i incisor, f flat
+   chisel incisor, c canine, p premolar, k carnassial, m molar, r reptile cone). */
+const reptRow = (n, l0, l1, w) => Array.from({length: n}, (_, k) => ['r', .06 + .88 * k / (n - 1), l0 + (l1 - l0) * k / (n - 1), w * (1 - .3 * k / (n - 1))]);
+const MOUTHS = {
+  canino: {gape: .95, xc: .27, pack: 1, up: [['i', .05, .032, .011], ['i', .11, .034, .012], ['i', .17, .038, .013], ['c', .28, .12, .023], ['p', .45, .042, .024], ['p', .6, .052, .028], ['k', .77, .075, .038], ['p', .92, .032, .026]],
+                               lo: [['i', .04, .028, .01], ['i', .09, .03, .011], ['i', .14, .032, .012], ['c', .21, .1, .021], ['p', .38, .038, .022], ['p', .53, .048, .026], ['k', .71, .07, .036], ['p', .87, .035, .026]]},
+  felino: {gape: .9, xc: .27, fmin: .8, up: [['i', .05, .018, .009], ['i', .1, .02, .01], ['i', .15, .022, .011], ['c', .27, .14, .026], ['p', .56, .045, .024], ['k', .76, .075, .04]],
+                              lo: [['i', .04, .017, .008], ['i', .08, .019, .009], ['i', .12, .02, .01], ['c', .2, .115, .023], ['p', .52, .045, .024], ['k', .72, .07, .038]]},
+  roedor: {gape: .8, xc: .2, fmin: .85, up: [['f', .07, .085, .026], ['i', .17, .028, .011], ['m', .8, .018, .018], ['m', .92, .016, .016]],
+                               lo: [['f', .06, .07, .022], ['m', .78, .018, .018], ['m', .9, .016, .016]]},
+  herbivoro: {gape: .55, xc: .36, up: [['f', .05, .05, .019], ['f', .13, .05, .018], ['f', .21, .046, .017], ['m', .52, .03, .034], ['m', .63, .03, .036], ['m', .74, .03, .036], ['m', .85, .03, .034], ['m', .95, .028, .03]],
+                                   lo: [['f', .04, .052, .018], ['f', .12, .05, .017], ['f', .2, .046, .016], ['m', .5, .03, .034], ['m', .61, .03, .036], ['m', .72, .03, .036], ['m', .83, .03, .034], ['m', .93, .028, .03]]},
+  reptil: {gape: 1.08, xc: .3, pack: 1, up: reptRow(11, .085, .04, .015), lo: reptRow(10, .07, .035, .014)}
+};
+// where a head opens, in any frame with y up and z forward (h: head height): the lip line at height y, its corners at zc
+// (and no wider than xc, wider on a long muzzle with a long gape, so a flat face does not open from cheek to cheek: a
+// horse's or a rabbit's mouth stays narrow however long its muzzle), the jaw's hinge at zh; what lies below the chin's
+// underside is the throat
+function mouthFrame(type, y, zTip, zEye, zh, h, chin) {
+  const M = MOUTHS[type] || MOUTHS.canino;
+  return {type, M, y, zc: Math.min(zTip - .11 * h, Math.max(zh + .05 * h, zTip - M.gape * (zTip - zEye))), xc: M.xc * h * (M.gape > .7 ? clamp((zTip - zEye) / (.3 * h), 1, 1.8) : 1), zh, h, chin, tip: zTip};
 }
-function snoutProfile(m) {
-  const an = m.anthro, L = an.L, hh = L.hh, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, hs = m.headSwap;
-  const P = hs ? hs.Q : m.geo.attributes.position.array, nV = hs ? hs.d.n : FIG.meta.nV;
-  const use = hs ? (i => hs.d.K[i] === 0 && hs.d.ear[i] < 25) : (i => (m.dom[i] === H || m.dom[i] === Jw) && !FIG.eye[i]);
-  const z0 = L.eyeZ - .18 * hh, z1 = an.tip[2], n = 7, out = [];
-  for (let k = 0; k < n; k++) {
-    const zs = z0 + (z1 - z0) * k / (n - 1), band = (z1 - z0) / n * .8;
-    let xw = 0, top = -Infinity, bot = Infinity;
-    for (let i = 0; i < nV; i++) {
-      if (!use(i)) continue;
-      if (Math.abs(P[i * 3 + 2] - zs) > band) continue;
-      const y = P[i * 3 + 1];
-      if (Math.abs(y - an.mouthY) < .07 * hh) xw = Math.max(xw, Math.abs(P[i * 3]));
-      if (Math.abs(P[i * 3]) < .02 * hh) { top = Math.max(top, y); bot = Math.min(bot, y); }
-    }
-    if (!isFinite(top)) { top = an.mouthY + .05 * hh; bot = an.mouthY - .05 * hh; }
-    out.push({z: zs, xw: Math.max(xw, .02 * hh), top, bot});
+// the jaw's joint and the front of the throat (the body's neck) under the chin: a short jaw over a thick neck can only drop
+// so far before its chin swings back into the throat (exprJoints)
+function jawRoom(m, P, J, F) {
+  const Jw = FIG.jIdx.jaw, Nk = FIG.jIdx.neck; let nz = -Infinity;
+  for (let i = 0; i < FIG.meta.nV; i++) if (m.dom[i] === Nk && Math.abs(P[i * 3]) < .1 * F.h && P[i * 3 + 1] < F.chin && P[i * 3 + 1] > F.chin - .3 * F.h) nz = Math.max(nz, P[i * 3 + 2]);
+  return {...F, jy: J[Jw * 3 + 1], jz: J[Jw * 3 + 2], nz};
+}
+// how much of a point of the face goes with the jaw: in front of the corners the lower lip all of it and the upper none;
+// behind them a blend across the line that widens towards the hinge (the cheek stretches); nothing behind the hinge or
+// down the throat. Next to the corners the lips part only gradually (k: 0 at the corner, 1 a little in front of it), so
+// the opening rounds off into the commissure as lips do, instead of ending square like a slot cut into the muzzle.
+// `lo`: which lip a point on the line itself belongs to (the cut's two copies of the edge)
+function jawWeight(F, x, y, z, lo = y < F.y) {
+  const h = F.h, out = Math.max(F.zc - z, Math.abs(x) - F.xc, 0), S = .35 * Math.min(F.tip - F.zc, F.xc) + 1e-6;
+  const k = out > 0 ? 0 : sstep(0, S, Math.min(z - F.zc, F.xc - Math.abs(x))), b = .012 * h + .06 * h * (1 - k) + .6 * out;
+  const c = sstep(F.y + b, F.y - b, y);
+  return (lo ? c + (1 - c) * k : c * (1 - k)) * sstep(F.zh - .06 * h, F.zh + .06 * h, z) * sstep(F.chin - .22 * h, F.chin - .05 * h, y);
+}
+// the lip edge in plan (x, z): the sculpted head's own cut, or where the body's head (positions P) crosses the lip line
+const lipPoints = (m, F) => m.anthro.rim || lipCross(m, F, m.geo.attributes.position.array);
+function lipCross(m, F, P) {
+  const out = [], I = FIG.index, ok = i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i];
+  for (let t = 0; t < I.length; t += 3) for (let e = 0; e < 3; e++) {
+    const a = I[t + e], b = I[t + (e + 1) % 3], ya = P[a * 3 + 1] - F.y, yb = P[b * 3 + 1] - F.y;
+    if ((ya < 0) === (yb < 0) || !ok(a) || !ok(b)) continue;
+    const u = ya / (ya - yb), x = P[a * 3] + (P[b * 3] - P[a * 3]) * u, z = P[a * 3 + 2] + (P[b * 3 + 2] - P[a * 3 + 2]) * u;
+    if (z > F.zc && Math.abs(x) < F.xc) out.push([x, z]);
   }
   return out;
 }
-// geometries for the accessory skeleton: index 1 = head, 5 = jaw
+// the outline of the inside in plan: the lip edge as a symmetric fan of 2 NS + 1 radii (the outermost where the cut also
+// crosses a modelled inside) about (0, Cb), behind the corners, so the angle grows steadily from the front to each
+// corner even where the lips run straight back, then round behind the corners to the back of the mouth (zBack) and
+// over to the other side; `inside(x, z)`: how far a point lies within it (negative outside)
+function mouthOutline(pts, F, NS) {
+  const zf = Math.max(...pts.map(p => p[1])), Cb = F.zc - .3 * (zf - F.zc), zBack = F.zc - .7 * Math.max(F.zc - F.zh, .05 * F.h), R = new Array(NS + 1).fill(0); let tc = 0;
+  for (const [x, z] of pts) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cb)));
+  for (const [x, z] of pts) { const b = Math.round(Math.abs(Math.atan2(x, z - Cb)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cb)); }
+  for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
+  const outl = []; for (let k = -NS; k <= NS; k++) { const t = k / NS * tc, r = R[Math.abs(k)]; outl.push({x: r * Math.sin(t), z: Cb + r * Math.cos(t), open: Math.abs(k) < NS}); }
+  { const c = outl[outl.length - 1]; for (let k = 1; k < 8; k++) { const f = k / 8 * Math.PI; outl.push({x: c.x * Math.cos(f) * (1 - .15 * Math.sin(f)), z: c.z - (c.z - zBack) * Math.sin(f), open: false}); } }
+  const inside = (x, z) => { let c = false, e = Infinity; for (let i = 0, j = outl.length - 1; i < outl.length; j = i++) { const A = outl[j], B = outl[i], dx = B.x - A.x, dz = B.z - A.z, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    e = Math.min(e, Math.hypot(x - A.x - dx * t, z - A.z - dz * t)); if ((A.z > z) !== (B.z > z) && x < A.x + dx * (z - A.z) / dz) c = !c; } return c ? e : -e; };
+  return {zf, Cb, zBack, outl, inside};
+}
+/* The inside, built on the lip edge so it meets the lips exactly: a bag fanned from the middle of the mouth to the edge
+   (upper half on the skull, lower half on the jaw, the cheek pouch behind the corners skinned like the cheek), the gums
+   along it with the teeth set in them, the tongue on the floor. Painted by kind in the character's own drawing style
+   (10c-coat.js: 5 enamel, 6 tongue, 7 gum, 8 palate, 9 throat). Accessory skeleton: 1 head, 5 jaw. */
 function mouthParts(m) {
-  const an = m.anthro; if (!an || !an.tip || an.spec.snout < .2) return [];
-  const pr = snoutProfile(m), hh = an.L.hh, mY = an.mouthY, z0 = pr[0].z, HEAD = 1, JAW = 5, parts = [];
-  const len = pr[pr.length - 1].z - z0;
-  const at = t => { const f = clamp(t, 0, 1) * (pr.length - 1), i = Math.min(pr.length - 2, Math.floor(f)), u = f - i, A = pr[i], B = pr[i + 1];
-    return {xw: A.xw + (B.xw - A.xw) * u, top: A.top + (B.top - A.top) * u, bot: A.bot + (B.bot - A.bot) * u}; };
-  // cavity: a tube just inside the snout, upper half on the skull, lower half on the jaw
-  const secs = [];
-  for (let k = 0; k <= 6; k++) { const t = k / 6, p = at(t * .94), r = Math.max(.012 * hh, Math.min(p.top - mY, mY - p.bot) * .7);
-    secs.push([t * len * .94, p.xw * .5 * (k === 6 ? .5 : 1), r * (k === 6 ? .5 : 1)]); }
-  parts.push({kind: 'cavity', geo: loft({origin: new V3(0, mY, z0), axis: new V3(0, 0, 1), side: new V3(1, 0, 0), secs, radial: 20, n: 2.2,
-    weights: (t, ph) => { const lo = sstep(.15, -.35, -Math.cos(ph)); return [[JAW, lo], [HEAD, 1 - lo]]; }})});
-  // tongue on the jaw floor
-  const tg = []; for (let k = 0; k <= 5; k++) { const t = k / 5, p = at(.1 + t * .7); tg.push([t * len * .7, p.xw * .5 * (k === 5 ? .4 : 1), .012 * hh * (k === 5 ? .5 : 1)]); }
-  parts.push({kind: 'tongue', geo: loft({origin: new V3(0, mY - .025 * hh, z0 + len * .1), axis: new V3(0, 0, 1), side: new V3(1, 0, 0), secs: tg, radial: 14, n: 2.4, weights: () => [[JAW, 1]]})});
-  // teeth: canines near the front, a row of smaller ones behind them
-  const tooth = (x, y, z, h, r, down, bone) => loft({origin: new V3(x, y, z), axis: new V3(0, down ? -1 : 1, 0), side: new V3(1, 0, 0), radial: 8,
-    secs: [[-r * .5, r, r * .8], [0, r, r * .8], [h * .6, r * .55, r * .45], [h, .0015, .0015]], weights: () => [[bone, 1]]});
-  const mt = an.spec.nose, fangs = mt === 'canino' || mt === 'felino' || mt === 'reptil';
-  for (const sd of [1, -1]) {
-    const pc = at(.86), cx = sd * pc.xw * .7, ch = .13 * hh * Math.min(1.4, an.spec.snout + .4) * (mt === 'felino' ? 1.25 : 1);
-    if (fangs) {
-      parts.push({kind: 'teeth', geo: tooth(cx, mY + .006 * hh, z0 + len * .86, ch, .016 * hh, true, HEAD)});
-      parts.push({kind: 'teeth', geo: tooth(cx * .9, mY - .006 * hh, z0 + len * .8, ch * .8, .014 * hh, false, JAW)});
+  const an = m.anthro, F = an && an.mouth; if (!F) return [];
+  const pts = lipPoints(m, F); if (pts.length < 6) return [];
+  const h = F.h, HEAD = 1, JAW = 5, NS = 10, {zf, Cb, zBack, outl} = mouthOutline(pts, F, NS), Cz = F.zc + .35 * (zf - F.zc), lt = .02 * h, gh = .02 * h;
+  // what the inside closes towards: the point (0, Cz) for the front of the edge, the middle line straight across for its
+  // sides, so the palate vaults over the middle like a real one (a single point drew creases fanning out from it)
+  const into = o => new V3(-o.x, 0, clamp(o.z, zBack, Cz) - o.z);
+  // how high the palate and deep the floor may go: half of the snout above and the jaw below, along the middle line
+  const NZ = 8, top = new Array(NZ).fill(-Infinity), bot = new Array(NZ).fill(Infinity), zb = z => clamp(Math.floor((z - zBack) / (zf - zBack + 1e-6) * NZ), 0, NZ - 1);
+  { const hs = m.headSwap, Pp = hs ? hs.Q : m.geo.attributes.position.array, n = hs ? hs.d.n : FIG.meta.nV, skin = hs ? (i => hs.d.K[i] === 0) : (i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i]);
+    for (let i = 0; i < n; i++) { const x = Pp[i * 3], y = Pp[i * 3 + 1], z = Pp[i * 3 + 2]; if (Math.abs(x) > .04 * h || z < zBack || z > zf || !skin(i)) continue;
+      const b = zb(z); if (y > F.y && y < F.y + .45 * h) top[b] = Math.max(top[b], y); else if (y < F.y && y > F.chin - .15 * h) bot[b] = Math.min(bot[b], y); } }
+  const hp = z => { const t = top[zb(z)]; return clamp(isFinite(t) ? .45 * (t - F.y) : .1 * h, 1.6 * gh, .12 * h); };
+  const hf = z => { const b = bot[zb(z)]; return clamp(isFinite(b) ? .45 * (F.y - b) : .08 * h, 1.6 * gh, .1 * h); };
+  // the bag: rings from the edge in (lip, gum crest, inner gum, palate) to the middle
+  const D = [0, .45 * lt, lt, 1.8 * lt], FR = [.5, .78, 1], HU = [0, .6, 1, 1.15], NK = outl.length, NJ = D.length + FR.length;
+  const parts = [], bag = (sd) => {
+    const pos = [], si = [], sw = [], A = [], idx = [];
+    for (const o of outl) {
+      const {x: dx, z: dz} = into(o), r = Math.hypot(dx, dz) || 1e-6;
+      for (let j = 0; j < NJ; j++) {
+        const f = j < D.length ? Math.min(D[j] / r, .4) : FR[j - D.length], x = o.x + dx * f, z = o.z + dz * f;
+        const y = F.y + sd * (j < D.length ? HU[j] * gh : (sd > 0 ? hp(z) : hf(z)) * [.75, .95, 1][j - D.length]);
+        pos.push(x, y, z);
+        // gums on the bone, the lip edge soft; behind the corners as the cheek outside it, which lies wider (the blend
+        // across the line widens out there) and so swings down less: blended as sharply as the bag's own inner points
+        // are, the lower back of the bag outran the cheek and stood out under the jaw's angle, a dark lump
+        const w = o.open ? (j ? (sd > 0 ? 0 : 1) : jawWeight(F, x, F.y, z, sd < 0)) : jawWeight(F, F.xc + Math.max(F.zc - z, 0), y, z);
+        si.push(JAW, HEAD, 0, 0); sw.push(w, 1 - w, 0, 0);
+        furPack(A, A.length, 0, 0, 0, o.open ? (j < 2 ? 9 : j < D.length ? 7 : 8) : 9, sd > 0 ? 1 : 0);  // dark inner lip, gums, palate
+      }
     }
-    if (mt === 'roedor') { // two long front incisors on top
-      parts.push({kind: 'teeth', geo: tooth(sd * .012 * hh, mY + .004 * hh, z0 + len * .98, .06 * hh, .011 * hh, true, HEAD)});
-      continue;
+    for (let k = 0; k < NK; k++) for (let j = 0; j < NJ - 1; j++) { const a = k * NJ + j, b = ((k + 1) % NK) * NJ + j; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    return mouthGeo(pos, idx, si, sw, A, new V3(0, -sd, 0));
+  };
+  parts.push({geo: bag(1)}, {geo: bag(-1)});
+  // the inner faces of the lips, from the upper edge to the lower, stretched as the jaw opens and seen only from inside:
+  // from the side the far one closes the mouth behind the tongue (a dark wall, not the sky through both openings)
+  { const pos = [], si = [], sw = [], A = [], idx = [], NR = 4, ring = outl.slice(0, 2 * NS + 1);
+    for (const o of ring) { const {x: dx, z: dz} = into(o), f = Math.min(.3 * lt / (Math.hypot(dx, dz) || 1e-6), .4);
+      const wu = jawWeight(F, o.x, F.y, o.z, false), wl = jawWeight(F, o.x, F.y, o.z, true);
+      for (let j = 0; j <= NR; j++) { const w = wu + (wl - wu) * j / NR; pos.push(o.x + dx * f, F.y + (.5 - j / NR) * gh, o.z + dz * f); si.push(JAW, HEAD, 0, 0); sw.push(w, 1 - w, 0, 0); furPack(A, A.length, 0, 0, 0, 9, 0); } }
+    for (let k = 0; k < ring.length - 1; k++) for (let j = 0; j < NR; j++) { const a = k * (NR + 1) + j, b = a + NR + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    parts.push({geo: mouthGeo(pos, idx, si, sw, A, into)}); }
+  // the dental arch: the gum crest along the open edge, per side from the front middle to the corner, set in square to
+  // the edge (towards the corners the lips run back and out, and straight across would slide along them)
+  const arch = (sd, side) => { const p = []; for (let k = 0; k <= NS; k++) { const i = NS + side * k, o = outl[i], a = outl[Math.max(i - 1, 0)], b = outl[Math.min(i + 1, 2 * NS)];
+      const n = new V3(b.z - a.z, 0, a.x - b.x).normalize(), c = into(o); if (n.x * c.x + n.z * c.z < 0) n.negate();
+      p.push(new V3(o.x + n.x * lt, F.y + sd * gh, o.z + n.z * lt)); } return p; };
+  const at = (p, u) => { const L = [0]; for (let k = 1; k < p.length; k++) L.push(L[k - 1] + p[k].distanceTo(p[k - 1]));
+    const s = u * L[L.length - 1]; let k = 1; while (k < p.length - 1 && L[k] < s) k++; const t = (s - L[k - 1]) / (L[k] - L[k - 1] || 1);
+    return {p: p[k - 1].clone().lerp(p[k], t), T: p[k].clone().sub(p[k - 1]).setY(0).normalize(), len: L[L.length - 1]}; };
+  // each tooth stands in from the lip edge by its own thickness (and its lean), so its outer face stays behind the lips
+  // and inside the cheek, in profile as well as from the front; a ruminant has a toothless pad for upper incisors (the
+  // animal's own recipe decides: a horse wears the goat's head but keeps its incisors). Packed rows (carnivores, reptiles)
+  // are laid tooth after tooth from the middle, a sliver of gum between, and spread to fill the arch up to the corner,
+  // the teeth grown with it: artists draw the row closed, a gappy row of small teeth read as a comb. Roots end in the gum
+  // band, closed, so none shows above the lips where the sculpt's own inside of the mouth is not drawn.
+  const sideLen = at(arch(1, 1), 1).len, f = clamp(sideLen / (.3 * h), F.M.fmin || .45, 1.1), teeth = [], laid = [], pad = (HEAD_RECIPES[m.body.species] || an.recipe || {}).pad, rt = .45 * gh;
+  for (const [sd, list0] of [[1, F.M.up], [-1, F.M.lo]]) {
+    // the row ends where, going back, the lips have only half parted (jawWeight's k): nearer the corner the cheek
+    // stretches over the teeth from both jaws, and a tooth there stood out on the cheek above the lip margin as the jaw
+    // opened (only going back: along a narrow mouth's sides, a horse's, the rows run on, the lips parting less)
+    const ap = arch(sd, 1), S = .35 * Math.min(F.tip - F.zc, F.xc) + 1e-6; let k = 1; while (k < ap.length && sstep(0, S, ap[k].z - F.zc) > .5) k++;
+    const list = list0.filter(([shape]) => !(pad && sd > 0 && (shape === 'i' || shape === 'f'))), room = Math.min(sideLen - .01 * h, at(ap.slice(0, Math.max(k, 2)), 1).len);
+    // runs: teeth less than a fifth of the arch apart stand side by side; the gaps between runs stay (a cat's behind its
+    // canine, a horse's bars, a rabbit's); a run that would reach the corner loses teeth from before its last (the
+    // carnassial, the hindmost grinder stays; a short arch keeps a single cheek tooth rather than closing the bars), then
+    // is narrowed, and only then moved forward
+    const W = list.map(([shape, , , w0]) => (shape === 'f' || shape === 'm' ? 2.05 : 2.3) * w0 * h * f), runs = [], pos = [], sz = []; let g = 1, end = 0;  // flat incisors and grinders close up
+    list.forEach(([, u], k) => { if (!k || u - list[k - 1][1] > .2) runs.push([]); runs[runs.length - 1].push(k); });
+    if (F.M.pack) g = clamp(room / W.reduce((a, b) => a + b, 0), .75, 1.3);
+    for (const r of runs) { let T = r.reduce((a, k) => a + W[k] * g, 0); let s0 = list[r[0]][1] < .1 ? 0 : Math.max(end, list[r[0]][1] * room), q = 1;
+      const R = s0 ? .85 * room : room;  // a back run stops short of the corner, where the jaw is too thin to hide it
+      if (s0 + T > R) { while (r.length > 1 && s0 + .9 * T > R) T -= W[r.splice(-2, 1)[0]] * g; q = clamp((R - s0) / T, .6, 1); s0 = Math.max(end, Math.min(s0, R - T * q)); q = Math.min(q, (R - s0) / T); }
+      for (const k of r) { sz[k] = g * q; pos[k] = s0 + W[k] * sz[k] / 2; s0 += W[k] * sz[k]; laid.push({up: sd > 0, s: list[k][0], u: pos[k] / sideLen, w: list[k][3] * h * f * sz[k] / sideLen}); } end = s0; }
+    for (const side of [1, -1]) {
+      const p = arch(sd, side), bone = sd > 0 ? HEAD : JAW, V = new V3(0, -sd, 0);
+      list.forEach(([shape, , l0, w0], k) => { if (pos[k] === undefined) return;
+        const len = l0 * h * f * (shape === 'c' ? Math.sqrt(sz[k]) : sz[k]), w = w0 * h * f * sz[k], {p: base, T} = at(p, pos[k] / sideLen), N = new V3(T.z, 0, -T.x).multiplyScalar(side);
+        if (N.x * base.x + N.z * (base.z - Cz) < 0) N.negate();
+        const lean = shape === 'i' || shape === 'f' ? .05 : shape === 'c' ? .08 : 0, dep = w * (shape === 'i' || shape === 'f' ? .6 : shape === 'p' || shape === 'k' ? .42 : .9);
+        base.addScaledVector(N, -Math.max(0, dep + lean * len + .005 * h - lt));
+        const ax = V.clone().addScaledVector(N, lean).normalize(), c = shape === 'c' ? .28 * len : shape === 'r' ? .32 * len : 0;
+        // cones curve back to a point, incisors to a rounded peg (a horse's and a rabbit's to a straight chisel edge),
+        // blades to a point; cheek teeth are square blocks with a flat grinding crown
+        const secs = shape === 'c' || shape === 'r' ? [[0, w, w * .9], [len * .45, w * .74, w * .66, c * .2], [len * .8, w * .36, w * .32, c * .64], [len, .0008, .0008, c]]
+          : shape === 'i' ? [[0, w, w * .6], [len * .6, w * .92, w * .5], [len * .9, w * .62, w * .32], [len, .0008, .0008]]
+          : shape === 'f' ? [[0, w, w * .6], [len * .7, w * .98, w * .45], [len * .97, w * .94, w * .26], [len, .0008, .0008]]
+          : shape === 'm' ? [[0, w, w * .9], [len * .9, w, w * .9], [len * .99, w * .9, w * .8], [len, .0008, .0008]]
+          : [[0, w, w * .42], [len * .5, w * .55, w * .34], [len, .0008, .0008]];
+        secs.unshift([-rt, .0008, .0008], [-.5 * rt, w * .8, secs[0][2] * .8]);
+        teeth.push(loft({origin: base, axis: ax, side: T, secs, radial: 8, sub: 2, n: shape === 'm' ? 4 : 2, weights: () => [[bone, 1]]}));
+      });
     }
-    for (let k = 0; k < 4; k++) { const t = .74 - k * .14, p = at(t), x = sd * p.xw * .74;
-      parts.push({kind: 'teeth', geo: tooth(x, mY + .004 * hh, z0 + len * t, .035 * hh, .011 * hh, true, HEAD)});
-      parts.push({kind: 'teeth', geo: tooth(x * .95, mY - .004 * hh, z0 + len * (t - .04), .03 * hh, .01 * hh, false, JAW)}); }
-    // incisors across the tip
-    for (let k = 0; k < 3; k++) { const p = at(.96), x = sd * p.xw * (.14 + k * .22);
-      parts.push({kind: 'teeth', geo: tooth(x, mY + .004 * hh, z0 + len * .97, .022 * hh, .007 * hh, true, HEAD)}); }
+  }
+  for (const g of teeth) { const ln = g.attributes.aLine.array, A = new Float32Array(ln.length); for (let v = 0; v < ln.length; v += 4) { ln[v + 3] = -1; furPack(A, v, 0, 0, 0, 5, 0); } g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); }
+  if (teeth.length) { const g = mergeLofts(teeth); g.userData.teeth = laid; parts.push({geo: g, hull: true}); }  // where each sits along its half arch (0 middle, 1 corner)
+  // the tongue: from the throat to behind the lower front teeth, lying low between the rows with the floor showing round
+  // it (as wide as the floor it covered the lower teeth and read as a slab), a rounded tip, a groove down the middle
+  const lo = arch(-1, 1), zt1 = lo[0].z - 3 * lt, zt0 = zBack + .25 * (F.zc - zBack), half = z => { let x = lo[NS].x; for (let k = NS; k > 0; k--) if (lo[k].z <= z && lo[k - 1].z >= z) { const t = (z - lo[k].z) / (lo[k - 1].z - lo[k].z || 1); x = lo[k].x + (lo[k - 1].x - lo[k].x) * t; } return Math.max(Math.abs(x) - 1.2 * lt, .02 * h); };
+  if (zt1 > zt0 + .04 * h) {
+    const Lt = zt1 - zt0, th = .03 * h * f, wt = half(zt0 + .85 * Lt) * .72;
+    const secs = [[-.6 * th, .0008, .0008]];  // the root closed, rounded off into the throat (open, its far end inked as a black ring)
+    // raised where the floor is shallow (a kobold's thin chin), so its underside never shows through the jaw
+    const up = (t, b) => [Math.max(0, 1.2 * gh + th + b - .9 * hf(zt0 + Lt * t))];
+    for (let k = 0; k <= 5; k++) { const t = k / 5 * .8; secs.push([Lt * t, Math.min(half(zt0 + Lt * t) * .72, wt * 1.15), th, 0, ...up(t, th)]); }
+    secs.push([Lt * .9, wt * .9, th * .85, 0, ...up(.9, th * .85)], [Lt * .965, wt * .62, th * .6, 0, ...up(.965, th * .6)], [Lt, .001, .001, 0, ...up(1, 0)]);
+    const g = loft({origin: new V3(0, F.y - 1.2 * gh - th, zt0), axis: new V3(0, 0, 1), side: new V3(1, 0, 0), secs, radial: 16, sub: 2, n: 2.4, weights: () => [[JAW, 1]],
+      mod: ph => 1 - .38 * Math.exp(-(((ph - Math.PI) / .36) ** 2))});
+    const ln = g.attributes.aLine.array, A = new Float32Array(ln.length); for (let v = 0; v < ln.length; v += 4) { ln[v + 3] = -1; furPack(A, v, 0, 0, 0, 6, 0); }
+    g.setAttribute('aEye', new THREE.BufferAttribute(A, 4));
+    // panting: the front half rises over the lower incisors and lolls out past the lip, hanging down from it (a morph the
+    // expression turns on, so the jaw still carries it)
+    const P = g.attributes.position.array, D = new Float32Array(P.length), zl = outl[NS].z, out = .06 * h * f;
+    for (let i = 0; i < P.length; i += 3) { const t = clamp((P[i + 2] - zt0) / Lt, 0, 1), z = P[i + 2] + sstep(.25, 1, t) * (zl - zt1 + out), over = Math.max(0, z - zl);
+      D[i + 1] = sstep(.3, .7, t) * (1.2 * gh + th + .03 * h * f) - 1.3 * over; D[i + 2] = z - P[i + 2] - .3 * over; }
+    g.morphAttributes.position = [new THREE.BufferAttribute(D, 3)]; g.morphTargetsRelative = true; g.userData.tongue = true;
+    parts.push({geo: g, hull: true});
   }
   return parts;
 }
-// the mouth opens: lips part (their seam is not drawn) and the inside shows
+// a mouth surface from its arrays, its faces turned towards `face` (into the mouth): all of them one way, or each by
+// itself when `face` is a function of the triangle's centre
+function mouthGeo(pos, idx, si, sw, A, face) {
+  const g = new THREE.BufferGeometry(), v = i => new V3(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]), dot = t => { const a = v(idx[t]), b = v(idx[t + 1]), c = v(idx[t + 2]);
+    return b.clone().sub(a).cross(c.clone().sub(a)).dot(typeof face === 'function' ? face(a.add(b).add(c).multiplyScalar(1 / 3)) : face); }, flip = t => { const x = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = x; };
+  if (typeof face === 'function') { for (let t = 0; t < idx.length; t += 3) if (dot(t) < 0) flip(t); }
+  else { let s = 0; for (let t = 0; t < idx.length; t += 3) s += dot(t); if (s < 0) for (let t = 0; t < idx.length; t += 3) flip(t); }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aLine', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3 * 4).fill(-1), 4));
+  g.setAttribute('aEye', new THREE.Float32BufferAttribute(A, 4)); g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  g.setIndex(idx); g.computeVertexNormals(); g.boundingSphere = new THREE.Sphere(new V3(), 20);
+  return g;
+}
+// the lip line for the shader (rest position, the body's units): its height, where the cut ends (z, half width) and the
+// head height; the width is negative on a cut sculpt (its margin is found by the distance to the cut edge that aLip
+// carries). The body's head is cut a little short of the corners, where the lips only begin to part (jawWeight's k): a
+// triangle there reaches far above and below the line, and cut out whole it left a hole by each corner that the
+// opening never filled, showing the inked back of the far cheek as a black flap
+const lipLine = m => { const F = m.anthro && m.anthro.mouth; if (!F) return [0, 0, 0, 0]; const d = m.headSwap ? 0 : .15 * Math.min(F.tip - F.zc, F.xc);
+  return [F.y, F.zc + d, F.h, m.headSwap ? -F.xc : F.xc - d]; };
+// the mouth opens: lips part, the inside shows. Checked by every render of the scene (the view, renderView, exports),
+// not by the animation loop, so a picture taken right after the jaw moves never shows lips apart over an empty mouth
+scene.onBeforeRender = () => anthroTick();
 function anthroTick() {
   for (const m of chars) {
     if (!m.joints || !m.joints.jaw) continue;
-    const q = m.joints.jaw.quaternion, ang = 2 * Math.acos(Math.min(1, Math.abs(q.w))), open = !!m.anthro && ang > .05;
-    if (open !== !!m.mouthOpen) { m.mouthOpen = open; if (m.lib.uMouth) m.lib.uMouth.value = open ? 1 : 0; for (const p of m.mouthMeshes || []) p.visible = open && m.formMode !== 'formas'; }
+    const q = m.joints.jaw.quaternion, ang = 2 * Math.acos(Math.min(1, Math.abs(q.w))), open = !!(m.anthro && m.anthro.mouth) && ang > .05;
+    // the panting tongue lolls only as far as the jaw is open (a jaw closed by hand after 'jadeo' draws it back in)
+    for (const p of m.mouthMeshes || []) if (p.geometry.userData.tongue) p.morphTargetInfluences[0] = m.aexpr === 'jadeo' ? sstep(.15, .3, ang) : 0;
+    m.geo.drawRange.count = open && m.anthro.pocket ? m.anthro.pocket : Infinity;
+    if (open !== !!m.mouthOpen) { m.mouthOpen = open; if (m.lib.uMouth) m.lib.uMouth.value = open ? 1 : 0; for (const p of m.mouthMeshes || []) p.visible = open && m.formMode !== 'formas' && m.formMode !== 'esqueleto' && (!p.userData.hull || m.outlineOn !== false); }
   }
 }
 
@@ -223,8 +425,21 @@ const ANTHRO_EXPR = {
 // the joints an expression turns (Euler angles in radians), so a script can bake them into its keys
 function exprJoints(m, id) {
   const e = ANTHRO_EXPR[id]; if (!e) return null;
-  const out = {jaw: [e.jaw * DEG, 0, 0]};
-  for (const [k, sd] of [['L', 1], ['R', -1]]) { const o = e.out * (e.tilt && sd < 0 ? .3 : 1); out['ear' + k] = [-e.back * DEG, sd * e.twist * DEG, -sd * o * DEG]; }
+  // the jaw opens by angle, so a long muzzle (a horse's) opens less and a short one (a kemono cat's) a little more, but
+  // never so far that the front of the chin swings back into the throat under it (a kemono cat or rabbit: its short jaw
+  // sits right over the neck; z' = A cos θ + B sin θ about the joint must stay in front of the throat)
+  const F = m.anthro && m.anthro.mouth; let jaw = e.jaw * DEG;
+  if (F) { jaw *= clamp(.9 * F.h / Math.max(F.tip - F.jz, .1 * F.h), .55, 1.1);
+    const A = (F.zc + F.tip) / 2 - F.jz, B = F.chin - F.jy, R = Math.hypot(A, B), c = F.nz + .06 * F.h - F.jz;
+    jaw = Math.min(jaw, Math.max(.5 * jaw, Math.acos(clamp(c / R, -1, 1)) - Math.atan2(-B, A))); }
+  const out = {jaw: [jaw, 0, 0]};
+  // ears turn in their own frame (a: from the base to the tip): laid back towards the nape, drooped outwards and down,
+  // twisted about themselves, so a horse's ears lying to the sides fold back like a wolf's upright ones do
+  for (const [k, sd] of [['L', 1], ['R', -1]]) {
+    const o = e.out * (e.tilt && sd < 0 ? .3 : 1), a = (m.anthro && m.anthro.earDir && m.anthro.earDir[k]) || new V3(0, 1, 0), ax = v => { const c = a.clone().cross(v); return c.lengthSq() > 1e-6 ? c.normalize() : new V3(-1, 0, 0); };
+    const q = new Q().setFromAxisAngle(ax(new V3(0, 0, -1)), e.back * DEG).multiply(new Q().setFromAxisAngle(a, sd * e.twist * DEG)).multiply(new Q().setFromAxisAngle(ax(new V3(sd, -1, 0)), o * DEG));
+    const r = new THREE.Euler().setFromQuaternion(q); out['ear' + k] = [r.x, r.y, r.z];
+  }
   if (m.hasTail && e.tail) ['tail1', 'tail2', 'tail3'].forEach((n, i) => {
     const r = tailRest(m, n) || [0, 0, 0], lift = e.tail[0] * [.8, .45, .2][i], curl = e.tail[1] * [0, .35, .65][i];
     out[n] = [(r[0] + lift + curl) * DEG, r[1] * DEG, r[2] * DEG];
