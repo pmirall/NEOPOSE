@@ -249,7 +249,7 @@ function updateBodyHide(m) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aHide) m.geo.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(nV), 1));
   const H = m.geo.attributes.aHide.array; H.fill(0);
-  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null; if (HM) for (let i = 0; i < nV; i++) if (HM[i]) H[i] = 1;
+  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null; if (HM) for (let i = 0; i < nV; i++) if (HM[i]) H[i] = HM[i] > 1 ? .5 : 1;
   const order = layerOrder(m);
   // 1: skin not drawn · .5: skin drawn (it may show through openings) but its ink outline is not, so it cannot poke through loose cloth
   for (const g of order) if (g.spec.hide !== false) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }

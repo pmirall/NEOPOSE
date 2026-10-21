@@ -113,8 +113,12 @@ function cutMouth(d) {
     for (let c = t; c < t + 3; c++) { const i = idx[c]; if (Lp[i] === 4) continue; let v = dup.get(i);
       if (v === undefined) { v = P.length / 3; dup.set(i, v); P.push(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); K.push(K[i]); ear.push(ear[i]); Jw.push(Jw[i]); Lp.push(4); }
       idx[c] = v; } }
+  // the hem: the open edge of the skin round the neck, which the swap pulls down onto the body's neck (the kemono cat's
+  // ends just under its chin, above the cut, and floated over the body's open neck)
+  const cnt = new Map(), hem = new Set(); for (let t = 0; t < idx.length; t += 3) for (let e = 0; e < 3; e++) { const a = idx[t + e], b = idx[t + (e + 1) % 3], k = Math.min(a, b) * 4194304 + Math.max(a, b); cnt.set(k, (cnt.get(k) || 0) + 1); }
+  for (const [k, c] of cnt) if (c === 1) for (const i of [Math.floor(k / 4194304), k % 4194304]) if (K[i] === 0 && Lp[i] < 4 && P[i * 3 + 1] < Math.min(F.chin + .1, F.y - .1)) hem.add(i);
   return {...d, P: new Float32Array(P), K: Uint8Array.from(K), ear: Uint8Array.from(ear), idx: Uint32Array.from(idx), n: P.length / 3, nt: idx.length / 3, jaw: Uint8Array.from(Jw), lip: Float32Array.from(Lp),
-    rim, mouth: F};
+    rim, mouth: F, hem};
 }
 // called by build(): the head data must be ready, otherwise it loads and the character is rebuilt when it arrives
 function headSwapReady(m) {
@@ -157,19 +161,17 @@ function computeHeadSwap(m, P, J) {
     const t = sstep(chinY, yc, Y); X += (cx - mnx) * t; Z += (cz - mnz) * t;
     Q[i * 3] = X; Q[i * 3 + 1] = Y; Q[i * 3 + 2] = Z;
   }
-  // model ring just above the cut, then snap radially towards the body ring, fading out upwards
-  const Rm = new Float32Array(NB), fade = Math.max(.015 * m.size, chinY - yc);
-  for (let i = 0; i < n; i++) { if (d.K[i] !== 0 || d.ear[i] > 25) continue; const Y = Q[i * 3 + 1]; if (Y < yc - .01 || Y > yc + .015) continue;
-    const a = Math.atan2(Q[i * 3] - cx, Q[i * 3 + 2] - cz), k = ((Math.round(a / (2 * Math.PI) * NB) % NB) + NB) % NB; Rm[k] = Math.max(Rm[k], Math.hypot(Q[i * 3] - cx, Q[i * 3 + 2] - cz)); }
-  fillRing(Rm);
+  // the sculpt's edge at the cut goes onto the body's neck ring, and above it whatever lies inside the ring is pushed out
+  // to it, fading upwards (never drawn in: a throat that ends under an overhanging chin, the fox girl's or the rabbit's,
+  // was scaled in with the chin, and the body's neck showed its inside through the gap, inked black)
+  const fade = Math.max(.015 * m.size, chinY - yc);
   for (let i = 0; i < n; i++) {
     if (d.K[i] === 1 || d.K[i] === 2) continue;
-    let Y = Q[i * 3 + 1]; if (Y > yc + fade) continue;
-    if (Y < yc) Y = Q[i * 3 + 1] = yc;
+    let Y = Q[i * 3 + 1]; if (Y > yc + fade && !d.hem.has(i)) continue;
+    if (Y < yc || d.hem.has(i)) Y = Q[i * 3 + 1] = yc;
     const dx = Q[i * 3] - cx, dz = Q[i * 3 + 2] - cz, r = Math.hypot(dx, dz); if (r < 1e-5) continue;
     const a = Math.atan2(dx, dz), f = (a / (2 * Math.PI) * NB + NB) % NB, k0 = Math.floor(f) % NB, k1 = (k0 + 1) % NB, u = f - Math.floor(f);
-    const rb = Rb[k0] * (1 - u) + Rb[k1] * u, rm = Rm[k0] * (1 - u) + Rm[k1] * u; if (!rm) continue;
-    const t = sstep(yc, yc + fade, Y), sc = (rb * 1.01 / rm) * (1 - t) + t;
+    const rb = 1.01 * (Rb[k0] * (1 - u) + Rb[k1] * u), t = sstep(yc, yc + fade, Y), sc = Y <= yc ? rb / r : Math.max(1, (rb * (1 - t) + r * t) / r);
     Q[i * 3] = cx + dx * sc; Q[i * 3 + 2] = cz + dz * sc;
   }
   // keep only triangles above the cut
@@ -201,7 +203,10 @@ function fillRing(R) {
 function headSwapMask(m) {
   const hs = m.headSwap; if (!hs) return null;
   const nV = FIG.meta.nV, P = m.geo.attributes.position.array, M = new Uint8Array(nV), Hb = FIG.jIdx.head, Jw = FIG.jIdx.jaw;
-  for (let i = 0; i < nV; i++) if (FIG.eye[i] || m.dom[i] === Hb || m.dom[i] === Jw || (P[i * 3 + 1] > hs.yc + .002 && Math.abs(P[i * 3]) < .2 * m.size && P[i * 3 + 1] > hs.yc + .002 && m.dom[i] === FIG.jIdx.neck)) M[i] = 1;
+  // 1 hidden, 2 drawn without its ink outline: the throat below the cut, though it may be the head's or the jaw's (hidden,
+  // it left the neck open under the sculpt's chin; inked, the human chin's underside showed its back as a black shelf)
+  for (let i = 0; i < nV; i++) if (FIG.eye[i] || P[i * 3 + 1] > hs.yc + .002 && (m.dom[i] === Hb || m.dom[i] === Jw || Math.abs(P[i * 3]) < .2 * m.size && m.dom[i] === FIG.jIdx.neck)) M[i] = 1;
+    else if (m.dom[i] === Hb || m.dom[i] === Jw) M[i] = 2;
   return M;
 }
 // build the skinned mesh of the head once the skeleton is bound

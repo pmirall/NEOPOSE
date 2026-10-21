@@ -249,6 +249,21 @@ const SUITES = {
     ok(w.up.deep > .09 && w.up.deepZ < w.up.front - .005, `a cat's fangs: its longest teeth, behind the incisors (${w.up.deep.toFixed(3)} at ${w.up.deepZ.toFixed(3)}, front ${w.up.front.toFixed(3)})`);
     await pick('conejo'); w = await mouth(); ok(w.up.deep > .05 && w.up.deepZ > w.up.front - .05, `a rabbit's long front incisors (${w.up.deep.toFixed(3)} at ${w.up.deepZ.toFixed(3)}, front ${w.up.front.toFixed(3)})`);
     await pick('dragon'); const dr = w = await mouth(); ok(w.up.n > (await pick('lobo'), await mouth()).up.n, `a dragon has more teeth than a wolf (${dr.up.n} vertices)`);
+    // rows: a wolf's teeth stand side by side round the arch up to near the corner, a horse keeps its bars;
+    // roots end in the gum band, so none rises above the lips (nor sinks below the lower ones) where the sculpt is open
+    const row = () => A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, t = m.mouthMeshes.find(x => x.geometry.userData.teeth), g = t.geometry, P = g.attributes.position.array, SI = g.attributes.skinIndex.array;
+      let hi = -9, lo = 9; for (let i = 0; i < P.length / 3; i++) { const y = (P[i * 3 + 1] - F.y) / F.h; if (SI[i * 4] === 1) hi = Math.max(hi, y); else lo = Math.min(lo, y); }
+      const up = g.userData.teeth.filter(x => x.up); let gap = 0; for (let k = 1; k < up.length; k++) gap = Math.max(gap, up[k].u - up[k].w - up[k - 1].u - up[k - 1].w);
+      return {gap, n: up.length, end: up[up.length - 1].u + up[up.length - 1].w, hi, lo}; });
+    { const wr = await row(); await pick('caballo', true); const hr = await row(); await pick('lobo');
+      ok(wr.n === 8 && wr.gap < .03 && wr.end > .85 && wr.end < 1 && hr.gap > .06 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
+      ok(wr.hi < .032 && wr.lo > -.032 && hr.hi < .032 && hr.lo > -.032, `roots end in the gums (wolf ${wr.hi.toFixed(3)}/${wr.lo.toFixed(3)}, horse ${hr.hi.toFixed(3)}/${hr.lo.toFixed(3)} head heights from the lip line)`); }
+    // the neck under a sculpt: the body's throat below the cut stays drawn (inked or not) and every sculpt reaches down to the
+    // cut, so the body's neck is never open under the chin
+    { const r = []; for (const sp of ['zorro', 'gato', 'conejo', 'lobo']) { await pick(sp); r.push(await A(sp => { const m = window.__cdp.mq, hs = m.headSwap, FIG = window.__cdp.FIG, P = m.geo.attributes.position.array, H = m.geo.attributes.aHide.array;
+        let hid = 0; for (let i = 0; i < FIG.meta.nV; i++) if ((m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i] && P[i * 3 + 1] < hs.yc && H[i] > .99) hid++;
+        let low = Infinity; for (const i of hs.keep) low = Math.min(low, hs.Q[i * 3 + 1]); return {sp, hid, low: (low - hs.yc) / hs.s}; }, sp)); }
+      ok(r.every(x => x.hid === 0 && x.low < 1e-3), `the throat under each sculpt is closed (${r.map(x => `${x.sp} ${x.hid} hidden, edge ${x.low.toFixed(4)}`).join('; ')})`); }
     // the body's own head (no sculpt): the line it is cut along, and an inside too
     await pick('lobo', true);
     const mh = await A(() => { const m = window.__cdp.mq, L = m.geo.attributes.aLip.array; let up = 0, dn = 0; for (const v of L) { if (v === 1) up++; else if (v === -1) dn++; } return {up, dn, lip: m.lib.uEye.uLip.value.w, parts: m.mouthMeshes.length, swap: !!m.headSwap}; });
