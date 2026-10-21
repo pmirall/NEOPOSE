@@ -191,13 +191,19 @@ const SUITES = {
     const locks = () => A(() => {
       const C = window.__cdp, m = C.mq, F = C.FIG, g = m.fluffGeo; if (!g) return null;
       const P = g.attributes.position.array, R = g.attributes.aRoot.array, E = g.attributes.aEye.array, BP = m.geo.attributes.position.array, BN = m.geo.attributes.normal.array, J = m.J, j = n => [0, 1, 2].map(k => J[F.jIdx[n] * 3 + k]);
+      // a cheek lock on a sculpted head grows from that head's skin: its rest positions and normals
+      // (its skin: K 0; the eyes and the mouth's parts are other pieces inside it)
+      const HG = m.headSwap && m.headMesh && m.headMesh.geometry.attributes, HP = HG && HG.position.array, HN = HG && HG.normal.array, HK = HG && m.headSwap.d.K;
+      const skinAt = p => { if (!HP) return null; let r = 0, rd = Infinity; for (let i = 0; i < HP.length / 3; i++) { if (HK[i]) continue; const e = (HP[i * 3] - p[0]) ** 2 + (HP[i * 3 + 1] - p[1]) ** 2 + (HP[i * 3 + 2] - p[2]) ** 2; if (e < rd) { rd = e; r = i; } } return r; };
       const v = i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), avg = (o, r) => [0, 1, 2].map(k => { let s = 0; for (let q = 0; q < 6; q++) s += P[(o + r * 6 + q) * 3 + k]; return s / 6; });
       const out = [];
       for (let o = 0; o < R.length; o += 30) {
         const r = R[o], base = avg(o, 0), tip = avg(o, 4), ring = [0, 1, 2, 3, 4, 5].map(q => v(o + 6 + q)), wide = Math.max(...ring.map(a => Math.max(...ring.map(b => d(a, b)))));
         // a cheek lock on a sculpted head roots in its own skin and hides with the body's head skin it stands in for
-        const part = F.region[m.dom[r]] === 'head' ? 'cheek' : F.region[m.dom[r]], sunk = [0, 1, 2].reduce((a, k) => a + (base[k] - BP[r * 3 + k]) * BN[r * 3 + k], 0);
-        out.push({part, root: [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], sunk, hid: g.attributes.aHide.array[o], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
+        const part = F.region[m.dom[r]] === 'head' ? 'cheek' : F.region[m.dom[r]], h = part === 'cheek' && skinAt(base);
+        const sunk = h === null || h === false ? [0, 1, 2].reduce((a, k) => a + (base[k] - BP[r * 3 + k]) * BN[r * 3 + k], 0) : [0, 1, 2].reduce((a, k) => a + (base[k] - HP[h * 3 + k]) * HN[h * 3 + k], 0);
+        const BE = m.geo.attributes.aEye.array, own = [0, 1, 2, 3].every(k => Math.abs(E[o * 4 + k] - BE[r * 4 + k]) < 1e-4);
+        out.push({part, root: [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], sunk, own, hid: g.attributes.aHide.array[o], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
       }
       return {L: out, n: P.length / 3, size: m.size, chest: j('chest'), elbow: j('elbowL'), wrist: j('wristL'), ankle: j('ankleL')};
     });
@@ -205,13 +211,14 @@ const SUITES = {
     await pick('zorro'); await page.waitForFunction(() => { const m = window.__cdp.mq; return m.headSwap && m.headMesh && m.fluffGeo; }, null, {timeout: 60000}); await page.waitForTimeout(1000); const f = await locks();
     ok(f && f.L.length >= 60 && f.n < 9000, `a fox grows tufts: ${f && f.L.length} locks, ${f && f.n} vertices (modest)`);
     ok(f.L.every(l => l.deep > .65), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
-    // each lock roots under the skin it grows from (a root ring standing proud of a curved neck reads as a cut slab)
-    const body = f.L.filter(l => l.part !== 'cheek');
-    ok(body.every(l => l.sunk < 0), `every lock's root is buried in its skin (${body.filter(l => l.sunk >= 0).length} of ${body.length} stand out)`);
-    // and takes the coat where it grows: a ruff clump straddling the throat marking grades from the bib to the side coat
-    // (side by side locks of one clump, light and dark: each lock coloured at its own root, not the clump's)
-    const ruff = f.L.filter(l => l.part === 'neck'), mixed = ruff.filter((l, i) => i && Math.hypot(...[0, 1, 2].map(k => l.base[k] - ruff[i - 1].base[k])) < .02 * f.size && Math.abs(l.belly - ruff[i - 1].belly) > .3).length;
-    ok(mixed >= 2, `the neck ruff grades from the light throat to the side coat within a clump (${mixed} light/dark neighbours)`);
+    // each lock roots under the skin it grows from (a root standing proud of a curved neck or under the jaw reads as a
+    // cut slab): the body's skin, or for a cheek lock the sculpted head's own
+    ok(f.L.every(l => l.sunk < 0), `every lock's root is buried in its skin, the sculpted head's cheeks too (${f.L.filter(l => l.sunk >= 0).length} of ${f.L.length} stand out)`);
+    // and takes the coat where it grows: each lock the coat of its own root (a clump on the edge of a marking grades
+    // across it), light on the throat and dark on the sides of the neck
+    const body = f.L.filter(l => l.part !== 'cheek'), ruff = f.L.filter(l => l.part === 'neck');
+    ok(body.every(l => l.own), `every lock is coloured by the coat at its own root (${body.filter(l => !l.own).length} of ${body.length} are not)`);
+    ok(ruff.some(l => l.belly > .4) && ruff.some(l => l.belly < .1), `the neck ruff is light at the throat and takes the side coat behind (${ruff.filter(l => l.belly > .4).length} light, ${ruff.filter(l => l.belly < .1).length} dark)`);
     const lens = f.L.map(l => l.len / f.size);
     ok(Math.max(...lens) < .12 && Math.min(...lens) > .01, `locks are tufts, not spikes: ${(Math.min(...lens) * 100).toFixed(1)}–${(Math.max(...lens) * 100).toFixed(1)} cm per metre of body`);
     const cheek = f.L.filter(l => l.part === 'cheek');
@@ -240,11 +247,12 @@ const SUITES = {
     ok(drift.moved > .2 && drift.gap < .005, `waving, the arm's tufts travel with it (${(drift.moved * 100).toFixed(0)} cm/m) and stay where they grow (gaps to their roots change by ${(drift.gap * 1000).toFixed(1)} mm/m at most)`);
     await A(() => { const C = window.__cdp; C.usePreset(C.POSES.find(p => p.id === 'pie')); });
     // the fluff slider: fuller and longer tufts; quick to rebuild
-    const at = v => A(v => { const C = window.__cdp, m = C.mq; m.body.fluff = v; let t = performance.now(); for (let i = 0; i < 5; i++) C.furry.fluffGeo(m).dispose(); t = (performance.now() - t) / 5;
+    const at = v => A(v => { const C = window.__cdp, m = C.mq; m.body.fluff = v; C.furry.fluffGeo(m).dispose(); let t = Infinity;
+      for (let i = 0; i < 10; i++) { const t0 = performance.now(); C.furry.fluffGeo(m).dispose(); t = Math.min(t, performance.now() - t0); }  // the best of ten: the machine's load aside
       const g = C.furry.fluffGeo(m), n = g.attributes.position.count; g.dispose(); return {n, t}; }, v);
     const lo = await at(.2), hi = await at(1);
     ok(hi.n > lo.n * 1.3, `more fluff, fuller tufts (${lo.n} → ${hi.n} vertices)`);
-    ok(hi.t < 40, `generated in a few milliseconds (${hi.t.toFixed(1)} ms at full fluff, software rendering)`);
+    ok(hi.t < 12, `generated in a few milliseconds (${hi.t.toFixed(1)} ms of script at full fluff, warmed up, best of ten)`);
     await A(() => { delete window.__cdp.mq.body.fluff; window.__cdp.rebuildActive(); });
     // a lion's mane is its ruff: no cheek or neck tufts on it; a dragon has scales, no fur
     await pick('leon'); const li = await locks();

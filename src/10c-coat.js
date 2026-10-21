@@ -266,44 +266,57 @@ function restTail(m) { for (const n of ['tail1', 'tail2', 'tail3']) { const r = 
 const FLUFF_DEF = {can: .55, fel: .4, otro: .5, pre: .3, rep: 0};
 // how much of each tuft a species grows (its own entry, else its family's): cheeks, neck ruff, chest bib, elbows, wrists,
 // hocks, paw tops (the fetlock on hooves). Cats keep a sleek neck, a lion's mane already is its ruff, a horse only feathers.
-const FLUFF_AT = {can: [1, 1, 1, 1, 1, 1, .8], fel: [.8, .25, .55, .8, .6, .8, .5], tigre: [1.2, .35, .55, .7, .5, .7, .4], leon: [0, 0, .5, .8, .6, .8, .5],
+const FLUFF_AT = {can: [1, 1, 1, 1, 1, 1, .8], fel: [.8, .15, .55, .8, .6, .8, .5], tigre: [1.2, .35, .55, .7, .5, .7, .4], leon: [0, 0, .5, .8, .6, .8, .5],
   otro: [.75, .55, .6, .9, .8, .6, .6], conejo: [1, .5, 1, .35, .45, .5, .8], pre: [.4, .3, .6, .4, .4, .5, .8], caballo: [0, 0, 0, .3, .3, .5, 1.3]};
+const FLUFF_PART = new WeakMap();  // per figure: each bone's part of the skin (fluffGeo)
 const fluffOf = b => b && b.species !== 'humano' ? (b.fluff ?? FLUFF_DEF[(SPECIES[b.species] || {}).fam] ?? .4) : 0;
 function fluffGeo(m) {
   const k = fluffOf(m.body); if (k < .02) return null;
   const b = m.body, sp = SPECIES[b.species] || {}, at = FLUFF_AT[b.species] || FLUFF_AT[sp.fam] || FLUFF_AT.otro, Ls = legSpec(b);
   const G = m.geo.attributes, P = G.position.array, N = G.normal.array, E = G.aEye.array, SI = G.skinIndex.array, SW = G.skinWeight.array, J = m.J, sz = m.size || 1, nV = FIG.meta.nV;
   const jp = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]), rng = mulberry(7), locks = [];
-  // the skin by part: 1 trunk, 2 arm and wrist, 3 leg and foot, 4 head (not the jaw), 5 neck; none where a sculpted head replaces it
-  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null, byPart = [[], [], [], [], [], []];
-  const part = FIG.region.map((r, b) => r === 'torso' ? 1 : r === 'neck' ? 5 : /^(arm|hand)/.test(r) ? 2 : /^(leg|foot)/.test(r) ? 3 : r === 'head' && b !== FIG.jIdx.jaw ? 4 : 0);
-  for (let i = 0; i < nV; i++) if (!FIG.eye[i] && !(HM && HM[i])) byPart[part[m.dom[i]]].push(i);
-  // a skin: positions, normals, the vertices that may grow a tuft, and per vertex its bones, its coat and the body vertex whose clothes hide it
-  const skin = (Q, Nq, idx, si, sw, ey, root) => ({Q, Nq, idx, si, sw, eye: i => ey.slice(i * 4, i * 4 + 4), root});
+  // the skin by part: 1 trunk, 2 arm and wrist, 3 leg and foot, 4 head (not the jaw), 5 neck; none where a sculpted head
+  // replaces it (BH: the body's head skin it stands in for). One pass, and the parts' lists are concatenated only once.
+  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null, byPart = [[], [], [], [], [], []], BH = [];
+  const part = FLUFF_PART.get(FIG) || FLUFF_PART.set(FIG, FIG.region.map((r, j) => r === 'torso' ? 1 : r === 'neck' ? 5 : /^(arm|hand)/.test(r) ? 2 : /^(leg|foot)/.test(r) ? 3 : r === 'head' && j !== FIG.jIdx.jaw ? 4 : 0)).get(FIG);
+  for (let i = 0; i < nV; i++) if (!FIG.eye[i]) { const q = part[m.dom[i]]; if (!(HM && HM[i])) byPart[q].push(i); else if (q === 4) BH.push(i); }
+  // a skin: positions, normals, its vertices (grow: those that may grow a tuft, all by default), and per vertex its bones,
+  // its coat and the body vertex whose clothes hide it
+  const skin = (Q, Nq, idx, si, sw, ey, root, grow = () => true) => ({Q, Nq, idx, si, sw, eye: i => ey.slice(i * 4, i * 4 + 4), root, grow});
   const body = (...c) => skin(P, N, [].concat(...c.map(k => byPart[k])), SI, SW, E, i => i);
-  // where a ray from inside (a bone) going out along d meets the skin: the vertex nearest the ray that faces it
-  const hit = (S, o, d) => { let best = -1, bs = Infinity; const Q = S.Q, Nq = S.Nq;
-    for (const i of S.idx) { const x = Q[i * 3] - o.x, y = Q[i * 3 + 1] - o.y, z = Q[i * 3 + 2] - o.z, t = x * d.x + y * d.y + z * d.z;
-      if (t <= 0 || Nq[i * 3] * d.x + Nq[i * 3 + 1] * d.y + Nq[i * 3 + 2] * d.z < .35) continue; const e = x * x + y * y + z * z - t * t; if (e < bs) { bs = e; best = i; } }
+  // where a ray from inside (a bone) going out along d meets the skin: the vertex nearest the ray that faces it; in the
+  // same pass, the skin within r of the ray (the clump's neighbourhood is in it), so a clump scans its skin once
+  const hit = (S, o, d, r, near) => { let best = -1, bs = Infinity; const Q = S.Q, Nq = S.Nq, r2 = r * r;
+    for (const i of S.idx) { const x = Q[i * 3] - o.x, y = Q[i * 3 + 1] - o.y, z = Q[i * 3 + 2] - o.z, t = x * d.x + y * d.y + z * d.z; if (t <= 0) continue;
+      const e = x * x + y * y + z * z - t * t; if (e < r2) near.push(i); if (e < bs && Nq[i * 3] * d.x + Nq[i * 3 + 1] * d.y + Nq[i * 3 + 2] * d.z >= .35 && S.grow(i)) { bs = e; best = i; } }
     return best; };
   // a clump at the skin hit by the ray (o, d): f the hair's direction there, len its longest lock, lift how far its tip lifts
   // off the skin (radians), fan how wide it spreads across the hair (1 a fan; a tighter clump fans out of the skin instead)
   const tuft = (S, o, d, f, len, lift, w, fan = 1) => {
-    const i = hit(S, o, d.normalize()); if (i < 0) return;
+    const cnt = clamp(Math.round(2.6 + 4 * k * w), 3, 7), L0 = len * sz * (.55 + .9 * k) * (.75 + .25 * Math.min(w, 1.3)), W = L0 * .26, Q = S.Q, Nq = S.Nq, ray = [];
+    const i = hit(S, o, d.normalize(), 1.2 * L0, ray); if (i < 0) return;
     // the clump stands on the ray more than on the vertex normal, which tips up or down over a bony knob (olecranon, hock)
-    const p = new V3().fromArray(S.Q, i * 3), n = new V3().fromArray(S.Nq, i * 3).normalize().lerp(d, .6).normalize(), t = f.clone().addScaledVector(n, -f.dot(n)).normalize(), s = new V3().crossVectors(n, t);
-    const cnt = clamp(Math.round(2.6 + 4 * k * w), 3, 7), L0 = len * sz * (.55 + .9 * k) * (.75 + .25 * Math.min(w, 1.3)), W = L0 * .26, Q = S.Q, Nq = S.Nq;
-    // the skin round the clump: each lock roots in the vertex nearest its own place (a neck curves away under a clump
-    // laid flat on it, and a root ring left standing proud reads as a cut slab), sunk under it and coloured by its coat
-    const nb = S.idx.filter(j => (Q[j * 3] - p.x) ** 2 + (Q[j * 3 + 1] - p.y) ** 2 + (Q[j * 3 + 2] - p.z) ** 2 < 9 * W * W && Nq[j * 3] * n.x + Nq[j * 3 + 1] * n.y + Nq[j * 3 + 2] * n.z > .3);
+    const p = new V3().fromArray(Q, i * 3), n = new V3().fromArray(Nq, i * 3).normalize().lerp(d, .6).normalize(), t = f.clone().addScaledVector(n, -f.dot(n)).normalize(), s = new V3().crossVectors(n, t);
+    // the skin round the clump (sk, facing the same way): each lock roots in the vertex nearest its own place (a neck
+    // curves away under a clump laid flat on it, and a root left standing proud reads as a cut slab), sunk under it and coloured by its coat
+    const R2 = (1.3 * L0) ** 2, sk = ray.filter(j => (Q[j * 3] - p.x) ** 2 + (Q[j * 3 + 1] - p.y) ** 2 + (Q[j * 3 + 2] - p.z) ** 2 < R2 && Nq[j * 3] * n.x + Nq[j * 3 + 1] * n.y + Nq[j * 3 + 2] * n.z > 0);
+    const near = (x, lim, nd, g = S.grow) => { let r = -1, rd = lim; for (const q of sk) { const e = (Q[q * 3] - x.x) ** 2 + (Q[q * 3 + 1] - x.y) ** 2 + (Q[q * 3 + 2] - x.z) ** 2; if (e < rd && Nq[q * 3] * n.x + Nq[q * 3 + 1] * n.y + Nq[q * 3 + 2] * n.z > nd && g(q)) { rd = e; r = q; } } return r; };
+    // how far a point stands out of the skin nearest it, any skin (false: none near)
+    const out = x => { const q = near(x, Infinity, 0, () => true); return q >= 0 && (x.x - Q[q * 3]) * Nq[q * 3] + (x.y - Q[q * 3 + 1]) * Nq[q * 3 + 1] + (x.z - Q[q * 3 + 2]) * Nq[q * 3 + 2]; };
     for (let j = 0; j < cnt; j++) {
-      const u = j / (cnt - 1) * 2 - 1, a = u * .3 * fan + (rng() - .5) * .08, L = L0 * (1 - .35 * u * u) * (.88 + .24 * rng()), el = lift * (.85 + .3 * rng()) + (1 - fan) * (u + 1) * .5;
-      const ax = t.clone().multiplyScalar(Math.cos(a)).addScaledVector(s, Math.sin(a)).multiplyScalar(Math.cos(el * .3)).addScaledVector(n, Math.sin(el * .3)).normalize(), sd = new V3().crossVectors(n, ax).normalize();
-      const pl = p.clone().addScaledVector(s, u * W * 1.1 * fan).addScaledVector(t, -Math.abs(u) * W * .8);
-      let r = i, rd = Infinity; for (const q of nb) { const e = (Q[q * 3] - pl.x) ** 2 + (Q[q * 3 + 1] - pl.y) ** 2 + (Q[q * 3 + 2] - pl.z) ** 2; if (e < rd) { rd = e; r = q; } }
-      const ey = S.eye(r);
-      locks.push({S, i: r, eye: ey[3] < -1.5 ? ey : [0, 0, 0, -2.5], root: S.root(r), n, ax, sd, up: new V3().crossVectors(ax, sd), L, W, rise: L * Math.sin(el) * .5, curl: u * L * .12,
-        o: new V3().fromArray(Q, r * 3).addScaledVector(new V3().fromArray(Nq, r * 3).normalize(), -W * .6)});
+      const u = j / (cnt - 1) * 2 - 1, a = u * .3 * fan + (rng() - .5) * .08, L = L0 * (1 - .35 * u * u) * (.88 + .24 * rng()), el0 = lift * (.85 + .3 * rng()) + (1 - fan) * (u + 1) * .5;
+      const pl = p.clone().addScaledVector(s, u * W * 1.1 * fan).addScaledVector(t, -Math.abs(u) * W * .8), r0 = near(pl, 9 * W * W, .3), r = r0 < 0 ? i : r0;
+      const ey = S.eye(r), nr = new V3().fromArray(Nq, r * 3).normalize(), o = new V3().fromArray(Q, r * 3).addScaledVector(nr, -W * .6);
+      // in a fold of the skin (a sculpted cheek's own tufts) the root may come out through the next fold: deeper then
+      for (let g = 0; g < 3 && out(o) >= 0; g++) o.addScaledVector(nr, -W * .4);
+      // laid along the hair, a lock dives back into skin that swells under it (a neck flaring into the shoulders): it
+      // lifts off a little more until its tip clears the skin, and is left out if it never does (a clipped speck)
+      for (let el = el0; el < el0 + 1; el += .35) {
+        const ax = t.clone().multiplyScalar(Math.cos(a)).addScaledVector(s, Math.sin(a)).multiplyScalar(Math.cos(el * .3)).addScaledVector(n, Math.sin(el * .3)).normalize(), sd = new V3().crossVectors(n, ax).normalize();
+        const up = new V3().crossVectors(ax, sd), rise = L * Math.sin(el) * .5, curl = u * L * .12, tip = o.clone().addScaledVector(ax, L * .85).addScaledVector(sd, curl * .72).addScaledVector(up, rise * .72), h = out(tip);
+        if (h !== false && h < .3 * W) continue;
+        locks.push({S, i: r, eye: ey[3] < -1.5 ? ey : [0, 0, 0, -2.5], root: S.root(r), n, ax, sd, up, L, W, rise, curl, o}); break;
+      }
     }
   };
   const on = x => x * k > .06, head = jp('head'), chest = jp('chest'), hs = m.headSwap, an = m.anthro;
@@ -315,10 +328,12 @@ function fluffGeo(m) {
       const hg = m.headMesh.geometry.attributes, d = hs.d, hSI = hg.skinIndex.array, hSW = hg.skinWeight.array, hE = hg.aEye.array;
       e = hs.E; hh = hs.s;
       // a cheek lock hides with the body's own head skin nearest it (the one the sculpted head stands in for), so a hood would hide it
-      const BH = []; for (let i = 0; i < nV; i++) if (HM[i] && part[m.dom[i]] === 4 && !FIG.eye[i]) BH.push(i);
-      const near = i => { let r = -1, rd = Infinity; for (const j of BH) { const dd = (P[j * 3] - hs.Q[i * 3]) ** 2 + (P[j * 3 + 1] - hs.Q[i * 3 + 1]) ** 2 + (P[j * 3 + 2] - hs.Q[i * 3 + 2]) ** 2; if (dd < rd) { rd = dd; r = j; } } return r; };
-      const cand = []; for (let i = 0; i < d.n; i++) if (d.K[i] === 0 && d.ear[i] < 25 && d.jaw[i] < 80 && hs.Q[i * 3 + 1] < e.y && hs.Q[i * 3 + 1] > hs.yc && hs.Q[i * 3 + 2] < e.z) cand.push(i);
-      S = skin(hs.Q, hg.normal.array, cand, hSI, hSW, hE, near);
+      const BC = BH.filter(j => P[j * 3 + 1] < e.y && P[j * 3 + 1] > hs.yc && P[j * 3 + 2] < e.z), near = i => { let r = -1, rd = Infinity; for (const j of BC) { const dd = (P[j * 3] - hs.Q[i * 3]) ** 2 + (P[j * 3 + 1] - hs.Q[i * 3 + 1]) ** 2 + (P[j * 3 + 2] - hs.Q[i * 3 + 2]) ** 2; if (dd < rd) { rd = dd; r = j; } } return r; };
+      // the cheek is the side of the face: not the underside of the jaw (whose normals face down: a lock rooted there hangs
+      // out under the head) nor the skin near the cut, where the sculpt meets the neck
+      // (the rest of the face's skin is still there to sink the roots under and lift the tips over)
+      const HN = hg.normal.array, Q = hs.Q, face = []; for (let i = 0; i < d.n; i++) if (d.K[i] === 0 && Q[i * 3 + 1] > hs.yc && Q[i * 3 + 1] < e.y + .2 * hh) face.push(i);
+      S = skin(Q, HN, face, hSI, hSW, hE, near, i => d.ear[i] < 25 && d.jaw[i] < 80 && Q[i * 3 + 1] < e.y && Q[i * 3 + 1] > hs.yc + .25 * hh && Q[i * 3 + 2] < e.z && HN[i * 3 + 1] > -.3 && Math.abs(HN[i * 3]) > .4);
     } else { S = body(4); e = new V3(0, an.L.eyeY, an.L.eyeZ); hh = an.L.hh; }
     for (const sd of [1, -1]) for (const [y, z, dy, l, lf] of [[-.24, -.26, -.3, .3, .55], [-.34, -.3, -.6, .26, .6], [-.13, -.36, 0, .22, .5]].slice(0, k * at[0] > .45 ? 3 : 2))
       tuft(S, new V3(e.x, e.y + y * hh, e.z + z * hh), new V3(sd, dy, -.1), new V3(sd * .2, -.8, -1), l * hh / sz, lf, at[0]);
@@ -326,14 +341,18 @@ function fluffGeo(m) {
   // neck ruff: round the sides and back of the neck under the jaw (from the chin, or the sculpted head's cut, down to
   // the root of the neck a little above the shoulder joints), falling down and back
   const S1 = body(1, 5), S5 = body(5), top = Math.min(an ? an.L.chin : head.y, hs ? hs.yc : Infinity) - .015 * sz, yb = jp('shoulderL').y + .045 * sz;
-  if (on(at[1])) for (const [h, a] of [[.85, 80], [.85, 125], [.5, 100], [.5, 150], [.65, 180]].slice(0, k * at[1] > .4 ? 5 : 3))
+  // (from just behind the side of the neck: a clump further forward hangs its side-coloured locks across the bib; and
+  // lower there, out of the shadow where the jaw overhangs the throat)
+  if (on(at[1])) for (const [h, a] of [[.6, 95], [.7, 135], [.35, 110], [.45, 155], [.65, 180]].slice(0, k * at[1] > .4 ? 5 : 3))
     for (const sd of a === 180 ? [1] : [1, -1]) { const y = yb + (top - yb) * h, r = a * DEG;
       tuft(S5, axisAt(y), new V3(sd * Math.sin(r), 0, Math.cos(r)), new V3(sd * Math.sin(r) * .3, -1, -.5), .075, .6, at[1]); }
   // chest bib: down the throat and the breastbone in a V, the locks falling down and a little outwards
   if (on(at[2])) {
     const y1 = yb - .35 * (yb - chest.y), row = f => top + (y1 - top) * f, full = k * at[2] > .7;
-    // a modest coat draws the bib in a few strokes; only a very fluffy one shingles it into a full V
-    const rows = [[row(0), [-.03, .03], .07], [row(.3), full ? [-.06, -.02, .02, .06] : [-.05, 0, .05], .075], [row(.62), [-.035, .035], .07], [row(1), [0], .06]];
+    // a modest coat draws the bib in a few strokes; only a very fluffy one shingles it into a full V. It starts a little
+    // below the chin (right under it the jaw overhangs the throat and a row there crumples in its shadow), and narrow
+    // there, inside the throat's light marking (its outer locks would take the side coat and hang across the bib)
+    const rows = [[row(.12), [-.02, .02], .07], [row(.3), full ? [-.06, -.02, .02, .06] : [-.05, 0, .05], .075], [row(.62), [-.035, .035], .07], [row(1), [0], .06]];
     for (const [y, xs, l] of rows.slice(sp.mane ? 2 : 0, full ? 4 : 3)) for (const x of xs)  // a mane already covers the throat
       tuft(S1, axisAt(y), new V3(x / .04 * .4, 0, 1), new V3(x / .04 * .25, -1, .1), l, .85, at[2]);
   }
@@ -351,30 +370,34 @@ function fluffGeo(m) {
       // the heel fur sits behind the calcaneus in a tight clump: it lengthens the back of the hock, it does not widen the front
       if (on(at[5])) tuft(S3, A.clone().addScaledVector(mt, .02 * sz), fr.clone().negate().addScaledVector(mt, -.3), mt.clone(), .055, .6, at[5], .5);
       // a paw's fringe grows just above the toe knuckles and falls forward over the toes (on a digitigrade paw higher up it
-      // would read as a cuff round the shin); a plantigrade foot's over the instep
+      // would read as a cuff round the shin), at its two sides where it breaks the outline (flat on the front it reads as a
+      // sticker), and only on a very furry digitigrade paw (a sleeker one is drawn with just the heel tuft); a plantigrade foot's over the instep
       if (on(at[6])) { const pl = Ls.type === 'planti', B = pl ? A.clone().addScaledVector(mt, .03 * sz) : A.clone().lerp(toe, Ls.hoof ? .8 : .88);
         if (Ls.hoof) tuft(S3, B, fr.clone().negate(), mt.clone(), .045, .35, at[6]);
-        else for (const v of [-.4, .4]) tuft(S3, B, fr.clone().addScaledVector(new V3(x, 0, 0), v), pl ? mt.clone() : mt.clone().add(fr), pl ? .03 : .022, .3, at[6]); }
+        else if (pl || k * at[6] > .6) for (const v of pl ? [-.4, .4] : [-1, 1]) tuft(S3, B, fr.clone().addScaledVector(new V3(x, 0, 0), v), pl ? mt.clone() : mt.clone().add(fr), pl ? .03 : .022, .3, at[6]); }
     }
   }
   if (!locks.length) return null;
   // all the locks in one mesh, written straight into its arrays (rebuilt while sliders drag): rings along the lock, each
-  // an ellipse across it (wide along the skin, 0.75 as deep), narrow at the buried root (so an exposed one is no blunt end), swelling then tapering to a point; centre bent by the rise and the curl
-  const RS = [0, .22, .5, .78, 1], RW = [.5, 1, .8, .42, .02], C = 6, nv = locks.length * RS.length * C, g = new THREE.BufferGeometry();
+  // an ellipse across it (wide along the skin, 0.75 as deep), closed to a point at the buried root (an exposed root is
+  // never a hollow end), swelling then tapering to a point; centre bent by the rise and the curl
+  const RS = [0, .22, .5, .78, 1], RW = [0, 1, .8, .42, .02], C = 6, nv = locks.length * RS.length * C, g = new THREE.BufferGeometry();
+  const SN = [], CS = []; for (let j = 0; j < C; j++) { SN.push(Math.sin(j / C * 2 * Math.PI)); CS.push(Math.cos(j / C * 2 * Math.PI)); }
   const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), si = new Uint16Array(nv * 4), sw = new Float32Array(nv * 4), ey = new Float32Array(nv * 4), ln = new Float32Array(nv * 4), rt = new Float32Array(nv), idx = new Uint32Array(locks.length * (RS.length - 1) * C * 6), q = new V3();
   let v = 0, o = 0;
   for (const l of locks) {
     const {S, i, eye, root} = l, v0 = v;
     RS.forEach((f, r) => { const a = l.W * RW[r], b = a * .75;
       for (let j = 0; j < C; j++, v++) {
-        const ph = j / C * 2 * Math.PI; q.copy(l.o).addScaledVector(l.ax, l.L * f).addScaledVector(l.sd, l.curl * f * f + a * Math.sin(ph)).addScaledVector(l.up, l.rise * f * f - b * Math.cos(ph));
+        q.copy(l.o).addScaledVector(l.ax, l.L * f).addScaledVector(l.sd, l.curl * f * f + a * SN[j]).addScaledVector(l.up, l.rise * f * f - b * CS[j]);
         pos[v * 3] = q.x; pos[v * 3 + 1] = q.y; pos[v * 3 + 2] = q.z;
-        // the ellipse's own normal, tipped forward by the taper and leaning to the skin's (a lock shades like the coat it lies on)
-        q.copy(l.sd).multiplyScalar(.6 * Math.sin(ph)).addScaledVector(l.up, -Math.cos(ph)).addScaledVector(l.ax, .15 + f).addScaledVector(l.n, .6).normalize(); nrm[v * 3] = q.x; nrm[v * 3 + 1] = q.y; nrm[v * 3 + 2] = q.z;
+        // the ellipse's own normal, tipped forward by the taper and leaning a little to the skin's (a lock shades like the
+        // coat it lies on, no lighter)
+        q.copy(l.sd).multiplyScalar(.6 * SN[j]).addScaledVector(l.up, -CS[j]).addScaledVector(l.ax, .15 + f).addScaledVector(l.n, .3).normalize(); nrm[v * 3] = q.x; nrm[v * 3 + 1] = q.y; nrm[v * 3 + 2] = q.z;
         for (let h = 0; h < 4; h++) { si[v * 4 + h] = S.si[i * 4 + h]; sw[v * 4 + h] = S.sw[i * 4 + h]; }
         ey.set(eye, v * 4); ln[v * 4 + 3] = -1; rt[v] = root;  // no contour rings on a lock
       } });
-    for (let r = 0; r < RS.length - 1; r++) for (let j = 0; j < C; j++) { const a = v0 + r * C + j, b = v0 + r * C + (j + 1) % C; idx.set([a, b, a + C, b, b + C, a + C], o); o += 6; }
+    for (let r = 0; r < RS.length - 1; r++) for (let j = 0; j < C; j++) { const a = v0 + r * C + j, b = v0 + r * C + (j + 1) % C; idx[o++] = a; idx[o++] = b; idx[o++] = a + C; idx[o++] = b; idx[o++] = b + C; idx[o++] = a + C; }
   }
   for (const [nm, A, w] of [['position', pos, 3], ['normal', nrm, 3], ['skinIndex', si, 4], ['skinWeight', sw, 4], ['aEye', ey, 4], ['aLine', ln, 4], ['aRoot', rt, 1], ['aHide', new Float32Array(nv), 1]]) g.setAttribute(nm, new THREE.BufferAttribute(A, w));
   g.setIndex(new THREE.BufferAttribute(idx, 1)); g.boundingSphere = new THREE.Sphere(new V3(), 20);
