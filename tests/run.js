@@ -219,7 +219,7 @@ const SUITES = {
     await goTab(page, 'pose'); await page.waitForTimeout(300);
     const vis = () => A(() => { const C = window.__cdp, m = C.mq; C.renderView({w: 64, h: 64}); return {open: !!m.mouthOpen, vis: m.mouthMeshes.filter(x => x.visible).length, u: m.lib.uMouth.value, lip: m.lib.uEye.uLip.value.w}; });
     const shut = await vis(); await A(() => document.querySelector('#exprChips .chip[data-v="rugido"]').click()); const roar = await vis();
-    ok(!shut.open && shut.vis === 0 && roar.open && roar.vis >= 4 && roar.u === 1 && roar.lip === 2, `closed, nothing of the inside shows; a roar opens it (${JSON.stringify([shut, roar])})`);
+    ok(!shut.open && shut.vis === 0 && roar.open && roar.vis >= 4 && roar.u === 1 && roar.lip < 0, `closed, nothing of the inside shows; a roar opens it (${JSON.stringify([shut, roar])})`);
     // talking moves the jaw and the inside follows
     const jawTo = async r => { await A(r => { const C = window.__cdp, m = C.mq; C.applyExpression(m, 'neutra'); m.joints.jaw.rotation.set(r, 0, 0); C.controls.dispatchEvent({type: 'change'}); }, r); await page.waitForTimeout(500); return A(() => [window.__cdp.mq.mouthOpen, window.__cdp.mq.mouthMeshes.some(x => x.visible)]); };
     const talk = [(await jawTo(.18))[0], ...(await jawTo(0))];
@@ -272,7 +272,7 @@ const SUITES = {
     // the body's own head (no sculpt): the line it is cut along, and an inside too
     await pick('lobo', true);
     const mh = await A(() => { const m = window.__cdp.mq, L = m.geo.attributes.aLip.array; let up = 0, dn = 0; for (const v of L) { if (v === 1) up++; else if (v === -1) dn++; } return {up, dn, lip: m.lib.uEye.uLip.value.w, parts: m.mouthMeshes.length, swap: !!m.headSwap}; });
-    ok(!mh.swap && mh.up > 20 && mh.dn > 20 && mh.lip === 1 && mh.parts >= 4, `the body's own head marks both lips (${mh.up}, ${mh.dn}) and has an inside (${mh.parts} meshes)`);
+    ok(!mh.swap && mh.up > 20 && mh.dn > 20 && mh.lip > 0 && mh.parts >= 4, `the body's own head marks both lips (${mh.up}, ${mh.dn}) and has an inside (${mh.parts} meshes)`);
     // a kemonomimi keeps its human mouth
     await A(() => { const C = window.__cdp; C.mq.body.kemo = 1; C.rebuildActive(true); }); await page.waitForTimeout(800);
     ok(await A(() => { const m = window.__cdp.mq; return !m.anthro.mouth && m.mouthMeshes.length === 0 && m.lib.uEye.uLip.value.w === 0; }), 'a kemonomimi (human face) keeps its human mouth');

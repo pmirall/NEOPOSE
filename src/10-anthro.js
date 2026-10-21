@@ -63,17 +63,25 @@ function mouthLine(m, P, L) {
 /* The mouth opens along a lip line, not across the face: in front of the corners of the mouth (the commissures) the upper
    and lower lips come apart, behind them the cheek stretches from the skull to the jaw. A sculpted head is cut along
    that line (11-heads.js); this head, the body's own mesh, keeps its triangles, so the ones that cross the line in front
-   of the corners are dropped by the shader while the mouth is open (aLip ±1 near the line, 2 elsewhere) and the rest
-   stretch. Both carry the same jaw weights (mouthFrame, jawWeight). */
+   of the corners are dropped by the shader while the mouth is open and the rest stretch. aLip is ±1 round the mouth in
+   front of the corners and ±2 elsewhere, the sign by the side of the line: a triangle is dropped where it interpolates
+   strictly between −1 and 1, which only one joining the two lips does (one from 1 to 2 or from −1 to −2 never passes
+   through that band, so the skin round the opening is never cut half way, as a side marked 2 against a lower lip at −1
+   was, leaving slivers and flaps in the opening). The ±1 reach well above and below the line (and the shader's cut as
+   far): MakeHuman's lips roll in to a mouth whose roof and floor are joined by long triangles across it, which, cut only
+   near the line, stood stretched in the opening as grey shards.
+   Both carry the same jaw weights (mouthFrame, jawWeight). */
 function anthroHead(m, P, J) {
   const SI = m.geo.attributes.skinIndex.array, SW = m.geo.attributes.skinWeight.array;
   if (m.anthroSkinned) { for (let i = 0; i < SI.length; i++) { SI[i] = FIG.si[i]; SW[i] = FIG.sw[i] / 255; } m.anthroSkinned = false; }
   if (!m.geo.attributes.aLip) m.geo.setAttribute('aLip', new THREE.BufferAttribute(new Float32Array(FIG.meta.nV), 1));
-  const LIP = m.geo.attributes.aLip.array; LIP.fill(2); m.geo.attributes.aLip.needsUpdate = true;
+  const LIP = m.geo.attributes.aLip.array; m.geo.attributes.aLip.needsUpdate = true;
+  if (m.geo.index.array !== FIG.index) m.geo.setIndex(new THREE.BufferAttribute(FIG.index, 1));
   m.geo.attributes.skinIndex.needsUpdate = m.geo.attributes.skinWeight.needsUpdate = true;
   const r = HEAD_RECIPES[headSp(m.body)];
-  if (!r) { m.anthro = null; return; }
+  if (!r) { m.anthro = null; LIP.fill(2); return; }
   const nV = FIG.meta.nV, H = FIG.jIdx.head, Jw = FIG.jIdx.jaw, L = headLandmarks(m, P), hh = L.hh, mY = mouthLine(m, P, L);
+  for (let i = 0; i < nV; i++) LIP[i] = P[i * 3 + 1] < mY ? -2 : 2;
   let tip = null, tipZ = -Infinity;
   for (let i = 0; i < nV; i++) {
     const d = m.dom[i]; if ((d !== H && d !== Jw) || FIG.eye[i]) continue;
@@ -85,7 +93,7 @@ function anthroHead(m, P, J) {
   if (F) for (let i = 0; i < nV; i++) {
     const d = m.dom[i]; if ((d !== H && d !== Jw) || FIG.eye[i]) continue;
     const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], o = i * 4;
-    if (z > F.zc - .1 * hh && Math.abs(x) < F.xc + .05 * hh && Math.abs(y - mY) < .12 * hh) LIP[i] = y < mY ? -1 : 1;
+    if (z > F.zc - .1 * hh && Math.abs(x) < F.xc + .05 * hh && Math.abs(y - mY) < .3 * hh) LIP[i] = y < mY ? -1 : 1;
     // the lips in front of the corners go wholly with the skull or the jaw; elsewhere the human jaw weights stay if larger
     let jw = 0; for (let k = 0; k < 4; k++) if (SI[o + k] === Jw) jw += SW[o + k];
     const w = jawWeight(F, x, y, z), open = z > F.zc && Math.abs(x) < F.xc;
@@ -98,6 +106,25 @@ function anthroHead(m, P, J) {
     if (!(sum > 0)) { SI[o] = H; SW[o] = 1; }
     m.anthroSkinned = true;
   }
+  // inside those lips MakeHuman's mouth is a shallow pocket, its walls joined to the lips and on into the cheeks behind
+  // the corners: open, they stretched in front of the new inside as grey shards and, seen from behind and inked, black
+  // flaps. Skin inside the lip edge (in plan) near the line that faces into the mouth, towards its middle or the other
+  // jaw, or lies flat on the line (where the lips meet) is that pocket (the outer skin under the edge in plan, the
+  // chin's underside, faces down and away); its
+  // triangles go to the end of this body's own index and are left out of the draw while the mouth is open (anthroTick),
+  // whole triangles, which no cut by a per-vertex mark can do
+  let pocket = 0;
+  if (F) { const pts = lipCross(m, F, P);
+    if (pts.length > 5) { const {Cb, inside} = mouthOutline(pts, F, 10), I = FIG.index, N = new Float32Array(nV * 3), inner = new Uint8Array(nV), ok = i => (m.dom[i] === H || m.dom[i] === Jw) && !FIG.eye[i];
+      for (let t = 0; t < I.length; t += 3) { const a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+        for (const v of [a, b, c]) { N[v] += uy * vz - uz * vy; N[v + 1] += uz * vx - ux * vz; N[v + 2] += ux * vy - uy * vx; } }
+      for (let i = 0; i < nV; i++) { const x = P[i * 3], y = P[i * 3 + 1] - mY, z = P[i * 3 + 2], dz = Math.max(z - Cb, 0), r = Math.hypot(x, dz) || 1e-6; if (!ok(i) || Math.abs(y) > .2 * hh || inside(x, z) < .01 * hh) continue;
+        const n = Math.hypot(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]) || 1, ny = N[i * 3 + 1] / n;
+        inner[i] = (N[i * 3] * x + N[i * 3 + 2] * dz) / (r * n) < -.1 || ny * Math.sign(y) < -.3 || Math.abs(y) < .02 * hh && Math.abs(ny) > .5 ? 1 : 0; }
+      // and any triangle across the line well inside the edge, which the opening would stretch from roof to floor
+      const across = (a, b, c) => { const ys = [a, b, c].map(i => P[i * 3 + 1] - mY); return Math.min(...ys) < 0 && Math.max(...ys) >= 0 && [a, b, c].every(ok) && inside((P[a * 3] + P[b * 3] + P[c * 3]) / 3, (P[a * 3 + 2] + P[b * 3 + 2] + P[c * 3 + 2]) / 3) > .01 * hh; };
+      const keep = [], drop = []; for (let t = 0; t < I.length; t += 3) (inner[I[t]] || inner[I[t + 1]] || inner[I[t + 2]] || across(I[t], I[t + 1], I[t + 2]) ? drop : keep).push(I[t], I[t + 1], I[t + 2]);
+      if (drop.length) { pocket = keep.length; m.geo.setIndex(new THREE.BufferAttribute(new I.constructor([...keep, ...drop]), 1)); } } }
   // ears: the vertices the species' ear target lifts away from the skull belong to the ear bones; their base is the pivot
   const earW = new Float32Array(nV), mor = {...speciesMorphs(m.body), ...(m.body.morphs || {})};
   for (const [name, wt] of Object.entries(mor)) {
@@ -125,7 +152,7 @@ function anthroHead(m, P, J) {
   for (const k of ['L', 'R']) if (acc[k][3] > 3) { earBase[k] = new V3(acc[k][0] / acc[k][3], acc[k][1] / acc[k][3], acc[k][2] / acc[k][3]);
     if (tipAcc[k][3]) earDir[k] = new V3(tipAcc[k][0] / tipAcc[k][3], tipAcc[k][1] / tipAcc[k][3], tipAcc[k][2] / tipAcc[k][3]).sub(earBase[k]).normalize(); }
   const snout = tip ? (tip[2] - L.eyeZ) / hh : 0;
-  m.anthro = {L, mouthY: mY, tip, spec: {snout, nose: r.mouth}, recipe: r, mouth: F, earBase: Object.keys(earBase).length ? earBase : null, earDir};
+  m.anthro = {L, mouthY: mY, tip, spec: {snout, nose: r.mouth}, recipe: r, mouth: F, pocket, earBase: Object.keys(earBase).length ? earBase : null, earDir};
 }
 // after the body is lifted onto the ground, landmarks move with it
 function shiftAnthro(m, dy) {
@@ -190,11 +217,10 @@ function jawWeight(F, x, y, z, lo = y < F.y) {
   const c = sstep(F.y + b, F.y - b, y);
   return (lo ? c + (1 - c) * k : c * (1 - k)) * sstep(F.zh - .06 * h, F.zh + .06 * h, z) * sstep(F.chin - .22 * h, F.chin - .05 * h, y);
 }
-// the lip edge in plan (x, z): the sculpted head's own cut, or where the body's head crosses the lip line
-function lipPoints(m, F) {
-  const an = m.anthro, out = [];
-  if (an.rim) return an.rim;
-  const P = m.geo.attributes.position.array, I = FIG.index, ok = i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i];
+// the lip edge in plan (x, z): the sculpted head's own cut, or where the body's head (positions P) crosses the lip line
+const lipPoints = (m, F) => m.anthro.rim || lipCross(m, F, m.geo.attributes.position.array);
+function lipCross(m, F, P) {
+  const out = [], I = FIG.index, ok = i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i];
   for (let t = 0; t < I.length; t += 3) for (let e = 0; e < 3; e++) {
     const a = I[t + e], b = I[t + (e + 1) % 3], ya = P[a * 3 + 1] - F.y, yb = P[b * 3 + 1] - F.y;
     if ((ya < 0) === (yb < 0) || !ok(a) || !ok(b)) continue;
@@ -203,6 +229,21 @@ function lipPoints(m, F) {
   }
   return out;
 }
+// the outline of the inside in plan: the lip edge as a symmetric fan of 2 NS + 1 radii (the outermost where the cut also
+// crosses a modelled inside) about (0, Cb), behind the corners, so the angle grows steadily from the front to each
+// corner even where the lips run straight back, then round behind the corners to the back of the mouth (zBack) and
+// over to the other side; `inside(x, z)`: how far a point lies within it (negative outside)
+function mouthOutline(pts, F, NS) {
+  const zf = Math.max(...pts.map(p => p[1])), Cb = F.zc - .3 * (zf - F.zc), zBack = F.zc - .7 * Math.max(F.zc - F.zh, .05 * F.h), R = new Array(NS + 1).fill(0); let tc = 0;
+  for (const [x, z] of pts) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cb)));
+  for (const [x, z] of pts) { const b = Math.round(Math.abs(Math.atan2(x, z - Cb)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cb)); }
+  for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
+  const outl = []; for (let k = -NS; k <= NS; k++) { const t = k / NS * tc, r = R[Math.abs(k)]; outl.push({x: r * Math.sin(t), z: Cb + r * Math.cos(t), open: Math.abs(k) < NS}); }
+  { const c = outl[outl.length - 1]; for (let k = 1; k < 8; k++) { const f = k / 8 * Math.PI; outl.push({x: c.x * Math.cos(f) * (1 - .15 * Math.sin(f)), z: c.z - (c.z - zBack) * Math.sin(f), open: false}); } }
+  const inside = (x, z) => { let c = false, e = Infinity; for (let i = 0, j = outl.length - 1; i < outl.length; j = i++) { const A = outl[j], B = outl[i], dx = B.x - A.x, dz = B.z - A.z, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    e = Math.min(e, Math.hypot(x - A.x - dx * t, z - A.z - dz * t)); if ((A.z > z) !== (B.z > z) && x < A.x + dx * (z - A.z) / dz) c = !c; } return c ? e : -e; };
+  return {zf, Cb, zBack, outl, inside};
+}
 /* The inside, built on the lip edge so it meets the lips exactly: a bag fanned from the middle of the mouth to the edge
    (upper half on the skull, lower half on the jaw, the cheek pouch behind the corners skinned like the cheek), the gums
    along it with the teeth set in them, the tongue on the floor. Painted by kind in the character's own drawing style
@@ -210,19 +251,10 @@ function lipPoints(m, F) {
 function mouthParts(m) {
   const an = m.anthro, F = an && an.mouth; if (!F) return [];
   const pts = lipPoints(m, F); if (pts.length < 6) return [];
-  const h = F.h, HEAD = 1, JAW = 5, NS = 10, zf = Math.max(...pts.map(p => p[1])), Cz = F.zc + .35 * (zf - F.zc), Cb = F.zc - .3 * (zf - F.zc);
-  // the edge as a symmetric fan of radii (the outermost where the cut also crosses a modelled inside) about (0, Cb),
-  // behind the corners, so the angle grows steadily from the front to each corner even where the lips run straight back
-  let tc = 0; for (const [x, z] of pts) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cb)));
-  const R = new Array(NS + 1).fill(0);
-  for (const [x, z] of pts) { const b = Math.round(Math.abs(Math.atan2(x, z - Cb)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cb)); }
-  for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
-  const lt = .02 * h, gh = .02 * h, zBack = F.zc - .7 * Math.max(F.zc - F.zh, .05 * h);
+  const h = F.h, HEAD = 1, JAW = 5, NS = 10, {zf, Cb, zBack, outl} = mouthOutline(pts, F, NS), Cz = F.zc + .35 * (zf - F.zc), lt = .02 * h, gh = .02 * h;
   // what the inside closes towards: the point (0, Cz) for the front of the edge, the middle line straight across for its
   // sides, so the palate vaults over the middle like a real one (a single point drew creases fanning out from it)
-  const outl = [], into = o => new V3(-o.x, 0, clamp(o.z, zBack, Cz) - o.z);
-  for (let k = -NS; k <= NS; k++) { const t = k / NS * tc, r = R[Math.abs(k)]; outl.push({x: r * Math.sin(t), z: Cb + r * Math.cos(t), open: Math.abs(k) < NS}); }
-  { const c = outl[outl.length - 1]; for (let k = 1; k < 8; k++) { const f = k / 8 * Math.PI; outl.push({x: c.x * Math.cos(f) * (1 - .15 * Math.sin(f)), z: c.z - (c.z - zBack) * Math.sin(f), open: false}); } }
+  const into = o => new V3(-o.x, 0, clamp(o.z, zBack, Cz) - o.z);
   // how high the palate and deep the floor may go: half of the snout above and the jaw below, along the middle line
   const NZ = 8, top = new Array(NZ).fill(-Infinity), bot = new Array(NZ).fill(Infinity), zb = z => clamp(Math.floor((z - zBack) / (zf - zBack + 1e-6) * NZ), 0, NZ - 1);
   { const hs = m.headSwap, Pp = hs ? hs.Q : m.geo.attributes.position.array, n = hs ? hs.d.n : FIG.meta.nV, skin = hs ? (i => hs.d.K[i] === 0) : (i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i]);
@@ -320,7 +352,7 @@ function mouthParts(m) {
     g.setAttribute('aEye', new THREE.BufferAttribute(A, 4));
     // panting: the front half rises over the lower incisors and lolls out past the lip, hanging down from it (a morph the
     // expression turns on, so the jaw still carries it)
-    const P = g.attributes.position.array, D = new Float32Array(P.length), zl = Cb + R[0], out = .06 * h * f;
+    const P = g.attributes.position.array, D = new Float32Array(P.length), zl = outl[NS].z, out = .06 * h * f;
     for (let i = 0; i < P.length; i += 3) { const t = clamp((P[i + 2] - zt0) / Lt, 0, 1), z = P[i + 2] + sstep(.25, 1, t) * (zl - zt1 + out), over = Math.max(0, z - zl);
       D[i + 1] = sstep(.3, .7, t) * (1.2 * gh + th + .03 * h * f) - 1.3 * over; D[i + 2] = z - P[i + 2] - .3 * over; }
     g.morphAttributes.position = [new THREE.BufferAttribute(D, 3)]; g.morphTargetsRelative = true; g.userData.tongue = true;
@@ -340,9 +372,13 @@ function mouthGeo(pos, idx, si, sw, A, face) {
   g.setIndex(idx); g.computeVertexNormals(); g.boundingSphere = new THREE.Sphere(new V3(), 20);
   return g;
 }
-// the lip line for the shader (rest position, the body's units): its height, the corners, the head height, and how the
-// margin is found: 1 near the line (the body's head), 2 by the distance to the cut edge that aLip carries (a sculpt)
-const lipLine = m => { const F = m.anthro && m.anthro.mouth; return F ? [F.y, F.zc, F.h, m.headSwap ? 2 : 1] : [0, 0, 0, 0]; };
+// the lip line for the shader (rest position, the body's units): its height, where the cut ends (z, half width) and the
+// head height; the width is negative on a cut sculpt (its margin is found by the distance to the cut edge that aLip
+// carries). The body's head is cut a little short of the corners, where the lips only begin to part (jawWeight's k): a
+// triangle there reaches far above and below the line, and cut out whole it left a hole by each corner that the
+// opening never filled, showing the inked back of the far cheek as a black flap
+const lipLine = m => { const F = m.anthro && m.anthro.mouth; if (!F) return [0, 0, 0, 0]; const d = m.headSwap ? 0 : .15 * Math.min(F.tip - F.zc, F.xc);
+  return [F.y, F.zc + d, F.h, m.headSwap ? -F.xc : F.xc - d]; };
 // the mouth opens: lips part, the inside shows. Checked by every render of the scene (the view, renderView, exports),
 // not by the animation loop, so a picture taken right after the jaw moves never shows lips apart over an empty mouth
 scene.onBeforeRender = () => anthroTick();
@@ -351,6 +387,7 @@ function anthroTick() {
     if (!m.joints || !m.joints.jaw) continue;
     const q = m.joints.jaw.quaternion, ang = 2 * Math.acos(Math.min(1, Math.abs(q.w))), open = !!(m.anthro && m.anthro.mouth) && ang > .05;
     for (const p of m.mouthMeshes || []) if (p.geometry.userData.tongue) p.morphTargetInfluences[0] = m.aexpr === 'jadeo' ? 1 : 0;
+    m.geo.drawRange.count = open && m.anthro.pocket ? m.anthro.pocket : Infinity;
     if (open !== !!m.mouthOpen) { m.mouthOpen = open; if (m.lib.uMouth) m.lib.uMouth.value = open ? 1 : 0; for (const p of m.mouthMeshes || []) p.visible = open && m.formMode !== 'formas' && m.formMode !== 'esqueleto' && (!p.userData.hull || m.outlineOn !== false); }
   }
 }

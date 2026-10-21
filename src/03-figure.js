@@ -50,14 +50,15 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth;
         varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil; uniform vec4 uLip; uniform float uFurK;
         ${FUR_GLSL}
-        // the lip line (10-anthro.js): its height, the corners' z and the head height in the rest pose; aLip 1 marks the
-        // skin along it in front of the corners (−1 its lower side on a head that is not cut; on a cut sculpt 1 … 1.5 is the
-        // distance to the edge), 2 the rest, 4 a sculpt's own inside of the mouth (not drawn while open)
-        float lipCut() { vec3 r = vFurP / uFurK; return step(.5, uLip.w) * step(uLip.y, r.z) * step(abs(r.y - uLip.x), .07 * uLip.z); }
-        float lipMargin() { float a = abs(vLip); if (uLip.w < .5 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
+        // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
+        // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
+        // line, ±2 the rest, on a head that is not cut; on a cut sculpt 1 … 1.5 is the distance to the edge, 2 the rest), 4
+        // a sculpt's own inside of the mouth (not drawn while open)
+        float lipCut() { vec3 r = vFurP / uFurK; return step(uLip.y, r.z) * step(abs(r.y - uLip.x), .3 * uLip.z) * step(abs(r.x), abs(uLip.w)); }
+        float lipMargin() { float a = abs(vLip); if (uLip.w == 0.0 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
           // a cut sculpt: open, the bold margin round the edge; closed, a thin seam on the line itself (the cut lies exactly
           // on it) that thins out to nothing at the corners, unbroken however the sculpt's vertices fall
-          if (uLip.w > 1.5) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.7, .9, (a - 1.0) * 2.0);
+          if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.7, .9, (a - 1.0) * 2.0);
             float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * .007 * uLip.z; return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
@@ -134,9 +135,9 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
   vertexShader: `#include <common>
     #include <skinning_pars_vertex>
     #include <morphtarget_pars_vertex>
-    uniform float uW; uniform vec2 uPx; attribute float aHide, aLip; varying float vHide, vLip; varying vec3 vRest;
+    uniform float uW; uniform vec2 uPx; attribute float aHide, aLip; varying float vHide, vLip; varying vec3 vRest, vRN;
     void main() {
-      vHide = aHide; vLip = aLip; vRest = position;
+      vHide = aHide; vLip = aLip; vRest = position; vRN = normal;
       #include <beginnormal_vertex>
       #include <skinbase_vertex>
       #include <skinnormal_vertex>
@@ -149,11 +150,15 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
       d = l > 1e-4 ? d / l : vec2(0.0);
       gl_Position.xy += d * uW * uPx * gl_Position.w;
     }`,
-  fragmentShader: `uniform vec3 uCol; uniform vec4 uLipO; uniform float uOpenO; varying float vHide, vLip; varying vec3 vRest;
+  fragmentShader: `uniform vec3 uCol; uniform vec4 uLipO; uniform float uOpenO; varying float vHide, vLip; varying vec3 vRest, vRN;
     void main() { if (vHide > .49) discard;
-      if (uOpenO > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && vRest.z > uLipO.y && abs(vRest.y - uLipO.x) < .07 * uLipO.z) discard;
+      if (uOpenO > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && vRest.z > uLipO.y && abs(vRest.y - uLipO.x) < .3 * uLipO.z && abs(vRest.x) < abs(uLipO.w)) discard;
+      // the body's head open: the inside of the cheeks by the corners (skin there facing in towards the mouth) is seen
+      // from within, and its ink stood in the opening as black blocks
+      if (uOpenO > .5 && uLipO.w > 0.0 && abs(vLip) < 2.5 && abs(vRest.y - uLipO.x) < .12 * uLipO.z && abs(vRest.x) < uLipO.w + .05 * uLipO.z
+        && vRest.z > uLipO.y - .3 * uLipO.z && dot(vRN.xz, vec2(vRest.x, vRest.z - uLipO.y + .2 * uLipO.z)) < 0.0) discard;
       // a cut sculpt: the inside of the lips is inked only as far as the lip margin
-      if (uOpenO > .5 && (vLip > 1.45 && vLip < 1.501 || vLip > 2.5)) discard;
+      if (uOpenO > .5 && (uLipO.w < 0.0 && vLip > 1.45 && vLip < 1.501 || vLip > 2.5)) discard;
       gl_FragColor = vec4(uCol, 1.0); }`
 });
 // one material set per character, so each can highlight its own selected joint and fade on its own
