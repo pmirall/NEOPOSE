@@ -420,7 +420,7 @@ class Mannequin {
     }
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
-    remodelLegs(this.body, P, J, H); remodelHands(this.body, P, J, H);
+    remodelLegs(this.body, P, J, H); this.handGirth = remodelHands(this.body, P, J, H);
     anthroHead(this, P); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
@@ -720,9 +720,11 @@ class Mannequin {
     const q = new Q(), q2 = new Q(), paw = handShape(this.body);  // paws close their own way (10-anthro)
     for (const s of ['L', 'R']) {
       const st = this.hands[s], F = this.fingers[s], A = this.handAxes[s];
+      // a hoof-hand's fingers are one digit (or a cloven pair) in one hoof: they bend together and never spread
+      const one = paw && paw.cv ? (st.c[1] + st.c[2] + st.c[3] + st.c[4]) / 4 : null;
       for (let f = 0; f < 5; f++) {
-        const c = st.c[f], ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
-        q2.setFromAxisAngle(A.n, ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
+        const c = f && one !== null ? one : st.c[f], ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
+        q2.setFromAxisAngle(A.n, f && one !== null ? 0 : ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
         if (f === 0 && st.t) q2.premultiply(q.setFromAxisAngle(A.along, A.opp * st.t * 60 * DEG));
         F[f][0].quaternion.copy(q2).multiply(q.setFromAxisAngle(ax.curl[0], c * ang[0] * DEG));
         F[f][1].quaternion.setFromAxisAngle(ax.curl[1], c * ang[1] * DEG);
