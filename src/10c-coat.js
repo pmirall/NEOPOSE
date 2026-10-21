@@ -97,9 +97,10 @@ const FUR_GLSL = `
   vec3 furSlot(float k, vec3 c) { return k > 1.5 ? uFurC2 : k > .5 ? uFurC1 : c; }
   // the skin's nose: the sphere round the snout's tip whose vertices the coat marks as leather (noseAt), cut per
   // pixel, a rounded shape where the coarse mesh's own patch of vertices was a star (or, on a sculpted head, a blot);
-  // only on that patch and the triangles round it, where the kinds meet (noseF: the sphere's edge one pixel soft)
+  // only on that patch and the triangles round it, where the kinds meet, and above the lips (vLip: a snout whose tip
+  // is at the mouth, a dragon's, had its nose run down onto the jaw) (noseF: the sphere's edge one pixel soft)
   float noseF;
-  float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, length(vFurP - uNose.xyz)) : 0.0; }
+  float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 && vLip >= 0.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, length(vFurP - uNose.xyz)) : 0.0; }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
     float kind = floor(w) - 1.0, fr = fract(w) - .5, nose = 0.0;
