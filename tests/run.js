@@ -236,10 +236,9 @@ const SUITES = {
     await goTab(page, 'cuerpo'); const wolfJaw = await jawOf(); await pick('caballo'); const horseJaw = await jawOf();
     ok(horseJaw < wolfJaw * .85, `a horse opens its long jaw less (${(horseJaw * 57.3).toFixed(0)}° against ${(wolfJaw * 57.3).toFixed(0)}°)`);
     w = await mouth(); ok(w.up.n > 0 && w.up.deep < .06, `herbivore teeth: flat incisors and molars, no fangs (${w.up.deep.toFixed(3)})`);
-    const upI = () => A(() => window.__cdp.mq.mouthMeshes.filter(x => !x.userData.hull).reduce((a, p) => { const P = p.geometry.attributes.position.array, E = p.geometry.attributes.aEye.array, SI = p.geometry.attributes.skinIndex.array, F = window.__cdp.mq.anthro.mouth;
-      if (Math.floor(-E[3]) - 1 === 5) for (let i = 0; i < P.length / 3; i++) if (SI[i * 4] === 1) a = Math.max(a, (P[i * 3 + 2] - F.zc) / (F.tip - F.zc)); return a; }, 0));
+    const upI = () => A(() => window.__cdp.mq.mouthMeshes.find(x => x.geometry.userData.teeth).geometry.userData.teeth.filter(x => x.up && (x.s === 'i' || x.s === 'f')).length);
     { const horse = await upI(); await pick('cabra'); const goat = await upI(); await pick('caballo');
-      ok(horse > .8 && goat < .75, `a horse has upper incisors at the front (${horse.toFixed(2)} of the way to the nose), a goat only a dental pad (${goat.toFixed(2)})`); }
+      ok(horse === 3 && goat === 0, `a horse has upper incisors (${horse} a side), a goat only a dental pad (${goat})`); }
     // other dentitions: a cat's fangs are its longest teeth, a rabbit's longest are its front incisors, a dragon's are many cones
     await pick('gato'); w = await mouth();
     // a kemono cat's short jaw sits right over its neck: roaring, the front of its chin stays in front of the throat
@@ -255,8 +254,17 @@ const SUITES = {
       let hi = -9, lo = 9; for (let i = 0; i < P.length / 3; i++) { const y = (P[i * 3 + 1] - F.y) / F.h; if (SI[i * 4] === 1) hi = Math.max(hi, y); else lo = Math.min(lo, y); }
       const up = g.userData.teeth.filter(x => x.up); let gap = 0; for (let k = 1; k < up.length; k++) gap = Math.max(gap, up[k].u - up[k].w - up[k - 1].u - up[k - 1].w);
       return {gap, n: up.length, end: up[up.length - 1].u + up[up.length - 1].w, hi, lo}; });
+    // a horse's mouth is narrow however long its muzzle (not cheek to cheek), its incisors a closed arc of chisels
+    { await pick('caballo'); const hz = await A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, t = m.mouthMeshes.find(x => x.geometry.userData.teeth).geometry.userData.teeth.filter(x => x.up && x.s === 'f');
+        let gap = 0; for (let k = 1; k < t.length; k++) gap = Math.max(gap, t[k].u - t[k].w - t[k - 1].u - t[k - 1].w); return {xc: F.xc / F.h, n: t.length, gap}; });
+      ok(hz.xc < .4 && hz.n === 3 && hz.gap < .005, `a horse's mouth is narrow (${hz.xc.toFixed(2)} head heights each side) with ${hz.n} chisel incisors a side, closed up (gap ${hz.gap.toFixed(3)})`); }
+    // the rows end where the lips have parted at least half way: nearer the corner the cheek stretches over them as the
+    // jaw opens, and a last tooth there stood on the cheek above the lip margin
+    for (const sp of ['zorro', 'dragon', 'lobo']) { await pick(sp); const c = await A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, g = m.mouthMeshes.find(x => x.geometry.userData.teeth).geometry, P = g.attributes.position.array, S = .35 * Math.min(F.tip - F.zc, F.xc);
+        let n = 0; for (let i = 0; i < P.length / 3; i++) if (P[i * 3 + 2] - F.zc < .25 * S) n++; return n; });
+      ok(c === 0, `${sp}: no tooth in the corners, where the lips have hardly parted (${c} vertices)`); }
     { const wr = await row(); await pick('caballo', true); const hr = await row(); await pick('lobo');
-      ok(wr.n === 8 && wr.gap < .03 && wr.end > .85 && wr.end < 1 && hr.gap > .06 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
+      ok(wr.n === 8 && wr.gap < .03 && wr.end > .75 && wr.end < 1 && hr.gap > .035 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
       ok(wr.hi < .032 && wr.lo > -.032 && hr.hi < .032 && hr.lo > -.032, `roots end in the gums (wolf ${wr.hi.toFixed(3)}/${wr.lo.toFixed(3)}, horse ${hr.hi.toFixed(3)}/${hr.lo.toFixed(3)} head heights from the lip line)`); }
     // panting lolls the tongue out past the lips; any other expression keeps it in
     { const t = async e => A(e => { const C = window.__cdp, m = C.mq; C.applyExpression(m, e); C.renderView({w: 64, h: 64}); const p = m.mouthMeshes.find(x => x.geometry.userData.tongue), g = p.geometry, P = g.attributes.position.array, D = g.morphAttributes.position[0].array, k = p.morphTargetInfluences[0];
@@ -273,6 +281,22 @@ const SUITES = {
     await pick('lobo', true);
     const mh = await A(() => { const m = window.__cdp.mq, L = m.geo.attributes.aLip.array; let up = 0, dn = 0; for (const v of L) { if (v === 1) up++; else if (v === -1) dn++; } return {up, dn, lip: m.lib.uEye.uLip.value.w, parts: m.mouthMeshes.length, swap: !!m.headSwap}; });
     ok(!mh.swap && mh.up > 20 && mh.dn > 20 && mh.lip > 0 && mh.parts >= 4, `the body's own head marks both lips (${mh.up}, ${mh.dn}) and has an inside (${mh.parts} meshes)`);
+    // no triangle of it joins a lip (±1) to the other side's skin (∓2): only one joining the two lips may fall in the cut band
+    // (one that did was cut half way and left slivers and flaps in the opening); MakeHuman's own mouth pocket is left out of
+    // the draw while open (its triangles at the end of the index), and only from round the mouth
+    for (const k of [2, 3, 5]) { await A(k => { const C = window.__cdp; C.mq.body.kemo = k; C.rebuildActive(true); }, k); await page.waitForTimeout(500);
+      const b = await A(() => { const C = window.__cdp, m = C.mq, L = m.geo.attributes.aLip.array, I = m.geo.index.array, P = m.geo.attributes.position.array, F = m.anthro.mouth, n = m.anthro.pocket; let mixed = 0, far = 0;
+        for (let t = 0; t < I.length; t += 3) { const v = [L[I[t]], L[I[t + 1]], L[I[t + 2]]], cut = [0, 1, 2].every(e => Math.abs(P[I[t + e] * 3]) < F.xc && P[I[t + e] * 3 + 2] > F.zc);
+          if (cut && (v.some(x => x === 1) && v.some(x => x === -2) || v.some(x => x === -1) && v.some(x => x === 2))) mixed++;
+          if (t >= n && [0, 1, 2].some(e => { const i = I[t + e]; return Math.abs(P[i * 3 + 1] - F.y) > .25 * F.h || Math.abs(P[i * 3]) > F.xc + .05 * F.h || P[i * 3 + 2] < F.zc - .6 * F.h; })) far++; }
+        C.applyExpression(m, 'rugido'); C.renderView({w: 32, h: 32}); const open = m.geo.drawRange.count; C.applyExpression(m, 'neutra'); C.renderView({w: 32, h: 32});
+        return {mixed, far, drop: (I.length - n) / 3, open, shut: m.geo.drawRange.count, n}; });
+      ok(b.mixed === 0 && b.far === 0 && b.drop > 20 && b.open === b.n && b.shut === Infinity, `kemo ${k}: in the opening no lip triangle crosses into the cut band from the other side (${b.mixed}); ${b.drop} triangles of the human mouth pocket, all round the mouth (${b.far} away), left out while open`); }
+    await A(() => { const C = window.__cdp; delete C.mq.body.kemo; C.rebuildActive(true); }); await page.waitForTimeout(400);
+    // panting with the jaw closed by hand: the tongue goes back in
+    { const t = await A(() => { const C = window.__cdp, m = C.mq; C.applyExpression(m, 'jadeo'); C.renderView({w: 32, h: 32}); const p = m.mouthMeshes.find(x => x.geometry.userData.tongue), open = p.morphTargetInfluences[0];
+        m.joints.jaw.rotation.set(.06, 0, 0); C.renderView({w: 32, h: 32}); const shut = p.morphTargetInfluences[0]; C.applyExpression(m, 'neutra'); return {open, shut}; });
+      ok(t.open === 1 && t.shut === 0, `the panting tongue lolls with the jaw open (${t.open}) and goes back in as it closes (${t.shut})`); }
     // a kemonomimi keeps its human mouth
     await A(() => { const C = window.__cdp; C.mq.body.kemo = 1; C.rebuildActive(true); }); await page.waitForTimeout(800);
     ok(await A(() => { const m = window.__cdp.mq; return !m.anthro.mouth && m.mouthMeshes.length === 0 && m.lib.uEye.uLip.value.w === 0; }), 'a kemonomimi (human face) keeps its human mouth');

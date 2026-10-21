@@ -256,7 +256,7 @@ function attachHeadSwap(m) {
   mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.userData.acc = true; mesh.userData.headSwap = true;
   m.group.add(mesh); mesh.bind(m.skeleton, I); m.acc.push(mesh); m.meshes.push(mesh);
   if (m.lib.outline) { const o = new THREE.SkinnedMesh(geo, m.lib.outline); o.frustumCulled = false; o.userData.hull = true; m.group.add(o); o.bind(m.skeleton, I); m.acc.push(o); m.hulls.push(o);
-    o.onBeforeRender = () => { OUTLINE_MAT.uniforms.uOpenO.value = m.mouthOpen ? 1 : 0; OUTLINE_MAT.uniformsNeedUpdate = true; }; }
+    o.onBeforeRender = () => { const U = OUTLINE_MAT.uniforms; U.uOpenO.value = m.mouthOpen ? 1 : 0; U.uLipO.value.copy(m.lib.uEye.uLip.value); OUTLINE_MAT.uniformsNeedUpdate = true; }; }
   m.headMesh = mesh;
 }
 // picking on the sculpted head: the bone with most weight

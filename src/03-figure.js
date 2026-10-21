@@ -56,9 +56,11 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
         // a sculpt's own inside of the mouth (not drawn while open)
         float lipCut() { vec3 r = vFurP / uFurK; return step(uLip.y, r.z) * step(abs(r.y - uLip.x), .3 * uLip.z) * step(abs(r.x), abs(uLip.w)); }
         float lipMargin() { float a = abs(vLip); if (uLip.w == 0.0 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
-          // a cut sculpt: open, the bold margin round the edge; closed, a thin seam on the line itself (the cut lies exactly
-          // on it) that thins out to nothing at the corners, unbroken however the sculpt's vertices fall
-          if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.7, .9, (a - 1.0) * 2.0);
+          // a cut sculpt: open, the bold margin round the edge, a band of the lip line's height near the edge (the cut lies
+          // exactly on the line; the distance to the edge per vertex drew a saw-toothed band on a coarse sculpt), as wide on
+          // a small mouth as on a big one; closed, a thin seam on the line itself that thins out to nothing at the corners,
+          // unbroken however the sculpt's vertices fall
+          if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.016 * uLip.z, .022 * uLip.z, abs(r.y - uLip.x));
             float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * .007 * uLip.z; return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
@@ -153,9 +155,9 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
   fragmentShader: `uniform vec3 uCol; uniform vec4 uLipO; uniform float uOpenO; varying float vHide, vLip; varying vec3 vRest, vRN;
     void main() { if (vHide > .49) discard;
       if (uOpenO > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && vRest.z > uLipO.y && abs(vRest.y - uLipO.x) < .3 * uLipO.z && abs(vRest.x) < abs(uLipO.w)) discard;
-      // the body's head open: the inside of the cheeks by the corners (skin there facing in towards the mouth) is seen
-      // from within, and its ink stood in the opening as black blocks
-      if (uOpenO > .5 && uLipO.w > 0.0 && abs(vLip) < 2.5 && abs(vRest.y - uLipO.x) < .12 * uLipO.z && abs(vRest.x) < uLipO.w + .05 * uLipO.z
+      // open, the inside of the lips and of the cheeks by the corners (skin there facing in towards the mouth) is seen from
+      // within, and its ink stood in the opening as black blocks (round a rabbit's lower incisors, at a cat's corners)
+      if (uOpenO > .5 && vLip != 0.0 && abs(vLip) < 2.5 && abs(vRest.y - uLipO.x) < .12 * uLipO.z && abs(vRest.x) < abs(uLipO.w) + .05 * uLipO.z
         && vRest.z > uLipO.y - .3 * uLipO.z && dot(vRN.xz, vec2(vRest.x, vRest.z - uLipO.y + .2 * uLipO.z)) < 0.0) discard;
       // a cut sculpt: the inside of the lips is inked only as far as the lip margin
       if (uOpenO > .5 && (uLipO.w < 0.0 && vLip > 1.45 && vLip < 1.501 || vLip > 2.5)) discard;
