@@ -401,7 +401,7 @@ const PAWS = {
   fel: {w: .37, n: 4, x: .37, reach: [.14, .21], tw: .145, tt: .155, claw: [.07, .035, -.9], bean: [.095, .1], pad: [.25, .18], mitt: .3},
   urs: {w: .4, n: 5, x: .4, reach: [.2, .3], tw: .12, tt: .13, claw: [.2, .06, -.4], bean: [.1, .075], pad: [.34, .5], mitt: .1},
   rep: {w: .36, n: 3, x: .3, reach: [.5, .64], tw: .115, tt: .16, claw: [.26, .065, -.9], bean: [.07, .1], pad: [.2, .16], mitt: .24, dew: 1, knuckles: 1},
-  lep: {w: .32, n: 4, x: .25, reach: [.36, .44], tw: .115, tt: .15, claw: 0, bean: 0, pad: 0, mitt: .2, slim: .15},
+  lep: {w: .32, n: 4, x: .24, reach: [.36, .44], tw: .13, tt: .14, claw: 0, bean: 0, pad: 0, mitt: .2, slim: .15},
   hoof: {w: .25}
 };
 const pawOf = L => PAWS[L.hoof ? 'hoof' : L.paw] || PAWS.can;
