@@ -202,7 +202,7 @@ const SUITES = {
     // (the fox's sculpted head loads on its own: wait for its cheeks)
     await pick('zorro'); await page.waitForFunction(() => { const g = window.__cdp.mq.fluffGeo; return g && g.attributes.aRoot.array.includes(-1); }, null, {timeout: 60000}); const f = await locks();
     ok(f && f.L.length >= 60 && f.n < 9000, `a fox grows tufts: ${f && f.L.length} locks, ${f && f.n} vertices (modest)`);
-    ok(f.L.every(l => l.deep > .45), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
+    ok(f.L.every(l => l.deep > .65), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
     const lens = f.L.map(l => l.len / f.size);
     ok(Math.max(...lens) < .12 && Math.min(...lens) > .01, `locks are tufts, not spikes: ${(Math.min(...lens) * 100).toFixed(1)}–${(Math.max(...lens) * 100).toFixed(1)} cm per metre of body`);
     const cheek = f.L.filter(l => l.part === 'cheek');
@@ -214,6 +214,9 @@ const SUITES = {
     const el = f.L.filter(l => near(l, f.elbow, .08) && l.root[2] < f.elbow[2]), wr = f.L.filter(l => near(l, f.wrist, .09)), hk = f.L.filter(l => near(l, f.ankle, .09) && l.root[2] < f.ankle[2]);
     ok(el.length >= 3 && wr.length >= 6 && hk.length >= 3, `tufts behind the elbow (${el.length}), round the wrist (${wr.length}) and behind the hock (${hk.length})`);
     ok(wr.filter(l => l.tip[1] < l.base[1]).length >= wr.length * .8, 'the wrist tufts point down the arm, to the paw');
+    // the hair lies along the limb and lifts off only at the tips: a lock falls further than it stands out
+    const lie = ls => ls.reduce((a, l) => a + (l.base[1] - l.tip[1]) / Math.hypot(l.tip[0] - l.base[0], l.tip[2] - l.base[2]), 0) / ls.length;
+    ok(lie(el) > 1 && lie(wr) > 1, `elbow and wrist tufts lie down the forearm, not out from it (fall/stand ${lie(el).toFixed(1)}, ${lie(wr).toFixed(1)})`);
     // attached: in a pose, every arm lock keeps its place on the skin it grows from
     const drift = await A(() => {
       const C = window.__cdp, m = C.mq, fm = m.meshes.find(x => x.userData.fluff), bm = m.body3, R = fm.geometry.attributes.aRoot.array, F = C.FIG, v = new THREE.Vector3();

@@ -256,12 +256,13 @@ function restTail(m) { for (const n of ['tail1', 'tail2', 'tail3']) { const r = 
    (wolves, foxes, tigers, lynxes, rabbits), the ruff round the sides of the neck and the bib down the throat and chest
    (canids above all), behind the elbow (the olecranon), on the back and outer side of the wrist (the carpal tuft),
    behind the hock (the heel point) and a fringe over the top of the paw (the feathering behind a horse's fetlock).
-   A tuft is a clump of 3–7 locks fanned from one root, the middle one longest; a lock is a tapered cone, flattened a
-   little against the skin but thick enough to read edge-on and take the outline, that leaves the skin at a low angle
-   along the hair (down the limbs, down and out on the chest, back from the cheeks) and droops back towards it, the
-   outer ones curling away. Every clump is placed by anatomy (a ray from the bone out to the skin), sized by the body,
-   coloured by the coat where it grows and skinned like that skin, so it follows the pose and hides under the clothes
-   that cover it. body.fluff: 0 sleek … 1 very fluffy. */
+   A tuft is a clump of 3–7 locks fanned from one root, the middle one longest; a lock is shaped like a drawn one, a
+   flame (fullest a fifth of the way out, then tapering to a point), 3/4 as deep as it is wide so it reads edge-on and
+   takes the outline. It grows from under the skin and lies along the hair (down the limbs, down and out on the chest,
+   back from the cheeks), lifting off it only towards the tip, the outer ones curling away: the coat's outline turns
+   jagged where a tuft grows instead of flakes standing out of it, and layered rows shingle into a ruff or a bib.
+   Every clump is placed by anatomy (a ray from the bone out to the skin), sized by the body, coloured by the coat where
+   it grows and skinned like that skin, so it follows the pose and hides under the clothes that cover it. body.fluff: 0 sleek … 1 very fluffy. */
 const FLUFF_DEF = {can: .55, fel: .4, otro: .5, pre: .3, rep: 0};
 // how much of each tuft a species grows (its own entry, else its family's): cheeks, neck ruff, chest bib, elbows, wrists,
 // hocks, paw tops (the fetlock on hooves). Cats keep a sleek neck, a lion's mane already is its ruff, a horse only feathers.
@@ -285,17 +286,18 @@ function fluffGeo(m) {
     for (const i of S.idx) { const x = Q[i * 3] - o.x, y = Q[i * 3 + 1] - o.y, z = Q[i * 3 + 2] - o.z, t = x * d.x + y * d.y + z * d.z;
       if (t <= 0 || Nq[i * 3] * d.x + Nq[i * 3 + 1] * d.y + Nq[i * 3 + 2] * d.z < .35) continue; const e = x * x + y * y + z * z - t * t; if (e < bs) { bs = e; best = i; } }
     return best; };
-  // a clump at the skin hit by the ray (o, d): f the hair's direction there, len its longest lock, lift how steeply it leaves the skin (radians)
+  // a clump at the skin hit by the ray (o, d): f the hair's direction there, len its longest lock, lift how far its tip lifts off the skin (radians)
   const tuft = (S, o, d, f, len, lift, w) => {
     const i = hit(S, o, d.normalize()); if (i < 0) return;
-    const p = new V3().fromArray(S.Q, i * 3), n = new V3().fromArray(S.Nq, i * 3).normalize(), t = f.clone().addScaledVector(n, -f.dot(n)).normalize(), s = new V3().crossVectors(n, t);
-    const cnt = clamp(Math.round(2.6 + 4 * k * w), 3, 7), L0 = len * sz * (.55 + .9 * k) * (.75 + .25 * Math.min(w, 1.3)), W = L0 * .23, eye = S.eye(i);
+    // the clump stands on the ray more than on the vertex normal, which tips up or down over a bony knob (olecranon, hock)
+    const p = new V3().fromArray(S.Q, i * 3), n = new V3().fromArray(S.Nq, i * 3).normalize().lerp(d, .6).normalize(), t = f.clone().addScaledVector(n, -f.dot(n)).normalize(), s = new V3().crossVectors(n, t);
+    const cnt = clamp(Math.round(2.6 + 4 * k * w), 3, 7), L0 = len * sz * (.55 + .9 * k) * (.75 + .25 * Math.min(w, 1.3)), W = L0 * .26, eye = S.eye(i);
     const c = {S, i, eye: eye[3] < -1.5 ? eye : [0, 0, 0, -2.5], root: S.root(i)};
     for (let j = 0; j < cnt; j++) {
-      const u = j / (cnt - 1) * 2 - 1, a = u * .32 + (rng() - .5) * .14, L = L0 * (1 - .35 * u * u) * (.85 + .3 * rng()), el = lift * (.8 + .4 * rng());
-      const ax = t.clone().multiplyScalar(Math.cos(a)).addScaledVector(s, Math.sin(a)).multiplyScalar(Math.cos(el)).addScaledVector(n, Math.sin(el)).normalize(), sd = new V3().crossVectors(n, ax).normalize();
-      locks.push({c, n, ax, sd, up: new V3().crossVectors(ax, sd), L, W, droop: -L * Math.sin(el) * .35, curl: u * L * .1,
-        o: p.clone().addScaledVector(s, u * W * 1.2).addScaledVector(t, -Math.abs(u) * W * .8).addScaledVector(n, -W * .45)});
+      const u = j / (cnt - 1) * 2 - 1, a = u * .3 + (rng() - .5) * .08, L = L0 * (1 - .35 * u * u) * (.88 + .24 * rng()), el = lift * (.85 + .3 * rng());
+      const ax = t.clone().multiplyScalar(Math.cos(a)).addScaledVector(s, Math.sin(a)).multiplyScalar(Math.cos(el * .3)).addScaledVector(n, Math.sin(el * .3)).normalize(), sd = new V3().crossVectors(n, ax).normalize();
+      locks.push({c, n, ax, sd, up: new V3().crossVectors(ax, sd), L, W, rise: L * Math.sin(el) * .5, curl: u * L * .12,
+        o: p.clone().addScaledVector(s, u * W * 1.1).addScaledVector(t, -Math.abs(u) * W * .8).addScaledVector(n, -W * .6)});
     }
   };
   const on = x => x * k > .06, head = jp('head'), chest = jp('chest'), hs = m.headSwap, an = m.anthro;
@@ -320,17 +322,17 @@ function fluffGeo(m) {
       tuft(S5, axisAt(y), new V3(sd * Math.sin(r), 0, Math.cos(r)), new V3(sd * Math.sin(r) * .3, -1, -.5), .075, .6, at[1]); }
   // chest bib: down the throat and the breastbone in a V, the locks falling down and a little outwards
   if (on(at[2])) {
-    const y1 = yb - .35 * (yb - chest.y), row = f => top + (y1 - top) * f, rows = [[row(0), [-.02, .02], .07], [row(.33), [-.04, 0, .04], .075], [row(.66), [-.026, .026], .065], [row(1), [0], .055]];
+    const y1 = yb - .35 * (yb - chest.y), row = f => top + (y1 - top) * f, rows = [[row(0), [-.03, .03], .07], [row(.3), [-.06, -.02, .02, .06], .075], [row(.62), [-.035, .035], .07], [row(1), [0], .06]];
     for (const [y, xs, l] of rows.slice(sp.mane ? 2 : 0, k * at[2] > .35 ? 4 : 3)) for (const x of xs)  // a mane already covers the throat
-      tuft(S1, axisAt(y), new V3(x / .04 * .4, 0, 1), new V3(Math.sign(x) * .3, -1, .1), l, .7, at[2]);
+      tuft(S1, axisAt(y), new V3(x / .04 * .4, 0, 1), new V3(x / .04 * .25, -1, .1), l, .85, at[2]);
   }
   const S2 = body(2), S3 = body(3);
   for (const sd of ['L', 'R']) {
     const x = sd === 'L' ? 1 : -1, el = jp('elbow' + sd), wr = jp('wrist' + sd), fa = wr.clone().sub(el).normalize();
     const back = v => v.addScaledVector(fa, -v.dot(fa)).normalize();
     // behind the elbow, pointing down the forearm; on the back and the outer side of the wrist, pointing to the hand
-    if (on(at[3])) { tuft(S2, el, back(new V3(0, 0, -1)), fa.clone(), .06, .95, at[3]); if (k * at[3] > .45) tuft(S2, el.clone().addScaledVector(fa, .05 * sz), back(new V3(x, 0, -1)), fa.clone(), .04, .6, at[3]); }
-    if (on(at[4])) for (const v of [new V3(x, 0, -.5), new V3(0, 0, -1), new V3(x, 0, .6)].slice(0, k * at[4] > .4 ? 3 : 2)) tuft(S2, wr.clone().addScaledVector(fa, -.04 * sz), back(v), fa.clone(), .042, .3, at[4]);
+    if (on(at[3])) { tuft(S2, el, back(new V3(0, 0, -1)), fa.clone(), .06, .55, at[3]); if (k * at[3] > .45) tuft(S2, el.clone().addScaledVector(fa, .05 * sz), back(new V3(x, 0, -1)), fa.clone(), .04, .6, at[3]); }
+    if (on(at[4])) for (const v of [new V3(x, 0, -.5), new V3(0, 0, -1), new V3(x, 0, .6)].slice(0, k * at[4] > .7 ? 3 : 2)) tuft(S2, wr.clone().addScaledVector(fa, -.04 * sz), back(v), fa.clone(), .042, .3, at[4]);
     // behind the hock (the heel) and over the top of the paw, along the metatarsus; on a hoof, the feathering behind the fetlock
     if (Ls) {
       const A = jp('ankle' + sd), toe = jp('toe' + sd), mt = Ls.type === 'planti' ? new V3(0, -1, 0) : toe.clone().sub(A).normalize(), fr = new V3(1, 0, 0).cross(mt).normalize();
@@ -343,15 +345,15 @@ function fluffGeo(m) {
   }
   if (!locks.length) return null;
   // all the locks in one mesh, written straight into its arrays (rebuilt while sliders drag): rings along the lock, each
-  // an ellipse across it (wide along the skin, 0.6 as deep), tapering to a point; centre bent by the droop and the curl
-  const RS = [0, .25, .5, .75, 1], RW = [1, .88, .66, .38, .02], C = 6, nv = locks.length * RS.length * C, g = new THREE.BufferGeometry();
+  // an ellipse across it (wide along the skin, 0.75 as deep), swelling then tapering to a point; centre bent by the rise and the curl
+  const RS = [0, .22, .5, .78, 1], RW = [.85, 1, .8, .42, .02], C = 6, nv = locks.length * RS.length * C, g = new THREE.BufferGeometry();
   const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), si = new Uint16Array(nv * 4), sw = new Float32Array(nv * 4), ey = new Float32Array(nv * 4), ln = new Float32Array(nv * 4), rt = new Float32Array(nv), idx = new Uint32Array(locks.length * (RS.length - 1) * C * 6), q = new V3();
   let v = 0, o = 0;
   for (const l of locks) {
     const {S, i, eye, root} = l.c, v0 = v;
-    RS.forEach((f, r) => { const a = l.W * RW[r], b = a * .6;
+    RS.forEach((f, r) => { const a = l.W * RW[r], b = a * .75;
       for (let j = 0; j < C; j++, v++) {
-        const ph = j / C * 2 * Math.PI; q.copy(l.o).addScaledVector(l.ax, l.L * f).addScaledVector(l.sd, l.curl * f * f + a * Math.sin(ph)).addScaledVector(l.up, l.droop * f * f - b * Math.cos(ph));
+        const ph = j / C * 2 * Math.PI; q.copy(l.o).addScaledVector(l.ax, l.L * f).addScaledVector(l.sd, l.curl * f * f + a * Math.sin(ph)).addScaledVector(l.up, l.rise * f * f - b * Math.cos(ph));
         pos[v * 3] = q.x; pos[v * 3 + 1] = q.y; pos[v * 3 + 2] = q.z;
         // the ellipse's own normal, tipped forward by the taper and leaning to the skin's (a lock shades like the coat it lies on)
         q.copy(l.sd).multiplyScalar(.6 * Math.sin(ph)).addScaledVector(l.up, -Math.cos(ph)).addScaledVector(l.ax, .15 + f).addScaledVector(l.n, .6).normalize(); nrm[v * 3] = q.x; nrm[v * 3 + 1] = q.y; nrm[v * 3 + 2] = q.z;
