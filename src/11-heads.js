@@ -155,7 +155,7 @@ function attachHeadSwap(m) {
   geo.setAttribute('aLip', new THREE.BufferAttribute(Lp, 1)); geo.setAttribute('aHide', new THREE.BufferAttribute(Hd, 1));
   furAttrsHead(m, geo, hs);
   geo.computeVertexNormals(); geo.boundingSphere = new THREE.Sphere(new V3(), 20);
-  const I = new THREE.Matrix4(), mesh = new THREE.SkinnedMesh(geo, twoSided(m.lib[m.style]));
+  const I = new THREE.Matrix4(), mesh = new THREE.SkinnedMesh(geo, twoSided(m.lib[m.style], TWIN_SKIN));
   mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.userData.acc = true; mesh.userData.headSwap = true;
   m.group.add(mesh); mesh.bind(m.skeleton, I); m.acc.push(mesh); m.meshes.push(mesh);
   if (m.lib.outline) { const o = new THREE.SkinnedMesh(geo, m.lib.outline); o.frustumCulled = false; o.userData.hull = true; m.group.add(o); o.bind(m.skeleton, I); m.acc.push(o); m.hulls.push(o); }

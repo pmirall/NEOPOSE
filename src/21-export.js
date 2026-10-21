@@ -137,7 +137,7 @@ function renderMap(kind) {
     const swaps = [];
     scene.traverseVisible(o => {
       if (!o.isMesh) return;
-      if (o.userData.isHull || o.material === OUTLINE_MAT || (o.material && o.material.isShadowMaterial)) { swaps.push([o, null, true]); o.visible = false; return; }
+      if (o.userData.isHull || (o.material && o.material.userData.hull) || (o.material && o.material.isShadowMaterial)) { swaps.push([o, null, true]); o.visible = false; return; }
       if (o === panoSphere || o === sky) return;
       swaps.push([o, o.material, false]); o.material = mapMaterial(kind, o);
     });

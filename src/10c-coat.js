@@ -73,7 +73,7 @@ function coatOf(b) {
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
-const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
+const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
   uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25}});
 const FUR_OFF = makeFurU();
 function applyCoat(m) {
@@ -83,7 +83,7 @@ function applyCoat(m) {
   U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
 }
 const FUR_GLSL = `
-  uniform float uFurOn, uSock, uTailTip; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}];
+  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose;
   varying vec3 vFurP;
   float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
   float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -95,9 +95,18 @@ const FUR_GLSL = `
       if (e < d) { d = e; id = fHash(i + g + 7.3); } }
     return vec2(sqrt(d), id); }
   vec3 furSlot(float k, vec3 c) { return k > 1.5 ? uFurC2 : k > .5 ? uFurC1 : c; }
+  // the skin's nose: the sphere round the snout's tip whose vertices the coat marks as leather (noseAt), cut per
+  // pixel, a rounded shape where the coarse mesh's own patch of vertices was a star (or, on a sculpted head, a blot);
+  // only on that patch and the triangles round it, where the kinds meet (noseF: the sphere's edge one pixel soft)
+  float noseF;
+  float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, length(vFurP - uNose.xyz)) : 0.0; }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
-    float kind = floor(w) - 1.0, fr = fract(w) - .5;
+    float kind = floor(w) - 1.0, fr = fract(w) - .5, nose = 0.0;
+    #ifdef SKIN
+    // (round the nose the skin is fur, with no back line or mask, which the kinds' meeting read from the fraction)
+    nose = noseMask(w); if (w > 2.55 && w < 4.0) { kind = 1.0; fr = 0.0; }
+    #endif
     if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
     if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
     if (kind > 1.5) return uFurLe;                               // nose and pads
@@ -116,7 +125,7 @@ const FUR_GLSL = `
     m = uFurM[4]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.55, .7, tip) * (1.0 - onTail));
     m = uFurM[10]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.12, .2, u) * smoothstep(.42, .5, fract(u * 5.0 + .25)) * (1.0 - smoothstep(.92, .98, fract(u * 5.0 + .25))));
     m = uFurM[5]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.97 - uTailTip, 1.03 - uTailTip, u));
-    return c;
+    return mix(c, uFurLe, nose);
   }`;
 
 /* ---------- the same coat on the CPU: vertex colours for the GLB ----------
@@ -178,6 +187,7 @@ function furPack(A, o, belly, dist, tip, kind, dm) { const f = .5 + clamp(dm, -1
 function furAttrsBody(m, P) {
   const nV = FIG.meta.nV, g = m.geo, A = g.attributes.aEye.array, N = g.attributes.normal.array, J = m.J, sz = m.size || 1;
   const jy = n => J[FIG.jIdx[n] * 3 + 1], reg = FIG.region, SI = g.attributes.skinIndex.array, SW = g.attributes.skinWeight.array, EL = FIG.meta.bones.length;
+  noseAt(m, null);
   if (m.body.species === 'humano') return;
   // half width of the trunk by height, for the belly and the back line
   const NB = 64, top = m.top || 1.8, hw = new Float32Array(NB);
@@ -212,8 +222,13 @@ function furAttrsBody(m, P) {
     }
     furPack(A, o, belly, dist, tip, kind, dm);
   }
+  if (an && an.tip) noseAt(m, an.tip, .07 * L.hh, an.mouthY);
   g.attributes.aEye.needsUpdate = true;
 }
+// the nose (see noseMask) and the mouth's level (the closed mouth's line in the flat styles), in the space vFurP is
+// in (position / size); no tip, no nose
+function noseAt(m, tip, r, lipY) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
+  if (tip) U.uNose.value.set(tip[0] * k, tip[1] * k, tip[2] * k, r * k), U.uLipY.value = lipY * k; else U.uNose.value.set(0, 0, 0, 0); }
 // the sculpted head: muzzle, cheeks and throat; the eye band; the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
   const d = hs.d, n = d.n, Q = hs.Q, E = hs.E, s = hs.s, L = d.L, A = geo.attributes.aEye.array;
@@ -233,6 +248,7 @@ function furAttrsHead(m, geo, hs) {
     if (Math.hypot(x - tip[0], y - tip[1], z - tip[2]) < .075 * s && z > tip[2] - .06 * s) kind = 2;
     furPack(A, o, belly, 0, tp, kind, dm);
   }
+  noseAt(m, tip, .075 * s, E.y + s * L.mouthY);
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind

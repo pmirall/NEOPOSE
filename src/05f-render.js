@@ -27,9 +27,11 @@ function updateHandles() {
     h.scale.setScalar(camera.position.distanceTo(_hp) * Math.tan(camera.fov * DEG / 2) * (id === 'hips' ? .03 : .026) * coarse * (hoverHandle === h ? 1.2 : 1));
   }
 }
-function updateStools() {
+// (off: an ink render, the figure's line alone: the seat is a prop to pose on, which the ink pass does not draw and
+// the ink filter would keep as a shaded grey and black block)
+function updateStools(off = false) {
   for (const m of chars) {
-    const s = m.stoolMesh; s.visible = m.stool; if (!m.stool) continue;
+    const s = m.stoolMesh; s.visible = m.stool && !off; if (!m.stool) continue;
     const hp = m.joints.hips.getWorldPosition(new V3()), back = new V3(0, 0, -1).applyQuaternion(m.joints.hips.quaternion); back.y = 0;
     const hs = Math.max(.12, hp.y - .1 * m.size);
     s.position.set(hp.x + back.x * .04, 0, hp.z + back.z * .04);
@@ -91,7 +93,7 @@ renderer.setAnimationLoop(frame);
    alone: the buffer has no antialiasing, and a second stroke traced inside along its stairs doubles the contour with
    specks. Solo línea only, with the ink renders (key drawings, comic panels) that use it: the other styles keep their
    look; and it costs one more draw of the figures alone, nothing of the set. */
-const INK = {rts: new Map(), vp: new THREE.Vector4(), cc: new THREE.Color()};
+const INK = {rts: new Map(), vp: new THREE.Vector4(), db: new THREE.Vector2(), cc: new THREE.Color()};
 INK.mat = new THREE.ShaderMaterial({
   uniforms: {tN: {value: null}, tD: {value: null}, uTx: {value: new THREE.Vector2()}, uR: {value: 1}, uNear: {value: .1}, uFar: {value: 100}, uOrtho: {value: 0}, uCol: LU.uOutCol, uA: {value: 1}},
   transparent: true, depthTest: true, depthWrite: false, extensions: {fragDepth: true},
@@ -99,6 +101,14 @@ INK.mat = new THREE.ShaderMaterial({
   fragmentShader: `uniform sampler2D tN, tD; uniform vec2 uTx; uniform float uR, uNear, uFar, uOrtho, uA; uniform vec3 uCol; varying vec2 vUv;
     float Z(vec2 p) { float d = texture2D(tD, p).r; return uOrtho > .5 ? uNear + d * (uFar - uNear) : uNear * uFar / (uFar - d * (uFar - uNear)); }
     vec3 Nr(vec4 s) { vec2 v = s.xy * 2.0 - 1.0; return vec3(v, sqrt(max(0.0, 1.0 - dot(v, v)))); }
+    // a part ends: on the one in front
+    float ends(vec4 a, vec4 b, float za, float zb, vec4 c, float zc) {
+      float tol = zc * .004, e = 0.0;
+      if (a.a > .5 && abs(a.b - c.b) > .5 / 255.0 && (zc < za - tol || (abs(za - zc) <= tol && c.b > a.b))) e = 1.0;
+      if (b.a > .5 && abs(b.b - c.b) > .5 / 255.0 && (zc < zb - tol || (abs(zb - zc) <= tol && c.b > b.b))) e = 1.0;
+      return e;
+    }
+    float part(vec2 o, vec4 c, float zc) { return ends(texture2D(tN, vUv + o), texture2D(tN, vUv - o), Z(vUv + o), Z(vUv - o), c, zc); }
     // one direction across the pixel: the neighbours on both sides, at the stroke's width
     float across(vec2 o, vec4 c, float zc, float rim) {
       vec4 a = texture2D(tN, vUv + o), b = texture2D(tN, vUv - o);
@@ -106,17 +116,16 @@ INK.mat = new THREE.ShaderMaterial({
       // hull draws, and no curvature from the slope of a surface turning away)
       float za = a.a > .5 ? Z(vUv + o) : 0.0, zb = b.a > .5 ? Z(vUv - o) : 0.0;
       if (a.a < .5) za = b.a > .5 ? 2.0 * zc - zb : zc; if (b.a < .5) zb = a.a > .5 ? 2.0 * zc - za : zc;
-      float lap = (za + zb - 2.0 * zc) / zc;
+      // (a step has one side far behind and the other at hand; both sides behind alike is a rounded tip seen end-on,
+      // a pad's crown or a knuckle, which the curvature of the depth took for a step and inked as a dot)
+      float lap = (za + zb - 2.0 * zc) / zc, jump = lap - 2.0 * max(min(za, zb) - zc, 0.0) / zc;
       // a form in front of another: its near side; not over the inside of the same part (a garment's edge where what
       // it covers is hidden, as at a waistband under a shirt: the inside seen past it is no form of its own)
       float back = max(float(a.a > .5 && a.a < .9 && abs(a.b - c.b) < .5 / 255.0), float(b.a > .5 && b.a < .9 && abs(b.b - c.b) < .5 / 255.0)) * step(.9, c.a);
       // (where the surface turns away the depth curves fast on its own: a step must be bigger there to be one)
-      float t = .004 / max(Nr(c).z, .25), step_ = smoothstep(t, t * 3.0, lap) * (1.0 - back);
+      float t = .004 / max(Nr(c).z, .25), step_ = smoothstep(t, t * 3.0, jump) * (1.0 - back);
       float fold = smoothstep(.3, .6, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * step(.5, a.a) * step(.5, b.a) * smoothstep(.2, .4, Nr(c).z) * (1.0 - back);  // turning inwards (not where the surface grazes the eye, the contour's, nor onto a garment's inside at its edge)
-      float tol = zc * .004, part = 0.0;                                            // a part ends: on the one in front
-      if (a.a > .5 && abs(a.b - c.b) > .5 / 255.0 && (zc < za - tol || (abs(za - zc) <= tol && c.b > a.b))) part = 1.0;
-      if (b.a > .5 && abs(b.b - c.b) > .5 / 255.0 && (zc < zb - tol || (abs(zb - zc) <= tol && c.b > b.b))) part = 1.0;
-      return max(max(step_, fold * .85) * rim, part);
+      return max(max(step_, fold * .85) * rim, ends(a, b, za, zb, c, zc));
     }
     void main() {
       vec4 c = texture2D(tN, vUv); if (c.a < .5) discard;
@@ -126,6 +135,10 @@ INK.mat = new THREE.ShaderMaterial({
       vec2 e = r * 3.0; float rim = step(.5, min(min(min(texture2D(tN, vUv + vec2(e.x, 0.0)).a, texture2D(tN, vUv - vec2(e.x, 0.0)).a), min(texture2D(tN, vUv + vec2(0.0, e.y)).a, texture2D(tN, vUv - vec2(0.0, e.y)).a)),
         min(min(texture2D(tN, vUv + e).a, texture2D(tN, vUv - e).a), min(texture2D(tN, vUv + vec2(e.x, -e.y)).a, texture2D(tN, vUv - vec2(e.x, -e.y)).a))));
       float ink = across(vec2(r.x, 0.0), c, zc, rim) + across(vec2(0.0, r.y), c, zc, rim) + .7 * (across(r, c, zc, rim) + across(vec2(r.x, -r.y), c, zc, rim));
+      // a hard part (pad, claw, horn: kinds 2–4) is outlined bold, as the references draw beans and claws with the
+      // contour's confidence: its border found again a stroke further in
+      float k = mod(floor(c.b * 255.0 + .5), 8.0);
+      if (k > 1.5 && k < 4.5) { vec2 r2 = r * 2.0; ink = max(ink, part(vec2(r2.x, 0.0), c, zc) + part(vec2(0.0, r2.y), c, zc) + .7 * (part(r2, c, zc) + part(vec2(r2.x, -r2.y), c, zc))); }
       ink = clamp(ink * .75, 0.0, 1.0); if (ink < .02) discard;
       gl_FragDepthEXT = texture2D(tD, vUv).r - 2e-6;
       gl_FragColor = vec4(uCol, ink * uA);
@@ -138,7 +151,7 @@ const inkWanted = () => LU.uOutW.value > 0 && chars.some(m => m.style === 'conto
 const inkFree = (k, rt) => { rt.depthTexture.dispose(); rt.dispose(); INK.rts.delete(k); };
 function inkTarget(w, h) {
   const k = w + 'x' + h; let rt = INK.rts.get(k);
-  if (!rt) { // (a few sizes kept: the canvas, the multi-view's panes, an export's or a film's frames, let go as soon as a smaller picture is drawn)
+  if (!rt) { // (a few sizes kept: the canvas, the multi-view's panes, an export's or a film's frames, let go once the canvas is drawn again)
     if (INK.rts.size > 2) inkFree(...INK.rts.entries().next().value);
     rt = new THREE.WebGLRenderTarget(w, h, {minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)}); INK.rts.set(k, rt);
   }
@@ -169,7 +182,9 @@ const drawScene = renderer.render.bind(renderer);
 renderer.render = (s, cam) => {
   if (s !== scene || !inkWanted() || !inkBuffer(cam)) return drawScene(s, cam);
   scene.add(INK.sheet); try { drawScene(s, cam); } finally { scene.remove(INK.sheet); }
-  for (const [k, rt] of INK.rts) if (rt.width * rt.height > INK.vp.z * INK.vp.w) inkFree(k, rt);
+  // (only what is bigger than the drawing buffer, an export's: the canvas and the multi-view's panes, drawn in turn
+  // every frame, keep theirs, which were otherwise made again and let go again each frame)
+  renderer.getDrawingBufferSize(INK.db); for (const [k, rt] of INK.rts) if (rt.width * rt.height > INK.db.x * INK.db.y) inkFree(k, rt);
 };
 
 /* ---------- export ---------- */
@@ -196,7 +211,7 @@ function renderExportCanvas(subsFrame) {
   const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, f = frameRect(W, Hh), k = exportScale(f);
   LU.uLineW.value = lw * k / pr; LU.uDpr.value = k;
   renderer.setPixelRatio(k); renderer.setSize(W, Hh, false);
-  updateLights(); updateStools(); renderer.render(scene, camera);
+  updateLights(); updateStools(lines); renderer.render(scene, camera);
   let out = document.createElement('canvas'); out.width = Math.round(f.w * k); out.height = Math.round(f.h * k);
   const c = out.getContext('2d');
   c.drawImage(renderer.domElement, f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, out.width, out.height);
@@ -228,7 +243,7 @@ function renderView(o) {
   const pr = renderer.getPixelRatio(), lw = LU.uLineW.value, dpr = LU.uDpr.value, px = LU.uPx.value.clone(), k = h / Hh, kl = Math.max(1, k);
   camera.clearViewOffset(); camera.aspect = w / h; camera.setFocalLength(state.focal); camera.updateProjectionMatrix();
   renderer.setPixelRatio(1); renderer.setSize(w, h, false); LU.uLineW.value = lw * k / pr; LU.uDpr.value = k; LU.uPx.value.set(2 * kl / w, 2 * kl / h);
-  updateLights(); updateStools(); renderer.render(scene, camera);
+  updateLights(); updateStools(lines); renderer.render(scene, camera);
   const out = document.createElement('canvas'); out.width = w; out.height = h; const c = out.getContext('2d'); c.drawImage(renderer.domElement, 0, 0, w, h, 0, 0, w, h);
   if (lines) inkOnly(out);
   renderer.setPixelRatio(pr); LU.uLineW.value = lw; LU.uDpr.value = dpr; LU.uPx.value.copy(px);
