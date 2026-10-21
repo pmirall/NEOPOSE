@@ -198,7 +198,7 @@ const PALETTE = ['#e9e4da', '#f2f0ea', '#2b2b2b', '#1a1a1a', '#3d5878', '#2b4c8c
 const garmentSpec = (id, o = {}) => ({id, mode: 'tex', colA: '#8a8f99', colB: '#2b2b2b', pat: 'liso', patS: .08, hide: true, ...o});
 function createGarment(m, spec) {
   const g = {spec, U: makeGarmentUniforms(), mats: {}, meshes: [], hull: null, geo: null, d: null};
-  g.ready = loadItem(spec.id).then(d => {
+  g.ready = Promise.all([loadItem(spec.id), loadCatalog().catch(() => null)]).then(([d]) => {
     if (!m.garments.includes(g)) return;
     g.d = d; if (spec.hair) d.hair = true;
     g.mat = style => { if (!g.mats[style]) { g.mats[style] = garmentMat(style, g.U); setLayerOffset(g); } return g.mats[style]; };
@@ -251,13 +251,17 @@ function coveredBy(o, x, y, z) {
   const lat2 = dx * dx + dy * dy + dz * dz - al * al;
   return lat2 < .025 * .025 && Math.abs(al) < .05;
 }
+// human shoes and socks do not go on an animal's paws or hooves (they cannot be put on: garmentBlock); worn before the
+// species or its feet changed, they stay in the outfit but are not drawn, hide nothing and lift nothing
+const offFeet = (m, g) => typeof animalFeet === 'function' && animalFeet(m) && (ROPA.byId[g.spec.id] || {}).cat === 'Calzado y calcetines';
 function updateBodyHide(m) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aHide) m.geo.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(nV), 1));
   const H = m.geo.attributes.aHide.array; H.fill(0);
   const order = layerOrder(m);
   // 1: skin not drawn · .5: skin drawn (it may show through openings) but its ink outline is not, so it cannot poke through loose cloth
-  for (const g of order) if (g.spec.hide !== false) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }
+  for (const g of order) if (g.spec.hide !== false && !offFeet(m, g)) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }
+  if (typeof pawsUnderHem === 'function') pawsUnderHem(m, H);
   if (m.mouthOpen && m.anthro && m.anthro.lip) for (const i of m.anthro.lip) H[i] = 1;
   // the fur tufts hide with what is worn over their skin; a sculpted head's cheek tufts root in the head skin it replaces, so that is hidden after
   if (typeof hideFluff === 'function') hideFluff(m, H); if (typeof hideHandParts === 'function') hideHandParts(m, H);
@@ -269,6 +273,7 @@ function updateBodyHide(m) {
   for (let k = order.length - 1; k >= 0; k--) {
     const g = order[k], d = g.d, A = g.geo.attributes.aHide.array;
     g.rankIdx = k; setLayerOffset(g); A.fill(0);
+    if (offFeet(m, g)) { A.fill(1); g.geo.attributes.aHide.needsUpdate = true; continue; }
     if (outer.length) {
       const P = g.geo.attributes.position.array;
       for (let i = 0; i < d.n; i++) { for (const o of outer) if (coveredBy(o, P[i * 3], P[i * 3 + 1], P[i * 3 + 2])) { A[i] = 1; break; } }
@@ -291,7 +296,7 @@ function tailHole(m) {
 // shoes with soles lift the figure so it stands on them
 function updateGroundPad(m) {
   let pad = 0;
-  for (const g of m.garments || []) if (g.geo) { const P = g.geo.attributes.position.array; for (let i = 1; i < P.length; i += 3) if (-P[i] > pad && P[i] > -.08) pad = -P[i]; }
+  for (const g of m.garments || []) if (g.geo && !offFeet(m, g)) { const P = g.geo.attributes.position.array; for (let i = 1; i < P.length; i += 3) if (-P[i] > pad && P[i] > -.08) pad = -P[i]; }
   if (Math.abs(pad - (m.groundPad || 0)) > 1e-4) { m.groundPad = pad; m.ground(); }
 }
 function disposeGarment(m, g) {

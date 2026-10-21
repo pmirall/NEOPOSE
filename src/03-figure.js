@@ -791,7 +791,7 @@ class Mannequin {
     meta.bones.forEach((n, i) => {
       head[i] = pt(i);
       const d = child[n] ? pt(FIG.jIdx[child[n]]).sub(head[i]) : new V3(0, 1, 0);
-      if (n.startsWith('ankle')) d.y = 0;
+      if (n.startsWith('ankle') && !['digi', 'ungu'].includes((legSpec(this.body) || {}).type)) d.y = 0;  // a raised animal foot: rings round its metatarsus
       d.normalize(); dir[i] = d;
       const r0 = Math.abs(d.dot(Z)) > .8 ? Y : Z;
       ref[i] = r0.clone().addScaledVector(d, -d.dot(r0)).normalize();
@@ -800,18 +800,23 @@ class Mannequin {
       c[i] = p < 0 ? 0 : c[p] + head[i].clone().sub(head[p]).dot(dir[p]);
     });
     const v = new V3(), rad = new V3();
+    // an animal's metatarsus, laid from skin the shin's and the ankle's bones share, takes its rings from the ankle's bone
+    // alone below the joint: measured along the shin too, they would bunch into a line down its front
+    const ank = ['digi', 'ungu'].includes((legSpec(this.body) || {}).type) ? [FIG.jIdx.ankleL, FIG.jIdx.ankleR] : [];
     for (let i = 0, nV = meta.nV; i < nV; i++) {
       v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
-      let s = 0, cs = 0, sn = 0;
+      let s = 0, cs = 0, sn = 0, sa = null;
       for (let k = 0; k < 4; k++) {
         const w = FIG.sw[i * 4 + k] / 255; if (!w) continue;
         const b = FIG.si[i * 4 + k];
         rad.subVectors(v, head[b]); const t = rad.dot(dir[b]);
+        if (ank.includes(b) && t > 0) sa = [c[b] + t, Math.min(1, t / .06)];
         s += w * (c[b] + t);
         rad.addScaledVector(dir[b], -t);
         const l = rad.length() || 1;
         cs += w * rad.dot(ref[b]) / l; sn += w * rad.dot(side[b]) / l;
       }
+      if (sa) s += (sa[0] - s) * sa[1];
       L[i * 4] = cs; L[i * 4 + 1] = sn; L[i * 4 + 2] = s;
       L[i * 4 + 3] = FIG.eye[i] ? -1 : AXIAL.includes(meta.bones[this.dom[i]]) ? 1 : 0;
     }
@@ -972,5 +977,6 @@ function applyPreset(m, p, o = {}) {
   if (o.yaw) J.hips.quaternion.premultiply(new Q().setFromAxisAngle(new V3(0, 1, 0), o.yaw));
   m.group.updateMatrixWorld(true);
   for (const spec of p.ik || []) solveSpec(m, spec, ikTarget(m, spec.t, spec.o));
+  if (typeof kneelPaws === 'function') kneelPaws(m);
   if (o.ground !== false) m.ground(p.lift || 0);
 }
