@@ -255,12 +255,14 @@ function updateBodyHide(m) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aHide) m.geo.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(nV), 1));
   const H = m.geo.attributes.aHide.array; H.fill(0);
-  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null; if (HM) for (let i = 0; i < nV; i++) if (HM[i]) H[i] = 1;
   const order = layerOrder(m);
   // 1: skin not drawn · .5: skin drawn (it may show through openings) but its ink outline is not, so it cannot poke through loose cloth
   for (const g of order) if (g.spec.hide !== false) { const M = g.d.mask, Cv = g.d.cover; for (let i = 0; i < nV; i++) if (M[i]) H[i] = 1; else if (Cv[i] && H[i] < .5) H[i] = .5; }
   if (m.mouthOpen && m.anthro && m.anthro.lip) for (const i of m.anthro.lip) H[i] = 1;
-  m.geo.attributes.aHide.needsUpdate = true; if (typeof hideFluff === 'function') hideFluff(m, H);
+  // the fur tufts hide with what is worn over their skin; a sculpted head's cheek tufts root in the head skin it replaces, so that is hidden after
+  if (typeof hideFluff === 'function') hideFluff(m, H);
+  const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null; if (HM) for (let i = 0; i < nV; i++) if (HM[i]) H[i] = 1;
+  m.geo.attributes.aHide.needsUpdate = true;
   // garments under others: hidden wherever an outer garment lies over them (or they poke out through it a little)
   const outer = [], hole = tailHole(m);
   for (let k = order.length - 1; k >= 0; k--) {
