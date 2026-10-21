@@ -542,11 +542,12 @@ const SUITES = {
       for (let i = 0; i < C.FIG.meta.nV; i++) { if (!leg.has(m.dom[i])) continue; const y = P[i * 3 + 1], z = P[i * 3 + 2];
         if (Math.abs(y - Ay) < .015) { zb = Math.min(zb, z); h0 = Math.min(h0, z); h1 = Math.max(h1, z); }
         if (m.dom[i] === ai && Math.abs(y - Ay / 2) < .01) { m0 = Math.min(m0, z); m1 = Math.max(m1, z); } }
-      // the shaft's depth and width in slices across it, a third and two thirds of the way down from the hock
+      // the shaft's depth and width in slices across it, at a third, two thirds and 85% of the hock's height (just under
+      // its knob)
       const sl = f => { let z0 = Infinity, z1 = -Infinity, x0 = Infinity, x1 = -Infinity; for (let i = 0; i < C.FIG.meta.nV; i++) { if (m.dom[i] !== ai || Math.abs(P[i * 3 + 1] - Ay * f) > .006) continue;
         z0 = Math.min(z0, P[i * 3 + 2]); z1 = Math.max(z1, P[i * 3 + 2]); x0 = Math.min(x0, P[i * 3]); x1 = Math.max(x1, P[i * 3]); } return [z1 - z0, x1 - x0]; };
-      const [dHi, wHi] = sl(.66), [dLo, wLo] = sl(.33);
-      return {...out, hock: Ay / J[F.hipR * 3 + 1], heel: Az - zb, joint: (h1 - h0) / (m1 - m0), toe: J[F.toeR * 3 + 2] - Az, shaft: [dHi / dLo, wHi / wLo], pawK: out.paw / Ay};
+      const [dHi, wHi] = sl(.66), [dLo, wLo] = sl(.33), [dTop] = sl(.85);
+      return {...out, hock: Ay / J[F.hipR * 3 + 1], heel: Az - zb, joint: (h1 - h0) / (m1 - m0), toe: J[F.toeR * 3 + 2] - Az, shaft: [dHi / dLo, wHi / wLo, dTop / dLo], pawK: out.paw / Ay};
     });
     await pick('lobo'); const wolf = await feet();
     ok(wolf.hock > .2 && wolf.hock < .4, `a wolf stands on its toes: the hock at ${(wolf.hock * 100).toFixed(0)}% of the hip's height`);
@@ -554,9 +555,19 @@ const SUITES = {
     ok(wolf.L === '4/5/4' && wolf.R === '4/5/4', `each paw: four toes, four beans and the big pad, four claws (${wolf.R})`);
     ok(Math.abs(wolf.loR[2]) < .002 && wolf.loR[3] > -.001 && wolf.loR[3] < .015 && wolf.loR[1] > -.001, `standing, the pads are on the floor, the claws reach down to it, nothing goes through (${(wolf.loR[3] * 1000).toFixed(1)} mm)`);
     ok(wolf.verts < 5000, `both paws in ${wolf.verts} vertices, one mesh a foot`);
-    ok(wolf.shaft.every(r => r > .75 && r < 1.3), `the metatarsus is an even shaft, not a wedge: under the hock ${wolf.shaft.map(r => r.toFixed(2)).join(' / ')} × as deep / wide as above the paw`);
+    ok(wolf.shaft.every(r => r > .75 && r < 1.4), `the metatarsus is an even shaft, not a wedge: under the hock ${wolf.shaft.map(r => r.toFixed(2)).join(' / ')} × as deep / wide (and just under the knob as deep) as above the paw`);
     ok(wolf.pawK > .33, `a compact paw on the ground, ${(wolf.pawK * 100).toFixed(0)}% as long as the metatarsus is high`);
     ok(wolf.loR[1] > .0025, `the toes stand on their beans: the fur stays ${(wolf.loR[1] * 1000).toFixed(1)} mm off the floor`);
+    // one knee down: the kneeling leg's knee and paw on the floor, the hock folded between them; a run's trailing leg
+    // keeps the pose's own ankle
+    const kn = await A(() => {
+      const C = window.__cdp, m = C.mq, F = C.FIG.jIdx, V = THREE.Vector3, w = n => m.joints[n].getWorldPosition(new V()), q = new THREE.Quaternion();
+      C.usePreset(C.POSES.find(p => p.id === 'rodilla')); m.group.updateMatrixWorld(true); const floor = m.box(3).min.y, sc = m.group.getWorldScale(new V()).y; m.joints.ankleR.getWorldQuaternion(q);
+      const toe = w('ankleR').add(new V(...[0, 1, 2].map(k => m.J[F.toeR * 3 + k] - m.J[F.ankleR * 3 + k])).multiplyScalar(sc).applyQuaternion(q)), r = {toe: toe.y - floor, knee: w('kneeR').y - floor, hock: w('ankleR').y - floor};
+      C.usePreset(C.POSES.find(p => p.id === 'correr')); r.run = m.joints.ankleR.rotation.x / Math.PI * 180; C.usePreset(C.POSES.find(p => p.id === 'pie')); return r;
+    });
+    ok(kn.toe < .03 && kn.knee < .07 && kn.hock > kn.toe, `kneeling, the knee (${(kn.knee * 100).toFixed(1)} cm) and the paw's toes (${(kn.toe * 100).toFixed(1)} cm) are on the floor, the hock up between them`);
+    ok(Math.abs(kn.run - 35) < .5, `a run's trailing leg keeps its ankle (${kn.run.toFixed(1)}°)`);
     // the underside of the right foot, standing: a bear's sole pad (the largest leather piece) as wide across its back
     // quarter as across its front one; a hoof's keratin, how low its middle comes against its rim
     const under = () => A(() => {
@@ -598,6 +609,25 @@ const SUITES = {
       return {holes, out, hem: (Ay - gy) / Ay};
     });
     ok(!pants.holes && !pants.out && pants.hem > 0 && pants.hem < .4, `trousers end under the hock (${(pants.hem * 100).toFixed(0)}% down the metatarsus): ${pants.holes} hidden skin vertices below the hem, ${pants.out} behind the hock outside the cloth`);
+    // jeans with shoes and loose trousers: the cuff is gathered on the leg (no cloth below it, nothing standing off the skin
+    // under the hem), and the shoes, which do not go on paws, are neither drawn nor lift the figure
+    const cuff = {};
+    for (const o of ['camiseta', 'casual']) {
+      // (shoes cannot be put on paws: worn before the species changed, they are put back on here)
+      await A(o => { document.querySelector(`#outfitChips .chip[data-v="${o}"]`).click(); const m = window.__cdp.mq; if (!m.outfit.some(s => s.id === 'm_shoes06')) window.__cdp.setOutfitNow(m, [...m.outfit, window.__cdp.garmentSpec('m_shoes06')]); }, o);
+      await page.waitForFunction(() => { const m = window.__cdp.mq; return m.garments.length && m.garments.every(g => g.d && g.geo); }, null, {timeout: 60000}); await page.waitForTimeout(800);
+      cuff[o] = await A(() => {
+        const C = window.__cdp, m = C.mq, F = C.FIG.jIdx, P = m.anchors, ai = F.ankleR, Ay = m.J[ai * 3 + 1], hy = Ay * .8, skin = [];
+        for (let i = 0; i < C.FIG.meta.nV; i++) if (m.dom[i] === ai && P[i * 3 + 1] < Ay) skin.push(i);
+        let low = 0, far = 0, shoe = 0;
+        for (const g of m.garments) { const G = g.geo.attributes.position.array, Hd = g.geo.attributes.aHide.array, foot = g.spec.id === 'm_shoes06';
+          for (let i = 0; i < G.length / 3; i++) { if (Hd[i] > .99) continue; if (foot) { shoe++; continue; } const x = G[i * 3], y = G[i * 3 + 1], z = G[i * 3 + 2]; if (x > 0 || y > hy) continue;
+            if (y < hy - .035) low++; let d = Infinity; for (const k of skin) d = Math.min(d, (P[k * 3] - x) ** 2 + (P[k * 3 + 1] - y) ** 2 + (P[k * 3 + 2] - z) ** 2); if (Math.sqrt(d) > .06) far++; } }
+        return {low, far, shoe, pad: m.groundPad || 0, shoes: m.outfit.some(s => s.id === 'm_shoes06')};
+      });
+    }
+    ok(Object.values(cuff).every(c => !c.low && !c.far), `a trouser cuff gathers on the leg under the hock: ${Object.entries(cuff).map(([o, c]) => `${o} ${c.low} below it, ${c.far} off the skin`).join(', ')}`);
+    ok(cuff.camiseta.shoes && !cuff.camiseta.shoe && !cuff.camiseta.pad, `shoes worn with the outfit are not drawn on the paws and do not lift them (${cuff.camiseta.shoe} visible vertices)`);
     await A(() => document.querySelector('#outfitNone').click()); await page.waitForTimeout(500); await goTab(page, 'cuerpo'); await page.waitForTimeout(400);
     await A(() => document.querySelector('#feetChips .chip[data-v="humano"]').click()); await page.waitForTimeout(800);
     const hum = await feet(); ok(hum.L === null && hum.R === null && hum.hock < .12 && hum.toe > .05, `"Human feet": a human foot again, flat on the floor (ankle at ${(hum.hock * 100).toFixed(0)}% of the hip)`);

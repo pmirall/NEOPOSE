@@ -268,11 +268,11 @@ function fluffGeo(m) {
     return out; };
   const SI = m.geo.attributes.skinIndex.array, SW = m.geo.attributes.skinWeight.array;
   // a tuft lies along the skin (flat, wide, leaning with the hair) and is skinned like the skin it grows from
-  const tuft = (i, bone, len, w, lean) => {
+  const tuft = (i, bone, len, w, lean, sink = .12) => {
     const o = new V3(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]), n = new V3(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]).normalize();
     const ax = lean.clone().addScaledVector(n, -lean.dot(n)).normalize().multiplyScalar(.85).addScaledVector(n, .35).normalize(), L = len * (.75 + .5 * rng()) * sz, W = w * (.8 + .4 * rng()) * sz;
     const side = n.clone().cross(ax).normalize(), wts = [0, 1, 2, 3].map(k => [SI[i * 4 + k], SW[i * 4 + k]]).filter(x => x[1] > 0);
-    const g = loft({origin: o.clone().addScaledVector(n, -W * .12), axis: ax, side, radial: 6, sub: 2, n: 2,
+    const g = loft({origin: o.clone().addScaledVector(n, -W * sink), axis: ax, side, radial: 6, sub: 2, n: 2,
       secs: [[0, W, W * .22], [L * .4, W * .7, W * .16], [L * .78, W * .3, W * .08], [L, .0008, .0008]], bend: .12, weights: () => wts});
     const ln = g.attributes.aLine.array; for (let v = 3; v < ln.length; v += 4) ln[v] = -1;  // no contour rings on a tuft
     // the colour of the coat where it grows
@@ -290,10 +290,11 @@ function fluffGeo(m) {
     tuft(i, ACC('neck'), .04 + .05 * s, .02, new V3(0, -.7, -.3).normalize());
   for (const sd of ['L', 'R']) {
     const el = jp('elbow' + sd), wr = jp('wrist' + sd), an = jp('ankle' + sd);
-    // behind the elbow, round the wrist (a cuff pointing to the hand), on the back of the hock
+    // behind the elbow, round the wrist (a cuff pointing to the hand), on the back of the hock (rooted deeper: the point of
+    // the hock is narrow, and a flat root as wide as there would stand off the skin at its edges)
     for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - el.y) < .035 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('elbow' + sd), .035 + .04 * s, .016, back);
     for (const i of pick(i => /^arm/.test(reg[m.dom[i]]) && P[i * 3 + 1] > wr.y && P[i * 3 + 1] < wr.y + .035 * sz, Math.round(4 + 4 * s))) tuft(i, ACC('wrist' + sd), .025 + .03 * s, .013, new V3(0, -1, 0));
-    if (legSpec(m.body)) for (const i of pick(i => /^(leg|foot)/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - an.y) < .03 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('ankle' + sd), .03 + .035 * s, .015, back);
+    if (legSpec(m.body)) for (const i of pick(i => /^(leg|foot)/.test(reg[m.dom[i]]) && Math.abs(P[i * 3 + 1] - an.y) < .03 * sz && N[i * 3 + 2] < -.3, Math.round(2 + 3 * s))) tuft(i, ACC('ankle' + sd), .03 + .035 * s, .015, back, .45);
   }
   return parts.length ? mergeLofts(parts) : null;
 }
