@@ -258,6 +258,11 @@ const SUITES = {
     { const wr = await row(); await pick('caballo', true); const hr = await row(); await pick('lobo');
       ok(wr.n === 8 && wr.gap < .03 && wr.end > .85 && wr.end < 1 && hr.gap > .06 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
       ok(wr.hi < .032 && wr.lo > -.032 && hr.hi < .032 && hr.lo > -.032, `roots end in the gums (wolf ${wr.hi.toFixed(3)}/${wr.lo.toFixed(3)}, horse ${hr.hi.toFixed(3)}/${hr.lo.toFixed(3)} head heights from the lip line)`); }
+    // panting lolls the tongue out past the lips; any other expression keeps it in
+    { const t = async e => A(e => { const C = window.__cdp, m = C.mq; C.applyExpression(m, e); C.renderView({w: 64, h: 64}); const p = m.mouthMeshes.find(x => x.geometry.userData.tongue), g = p.geometry, P = g.attributes.position.array, D = g.morphAttributes.position[0].array, k = p.morphTargetInfluences[0];
+        let z = -9; for (let i = 0; i < P.length; i += 3) z = Math.max(z, P[i + 2] + k * D[i + 2]); return {k, out: (z - Math.max(...m.anthro.rim.map(r => r[1]))) / m.anthro.mouth.h}; }, e);
+      const j = await t('jadeo'), r = await t('rugido'); await A(() => window.__cdp.applyExpression(window.__cdp.mq, 'neutra'));
+      ok(j.k === 1 && j.out > .02 && r.k === 0 && r.out < 0, `panting lolls the tongue out (${j.out.toFixed(3)} head heights past the lips), a roar keeps it in (${r.out.toFixed(3)})`); }
     // the neck under a sculpt: the body's throat below the cut stays drawn (inked or not) and every sculpt reaches down to the
     // cut, so the body's neck is never open under the chin
     { const r = []; for (const sp of ['zorro', 'gato', 'conejo', 'lobo']) { await pick(sp); r.push(await A(sp => { const m = window.__cdp.mq, hs = m.headSwap, FIG = window.__cdp.FIG, P = m.geo.attributes.position.array, H = m.geo.attributes.aHide.array;

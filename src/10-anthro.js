@@ -317,7 +317,14 @@ function mouthParts(m) {
     const g = loft({origin: new V3(0, F.y - 1.2 * gh - th, zt0), axis: new V3(0, 0, 1), side: new V3(1, 0, 0), secs, radial: 16, sub: 2, n: 2.4, weights: () => [[JAW, 1]],
       mod: ph => 1 - .38 * Math.exp(-(((ph - Math.PI) / .36) ** 2))});
     const ln = g.attributes.aLine.array, A = new Float32Array(ln.length); for (let v = 0; v < ln.length; v += 4) { ln[v + 3] = -1; furPack(A, v, 0, 0, 0, 6, 0); }
-    g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); parts.push({geo: g, hull: true});
+    g.setAttribute('aEye', new THREE.BufferAttribute(A, 4));
+    // panting: the front half rises over the lower incisors and lolls out past the lip, hanging down from it (a morph the
+    // expression turns on, so the jaw still carries it)
+    const P = g.attributes.position.array, D = new Float32Array(P.length), zl = Cb + R[0], out = .06 * h * f;
+    for (let i = 0; i < P.length; i += 3) { const t = clamp((P[i + 2] - zt0) / Lt, 0, 1), z = P[i + 2] + sstep(.25, 1, t) * (zl - zt1 + out), over = Math.max(0, z - zl);
+      D[i + 1] = sstep(.3, .7, t) * (1.2 * gh + th + .03 * h * f) - 1.3 * over; D[i + 2] = z - P[i + 2] - .3 * over; }
+    g.morphAttributes.position = [new THREE.BufferAttribute(D, 3)]; g.morphTargetsRelative = true; g.userData.tongue = true;
+    parts.push({geo: g, hull: true});
   }
   return parts;
 }
@@ -343,6 +350,7 @@ function anthroTick() {
   for (const m of chars) {
     if (!m.joints || !m.joints.jaw) continue;
     const q = m.joints.jaw.quaternion, ang = 2 * Math.acos(Math.min(1, Math.abs(q.w))), open = !!(m.anthro && m.anthro.mouth) && ang > .05;
+    for (const p of m.mouthMeshes || []) if (p.geometry.userData.tongue) p.morphTargetInfluences[0] = m.aexpr === 'jadeo' ? 1 : 0;
     if (open !== !!m.mouthOpen) { m.mouthOpen = open; if (m.lib.uMouth) m.lib.uMouth.value = open ? 1 : 0; for (const p of m.mouthMeshes || []) p.visible = open && m.formMode !== 'formas' && m.formMode !== 'esqueleto' && (!p.userData.hull || m.outlineOn !== false); }
   }
 }
