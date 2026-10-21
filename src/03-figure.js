@@ -147,7 +147,9 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           // small hard shapes a drawing leaves clean, where rings were stray stripes and dots)
           // (in Solo línea faint and fine, pencil guides under the ink as on a cleaned-up drawing, and no centre line:
           // the drawing is the contour and the interior lines, which a striped suit drowned)
-          if (vLine.w > -.5 && vEye.w > -3.0) {${mat.isMeshBasicMaterial ? `
+          // (but a hard part's own drawn line stays, marked by x and y at 1 where no meridian runs: a pad's rim, a hoof's
+          // coronet and white line, see handGeos)
+          if (vLine.w > -.5 && (vEye.w > -3.0 || vLine.x > .99 && vLine.y > .99)) {${mat.isMeshBasicMaterial ? `
             float ring = gridLine(vLine.z / uStride, uLineW * .6);
             float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW * .6), lineAt(vLine.y, uLineW * .6)) * .85 : 0.0;
             c = mix(c, uLineCol, max(ring, mer) * uLineA * .14);` : `
@@ -539,7 +541,7 @@ class Mannequin {
     }
     stretchRest(H, J.slice(), effBody(this.body), {n: nH, si: FIG.hsi, sw: FIG.hsw});
     stretchRest(P, J, effBody(this.body));
-    remodelLegs(this.body, P, J, H); remodelHands(this.body, P, J, H);
+    remodelLegs(this.body, P, J, H); this.handGirth = remodelHands(this.body, P, J, H);
     anthroHead(this, P, J); eyeSetup(this, P);
     let minY = Infinity; for (let i = 1; i < P.length; i += 3) if (P[i] < minY) minY = P[i];
     for (let i = 1; i < P.length; i += 3) P[i] -= minY;
@@ -763,12 +765,19 @@ class Mannequin {
     }
     for (const mm of this.mouthMeshes) mm.visible = !!this.mouthOpen && (!mm.userData.hull || this.outlineOn !== false);
     for (const g of geos) {
-      const m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
-      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true;
-      this.group.add(m); m.bind(this.accSkeleton, I); this.acc.push(m); this.meshes.push(m);
-      m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
-      m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
-      if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(this.accSkeleton, I); this.acc.push(o); this.hulls.push(o); }
+      // parts laid on the skin (a paw's pads) are skinned as the skin under them: the body's skeleton, highlighted with it
+      const skin = !!g.userData.skin, sk = skin ? this.skeleton : this.accSkeleton, m = new THREE.SkinnedMesh(g, twoSided(this.lib[this.style]));
+      m.castShadow = m.receiveShadow = true; m.frustumCulled = false; m.userData.acc = true; m.userData.skin = skin;
+      this.group.add(m); m.bind(sk, I); this.acc.push(m); this.meshes.push(m);
+      if (!skin) {
+        m.onBeforeRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = this.hiAcc; m.material.uniformsNeedUpdate = true; } };
+        m.onAfterRender = () => { if (this.hiAcc >= 0 && this.lib.uHi) { this.lib.uHi.value = -1; m.material.uniformsNeedUpdate = true; } };
+      } else {
+        // drawn a little toward the eye, so the skin it lies on never shows through it where the skinning bends both apart
+        m.onBeforeRender = () => { const t = m.material; t.polygonOffset = true; t.polygonOffsetFactor = -2; t.polygonOffsetUnits = -6; };
+        m.onAfterRender = () => { m.material.polygonOffset = false; };
+      }
+      if (this.lib.outline && !g.userData.noHull) { const o = new THREE.SkinnedMesh(g, this.lib.outline); o.frustumCulled = false; o.userData.hull = true; this.group.add(o); o.bind(sk, I); this.acc.push(o); this.hulls.push(o); }
     }
     this.hasTail = !!tsp;
   }
@@ -830,12 +839,14 @@ class Mannequin {
   }
   applyHands() {
     if (!this.handAxes) return;
-    const q = new Q(), q2 = new Q();
+    const q = new Q(), q2 = new Q(), paw = handShape(this.body);  // paws close their own way (10-anthro)
     for (const s of ['L', 'R']) {
       const st = this.hands[s], F = this.fingers[s], A = this.handAxes[s];
+      // a hoof-hand's fingers are one digit (or a cloven pair) in one hoof: they bend together and never spread
+      const one = paw && paw.cv ? (st.c[1] + st.c[2] + st.c[3] + st.c[4]) / 4 : null;
       for (let f = 0; f < 5; f++) {
-        const c = st.c[f], ax = A.fingers[f], ang = f === 0 ? [48, 45, 55] : [85, 100, 70];
-        q2.setFromAxisAngle(A.n, ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
+        const c = f && one !== null ? one : st.c[f], ax = A.fingers[f], ang = f === 0 ? (paw ? paw.tcurl : [48, 45, 55]) : (paw ? paw.curl : [85, 100, 70]);
+        q2.setFromAxisAngle(A.n, f && one !== null ? 0 : ax.spread * st.s * SPREAD_K[f] * (f === 0 ? 22 : 12) * DEG * (1 - c * .6));
         if (f === 0 && st.t) q2.premultiply(q.setFromAxisAngle(A.along, A.opp * st.t * 60 * DEG));
         F[f][0].quaternion.copy(q2).multiply(q.setFromAxisAngle(ax.curl[0], c * ang[0] * DEG));
         F[f][1].quaternion.setFromAxisAngle(ax.curl[1], c * ang[1] * DEG);
@@ -868,7 +879,7 @@ class Mannequin {
     if (hit.object.userData.acc) {
       const si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
       let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(a, k); if (w > bw) { bw = w; best = si.getComponent(a, k); } }
-      return this.accPick[best];
+      return hit.object.userData.skin ? this.bonePick[best] : this.accPick[best];
     }
     return this.bonePick[this.dom[a]];
   }

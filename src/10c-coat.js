@@ -385,8 +385,10 @@ function fluffGeo(m) {
     const x = sd === 'L' ? 1 : -1, el = jp('elbow' + sd), wr = jp('wrist' + sd), fa = wr.clone().sub(el).normalize();
     const back = v => v.addScaledVector(fa, -v.dot(fa)).normalize();
     // behind the elbow, pointing down the forearm; on the back and the outer side of the wrist, pointing to the hand
+    // (never over the heel of the palm, where the carpal pad is: the drawings leave the palm side of the wrist bare)
     if (on(at[3])) { tuft(S2, el, back(new V3(0, 0, -1)), fa.clone(), .06, .55, at[3]); if (k * at[3] > .45) tuft(S2, el.clone().addScaledVector(fa, .05 * sz), back(new V3(x, 0, -1)), fa.clone(), .04, .6, at[3]); }
-    if (on(at[4])) for (const v of [new V3(x, 0, -.5), new V3(0, 0, -1), new V3(x, 0, .6)].slice(0, k * at[4] > .7 ? 3 : 2)) tuft(S2, wr.clone().addScaledVector(fa, -.04 * sz), back(v), fa.clone(), .042, .3, at[4]);
+    const pn = handFrame(m.J, sd).n;
+    if (on(at[4])) for (const v of [new V3(x, 0, -.5), new V3(0, 0, -1), new V3(x, 0, .6)].slice(0, k * at[4] > .7 ? 3 : 2).filter(v => back(v.clone()).dot(pn) < .2)) tuft(S2, wr.clone().addScaledVector(fa, -.04 * sz), back(v), fa.clone(), .042, .3, at[4]);
     // behind the hock (the heel) and over the top of the paw, along the metatarsus; on a hoof, the feathering behind the fetlock
     if (Ls) {
       const A = jp('ankle' + sd), toe = jp('toe' + sd), mt = Ls.type === 'planti' ? new V3(0, -1, 0) : toe.clone().sub(A).normalize(), fr = new V3(1, 0, 0).cross(mt).normalize();
@@ -440,6 +442,17 @@ function hideFluff(m, H) {
   const R = g.attributes.aRoot.array, A = g.attributes.aHide.array;
   for (let i = 0; i < R.length; i++) A[i] = R[i] >= 0 && H[R[i]] >= .5 ? 1 : 0;
   g.attributes.aHide.needsUpdate = true;
+}
+// many small lofted pieces as one mesh (same attributes in each): the claws, pads and teeth (the tufts write theirs straight into one)
+function mergeLofts(parts) {
+  const names = Object.keys(parts[0].attributes), g = new THREE.BufferGeometry(), idx = []; let off = 0;
+  for (const nm of names) {
+    const a0 = parts[0].attributes[nm], tot = parts.reduce((t, p) => t + p.attributes[nm].array.length, 0), arr = new a0.array.constructor(tot); let o = 0;
+    for (const p of parts) { arr.set(p.attributes[nm].array, o); o += p.attributes[nm].array.length; }
+    g.setAttribute(nm, new THREE.BufferAttribute(arr, a0.itemSize));
+  }
+  for (const p of parts) { const I = p.index.array; for (let i = 0; i < I.length; i++) idx.push(I[i] + off); off += p.attributes.position.count; p.dispose(); }
+  g.setIndex(idx); return g;
 }
 const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 

@@ -649,41 +649,192 @@ function remodelLegs(b, P, J, H) {
    ending in rounded tips with pads and claws (canids, felids, bears, rabbits); ungulates get "hoof-hands", the
    fingers pressed together, short, capped with keratin; dragons keep long fingers with heavy claws. The rest hand is
    reshaped like the legs: every finger's joints move to their new place and each vertex follows the bones it is
-   skinned to (shorter along the bone, fatter around it), so the hand still curls, spreads and holds as before. */
-const HAND_SHAPES = {zarpa: {len: .72, thumb: .8, r: 1.3, sq: 1}, pezuna: {len: .58, thumb: .5, r: 1.34, sq: .5}, garra: {len: 1.04, thumb: 1, r: .94, sq: 1}};
+   skinned to (shorter along the bone, fatter around it), so the hand still curls, spreads and holds as before.
+   What makes them read as paws in the construction sheets artists draw from (and in the animals):
+   - each finger a row of rounded blocks: the joints show as knuckles on the back and as creases between the
+     segments on the palm side, and the finger thins a little to its tip;
+   - the pads, raised leather cushions set into the fur: a digital pad under the last segment of every finger and
+     the thumb (the "toe beans"); the big metacarpal pad in the palm, in dogs a heart with its point to the fingers
+     and in cats trilobed toward the wrist, a wide transverse bean in bears; the small carpal pad high on the heel of
+     the hand on the little finger's side (Miller's Anatomy of the Dog; feline and ursid paw anatomy). Reptiles have
+     a scale-pad under each segment instead;
+   - the claws grow out of the end of the last segment, as wide as the tip where they leave the skin, which hoods
+     them, and curve down along the finger: short and blunt in dogs (worn by walking), narrow, sharp and hooked in
+     cats (kept sharp in their sheaths), long, heavy and only gently curved in bears (digging), long hooked talons in
+     dragons;
+   - hoof-hands: the fingers held together as one digit (horse) or two (goat, deer), each ending in a hoof: a keratin
+     wall that flares from the coronet to the bearing edge and runs higher in front than at the heels, with a flat sole.
+   A clawed hand cannot close into a human fist: the last segment would drive its claw through the palm. It closes as
+   a paw does, the last segments only a little bent, so the fist is the rounded knot of a paw with the pads to the
+   palm and the claws resting on it (and a hoof-hand hardly closes at all).
+   len, thumb: finger and thumb length; r: girth, losing tp of it to the tip (the thumb thickens only toward its end,
+   so its root does not swell over the palm); sq: fingers drawn together (1 apart) and cv: turned to run side by side
+   (a hoof's digit, straightened); kn: how much the knuckles show; curl, tcurl: the fingers' and the
+   thumb's joints in a full fist (degrees). */
+const HAND_SHAPES = {
+  zarpa:  {len: .64, thumb: .72, r: 1.5, tp: .16, sq: 1, kn: 1.1, curl: [65, 55, 10], tcurl: [45, 40, 15]},
+  pezuna: {len: .56, thumb: .5, r: 1.3, tp: .04, sq: .45, cv: .85, kn: .4, curl: [40, 8, 3], tcurl: [40, 30, 10]},
+  garra:  {len: 1.04, thumb: 1, r: 1.02, tp: .2, sq: 1, kn: 1.2, curl: [65, 55, 10], tcurl: [45, 40, 15]}
+};
 function handShape(b) {
   if (!b || b.species === 'humano' || b.paws === 'humanas') return null;
   const k = legSp(b), L = ANIMAL_LEGS[k]; if (!L) return null;
   return HAND_SHAPES[L.type === 'ungu' ? 'pezuna' : k === 'dragon' ? 'garra' : 'zarpa'];
 }
+// whose pads and claws: dogs and most others, cats, bears, reptiles
+const pawKind = b => { const k = legSp(b); return /^(gato|tigre|leon)$/.test(k) ? 'fel' : k === 'oso' ? 'oso' : k === 'dragon' ? 'rep' : 'can'; };
+// the hand's frame from its joints: n out of the palm (as computeHandAxes), along to the middle knuckle, across to the index
+function handFrame(J, s) {
+  const jv = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]), w = jv('wrist' + s), mid = jv(`f${s}20`);
+  const n = new V3().crossVectors(jv(`f${s}10`).sub(w), jv(`f${s}40`).sub(w)).normalize(); if (n.x * (s === 'L' ? 1 : -1) > 0) n.negate();
+  // an orthonormal frame on the palm (the knuckle row is oblique to the hand's length)
+  const along = mid.clone().sub(w), plen = along.length(); along.addScaledVector(n, -along.dot(n)).normalize();
+  const across = jv(`f${s}10`).sub(jv(`f${s}40`)), width = across.length(); across.addScaledVector(n, -across.dot(n)).addScaledVector(along, -across.dot(along)).normalize();
+  // a finger segment: its joint, direction, length and palm side (the thumb's palm side faces the ring finger, as it curls)
+  const seg = (f, k) => { const a = jv(`f${s}${f}${k}`), d = (k < 2 ? jv(`f${s}${f}${k + 1}`) : jv(`tip${s}${f}`)).sub(a), len = d.length(); d.normalize();
+    const p = f ? n.clone() : jv(`f${s}30`).sub(jv(`f${s}00`)).normalize().add(n).normalize(); p.addScaledVector(d, -p.dot(d)).normalize();
+    return {f, a, d, len, p, lat: new V3().crossVectors(d, p)}; };
+  return {w, n, along, across, width, plen, seg};
+}
+// the body's vertices of each hand (any weight on the wrist or a finger) and the bone each mostly follows; its triangles,
+// filed by the bone of their first vertex; the finger tips' skin; the helper points on the hand
+const HAND_V = {};
+function handVerts(s) {
+  if (HAND_V[s]) return HAND_V[s];
+  const bones = new Set(['wrist' + s, ...[0, 1, 2, 3, 4].flatMap(f => [0, 1, 2].map(k => `f${s}${f}${k}`))].map(n => FIG.jIdx[n])), idx = [], dom = new Int16Array(FIG.meta.nV).fill(-1);
+  for (let i = 0; i < FIG.meta.nV; i++) { let b = -1, bw = 0, on = false; for (let k = 0; k < 4; k++) { const w = FIG.sw[i * 4 + k]; if (w && bones.has(FIG.si[i * 4 + k])) on = true; if (w > bw) { bw = w; b = FIG.si[i * 4 + k]; } } if (on) { idx.push(i); dom[i] = b; } }
+  const byBone = {}; for (let t = 0, I = FIG.index; t < I.length; t += 3) if (dom[I[t]] >= 0 && dom[I[t + 1]] >= 0 && dom[I[t + 2]] >= 0) (byBone[dom[I[t]]] = byBone[dom[I[t]]] || []).push(t);
+  for (const k in byBone) byBone[k] = Int32Array.from(byBone[k]);
+  // the skin a claw or hoof grows from: the vertex of each finger's last segment furthest along it (at rest)
+  const J = FIG.j0, tips = [0, 1, 2, 3, 4].map(f => { const b = FIG.jIdx[`f${s}${f}2`], t = FIG.jIdx[`tip${s}${f}`]; let bi = idx[0], bd = -Infinity;
+    for (const i of idx) if (dom[i] === b) { const d = (FIG.base[i * 3] - J[b * 3]) * (J[t * 3] - J[b * 3]) + (FIG.base[i * 3 + 1] - J[b * 3 + 1]) * (J[t * 3 + 1] - J[b * 3 + 1]) + (FIG.base[i * 3 + 2] - J[b * 3 + 2]) * (J[t * 3 + 2] - J[b * 3 + 2]); if (d > bd) { bd = d; bi = i; } }
+    return bi; });
+  // and the clothes' helper points that follow the hand
+  const hidx = []; for (let i = 0; i < FIG.nH; i++) for (let k = 0; k < 4; k++) if (FIG.hsw[i * 4 + k] && bones.has(FIG.hsi[i * 4 + k])) { hidx.push(i); break; }
+  // each hand vertex's neighbours along the mesh's edges (as positions in idx, packed: nb[no[c]..no[c + 1]]), to smooth the relief
+  const at = new Int32Array(FIG.meta.nV).fill(-1); idx.forEach((i, c) => at[i] = c); const sets = idx.map(() => new Set());
+  for (let t = 0, I = FIG.index; t < I.length; t += 3) for (let k = 0; k < 3; k++) { const a = at[I[t + k]], b = at[I[t + (k + 1) % 3]]; if (a >= 0 && b >= 0) { sets[a].add(b); sets[b].add(a); } }
+  const no = new Int32Array(idx.length + 1); sets.forEach((x, c) => no[c + 1] = no[c] + x.size); const nb = new Int32Array(no[idx.length]); sets.forEach((x, c) => nb.set([...x], no[c]));
+  return (HAND_V[s] = {idx: Int32Array.from(idx), dom, byBone, tips, hidx: Int32Array.from(hidx), nb, no});
+}
+// the size of every finger segment: half its width g (at its sides, where neither knuckles nor pads reach), and how far
+// its skin reaches from the bone to the back (dor) and to the palm (pal)
+function fingerGirth(P, F, s) {
+  const {idx, dom} = handVerts(s), G = {}, segs = {}, v = new V3();
+  for (let f = 0; f < 5; f++) for (let k = 0; k < 3; k++) { segs[FIG.jIdx[`f${s}${f}${k}`]] = [`${f}${k}`, F.seg(f, k)]; G[`${f}${k}`] = {g: 0, dor: 0, pal: 0}; }
+  for (const i of idx) {
+    const S = segs[dom[i]]; if (!S) continue; const q = S[1], o = G[S[0]]; v.set(P[i * 3] - q.a.x, P[i * 3 + 1] - q.a.y, P[i * 3 + 2] - q.a.z);
+    const t = v.dot(q.d) / q.len; if (t < .15 || t > .85) continue; const lt = Math.abs(v.dot(q.lat)), pn = v.dot(q.p);
+    if (Math.abs(pn) < .4 * lt) o.g = Math.max(o.g, lt); o.dor = Math.max(o.dor, -pn); o.pal = Math.max(o.pal, pn);
+  }
+  for (const k in G) if (!G[k].g) G[k] = {g: .008, dor: .004, pal: .008};  // (a segment without skin of its own)
+  return G;
+}
+/* where the pads go on a paw-hand (rest pose): c on the bone or in the palm's middle, u along (to the tip), v across, n out
+   of the skin; a, b half length and width; h how far it stands out; lob: lobes toward the wrist; pt: a point to the
+   fingers; bones: the skin it lies on (a finger's own; the palm's, the thumb's root and the wrist's). The pads are raised
+   in the skin (handRelief) and laid on it in leather (handGeos). */
+function handPads(b, F, G, s) {
+  const K = pawKind(b), out = [], bones = n => FIG.jIdx[n];
+  const fingers = K === 'oso' || K === 'rep' ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 0];
+  for (const f of fingers) for (const k of K === 'rep' && f ? [1, 2] : [2]) {
+    const q = F.seg(f, k), g = G[`${f}${k}`].g, last = k === 2;
+    // the bean under the last segment, toward its tip; a dragon's scale-pads are transverse plates, one under each segment
+    const A = q.len * (K === 'rep' ? .22 : K === 'fel' ? .36 : .38) * (f ? 1 : .9), B = g * (K === 'oso' ? .84 : K === 'rep' ? 1 : .76) * (f ? 1 : .85);
+    out.push({c: q.a.clone().addScaledVector(q.d, q.len * (last ? .48 : .5)), u: q.d, v: q.lat, n: q.p, a: A, b: B, h: g * (last ? .3 : .2), lob: 0, pt: 0, se: K === 'rep' ? 4 : 2, bones: [`f${s}${f}${k}`, `f${s}${f}${k - 1}`, ...(last ? [] : [`f${s}${f}2`])].map(bones)});
+  }
+  // the palm pad, under the middle and ring fingers' knuckles; the carpal pad on the heel of the hand, little finger's
+  // side, clear of the wrist's ruff; a dragon's palm has no pad but a few broad transverse scales across it
+  const palmBones = ['wrist' + s, 'elbow' + s, `f${s}01`, ...[0, 1, 2, 3, 4].map(f => `f${s}${f}0`)].map(bones), at = (x, y) => F.w.clone().addScaledVector(F.along, F.plen * x).addScaledVector(F.across, -F.width * y);
+  const flat = {u: F.along, v: F.across, n: F.n, lob: 0, pt: 0, bones: palmBones, palm: true};
+  if (K === 'rep') for (const x of [.42, .6, .78]) out.push({...flat, c: at(x, .08), a: F.plen * .055, b: F.width * (.2 + .15 * x), h: F.plen * .025, se: 4});
+  else {
+    const palm = {can: [.16, .42, .26, .3], fel: [.155, .4, .34, 0], oso: [.16, .5, 0, -.55, .35]}[K];
+    out.push({...flat, c: at(.68, .1), a: F.plen * palm[0], b: F.width * palm[1], h: F.plen * .045, lob: palm[2], pt: palm[3], sk: palm[4]});
+    out.push({...flat, c: at(.3, .17), a: F.plen * .065, b: F.width * .12, h: F.plen * .03});
+  }
+  return out;
+}
+// a pad's outline as a radius at angle th (0 toward the fingers): two notches on the wrist side part it into three
+// lobes (deep in cats, shallower in dogs, whose pad is a heart); a point to the front (dogs), or a dent there (the
+// bear's transverse kidney, its little-finger side fuller: sk); se > 2 squares the oval off (a scale's rounded rectangle)
+const padR = (p, th) => { const b = Math.atan2(Math.sin(th), -Math.cos(th)), notch = x => Math.exp(-(((b - x) / .17) ** 2)), c = Math.cos(th), sn = Math.sin(th), e = p.se || 2;
+  return (1 + p.pt * Math.max(0, c) ** (p.pt < 0 ? 8 : 4) * (1 + (p.sk || 0) * sn) - p.lob * (notch(.45) + notch(-.45))) / (Math.abs(c) ** e + Math.abs(sn) ** e) ** (1 / e); };
+/* the relief of a paw-hand: a knuckle over each joint and the pads raised in the skin. The drawings block a knuckle in
+   as one clean rounded bump on the back of the finger (no creases: the pads already part the segments on the palm side),
+   so each is a broad, low swelling, wide along the bone (most of a girth, but no more than about a third of the shorter
+   segment it joins, so the segment's middle stays lower and the knuckle reads) and faded smoothly round the finger's
+   sides; the mesh's edges are about half a finger's half width, so anything narrower falls between its vertices as facets.
+   The displacement is then relaxed over the mesh (Laplacian, on the offsets, not the shape) to keep it smooth.
+   F, G: the hand's frame and finger girths (fingerGirth), from the remodelled rest shape before the relief. */
+function handRelief(b, S, P, J, s, F, G) {
+  const {idx, nb, no} = handVerts(s), n = idx.length, D = new Float32Array(n * 3), kn = [], v = new V3(), r = new V3(), o = new V3();
+  for (let f = 0; f < 5; f++) for (let j = f ? 0 : 1; j < 3; j++) { const q = F.seg(f, j), g = G[`${f}${j}`].g, sh = j ? Math.min(q.len, F.seg(f, j - 1).len) : q.len;
+    kn.push({q, g, A: [.13, .1, .07][j] * g * S.kn, sg: Math.min([.9, .8, .7][j] * g, .36 * sh)}); }
+  const pads = padsOn(b) && S !== HAND_SHAPES.pezuna ? handPads(b, F, G, s) : [];
+  for (let c = 0; c < n; c++) {
+    const i = idx[c]; o.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); v.set(0, 0, 0);
+    for (const K of kn) {
+      r.subVectors(o, K.q.a); const t = r.dot(K.q.d); if (t < -2.5 * K.sg || t > 2.5 * K.sg) continue;
+      r.addScaledVector(K.q.d, -t); const rl = r.length(); if (rl < 1e-6 || rl > 2 * K.g) continue;
+      v.addScaledVector(r, K.A * sstep(0, .6, -r.dot(K.q.p) / rl) * Math.exp(-(t * t) / (K.sg * K.sg)) * (1 - sstep(1.4 * K.g, 2 * K.g, rl)) / rl);
+    }
+    for (const p of pads) {
+      r.subVectors(o, p.c); const x = r.dot(p.u) / p.a, y = r.dot(p.v) / p.b; if (x * x + y * y > 2.2) continue;
+      const h = r.dot(p.n), rho = Math.hypot(x, y) / padR(p, Math.atan2(y, x)); if (h <= 0 || rho >= 1) continue;
+      // only the skin that faces out of the palm (a finger's: measured round its bone), so the back and sides stay put
+      const rr = p.palm ? r.length() : Math.sqrt(Math.max(1e-12, r.lengthSq() - r.dot(p.u) ** 2));
+      v.addScaledVector(p.n, p.h * (1 - rho * rho * rho) * sstep(.15, .6, h / rr));
+    }
+    D[c * 3] = v.x; D[c * 3 + 1] = v.y; D[c * 3 + 2] = v.z;
+  }
+  // two passes of relaxation: each offset halfway to its neighbours' mean
+  for (let it = 0; it < 2; it++) { const E = D.slice(); for (let c = 0; c < n; c++) { const k0 = no[c], k1 = no[c + 1]; if (k1 === k0) continue;
+    for (let a = 0; a < 3; a++) { let m = 0; for (let k = k0; k < k1; k++) m += E[nb[k] * 3 + a]; D[c * 3 + a] = .5 * E[c * 3 + a] + .5 * m / (k1 - k0); } } }
+  for (let c = 0; c < n; c++) { const i = idx[c] * 3; P[i] += D[c * 3]; P[i + 1] += D[c * 3 + 1]; P[i + 2] += D[c * 3 + 2]; }
+}
+// returns each hand's finger girths (fingerGirth), kept on the figure (handGirth) for its claws and pads
 function remodelHands(b, P, J, H) {
-  const S = handShape(b); if (!S) return;
+  const S = handShape(b), girth = {}; if (!S) return null;
+  // hoof-hands: the fingers drawn together onto the middle of their digit (one for a horse, two for goats and deer)
+  const hoof = S === HAND_SHAPES.pezuna && ANIMAL_LEGS[legSp(b)].hoof, groups = hoof === 'single' ? [[1, 2, 3, 4]] : hoof ? [[1, 2], [3, 4]] : null;
   const jv = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]);
   for (const s of ['L', 'R']) {
-    const seg = new Map(), mid = jv(`f${s}20`);
+    const seg = new Map();
+    // each digit's line (from the rest joints, before any finger moves): a cloven hoof's two halves lie close, side by side,
+    // their flat inner walls nearly touching along the cleft, and each half's two fingers drawn almost wholly onto it, so
+    // no skin shows in the cleft between them
+    const dirOf = g => g.reduce((a, f) => a.add(jv(`tip${s}${f}`).sub(jv(`f${s}${f}0`)).normalize()), new V3()).normalize(), ctrOf = g => g.reduce((a, f) => a.add(jv(`f${s}${f}0`)), new V3()).multiplyScalar(1 / g.length);
+    const line = groups && groups.map(g => groups.length > 1 ? [dirOf(g).lerp(dirOf([1, 2, 3, 4]), .9).normalize(), ctrOf(g).lerp(ctrOf([1, 2, 3, 4]), .75)] : [dirOf(g), ctrOf(g)]);
     for (let f = 0; f < 5; f++) {
-      const names = [`f${s}${f}0`, `f${s}${f}1`, `f${s}${f}2`, `tip${s}${f}`], p = names.map(jv), k = f === 0 ? S.thumb : S.len;
-      const dlt = f > 0 && S.sq < 1 ? mid.clone().sub(p[0]).multiplyScalar(1 - S.sq) : new V3(), n = [p[0].clone().add(dlt)];
-      for (let i = 1; i < 4; i++) n.push(n[i - 1].clone().add(p[i].clone().sub(p[i - 1]).multiplyScalar(k)));
-      for (let i = 0; i < 3; i++) seg.set(FIG.jIdx[names[i]], {o: p[i], n: n[i], d: p[i + 1].clone().sub(p[i]).normalize(), k, r: S.r * (f === 0 ? .92 : 1)});
+      const names = [`f${s}${f}0`, `f${s}${f}1`, `f${s}${f}2`, `tip${s}${f}`], p = names.map(jv), k = f === 0 ? S.thumb : S.len, gi = groups ? groups.findIndex(g => g.includes(f)) : -1;
+      const gd = gi >= 0 && line[gi][0], n = [gi >= 0 ? p[0].clone().lerp(line[gi][1], 1 - S.sq * (hoof === 'single' ? .5 : .3)) : p[0].clone()];
+      for (let i = 0; i < 3; i++) {
+        const d = p[i + 1].clone().sub(p[i]), l = d.length() * k; d.normalize(); const nd = gd ? d.clone().lerp(gd, S.cv).normalize() : d;
+        n.push(n[i].clone().addScaledVector(nd, l));
+        seg.set(FIG.jIdx[names[i]], {o: p[i], n: n[i], d, nd, q: gd && new Q().setFromUnitVectors(d, nd), k, r: f ? S.r * (1 - S.tp * i / 2) : 1 + (S.r - 1) * [.3, .5, .85][i]});
+      }
       names.forEach((nm, i) => { const j = FIG.jIdx[nm] * 3; J[j] = n[i].x; J[j + 1] = n[i].y; J[j + 2] = n[i].z; });
     }
     const v = new V3(), out = new V3(), loc = new V3(), rad = new V3();
-    const apply = (Q, cnt, si, sw) => {
-      for (let i = 0; i < cnt; i++) {
-        let wf = 0; for (let k = 0; k < 4; k++) if (seg.has(si[i * 4 + k])) wf += sw[i * 4 + k] / 255; if (wf < .01) continue;
+    // the points that have a hand bone (the body's or the helpers')
+    const apply = (Q, list, si, sw) => {
+      for (let c = 0; c < list.length; c++) {
+        const i = list[c]; let wf = 0; for (let k = 0; k < 4; k++) if (seg.has(si[i * 4 + k])) wf += sw[i * 4 + k] / 255; if (wf < .01) continue;
         v.set(Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]); out.set(0, 0, 0); let wt = 0;
         for (let k = 0; k < 4; k++) {
           const w = sw[i * 4 + k] / 255; if (!w) continue; const g = seg.get(si[i * 4 + k]);
           if (!g) { out.addScaledVector(v, w); wt += w; continue; }
-          loc.subVectors(v, g.o); const al = loc.dot(g.d); rad.copy(loc).addScaledVector(g.d, -al);
-          out.addScaledVector(g.n.clone().addScaledVector(g.d, al * g.k).addScaledVector(rad, g.r), w); wt += w;
+          loc.subVectors(v, g.o); const al = loc.dot(g.d); rad.copy(loc).addScaledVector(g.d, -al); if (g.q) rad.applyQuaternion(g.q);
+          out.addScaledVector(g.n, w).addScaledVector(g.nd, al * g.k * w).addScaledVector(rad, g.r * w); wt += w;
         }
         if (wt > 0) { out.multiplyScalar(1 / wt); Q[i * 3] = out.x; Q[i * 3 + 1] = out.y; Q[i * 3 + 2] = out.z; }
       }
     };
-    apply(P, FIG.meta.nV, FIG.si, FIG.sw); if (H) apply(H, FIG.nH, FIG.hsi, FIG.hsw);
+    apply(P, handVerts(s).idx, FIG.si, FIG.sw); if (H) apply(H, handVerts(s).hidx, FIG.hsi, FIG.hsw);
+    const F = handFrame(J, s); girth[s] = fingerGirth(P, F, s); handRelief(b, S, P, J, s, F, girth[s]);
   }
+  return girth;
 }
 // claws on fingers and paws, hooves on goats, pads: rigid on the finger tips and the ankles (accessory skeleton)
 function pawGeos(m, P) { return [...footGeos(m, P), ...handGeos(m, P)]; }
@@ -728,32 +879,198 @@ function footGeos(m, P) {
   }
   return out;
 }
-// hands: palm and finger pads, hoof caps, finger claws
+// hands: claws or hoof caps, and the pads; none for "human" hands, nor where a hand is missing (limb differences)
 function handGeos(m, P) {
-  const out = []; if (!legSpec(m.body)) return out;
-  const {L, sz, jp, ACC, claw, pad, pads} = pawMakers(m);
+  const b = m.body, S = handShape(b); if (!S) return [];
+  const L = ANIMAL_LEGS[legSp(b)], K = pawKind(b), sz = m.size, N = m.geo.attributes.normal.array, E = m.geo.attributes.aEye.array, ACC = n => m.accBones.indexOf(m.bones[FIG.jIdx[n]]), hard = [], soft = [];
   for (const s of ['L', 'R']) {
-    if (pads && m.handAxes) {
-      // palm and finger pads, on the palm side of the hand
-      const n = m.handAxes[s].n, w = jp('wrist' + s), mid = jp(`f${s}20`), side = jp(`f${s}10`).sub(jp(`f${s}40`)).normalize();
-      for (let f = 1; f < 5; f++) { const a = jp(`f${s}${f}2`), b = jp(`tip${s}${f}`), c = a.clone().lerp(b, .55).addScaledVector(n, .0075 * sz);
-        out.push(pad(c, n, side, .0058 * sz, .007 * sz, .0035 * sz, ACC(`f${s}${f}2`))); }
-      const pc = w.clone().lerp(mid, .62).addScaledVector(n, .014 * sz);
-      out.push(pad(pc, n, side, .019 * sz, .014 * sz, .005 * sz, ACC('wrist' + s)));
-    }
-    if (handShape(m.body) === HAND_SHAPES.pezuna) {
-      // hoof-hands: two keratin caps over the fingers pressed together (one for a horse)
-      const n = m.handAxes ? m.handAxes[s].n : new V3(0, 0, 1), groups = L.hoof === 'single' ? [[1, 2, 3, 4]] : [[1, 2], [3, 4]];
-      for (const gr of groups) {
-        const tip = gr.reduce((a, f) => a.add(jp(`tip${s}${f}`)), new V3()).multiplyScalar(1 / gr.length), base = gr.reduce((a, f) => a.add(jp(`f${s}${f}2`)), new V3()).multiplyScalar(1 / gr.length);
-        const ax = tip.clone().sub(base).normalize(), w = .009 * sz * (gr.length > 2 ? 1.7 : 1.05), len = tip.distanceTo(base) * 1.05;
-        out.push(furAttrsLoft(loft({origin: base.clone().addScaledVector(ax, len * .25), axis: ax, side: n.clone(), secs: [[0, w, w * .9], [len * .45, w * 1.08, w], [len * .8, w * .95, w * .85], [len * .95, w * .55, w * .45], [len, .001, .001]], radial: 12, sub: 2, weights: () => [[ACC(`f${s}${gr[0]}2`), 1]]}), 3));
-      }
-    }
-    if (L.hand) for (let f = 1; f < 5; f++) {
-      const tip = jp(`tip${s}${f}`), last = jp(`f${s}${f}2`), dir = tip.clone().sub(last).normalize();
-      out.push(claw(tip.clone().addScaledVector(dir, -.004 * sz), dir, L.hand * sz, L.hand * .3 * sz, ACC(`f${s}${f}2`)));
+    if (limbCut(b, 'arm' + s) != null) continue;
+    const F = handFrame(m.J, s), G = m.handGirth && m.handGirth[s] || fingerGirth(P, F, s), {tips} = handVerts(s);
+    if (S === HAND_SHAPES.pezuna) { const gs = L.hoof === 'single' ? [[1, 2, 3, 4]] : [[1, 2], [3, 4]]; for (const gr of gs) hard.push(hoofCap(F, P, s, gr, gs.find(g => g !== gr), gr.map(f => [ACC(`f${s}${f}2`), 1 / gr.length]), tips[gr[0]])); }
+    else if (L.hand) { const C = HAND_CLAWS[K]; for (let f = 0; f < 5; f++) { const q = F.seg(f, 2); hard.push(handClaw(q, G[`${f}2`], C, q.len * C.k * L.hand / C.ref, ACC(`f${s}${f}2`), tips[f])); } }
+    if (padsOn(b) && S !== HAND_SHAPES.pezuna) {
+      const key = [s, K, S === HAND_SHAPES.garra, Math.round(F.plen / F.width * 8), Math.round(F.seg(2, 2).len / F.plen * 16)].join(), grids = PAD_GRIDS[key] || (PAD_GRIDS[key] = handPads(b, F, G, s).map(p => padGrid(P, s, p)));
+      for (const gd of grids) if (gd) soft.push(padMesh(gd, P, N, .0007 * sz, K === 'rep' && E));
     }
   }
+  const out = [];
+  if (hard.length) { const g = mergeLofts(hard); g.userData.hand = 'claws'; out.push(g); }  // (claws or hooves: keratin)
+  if (soft.length) { const g = mergeLofts(soft); g.userData.hand = 'pads'; g.userData.skin = g.userData.noHull = true; out.push(g); }
   return out;
+}
+// a part's points go with one skin vertex each (aRoot), so gloves hide what they cover (hideHandParts)
+function rootedPart(g, kind, roots) {
+  furAttrsLoft(g, kind); const n = g.attributes.position.count;
+  g.setAttribute('aRoot', new THREE.BufferAttribute(typeof roots === 'number' ? new Float32Array(n).fill(roots) : roots, 1)); g.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(n), 1));
+  return g;
+}
+// a pointed part's outline ends in a point: the hull pushes its last ring forward, along the part, not round it (which
+// would draw an ink dot there)
+function pointHull(g, ring) {
+  const p = g.attributes.position, nm = g.attributes.normal, n = p.count, c = (a, b) => { const v = new V3(); for (let i = a; i < b; i++) v.add(new V3().fromBufferAttribute(p, i)); return v.multiplyScalar(1 / (b - a)); };
+  const d = c(n - ring, n).sub(c(n - 2 * ring, n - ring)).normalize(); for (let i = n - ring; i < n; i++) nm.setXYZ(i, d.x, d.y, d.z);
+  return g;
+}
+/* a claw out of the end of a finger's last segment: rooted inside the tip with its back just under the skin of the
+   finger's back, so the skin hoods it and it comes out of the end as wide as the tip; then it tapers to its point and
+   curves down toward the palm. w, h: half width and depth at its base (in the finger's half width); k: its length past
+   the tip, in last-segment lengths, for a claw size of ref (ANIMAL_LEGS hand); bend: its curve; end: how blunt its
+   point is. A dog's are short blunt cones (about half a segment, worn by walking), a cat's narrow hooks, a bear's long
+   and heavy, a dragon's long talons. Rigid on the last segment, so it follows the finger as it curls. */
+const HAND_CLAWS = {can: {w: .5, h: .54, k: .8, ref: .013, bend: -.15, end: .1}, fel: {w: .36, h: .56, k: .8, ref: .013, bend: -.7, end: .03},
+  oso: {w: .52, h: .58, k: .95, ref: .024, bend: -.24, end: .12}, rep: {w: .46, h: .6, k: 1.15, ref: .026, bend: -.6, end: .03}};
+function handClaw(q, Z, C, len, bone, root) {
+  // e: from the root to the end of the finger; its back rises from under the skin to just over it there, like a nail plate
+  const w = C.w * Z.g, h = C.h * Z.g, e = q.len * .5, top = t => Z.dor * (.75 + .65 * clamp(t / e, 0, 1)) - h, en = Math.max(C.end, .015);
+  const secs = [[-h * .4, w * .5, h * .5, 0, top(0)], [0, w * .84, h * .84, 0, top(0)], [e * .6, w * .96, h * .96, 0, top(e * .6)], [e, w, h, 0, top(e)], [e + len * .3, w * .86, h * .8, 0, top(e)],
+    [e + len * .7, w * Math.max(.42, en * 1.8), h * Math.max(.4, en * 1.8), 0, top(e)], [e + len * (1 - en * .25), w * en, h * en, 0, top(e)], [e + len, w * en * .3, h * en * .3, 0, top(e)]];
+  return rootedPart(pointHull(loft({origin: q.a.clone().addScaledVector(q.d, q.len * .5), axis: q.d, side: new V3().crossVectors(q.d, q.p), secs, radial: 10, sub: 2, bend: C.bend, weights: () => [[bone, 1]]}), 11), 3, root);
+}
+/* a hoof over a digit (the fingers held together: one digit for a horse, two halves for goats and deer): a keratin wall
+   from the coronet, a little behind the last joint (a hoof holds the coffin bone and the end of the pastern), on past
+   the tips, flaring a little; cut by the bearing edge, a plane oblique to the digit: the toe runs long on the back of
+   the hand and the heels short on the palm side, so the sole faces down and a little to the palm, its wall meeting
+   it at about 60° (a hoof's toe wall stands at about 50° to the ground, the heels steeper). Each section is the skin's own outline there plus a margin, so no skin pokes
+   through it; a cloven half is flat where it faces the other. The sole is flat and set back inside a rim of wall, its
+   white line inked. Rigid on the digit's last segments. */
+function hoofCap(F, P, s, gr, other, wts, root) {
+  const avg = (g, f) => g.reduce((v, x) => v.add(f(x)), new V3()).multiplyScalar(1 / g.length), NB = 24, TAU = Math.PI * 2;
+  const u = avg(gr, f => F.seg(f, 2).d).normalize(), p = F.n.clone().addScaledVector(u, -F.n.dot(u)).normalize(), lat = new V3().crossVectors(u, p);
+  const c = avg(gr, f => F.seg(f, 2).a), l1 = gr.reduce((a, f) => a + F.seg(f, 1).len, 0) / gr.length, t0 = -.45 * l1;
+  // the skin's outline round the digit (in NB sectors, from the palm side round by the back): all along, and at the coronet
+  const bones = new Set(gr.flatMap(f => [1, 2].map(k => FIG.jIdx[`f${s}${f}${k}`]))), {idx, dom} = handVerts(s), env = new Float64Array(NB), envC = new Float64Array(NB), r = new V3();
+  const sk = [];
+  for (const i of idx) {
+    if (!bones.has(dom[i])) continue; r.set(P[i * 3] - c.x, P[i * 3 + 1] - c.y, P[i * 3 + 2] - c.z); const t = r.dot(u); if (t < t0) continue;
+    const x = r.dot(lat), y = r.dot(p), rad = Math.hypot(x, y), k = (Math.round(Math.atan2(x, y) / TAU * NB) + NB) % NB;
+    env[k] = Math.max(env[k], rad); if (t < t0 + .3 * l1) envC[k] = Math.max(envC[k], rad); sk.push(t, y);
+  }
+  // sectors without skin take their neighbours'; then widened by one sector and smoothed (never inside the skin)
+  const fill = e => { for (let it = 0; it < NB && e.includes(0); it++) { const o = e.slice(); for (let k = 0; k < NB; k++) if (!o[k]) e[k] = Math.max(o[(k + 1) % NB], o[(k + NB - 1) % NB]); }
+    const d = e.map((_, k) => Math.max(e[(k + NB - 1) % NB], e[k], e[(k + 1) % NB])); return e.map((_, k) => .25 * d[(k + NB - 1) % NB] + .5 * d[k] + .25 * d[(k + 1) % NB]); };
+  const E1 = fill(env), E0 = fill(envC).map((v, k) => Math.min(v, E1[k])), mean = E1.reduce((a, v) => a + v, 0) / NB, mg = .07 * mean;
+  // a hoof is round where the digit is flat (the wall stands off the palm and the back, as deep as it is wide)
+  const big = Math.max(...E1), ER = E1.map(v => Math.max(v, .7 * big));
+  // a cloven half stops short of the plane between the two
+  const half = other ? avg(other, f => F.seg(f, 2).a).sub(c).dot(lat) / 2 : 0, xmax = Math.abs(half) - .05 * mean, sg = Math.sign(half);
+  const at = (ph, rad, t) => { let x = rad * Math.sin(ph); const y = rad * Math.cos(ph); if (other && x * sg > xmax) x = xmax * sg; return c.clone().addScaledVector(u, t).addScaledVector(lat, x).addScaledVector(p, y); };
+  // the wall's rings, s: 0 at the coronet, 1 at the bearing edge (the ring before it tucked into the skin); the sole's plane
+  // clear of the skin by more than the sole is set back
+  const R1 = k => ER[k] * 1.06 + mg;
+  // the sole's plane, t + K·y = L, just clear of all the skin; tilted 27° (K = tan) or less, so the heels keep their height
+  const lOf = K => { let l = -Infinity; for (let i = 0; i < sk.length; i += 2) l = Math.max(l, sk[i] + K * sk[i + 1]); return l + mg + .1 * mean; };
+  let K = .5; while (K > .05 && lOf(K) - K * R1(0) * 1.1 < t0 + .5 * l1) K -= .1;
+  const L = lOf(K), edge = (ph, k) => L - K * R1(k) * 1.1 * Math.cos(ph);
+  const rings = [[-.3, k => E0[k] * .9], [0, k => E0[k] * 1.04 + mg], [.3, k => E0[k] * .4 + R1(k) * .6 * 1.03], [.65, k => R1(k) * 1.07], [1, k => R1(k) * 1.1]];
+  const pos = [], line = [], add = (v, l) => { pos.push(v.x, v.y, v.z); line.push(...l); };
+  for (const [sv, rf] of rings) for (let k = 0; k <= NB; k++) { const ph = k / NB * TAU, kk = k % NB, t = sv < 0 ? t0 + sv * l1 * .4 : t0 + sv * Math.max(edge(ph, kk) - t0, .3 * l1); add(at(ph, rf(kk), t), [1, 1, (sv - .1) * .01, 0]); }
+  // the sole: the bearing edge again, a rim of wall, and the sole set back a little inside it
+  const nS = u.clone().addScaledVector(p, K).normalize(), W = rings.length * (NB + 1);
+  for (const [q, back] of [[1, 0], [.84, .05], [0, .09]]) for (let k = 0; k <= (q ? NB : 0); k++) { const ph = k / NB * TAU, kk = k % NB, rad = R1(kk) * 1.1 * q;
+    add(at(ph, rad, L - K * rad * Math.cos(ph)).addScaledVector(nS, -back * mean), [1, 1, (q - .91) * .01, 0]); }
+  const idx2 = [], C = NB + 1;
+  for (let j = 0; j < rings.length - 1; j++) for (let k = 0; k < NB; k++) { const a = j * C + k; idx2.push(a, a + C, a + 1, a + 1, a + C, a + C + 1); }
+  for (let k = 0; k < NB; k++) { const a = W + k; idx2.push(a, a + 1, a + C, a + 1, a + C + 1, a + C); idx2.push(W + C + k, W + C + k + 1, W + 2 * C); }
+  const g = new THREE.BufferGeometry(), n = pos.length / 3, si = [], sw = [];
+  for (let i = 0; i < n; i++) for (let k = 0; k < 4; k++) { si.push(wts[k] ? wts[k][0] : 0); sw.push(wts[k] ? wts[k][1] : 0); }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aLine', new THREE.Float32BufferAttribute(line, 4));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  // facing out: the wall away from the digit's axis, the sole along nS
+  const fc = i => { const A = new V3().fromArray(pos, idx2[i] * 3); return [new V3().fromArray(pos, idx2[i + 1] * 3).sub(A).cross(new V3().fromArray(pos, idx2[i + 2] * 3).sub(A)), A.sub(c)]; };
+  const [wn, wr] = fc(2 * NB * 6), wallIn = wn.dot(wr.addScaledVector(u, -wr.dot(u))) < 0, soleIn = fc((rings.length - 1) * NB * 6)[0].dot(nS) < 0;
+  g.setIndex(idx2); g.computeVertexNormals();
+  // the seam where each ring closes, and the sole flat
+  const nm = g.attributes.normal, v = new V3();
+  for (let j = 0; j < rings.length; j++) { const i0 = j * C, i1 = i0 + NB; v.set(nm.getX(i0) + nm.getX(i1), nm.getY(i0) + nm.getY(i1), nm.getZ(i0) + nm.getZ(i1)).normalize(); nm.setXYZ(i0, v.x, v.y, v.z); nm.setXYZ(i1, v.x, v.y, v.z); }
+  for (let i = W; i < n; i++) nm.setXYZ(i, nS.x, nS.y, nS.z);
+  g.boundingSphere = new THREE.Sphere(new V3(), 20);
+  return rootedPart(g, 3, root);
+}
+/* a pad laid on the skin in leather: a polar grid inside its outline, each point dropped onto the body along the pad's
+   normal (onto the skin of its own bones), lifted a hair off it and skinned as that skin is (the body's skeleton), so it
+   bends and stretches with the hand and can never float. Where its points land (a triangle and where in it) depends
+   only on the mesh and the pad's place on the hand, so it is found once for each kind of hand (padGrid, kept in
+   PAD_GRIDS) and a rebuild only reads the skin there again (padMesh). The remodel moves the hand's skin with its bones
+   (each segment stretched along its own bone), so a pad set at a fraction of its segment or palm stays on the same
+   triangles while the body's sliders change the hand's size; only its proportions (palm length to width, fingers to
+   palm) move a pad across the mesh, and they are part of the key. Its rim is inked as the drawings outline every
+   bean: a contour ring (aLine z crosses 0) just inside it, drawn by the lines shader like the body's rings. */
+const PAD_RR = [0, .3, .55, .74, .87, .95, 1], PAD_GRIDS = {};
+function padGrid(P, s, p) {
+  const {dom, byBone} = handVerts(s), I = FIG.index, ok = new Set(p.bones), reach = 1.8 * Math.max(p.a, p.b), {u, v, n, c: o} = p;
+  // the skin's triangles under the outline, flattened onto the pad's plane (in its half sizes) with their heights over it,
+  // and filed in a coarse grid over the outline so a point looks at a few
+  const GN = 8, cell = x => clamp(Math.floor((x + 1.4) / 2.8 * GN), 0, GN - 1), grid = Array.from({length: GN * GN}, () => []);
+  let any = false;
+  for (const bn of p.bones) for (const t of byBone[bn] || []) {
+    // near it in the pad's plane: its first corner within the pad's reach and the triangle's longest edge (the heel of
+    // the hand has big triangles, bigger than a carpal pad)
+    const i0 = I[t] * 3, dx = P[i0] - o.x, dy = P[i0 + 1] - o.y, dz = P[i0 + 2] - o.z, h = dx * n.x + dy * n.y + dz * n.z, ed = (a, b) => Math.hypot(P[a] - P[b], P[a + 1] - P[b + 1], P[a + 2] - P[b + 2]);
+    if (!ok.has(dom[I[t + 1]]) || !ok.has(dom[I[t + 2]]) || Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - h * h)) > reach + Math.max(ed(i0, I[t + 1] * 3), ed(i0, I[t + 2] * 3))) continue;
+    const c = new Float64Array(10); c[9] = t; let up = false;
+    for (let k = 0; k < 3; k++) { const i = I[t + k] * 3, x = P[i] - o.x, y = P[i + 1] - o.y, z = P[i + 2] - o.z;
+      c[k * 3] = (x * u.x + y * u.y + z * u.z) / p.a; c[k * 3 + 1] = (x * v.x + y * v.y + z * v.z) / p.b; c[k * 3 + 2] = x * n.x + y * n.y + z * n.z; up = up || c[k * 3 + 2] > 0; }
+    const x0 = Math.min(c[0], c[3], c[6]), x1 = Math.max(c[0], c[3], c[6]), y0 = Math.min(c[1], c[4], c[7]), y1 = Math.max(c[1], c[4], c[7]);
+    if (!up || x0 > 1.3 || x1 < -1.3 || y0 > 1.3 || y1 < -1.3) continue;
+    for (let gx = cell(x0); gx <= cell(x1); gx++) for (let gy = cell(y0); gy <= cell(y1); gy++) grid[gx * GN + gy].push(c);
+    any = true;
+  }
+  if (!any) return null;
+  // the skin seen down the pad's normal at (x, y): the topmost triangle there and where in it
+  const hit = (x, y) => {
+    let best = -Infinity, h = null;
+    for (const c of grid[cell(x) * GN + cell(y)]) {
+      const d = (c[4] - c[7]) * (c[0] - c[6]) + (c[6] - c[3]) * (c[1] - c[7]); if (Math.abs(d) < 1e-12) continue;
+      const l0 = ((c[4] - c[7]) * (x - c[6]) + (c[6] - c[3]) * (y - c[7])) / d, l1 = ((c[7] - c[1]) * (x - c[6]) + (c[0] - c[6]) * (y - c[7])) / d, l2 = 1 - l0 - l1;
+      if (l0 < -1e-9 || l1 < -1e-9 || l2 < -1e-9) continue; const z = l0 * c[2] + l1 * c[5] + l2 * c[8]; if (z > best) { best = z; h = [c[9], l0, l1, l2]; }
+    }
+    return h;
+  };
+  const S = p.palm ? 40 : 20, cnt = 1 + S * (PAD_RR.length - 1), tri = new Int32Array(cnt), bc = new Float32Array(cnt * 3), si = new Uint16Array(cnt * 4), sw = new Float32Array(cnt * 4), line = new Float32Array(cnt * 4);
+  const wi = new Int32Array(12), wv = new Float64Array(12);
+  let at = 0, prev = null;
+  // rings from the middle out to the rim; a point that falls off the skin takes the one inside it
+  for (const q of PAD_RR) {
+    const ring = [];
+    for (let j = 0; j < (q ? S : 1); j++, at++) {
+      const th = j / S * Math.PI * 2, k = q * padR(p, th), h = hit(k * Math.cos(th), k * Math.sin(th)) || (prev && (prev[j] || prev[0])); if (!h) return null; ring.push(h);
+      tri[at] = h[0]; bc.set(h.slice(1), at * 3); line.set([1, 1, (q - .93) * .01, 0], at * 4);
+      // skinned as the skin under it: its four strongest bones
+      let nw = 0, tw = 0;
+      for (let k = 0; k < 3; k++) { const i = I[h[0] + k]; for (let j2 = 0; j2 < 4; j2++) { const w = FIG.sw[i * 4 + j2] / 255 * h[k + 1], bn = FIG.si[i * 4 + j2]; if (w <= 0) continue; let e = 0; while (e < nw && wi[e] !== bn) e++; if (e === nw) { wi[nw] = bn; wv[nw++] = 0; } wv[e] += w; } }
+      for (let j2 = 0; j2 < 4; j2++) { let bj = -1; for (let e = 0; e < nw; e++) if (wv[e] > 0 && (bj < 0 || wv[e] > wv[bj])) bj = e; if (bj < 0) break; si[at * 4 + j2] = wi[bj]; sw[at * 4 + j2] = wv[bj]; tw += wv[bj]; wv[bj] = 0; }
+      for (let j2 = 0; j2 < 4; j2++) sw[at * 4 + j2] /= tw || 1;
+    }
+    prev = ring;
+  }
+  const idx = [], ix = (ri, j) => ri ? 1 + (ri - 1) * S + j % S : 0;
+  for (let j = 0; j < S; j++) idx.push(0, ix(1, j), ix(1, j + 1));
+  for (let ri = 1; ri < PAD_RR.length - 1; ri++) for (let j = 0; j < S; j++) idx.push(ix(ri, j), ix(ri + 1, j), ix(ri + 1, j + 1), ix(ri, j), ix(ri + 1, j + 1), ix(ri, j + 1));
+  // facing out of the skin (the grid turns about n one way or the other)
+  if (new V3().crossVectors(u, v).dot(n) < 0) for (let k = 0; k < idx.length; k += 3) { const x = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = x; }
+  return {tri, bc, si, sw, line, idx};
+}
+// a pad on the skin as it is now (P, N), each point rooted at the nearest corner of its triangle (gloves, coat); eye: the body's coat, for a dragon's scale-pads, scutes the colour of its
+// belly rather than leather
+function padMesh(G, P, N, lift, eye) {
+  const I = FIG.index, cnt = G.tri.length, pos = new Float32Array(cnt * 3), nor = new Float32Array(cnt * 3), root = new Float32Array(cnt), av = new V3();
+  for (let c = 0; c < cnt; c++) {
+    let px = 0, py = 0, pz = 0, nx = 0, ny = 0, nz = 0;
+    for (let k = 0; k < 3; k++) { const i = I[G.tri[c] + k] * 3, f = G.bc[c * 3 + k]; px += P[i] * f; py += P[i + 1] * f; pz += P[i + 2] * f; nx += N[i] * f; ny += N[i + 1] * f; nz += N[i + 2] * f; }
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    pos[c * 3] = px + nx * lift; pos[c * 3 + 1] = py + ny * lift; pos[c * 3 + 2] = pz + nz * lift; nor[c * 3] = nx; nor[c * 3 + 1] = ny; nor[c * 3 + 2] = nz; root[c] = I[G.tri[c] + (G.bc[c * 3] >= G.bc[c * 3 + 1] ? G.bc[c * 3] >= G.bc[c * 3 + 2] ? 0 : 2 : G.bc[c * 3 + 1] >= G.bc[c * 3 + 2] ? 1 : 2)]; av.x += nx; av.y += ny; av.z += nz;
+  }
+  // shaded as one smooth cushion, not with every facet of the skin under it (the drawings fill a bean flat)
+  av.normalize(); for (let c = 0; c < cnt * 3; c += 3) { const v = new V3(nor[c] * .5 + av.x, nor[c + 1] * .5 + av.y, nor[c + 2] * .5 + av.z).normalize(); nor[c] = v.x; nor[c + 1] = v.y; nor[c + 2] = v.z; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('aLine', new THREE.BufferAttribute(G.line, 4));
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(G.si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(G.sw, 4)); g.setIndex(G.idx);
+  rootedPart(g, 2, root);
+  if (eye) { const A = g.attributes.aEye.array; for (let c = 0; c < cnt; c++) { A.set(eye.subarray(root[c] * 4, root[c] * 4 + 4), c * 4); A[c * 4] = 1; } }
+  return g;
+}
+// gloves hide the claws, hooves and pads they cover, each point with the skin it grows from (called with the body's hide)
+function hideHandParts(m, H) {
+  for (const a of m.acc || []) { const g = a.geometry; if (a.userData.hull || !g.userData.hand) continue;
+    const R = g.attributes.aRoot.array, A = g.attributes.aHide.array; for (let i = 0; i < A.length; i++) A[i] = H[R[i]] >= .5 ? 1 : 0; g.attributes.aHide.needsUpdate = true; }
 }

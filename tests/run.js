@@ -762,6 +762,111 @@ const SUITES = {
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },
+  // paw-hands: fingers thick and knuckled, pads laid on the skin, claws out of the finger tips that stay on them as the
+  // hand closes (a paw's fist, no claw through the palm), hooves, "Human" hands and feet, gloves, a missing hand
+  async furhands(browser) {
+    const page = await open(browser), A = (f, a) => page.evaluate(f, a);
+    await goTab(page, 'cuerpo'); await page.waitForTimeout(400);
+    const species = async sp => { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(2500); };
+    // in the page: the hand parts (claws or hooves on the finger tips' bones, pads on the skin), points as drawn, joints at rest
+    await A(() => { const C = window.__cdp, V = THREE.Vector3, F = C.FIG;
+      window.__hp = {
+        parts: () => { const o = {}; for (const a of C.mq.acc) { const k = a.geometry.userData.hand; if (k && !a.userData.hull) o[k] = a; } return o; },
+        world: (mesh, i) => { const v = new V().fromBufferAttribute(mesh.geometry.attributes.position, i); mesh.boneTransform(i, v); return v.applyMatrix4(mesh.matrixWorld); },
+        jv: n => { const J = C.mq.J, k = F.jIdx[n]; return new V(J[k * 3], J[k * 3 + 1], J[k * 3 + 2]); },
+        pose: (id, c) => { const m = C.mq; C.usePreset(C.POSES.find(p => p.id === id)); if (c) { m.hands.R = {c, s: 0, t: 0}; m.applyHands(); } m.group.updateMatrixWorld(true); m.skeleton.update(); m.accSkeleton.update(); }
+      }; });
+    const summary = () => A(() => { const H = window.__hp, o = {}; for (const [k, a] of Object.entries(H.parts())) { const g = a.geometry, E = g.attributes.aEye.array, kinds = new Set();
+      for (let i = 3; i < E.length; i += 4) kinds.add(Math.floor(-E[i]) - 1); o[k] = {n: g.attributes.position.count, kinds: [...kinds].join(), body: a.skeleton === window.__cdp.mq.skeleton, nan: Array.from(g.attributes.position.array).some(v => !isFinite(v))}; } return o; });
+    // the right middle finger's middle segment: its half width, and how far its back stands out at the knuckle against its middle
+    const finger = () => A(() => { const C = window.__cdp, H = window.__hp, m = C.mq, F = C.FIG, P = m.geo.attributes.position.array, a = H.jv('fR21'), d = H.jv('fR22').sub(a), L = d.length(); d.normalize();
+      const n = m.handAxes.R.n; let w = 0, near = 0, mid = 0;
+      for (let i = 0; i < F.meta.nV; i++) if (m.dom[i] === F.jIdx.fR21) { const v = new THREE.Vector3(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).sub(a), t = v.dot(d) / L; v.addScaledVector(d, -v.dot(d)); w = Math.max(w, v.length());
+        const dor = -v.dot(n); if (t < .2) near = Math.max(near, dor); else if (t > .35 && t < .65) mid = Math.max(mid, dor); }
+      // and how smooth its skin is: each vertex's offset from its neighbours' mean, in edge lengths (the 95th percentile over
+      // the fingers' backs), so knuckles come out as rounded swellings, not facets
+      const fb = new Set([0, 1, 2, 3, 4].flatMap(f => [0, 1, 2].map(k => F.jIdx[`fR${f}${k}`]))), nb = new Map(), I = F.index;
+      for (let t = 0; t < I.length; t += 3) for (let k = 0; k < 3; k++) { const a = I[t + k], b = I[t + (k + 1) % 3]; if (!fb.has(m.dom[a]) || !fb.has(m.dom[b])) continue; for (const [x, y] of [[a, b], [b, a]]) { if (!nb.has(x)) nb.set(x, new Set()); nb.get(x).add(y); } }
+      const lap = []; for (const [i, ns] of nb) { if (ns.size < 4 || (N => N[i * 3] * n.x + N[i * 3 + 1] * n.y + N[i * 3 + 2] * n.z)(m.geo.attributes.normal.array) > -.3) continue; let cx = 0, cy = 0, cz = 0, e = 0;
+        for (const j of ns) { cx += P[j * 3]; cy += P[j * 3 + 1]; cz += P[j * 3 + 2]; e += Math.hypot(P[j * 3] - P[i * 3], P[j * 3 + 1] - P[i * 3 + 1], P[j * 3 + 2] - P[i * 3 + 2]); }
+        lap.push(Math.hypot(cx / ns.size - P[i * 3], cy / ns.size - P[i * 3 + 1], cz / ns.size - P[i * 3 + 2]) / (e / ns.size)); }
+      lap.sort((a, b) => a - b);
+      return {w, knuckle: near / mid, rough: lap[Math.floor(lap.length * .95)]}; });
+    await species('lobo'); const wolf = await summary(), wf = await finger();
+    ok(wolf.claws && wolf.claws.kinds === '3' && wolf.pads && wolf.pads.kinds === '2' && wolf.pads.body && !wolf.claws.body && !wolf.claws.nan && !wolf.pads.nan,
+      `a wolf's paws: keratin claws on the finger bones, leather pads on the skin (${JSON.stringify(wolf)})`);
+    ok(wolf.claws.n + wolf.pads.n < 6000, `the hand parts stay light (${wolf.claws.n + wolf.pads.n} points)`);
+    // rebuilt with the body on every slider drag: as quick as the feet's parts (where pads land on the skin is found once),
+    // for the paws, a dragon's (a pad under every segment) and a horse's hooves
+    const timing = () => A(() => { const C = window.__cdp, m = C.mq, P = m.geo.attributes.position.array, t = f => { f(); const t0 = performance.now(); for (let i = 0; i < 8; i++) f(); return (performance.now() - t0) / 8; };
+      return {hand: t(() => C.furry.handGeos(m, P)), foot: t(() => C.furry.footGeos(m, P))}; });
+    const speed = {lobo: await timing()}; for (const sp of ['dragon', 'caballo']) { await species(sp); speed[sp] = await timing(); } await species('lobo');
+    ok(Object.values(speed).every(t => t.hand < Math.max(5, speed.lobo.foot * 2.5)), `the hand parts build in a few milliseconds (${Object.entries(speed).map(([k, t]) => `${k} ${t.hand.toFixed(1)} ms`).join(', ')}; the wolf's feet ${speed.lobo.foot.toFixed(1)} ms)`);
+    // the pads are inked round their rims, as every bean is in the drawings: a contour ring just inside the edge
+    const rim = await A(() => { const L = window.__hp.parts().pads.geometry.attributes.aLine.array; let neg = 0, pos = 0, on = true; for (let i = 0; i < L.length; i += 4) { if (L[i + 3] < -.5) on = false; if (L[i + 2] < 0) neg++; else pos++; } return {on, neg, pos}; });
+    ok(rim.on && rim.neg > rim.pos && rim.pos > 0, `the pads' rims are inked (${rim.pos} points past the line, ${rim.neg} inside)`);
+    // claws: out of the end of each finger and the thumb, rigid on its last segment, past the tip
+    const claw = await A(() => { const C = window.__cdp, H = window.__hp, m = C.mq, g = H.parts().claws.geometry, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, P = g.attributes.position, per = P.count / 10;
+      let rigid = true; for (let i = 0; i < si.length; i += 4) if (sw[i] !== 1 || !/^f[LR]\d2$/.test(m.accBones[si[i]].name)) rigid = false;
+      const out = []; for (let k = 0; k < 10; k++) { const s = k < 5 ? 'L' : 'R', bone = m.accBones[si[k * per * 4]].name, f = bone[2], a = H.jv(`f${s}${f}2`), tip = H.jv(`tip${s}${f}`), d = tip.clone().sub(a), L = d.length(); d.normalize();
+        const root = new THREE.Vector3().fromBufferAttribute(P, k * per), end = new THREE.Vector3().fromBufferAttribute(P, k * per + per - 1);
+        out.push({f, root: root.clone().sub(a).dot(d) / L, past: end.clone().sub(tip).dot(d) / L, off: root.clone().sub(a).addScaledVector(d, -root.clone().sub(a).dot(d)).length() / L}); }
+      return {rigid, fingers: out.map(o => o.f).join(''), out}; });
+    ok(claw.rigid && claw.fingers === '0123401234', `a claw on every finger and thumb, rigid on its last segment (${claw.fingers})`);
+    ok(claw.out.every(o => o.root > .3 && o.root < .8 && o.off < .5 && o.past > .3), `each grows out of its finger's end: rooted inside the last segment, its point past the tip (${claw.out.map(o => o.root.toFixed(2) + '/' + o.past.toFixed(2)).join(' ')})`);
+    // a paw's fist: the pads stay on the skin, the claws rest on the palm instead of going through it
+    const fist = await A(() => { const C = window.__cdp, H = window.__hp, m = C.mq, F = C.FIG, body = m.body3, pads = H.parts().pads, cl = H.parts().claws, R = pads.geometry.attributes.aRoot.array, half = pads.geometry.attributes.position.count / 2;
+      H.pose('saludo'); const rest = []; for (let i = half; i < 2 * half; i++) rest.push(H.world(pads, i).distanceTo(H.world(body, R[i])));
+      H.pose('saludo', [.8, 1, 1, 1, 1]); let drift = 0; for (let i = half; i < 2 * half; i++) drift = Math.max(drift, Math.abs(H.world(pads, i).distanceTo(H.world(body, R[i])) - rest[i - half]));
+      const w = m.joints.wristR.getWorldPosition(new THREE.Vector3()), q = new THREE.Quaternion(); m.joints.wristR.getWorldQuaternion(q); const n = m.handAxes.R.n.clone().applyQuaternion(q);
+      let palm = -1; for (let i = 0; i < F.meta.nV; i++) if (m.dom[i] === F.jIdx.wristR) palm = Math.max(palm, H.world(body, i).sub(w).dot(n));
+      const per = cl.geometry.attributes.position.count / 10, tips = []; for (let k = 6; k < 10; k++) tips.push((H.world(cl, k * per + per - 1).sub(w).dot(n) - palm) / m.size);
+      const dip = new THREE.Quaternion().copy(m.fingers.R[2][2].quaternion).angleTo(new THREE.Quaternion());
+      return {drift: drift / m.size, tips, dip}; });
+    ok(fist.drift < .004, `in a fist the pads stay on the skin they lie on (${(fist.drift * 1000).toFixed(1)} mm drift)`);
+    ok(fist.tips.every(t => t > -.006), `a paw's fist: the claws rest on the palm, none through it (${fist.tips.map(t => (t * 1000).toFixed(1)).join(' ')} mm over it)`);
+    // thick, knuckled fingers; "Human" hands are a human's, without claws or pads; "Human" feet keep the paws' claws
+    await A(() => document.querySelector('#handsChips .chip[data-v="humanas"]').click()); await page.waitForTimeout(800);
+    const human = await summary(), hf = await finger();
+    const hfist = await A(() => { const H = window.__hp, m = window.__cdp.mq; H.pose('saludo', [.8, 1, 1, 1, 1]); return new THREE.Quaternion().copy(m.fingers.R[2][2].quaternion).angleTo(new THREE.Quaternion()); });
+    ok(wf.w > hf.w * 1.3 && wf.knuckle > hf.knuckle * 1.1, `paw fingers are thick and knuckled (${(wf.w * 1000).toFixed(1)} against ${(hf.w * 1000).toFixed(1)} mm; knuckle ${wf.knuckle.toFixed(2)} against ${hf.knuckle.toFixed(2)})`);
+    ok(wf.rough < hf.rough * 1.25, `the knuckles are smooth swellings, the paw's skin as smooth as a human hand's (${wf.rough.toFixed(3)} against ${hf.rough.toFixed(3)})`);
+    ok(!human.claws && !human.pads, `"Human" hands have no claws or pads (${Object.keys(human).join() || 'none'})`);
+    ok(fist.dip < hfist * .4, `a paw closes its last joints much less than a human hand (${(fist.dip * 57.3).toFixed(0)}° against ${(hfist * 57.3).toFixed(0)}°)`);
+    await A(() => document.querySelector('#handsChips .chip[data-v="animal"]').click()); await page.waitForTimeout(500);
+    await A(() => document.querySelector('#feetChips .chip[data-v="humano"]').click()); await page.waitForTimeout(800);
+    const feet = await summary();
+    ok(feet.claws && feet.pads && feet.claws.n === wolf.claws.n, `with "Human" feet the hands keep their claws and pads`);
+    await A(() => document.querySelector('#feetChips .chip[data-v="animal"]').click()); await page.waitForTimeout(500);
+    // gloves hide what they cover; a missing hand has no claws
+    await A(() => { const C = window.__cdp; C.setOutfitNow(C.mq, [C.garmentSpec('c1852')]); });
+    await page.waitForFunction(() => window.__cdp.mq.garments.some(g => g.geo), null, {timeout: 60000}); await page.waitForTimeout(800);
+    const hid = await A(() => { const o = {}; for (const [k, a] of Object.entries(window.__hp.parts())) { const h = a.geometry.attributes.aHide.array; o[k] = h.reduce((s, v) => s + v, 0) / h.length; } return o; });
+    ok(hid.claws > .9 && hid.pads > .9, `gloves hide the claws and pads (${(hid.claws * 100).toFixed(0)}%, ${(hid.pads * 100).toFixed(0)}% hidden)`);
+    await A(() => { const C = window.__cdp; C.setOutfitNow(C.mq, []); }); await page.waitForFunction(() => !window.__cdp.mq.garments.length, null, {timeout: 60000});
+    await A(() => { const C = window.__cdp; C.mq.body.limbs = {armR: {cut: 'muneca'}}; C.rebuildActive(true); });
+    const cut = await summary();
+    ok(cut.claws && cut.claws.n === wolf.claws.n / 2 && cut.pads.n === wolf.pads.n / 2, 'a hand that is not there has no claws or pads');
+    await A(() => { const C = window.__cdp; delete C.mq.body.limbs; C.rebuildActive(true); });
+    // each kind of hand: cats' narrow hooked claws, bears' long ones, a dragon's talons and scale-pads; hooves
+    const kinds = {};
+    for (const sp of ['gato', 'oso', 'dragon', 'conejo', 'caballo', 'cabra']) { await species(sp); kinds[sp] = await summary(); }
+    ok(kinds.dragon.pads.n > wolf.pads.n && kinds.oso.claws.n === wolf.claws.n && kinds.gato.claws.n === wolf.claws.n, `cats, bears and dragons have their claws; a dragon a pad under each segment (${kinds.dragon.pads.n} against ${wolf.pads.n})`);
+    ok(!kinds.conejo.claws && !kinds.conejo.pads, 'a rabbit\'s paws are furred, without claws or pads');
+    ok(!kinds.caballo.pads && kinds.caballo.claws.kinds === '3' && kinds.cabra.claws.n === kinds.caballo.claws.n * 2, `hoof-hands: one hoof a hand for a horse, two for a goat (${kinds.caballo.claws.n} / ${kinds.cabra.claws.n})`);
+    const hoof = await A(() => { const H = window.__hp, g = H.parts().claws.geometry, P = g.attributes.position, half = P.count / 2, c = new THREE.Vector3(); let r = 0;
+      for (let i = half; i < P.count; i++) c.add(new THREE.Vector3().fromBufferAttribute(P, i)); c.multiplyScalar(1 / half);
+      for (let i = half; i < P.count; i++) r = Math.max(r, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(c));
+      return [1, 2, 3, 4].map(f => H.jv(`tipR${f}`).distanceTo(c) / r); });
+    ok(hoof.every(x => x < .9), `the hoof takes in the finger tips (${hoof.map(x => x.toFixed(2)).join(' ')} of its reach)`);
+    // a hoof caps the end of the digit (from a little behind the last joint), not the whole hand from the knuckles, so a
+    // closing hand bends at the knuckles below it (the right hand's half over the index and middle fingers)
+    const cap = await A(() => { const H = window.__hp, g = H.parts().claws.geometry, P = g.attributes.position, half = P.count / 2, a = H.jv('fR21'), b = H.jv('fR22'), d = b.clone().sub(a), L = d.length(); d.normalize();
+      let lo = Infinity; for (let i = half; i < half * 1.5; i++) lo = Math.min(lo, new THREE.Vector3().fromBufferAttribute(P, i).sub(a).dot(d) / L); return lo; });
+    ok(cap > .2, `the hoof starts past the fingers' middle joints (${cap.toFixed(2)} of the middle segment)`);
+    ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
+    await page.context().close();
+  },
   // the principles of animation as sliders, motion trails, and dynamics for still drawings
   async motion(browser) {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
