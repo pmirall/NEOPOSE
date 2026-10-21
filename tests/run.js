@@ -1412,6 +1412,16 @@ const SUITES = {
       const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] - d[i + 2] > 40) red++;
       const kept = L.uLineA.value === .8 && L.uCenter.value === 1; L.uLineA.value = la; L.uCenter.value = ce; return {red, kept}; });
     ok(guide.red === 0 && guide.kept, `the ink render leaves out the centre line and the rings, and puts them back (${guide.red} red pixels)`);
+    // rings are the fur's guides: the claws (their own part in the ink buffer, kind 3) are the same with the rings on or off
+    await aim('wristL', 2.2);
+    const hard = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value, shot = a => { L.uLineA.value = a; L.uCenter.value = 0; return C.renderView({w: 480, h: 480, bg: 'paper'}).getContext('2d').getImageData(0, 0, 480, 480).data; };
+      const on = shot(.8), rt = C.ink.INK.rts.get('480x480'), id = new Uint8Array(480 * 480 * 4); C.renderer.readRenderTargetPixels(rt, 0, 0, 480, 480, id); const off = shot(0); L.uLineA.value = la; L.uCenter.value = ce;
+      const n = {claw: 0, clawRing: 0, fur: 0, furRing: 0};
+      for (let y = 0; y < 480; y++) for (let x = 0; x < 480; x++) { const j = ((479 - y) * 480 + x) * 4, i = (y * 480 + x) * 4; if (id[j + 3] < 240) continue; const k = id[j + 2] % 8 === 3 ? 'claw' : id[j + 2] % 8 === 0 ? 'fur' : null; if (!k) continue;
+        n[k]++; if (Math.abs(on[i] - off[i]) > 12) n[k + 'Ring']++; }
+      return n; });
+    ok(hard.claw > 30 && hard.clawRing <= hard.claw * .02 && hard.furRing > hard.fur * .03, `no rings on the claws (${hard.clawRing} of ${hard.claw} px changed), on the fur they stay (${hard.furRing} of ${hard.fur})`);
+    await aim('head', 3.4);
     // a picture bigger than the canvas (an export) lets its buffers go once the canvas is drawn again
     const mem = await A(() => { const C = window.__cdp; C.renderView({w: 2400, h: 2400, bg: 'paper'}); const big = C.ink.INK.rts.has('2400x2400'); C.frameNow();
       const b = C.renderer.getDrawingBufferSize(new THREE.Vector2()); return {big, left: [...C.ink.INK.rts.values()].filter(r => r.width * r.height > b.x * b.y).length}; });
@@ -1442,6 +1452,13 @@ const SUITES = {
     await goTab(page, 'dibujo'); await style('contorno'); await aim('head', 3.4);
     const hum = await inner(1), hum0 = await inner(0);
     ok(hum > hum0 && await A(() => window.__cdp.mq.lib.uFur.uFurOn.value === 0), `a human's face gets its interior lines too (${hum} against ${hum0}) and no coat`);
+    // the contour's weight: seen from the front, the torso's right side (the shadow side, the light being up on the left) is drawn heavier than its left
+    const weight = await A(() => { const C = window.__cdp, m = C.mq, c = m.joints.chest.getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
+      C.controls.target.copy(c); C.camera.position.copy(c).add(new THREE.Vector3(0, 0, 1).applyQuaternion(q).multiplyScalar(m.headH * 6)); C.camera.lookAt(c); C.controls.update();
+      const d = C.renderView({w: 600, h: 600, bg: 'lines'}).getContext('2d').getImageData(0, 0, 600, 600).data, on = (x, y) => d[(y * 600 + x) * 4 + 3] > 90; let l = 0, r = 0;
+      for (let y = 240; y < 360; y++) { let x = 0; while (x < 600 && !on(x, y)) x++; while (x < 600 && on(x, y)) { l++; x++; } x = 599; while (x >= 0 && !on(x, y)) x--; while (x >= 0 && on(x, y)) { r++; x--; } }
+      return {l, r}; });
+    ok(weight.l > 100 && weight.r > weight.l * 1.15, `a heavier contour on the shadow side: ${weight.r} px of line on the right against ${weight.l} on the left`);
     ok(!page.errors.filter(e => !/VALIDATE_STATUS|Too many attributes/.test(e)).length, 'no errors' + (page.errors.length ? ': ' + page.errors.slice(0, 2).join(' | ').slice(0, 200) : ''));
     await page.context().close();
   },

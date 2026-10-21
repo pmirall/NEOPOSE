@@ -16,7 +16,8 @@ const LU = {
    fur and leather, 0–2, are one: on the body and the heads leather is the nose, a patch of the mesh's vertices whose
    border inked would be a jagged polygon, not a nose; the paws' pads are made shapes, apart by their material), so a
    line is found where one part meets another. Each kind is read halfway between its value and its neighbour's (below
-   −4), so the border runs along the triangles' middle, not on their vertex ring.
+   −4), so the border runs along the triangles' middle, not on their vertex ring; the kinds past 7 (the linings inside
+   a mouth) are one part with 7, which keeps every material's ids within its stride of 8.
    The eye is no part of its own: its vertices take in a ring of the lid on the coarse body, and a border there is a
    star round the eye; the lid's line is the depth step where it passes over the eyeball. Alpha tells the inside of a
    two-sided part (.75) from its outside (1). Skin under loose cloth (aHide .5: drawn, in case it shows through an
@@ -107,11 +108,17 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
         if (uMouth > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0) discard;`)
       .replace('#include <output_fragment>', `#include <output_fragment>
         {
-          vec3 c = gl_FragColor.rgb;
+          vec3 c = gl_FragColor.rgb;${mat.isMeshBasicMaterial ? `
+          // (flat styles are values of the paper's own tint, as the flat greys of an inked drawing: a part painted in
+          // colour, the inside of a mouth, is a darker or lighter grey of it, never darker than a dark grey, which leaves
+          // the black to the ink, the pupils and the lip margin, as the references' open mouths are toned)
+          { float v = dot(c, vec3(.299, .587, .114)) / max(dot(diffuse, vec3(.299, .587, .114)), .05); c = diffuse * (vEye.w < -1.5 ? .32 + .68 * v : v); }` : ''}
           if (vEye.w > .5) c = eyeShade(c, uLineCol, vec3(1.0));
           if (uRender > .5) c = sketchify(c);
           c = mix(c, uHiCol, vHi * .4);
-          if (vLine.w > -.5) {
+          // (rings and the centre line on the fur only: the leather of the nose and pads, claws, horns and teeth are
+          // small hard shapes a drawing leaves clean, where rings were stray stripes and dots)
+          if (vLine.w > -.5 && vEye.w > -3.0) {
             float ring = gridLine(vLine.z / uStride, uLineW);
             float mer = uMer > 0.0 ? max(lineAt(vLine.x, uLineW), lineAt(vLine.y, uLineW)) * .85 : 0.0;
             float cen = vLine.w * uCenter * max(lineAt(vLine.y, uLineW * 1.7) * step(0.0, vLine.x), lineAt(vLine.y, uLineW * 1.2) * step(vLine.x, 0.0) * .7);
@@ -120,7 +127,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           }
           gl_FragColor.rgb = c;
         }`)
-      .replace('#include <dithering_fragment>', inkFrag('(vEye.w < -4.0 ? floor(-vEye.w) - 1.0 : 0.0)', 'if (vHide > .49) discard;'));
+      .replace('#include <dithering_fragment>', inkFrag('(vEye.w < -4.0 ? min(floor(-vEye.w) - 1.0, 7.0) : 0.0)', 'if (vHide > .49) discard;'));
   };
   mat.customProgramCacheKey = () => 'cdp-lines-' + mat.type;
   return mat;
@@ -164,7 +171,9 @@ const OUTLINE_MAT = new THREE.ShaderMaterial({
       vec3 nv = normalize(normalMatrix * objectNormal);
       vec2 d = nv.xy; float l = length(d);
       d = l > 1e-4 ? d / l : vec2(0.0);
-      gl_Position.xy += d * uW * uPx * gl_Position.w;
+      // an inker's weight: the light comes from above on the left, so the contour swells on the shadow side (below and
+      // right, where forms turn away and rest on what is under them) and thins on the lit one, as a brush line does
+      gl_Position.xy += d * uW * (1.0 + .4 * dot(d, vec2(.6, -.8))) * uPx * gl_Position.w;
     }`,
   fragmentShader: `uniform vec3 uCol; varying float vHide; void main() { if (vHide > .49) discard; gl_FragColor = vec4(uCol, 1.0); }`
 });
