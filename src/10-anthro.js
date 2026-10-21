@@ -697,7 +697,7 @@ function pointHull(g, ring) {
    the tip, in last-segment lengths, for a claw size of ref (ANIMAL_LEGS hand); bend: its curve; end: how blunt its
    point is. A dog's are short blunt cones (about half a segment, worn by walking), a cat's narrow hooks, a bear's long
    and heavy, a dragon's long talons. Rigid on the last segment, so it follows the finger as it curls. */
-const HAND_CLAWS = {can: {w: .5, h: .54, k: .65, ref: .013, bend: -.12, end: .16}, fel: {w: .36, h: .56, k: .8, ref: .013, bend: -.7, end: .03},
+const HAND_CLAWS = {can: {w: .5, h: .54, k: .8, ref: .013, bend: -.15, end: .1}, fel: {w: .36, h: .56, k: .8, ref: .013, bend: -.7, end: .03},
   oso: {w: .52, h: .58, k: .95, ref: .024, bend: -.24, end: .12}, rep: {w: .46, h: .6, k: 1.15, ref: .026, bend: -.6, end: .03}};
 function handClaw(q, Z, C, len, bone, root) {
   // e: from the root to the end of the finger; its back rises from under the skin to just over it there, like a nail plate
