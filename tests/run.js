@@ -206,16 +206,12 @@ const SUITES = {
     const lipsOf = async sp => { if (sp) await pick(...sp); const r = await inLips(); return `${sp ? sp[0] : 'lobo'} ${r.out}/${r.n} out, front ${r.front.toFixed(3)}` + (r.rim > 20 && r.out === 0 && r.front < -.005 ? '' : ' ✗'); };
     { const r = [await lipsOf()]; for (const sp of [['zorro'], ['gato'], ['conejo'], ['dragon'], ['cabra'], ['caballo', true]]) r.push(await lipsOf(sp));
       ok(!r.join().includes('✗'), `teeth inside the lips and the cheeks, behind the lip front (${r.join('; ')})`); }
-    // the fox girl's own modelled mouth is not drawn over the new inside: it is marked away (aLip 4), and close to the
-    // line, well inside the lip edge (the rim's outer envelope), nothing is left as plain skin
+    // our sculpts are modelled closed, the lips meeting on the line: the cut finds the lip edge round the arch up to the
+    // front of the snout, and none of the head's skin is hidden while the mouth is open (it has no inside of its own)
     await pick('zorro');
-    const fox = await A(() => { const d = window.__cdp.mq.headSwap.d, F = d.mouth, P = d.P, rim = d.rim, zf = Math.max(...rim.map(q => q[2])), Cz = F.zc - .3 * (zf - F.zc), NS = 16, R = new Array(NS + 1).fill(0); let tc = 0, bad = 0, n = 0;
-      for (const [x, , z] of rim) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cz))); for (const [x, , z] of rim) { const b = Math.round(Math.abs(Math.atan2(x, z - Cz)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cz)); }
-      for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
-      for (let i = 0; i < d.n; i++) { const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], th = Math.abs(Math.atan2(x, z - Cz)); if (d.K[i] || Math.abs(y - F.y) > .04 || th > tc || z < F.zc) continue;
-        const f = th / tc * NS, k = Math.min(NS - 1, Math.floor(f)), Rt = R[k] + (R[k + 1] - R[k]) * (f - k); if (Math.hypot(x, z - Cz) > Rt - .02) continue; n++; if (d.lip[i] < 3) bad++; }
-      return {n, bad, id: d.id, away: [...d.lip].filter(v => v === 4).length}; });
-    ok(fox.id === 'foxgirl' && fox.away > 100 && fox.n > 5 && fox.bad === 0, `the fox girl's modelled mouth gives way to the new inside (${fox.away} vertices marked away, ${fox.bad} of ${fox.n} close inside the lips left as skin)`);
+    const fox = await A(() => { const d = window.__cdp.mq.headSwap.d, F = d.mouth, rim = d.rim;
+      return {id: d.id, n: rim.length, front: (Math.max(...rim.map(q => q[2])) - F.zc) / (d.L.tip[2] - F.zc), hid: [...d.lip].filter(v => v > 3).length}; });
+    ok(fox.id === 'zorro' && fox.n > 20 && fox.front > .9 && fox.hid === 0, `the fox's lips part along the arch (${fox.n} points on the edge, reaching ${(fox.front * 100).toFixed(0)}% of the way to the snout's tip) and none of its skin is hidden (${fox.hid})`);
     await pick('lobo');
     // hidden while closed; an expression opens it, the margin uniform is set
     await goTab(page, 'pose'); await page.waitForTimeout(300);
@@ -336,13 +332,18 @@ const SUITES = {
       // (its skin: K 0; the eyes and the mouth's parts are other pieces inside it)
       const HG = m.headSwap && m.headMesh && m.headMesh.geometry.attributes, HP = HG && HG.position.array, HN = HG && HG.normal.array, HK = HG && m.headSwap.d.K;
       const skinAt = p => { if (!HP) return null; let r = 0, rd = Infinity; for (let i = 0; i < HP.length / 3; i++) { if (HK[i]) continue; const e = (HP[i * 3] - p[0]) ** 2 + (HP[i * 3 + 1] - p[1]) ** 2 + (HP[i * 3 + 2] - p[2]) ** 2; if (e < rd) { rd = e; r = i; } } return r; };
+      // the rest grow on the sculpted body when there is one (11b-parts): its skin, not the body's own under it
+      const SB = (m.acc || []).filter(a => !a.userData.hull && a.geometry.userData.body).map(a => [a.geometry.attributes.position.array, a.geometry.attributes.normal.array]);
+      const bodyAt = p => { let best = null, rd = Infinity; for (const [Q, N] of SB) for (let i = 0; i < Q.length / 3; i++) { const e = (Q[i * 3] - p[0]) ** 2 + (Q[i * 3 + 1] - p[1]) ** 2 + (Q[i * 3 + 2] - p[2]) ** 2; if (e < rd) { rd = e; best = [Q, N, i]; } } return best; };
       const v = i => [P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), avg = (o, r) => [0, 1, 2].map(k => { let s = 0; for (let q = 0; q < 6; q++) s += P[(o + r * 6 + q) * 3 + k]; return s / 6; });
       const out = [];
       for (let o = 0; o < R.length; o += 30) {
         const r = R[o], base = avg(o, 0), tip = avg(o, 4), ring = [0, 1, 2, 3, 4, 5].map(q => v(o + 6 + q)), wide = Math.max(...ring.map(a => Math.max(...ring.map(b => d(a, b)))));
         // a cheek lock on a sculpted head roots in its own skin and hides with the body's head skin it stands in for
         const part = F.region[m.dom[r]] === 'head' ? 'cheek' : F.region[m.dom[r]], h = part === 'cheek' && skinAt(base);
-        const sunk = h === null || h === false ? [0, 1, 2].reduce((a, k) => a + (base[k] - BP[r * 3 + k]) * BN[r * 3 + k], 0) : [0, 1, 2].reduce((a, k) => a + (base[k] - HP[h * 3 + k]) * HN[h * 3 + k], 0);
+        const sb = !(h === null || h === false) ? null : SB.length && bodyAt(base);
+        const sunk = sb ? [0, 1, 2].reduce((a, k) => a + (base[k] - sb[0][sb[2] * 3 + k]) * sb[1][sb[2] * 3 + k], 0)
+          : h === null || h === false ? [0, 1, 2].reduce((a, k) => a + (base[k] - BP[r * 3 + k]) * BN[r * 3 + k], 0) : [0, 1, 2].reduce((a, k) => a + (base[k] - HP[h * 3 + k]) * HN[h * 3 + k], 0);
         const BE = m.geo.attributes.aEye.array, own = [0, 1, 2, 3].every(k => Math.abs(E[o * 4 + k] - BE[r * 4 + k]) < 1e-4);
         out.push({part, root: [BP[r * 3], BP[r * 3 + 1], BP[r * 3 + 2]], sunk, own, hid: g.attributes.aHide.array[o], base, tip, len: d(base, tip), deep: d(ring[0], ring[3]) / wide, belly: E[o * 4]});
       }
@@ -353,7 +354,7 @@ const SUITES = {
     ok(f && f.L.length >= 60 && f.n < 9000, `a fox grows tufts: ${f && f.L.length} locks, ${f && f.n} vertices (modest)`);
     ok(f.L.every(l => l.deep > .65), `every lock is round enough to read edge-on (thinnest depth/width ${Math.min(...f.L.map(l => l.deep)).toFixed(2)})`);
     // each lock roots under the skin it grows from (a root standing proud of a curved neck or under the jaw reads as a
-    // cut slab): the body's skin, or for a cheek lock the sculpted head's own
+    // cut slab): the body's skin (the sculpted body's), or for a cheek lock the sculpted head's own
     ok(f.L.every(l => l.sunk < 0), `every lock's root is buried in its skin, the sculpted head's cheeks too (${f.L.filter(l => l.sunk >= 0).length} of ${f.L.length} stand out)`);
     // and takes the coat where it grows: each lock the coat of its own root (a clump on the edge of a marking grades
     // across it), light on the throat and dark on the sides of the neck
@@ -1986,8 +1987,9 @@ const SUITES = {
       let n = 0; for (let y = 5; y < 475; y++) for (let x = 5; x < 475; x++) { const i = (y * 480 + x) * 4; if (ink[i + 3] < 128) continue; let inside = true;
         for (let dy = -5; dy <= 5 && inside; dy += 5) for (let dx = -5; dx <= 5; dx += 5) if (!sil[((y + dy) * 480 + x + dx) * 4 + 3]) { inside = false; break; } if (inside) n++; }
       return n; }, a);
+    // (a smooth sculpt: its eyes, tufts and ear fluff are the outline's, inside the silhouette; the pass adds the folds)
     const withInk = await inner(1), without = await inner(0);
-    ok(withInk > without * 1.3 && withInk - without > 150, `interior lines: ${withInk} ink pixels inside the head against ${without} with the outline alone`);
+    ok(withInk > without * 1.2 && withInk - without > 150, `interior lines: ${withInk} ink pixels inside the head against ${without} with the outline alone`);
     // the ink render is the drawing's line: no rings, no red centre line, and the guides are back afterwards
     const guide = await A(() => { const C = window.__cdp, L = C.ink.LU, la = L.uLineA.value, ce = L.uCenter.value; L.uLineA.value = .8; L.uCenter.value = 1;
       const d = C.renderView({w: 400, h: 400, bg: 'lines'}).getContext('2d').getImageData(0, 0, 400, 400).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] - d[i + 2] > 40) red++;
@@ -2143,9 +2145,9 @@ const SUITES = {
     await goTab(page, 'cuerpo'); await page.waitForTimeout(300);
     for (const sp of ['oso', 'caballo', 'leon']) { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(1500); }
     ok(await A(() => window.__cdp.mq.body.species === 'leon' && window.__cdp.mq.acc.some(a => a.geometry.attributes.aEye && Math.abs(a.geometry.attributes.aEye.array[2] - 2.97) < .01)), 'a lion has its mane');
-    // a hybrid: the fox girl's head on a tiger's body keeps the tiger's legs and coat
+    // a hybrid: a fox's head on a tiger's body keeps the tiger's legs and coat
     await A(() => document.querySelector('#speciesChips .chip[data-v="tigre"]').click()); await page.waitForTimeout(1500);
-    await A(() => document.querySelector('#headModelChips .chip[data-v="foxgirl"]').click()); await page.waitForTimeout(3500);
+    await A(() => document.querySelector('#headModelChips .chip[data-v="zorro"]').click()); await page.waitForTimeout(3500);
     const hy = await A(() => { const m = window.__cdp.mq; return {sp: m.body.species, head: !!m.headMesh, coat: window.__cdp.furry.coatOf(m.body).preset}; });
     ok(hy.sp === 'tigre' && hy.head && hy.coat === 'tigre', `a hybrid: another species' head on a tiger, still a tiger's coat (${JSON.stringify(hy)})`);
     // paw-hands: shorter, thicker fingers than a human's; "Human" hands give them back

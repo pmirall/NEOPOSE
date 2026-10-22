@@ -27,6 +27,9 @@ const HEAD_RECIPES = {
   ciervo: {face: [['x2952f', .8]],            ears: [['x2952e', 1]],                                          pupil: 'horizontal', mouth: 'herbivoro', side: 1, pad: 1},
   dragon: {face: [['x2931', 1]],              ears: [],                                                        pupil: 'rendija', mouth: 'reptil'}
 };
+// close relatives: their mouths and eyes (and, with a human face, their ears) are those of the head they used to borrow
+Object.assign(HEAD_RECIPES, {coyote: HEAD_RECIPES.lobo, hiena: HEAD_RECIPES.perro, leopardo: {...HEAD_RECIPES.gato, pupil: 'redonda'},
+  mapache: {...HEAD_RECIPES.zorro, pupil: 'redonda'}, panda: {...HEAD_RECIPES.zorro, pupil: 'redonda'}, mofeta: {...HEAD_RECIPES.gato, pupil: 'redonda'}});
 const HEAD_STYLES = {real: 'Occidental realista', toon: 'Occidental toony', kemono: 'Kemono'};
 const KEMO_LEVEL = {1: 'Kemonomimi (cara humana)', 2: 'Hocico muy corto', 3: 'Hocico corto', 4: 'Hocico medio', 5: 'Hocico completo'};
 const HEAD_CREDITS = 'Cabezas y orejas: targets de JALdMIC (CC-BY) y titleknown (CC0), comunidad MakeHuman.';
@@ -237,8 +240,14 @@ function lipCross(m, F, P) {
 function mouthOutline(pts, F, NS) {
   const zf = Math.max(...pts.map(p => p[1])), Cb = F.zc - .3 * (zf - F.zc), zBack = F.zc - .7 * Math.max(F.zc - F.zh, .05 * F.h), R = new Array(NS + 1).fill(0); let tc = 0;
   for (const [x, z] of pts) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cb)));
-  for (const [x, z] of pts) { const b = Math.round(Math.abs(Math.atan2(x, z - Cb)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cb)); }
-  for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
+  // the edge's outer envelope, slice by slice, each slice's farthest point kept at its own angle, then read at the
+  // outline's angles: put at the slice's middle it stood out of a tapering snout's tip (a dragon's front teeth outside
+  // its lips)
+  const env = new Array(NS + 1).fill(null);
+  for (const [x, z] of pts) { const a = Math.abs(Math.atan2(x, z - Cb)), b = Math.round(a / tc * NS), r = Math.hypot(x, z - Cb); if (!env[b] || r > env[b][1]) env[b] = [a, r]; }
+  const E = env.filter(Boolean);
+  for (let k = 0; k <= NS; k++) { const t = k / NS * tc; let i = 0; while (i < E.length - 1 && E[i + 1][0] < t) i++;
+    const [a0, r0] = E[i], [a1, r1] = E[Math.min(i + 1, E.length - 1)]; R[k] = t <= a0 ? r0 : t >= a1 ? r1 : r0 + (r1 - r0) * (t - a0) / (a1 - a0); }
   const outl = []; for (let k = -NS; k <= NS; k++) { const t = k / NS * tc, r = R[Math.abs(k)]; outl.push({x: r * Math.sin(t), z: Cb + r * Math.cos(t), open: Math.abs(k) < NS}); }
   { const c = outl[outl.length - 1]; for (let k = 1; k < 8; k++) { const f = k / 8 * Math.PI; outl.push({x: c.x * Math.cos(f) * (1 - .15 * Math.sin(f)), z: c.z - (c.z - zBack) * Math.sin(f), open: false}); } }
   const inside = (x, z) => { let c = false, e = Infinity; for (let i = 0, j = outl.length - 1; i < outl.length; j = i++) { const A = outl[j], B = outl[i], dx = B.x - A.x, dz = B.z - A.z, t = clamp(((x - A.x) * dx + (z - A.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
@@ -259,7 +268,8 @@ function mouthParts(m) {
   // how high the palate and deep the floor may go: half of the snout above and the jaw below, along the middle line
   const NZ = 8, top = new Array(NZ).fill(-Infinity), bot = new Array(NZ).fill(Infinity), zb = z => clamp(Math.floor((z - zBack) / (zf - zBack + 1e-6) * NZ), 0, NZ - 1);
   { const hs = m.headSwap, Pp = hs ? hs.Q : m.geo.attributes.position.array, n = hs ? hs.d.n : FIG.meta.nV, skin = hs ? (i => hs.d.K[i] === 0) : (i => (m.dom[i] === FIG.jIdx.head || m.dom[i] === FIG.jIdx.jaw) && !FIG.eye[i]);
-    for (let i = 0; i < n; i++) { const x = Pp[i * 3], y = Pp[i * 3 + 1], z = Pp[i * 3 + 2]; if (Math.abs(x) > .04 * h || z < zBack || z > zf || !skin(i)) continue;
+    // (along a strip down the middle wide enough to hold some of a decimated sculpt's underside in each stretch)
+    for (let i = 0; i < n; i++) { const x = Pp[i * 3], y = Pp[i * 3 + 1], z = Pp[i * 3 + 2]; if (Math.abs(x) > .07 * h || z < zBack || z > zf || !skin(i)) continue;
       const b = zb(z); if (y > F.y && y < F.y + .45 * h) top[b] = Math.max(top[b], y); else if (y < F.y && y > F.chin - .15 * h) bot[b] = Math.min(bot[b], y); } }
   const hp = z => { const t = top[zb(z)]; return clamp(isFinite(t) ? .45 * (t - F.y) : .1 * h, 1.6 * gh, .12 * h); };
   const hf = z => { const b = bot[zb(z)]; return clamp(isFinite(b) ? .45 * (F.y - b) : .08 * h, 1.6 * gh, .1 * h); };
@@ -303,10 +313,10 @@ function mouthParts(m) {
     return {p: p[k - 1].clone().lerp(p[k], t), T: p[k].clone().sub(p[k - 1]).setY(0).normalize(), len: L[L.length - 1]}; };
   // each tooth stands in from the lip edge by its own thickness (and its lean), so its outer face stays behind the lips
   // and inside the cheek, in profile as well as from the front; a ruminant has a toothless pad for upper incisors (the
-  // animal's own recipe decides: a horse wears the goat's head but keeps its incisors). Packed rows (carnivores, reptiles)
-  // are laid tooth after tooth from the middle, a sliver of gum between, and spread to fill the arch up to the corner,
-  // the teeth grown with it: artists draw the row closed, a gappy row of small teeth read as a comb. Roots end in the gum
-  // band, closed, so none shows above the lips where the sculpt's own inside of the mouth is not drawn.
+  // animal's own recipe decides: a hybrid with a goat's head on a horse keeps its incisors). Packed rows (carnivores,
+  // reptiles) are laid tooth after tooth from the middle, a sliver of gum between, and spread to fill the arch up to the
+  // corner, the teeth grown with it: artists draw the row closed, a gappy row of small teeth read as a comb. Roots end in
+  // the gum band, closed, so none shows above or below the lips.
   const sideLen = at(arch(1, 1), 1).len, f = clamp(sideLen / (.3 * h), F.M.fmin || .45, 1.1), teeth = [], laid = [], pad = (HEAD_RECIPES[m.body.species] || an.recipe || {}).pad, rt = .45 * gh;
   for (const [sd, list0] of [[1, F.M.up], [-1, F.M.lo]]) {
     // the row ends where, going back, the lips have only half parted (jawWeight's k): nearer the corner the cheek
@@ -353,7 +363,7 @@ function mouthParts(m) {
   if (zt1 > zt0 + .04 * h) {
     const Lt = zt1 - zt0, th = .03 * h * f, wt = half(zt0 + .85 * Lt) * .72;
     const secs = [[-.6 * th, .0008, .0008]];  // the root closed, rounded off into the throat (open, its far end inked as a black ring)
-    // raised where the floor is shallow (a kobold's thin chin), so its underside never shows through the jaw
+    // raised where the floor is shallow (a thin chin), so its underside never shows through the jaw
     const up = (t, b) => [Math.max(0, 1.2 * gh + th + b - .9 * hf(zt0 + Lt * t))];
     for (let k = 0; k <= 5; k++) { const t = k / 5 * .8; secs.push([Lt * t, Math.min(half(zt0 + Lt * t) * .72, wt * 1.15), th, 0, ...up(t, th)]); }
     secs.push([Lt * .9, wt * .9, th * .85, 0, ...up(.9, th * .85)], [Lt * .965, wt * .62, th * .6, 0, ...up(.965, th * .6)], [Lt, .001, .001, 0, ...up(1, 0)]);
@@ -515,7 +525,7 @@ function renderHeadModels() {
   // the species' own heads first, then every other one (a hybrid: a fox's head on a wolf, a dragon's on a cat…)
   const own = (SPECIES[mq.body.species] || {}).head || mq.body.species, all = Object.entries(HEAD_CATALOG), mine = all.filter(([, c]) => c.species.includes(own)), other = all.filter(([, c]) => !c.species.includes(own));
   const id = headModelFor(mq.body), c = id && HEAD_CATALOG[id];
-  // a species without a sculpt of its own (tiger, lion, bear, horse, deer) has its MakeHuman head as the first choice
+  // a species without a sculpt of its own would have its MakeHuman head as the first choice
   const recipe = !mine.length && HEAD_RECIPES[own], first = recipe ? [['', SPECIES[mq.body.species].label]] : [];
   chips(box, [...first, ...[...mine, ...other].map(([k, c]) => [k, c.label])], id || '', v => {
     if (!v || (mine.length && v === mine[0][0])) { delete mq.body.headModel; delete mq.body.headStyle; } else { mq.body.headModel = v; mq.body.headStyle = HEAD_CATALOG[v].style; }
@@ -524,8 +534,8 @@ function renderHeadModels() {
   if (other.length) { const sep = document.createElement('span'); sep.className = 'famlbl'; sep.textContent = tr('Híbrido: la cabeza de otra especie'); box.insertBefore(sep, box.children[first.length + mine.length]); }
   box.parentElement.hidden = !all.length;
   const cr = $('#headCredit'); cr.innerHTML = '';
-  if (c) { cr.append(tr('Cabeza: «{x}» de {a} (CC-BY), ', {x: c.label.replace(/ \(.*\)$/, ''), a: c.author})); const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Sketchfab'; cr.append(a, '.'); }
-  else cr.textContent = tr(HEAD_CREDITS);
+  // (the sculpted heads are our own; only a head without one, a human face's ears, comes from MakeHuman's community)
+  if (!c) cr.textContent = tr(HEAD_CREDITS);
 }
 function syncHeadUI() {
   const box = $('#headStyle'); if (!box) return;

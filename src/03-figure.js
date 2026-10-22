@@ -77,8 +77,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
         ${FUR_GLSL}
         // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
         // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
-        // line, ±2 the rest, on a head that is not cut; on a cut sculpt 1 … 1.5 is the distance to the edge, 2 the rest), 4
-        // a sculpt's own inside of the mouth (not drawn while open)
+        // line, ±2 the rest, on a head that is not cut; on a cut sculpt 1 … 1.5 is the distance to the edge, 2 the rest)
         float lipCut() { vec3 r = vFurP / uFurK; return step(uLip.y, r.z) * step(abs(r.y - uLip.x), .3 * uLip.z) * step(abs(r.x), abs(uLip.w)); }
         float lipMargin() { float a = abs(vLip); if (uLip.w == 0.0 || a < .999) return 0.0; vec3 r = vFurP / uFurK;
           // a cut sculpt: open, the bold margin round the edge, a band of the lip line's height near the edge (the cut lies
@@ -121,7 +120,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: on a head that is not cut, triangles that join the upper lip (+1) to the lower (−1) are dropped
-        if (uMouth > .5 && (vLip > -.999 && vLip < .999 && vLip != 0.0 && lipCut() > .5 || vLip > 3.5)) discard;`)
+        if (uMouth > .5 && vLip > -.999 && vLip < .999 && vLip != 0.0 && lipCut() > .5) discard;`)
       .replace('#include <output_fragment>', `#include <output_fragment>
         {
           vec3 c = gl_FragColor.rgb;${mat.isMeshBasicMaterial ? `
@@ -231,7 +230,7 @@ const outlineMat = (k, root = false) => new THREE.ShaderMaterial({
       if (uOpenO > .5 && vLip != 0.0 && abs(vLip) < 2.5 && abs(vRest.y - uLipO.x) < .12 * uLipO.z && abs(vRest.x) < abs(uLipO.w) + .05 * uLipO.z
         && vRest.z > uLipO.y - .3 * uLipO.z && dot(vRN.xz, vec2(vRest.x, vRest.z - uLipO.y + .2 * uLipO.z)) < 0.0) discard;
       // a cut sculpt: the inside of the lips is inked only as far as the lip margin
-      if (uOpenO > .5 && (uLipO.w < 0.0 && vLip > 1.45 && vLip < 1.501 || vLip > 2.5)) discard;
+      if (uOpenO > .5 && uLipO.w < 0.0 && vLip > 1.45 && vLip < 1.501) discard;
       gl_FragColor = vec4(uCol, 1.0); }`
 });
 const OUTLINE_MAT = outlineMat(1), OUTLINE_FINE = outlineMat(.55), OUTLINE_TUFT = outlineMat(1, true);
@@ -721,7 +720,9 @@ class Mannequin {
         geos.push(furAttrsLoft(loft({origin: o2, axis: ax2, side: new V3(1, 0, 0), secs: [[0, w * .5, w * .5], [h * .3, w * .3, w * .3], [h * .45, .002, .002]], radial: 10, weights: rigidHead}), 4));
       }
     };
-    for (const sd of [1, -1]) { if (sp.ears) ear(sd, sp.ears, false); if (sp.horns) ear(sd, sp.horns, true); }
+    // (a sculpted head that brings horns of its own, the dragon's or the goat's, needs none added)
+    const ownHorns = this.headSwap && this.headSwap.d.K.includes(3);
+    for (const sd of [1, -1]) { if (sp.ears) ear(sd, sp.ears, false); if (sp.horns && !ownHorns) ear(sd, sp.horns, true); }
     if (tsp) {
       const t = tsp, r = t.r * this.size, L = tl;
       // profiles (radius along the tail): fine and whip-like (cats, dogs), bushy and widest past the middle (foxes,

@@ -332,7 +332,10 @@ function fluffGeo(m) {
     const p = new V3().fromArray(Q, i * 3), n = new V3().fromArray(Nq, i * 3).normalize().lerp(d, .6).normalize(), t = f.clone().addScaledVector(n, -f.dot(n)).normalize(), s = new V3().crossVectors(n, t);
     // the skin round the clump (sk, facing the same way): each lock roots in the vertex nearest its own place (a neck
     // curves away under a clump laid flat on it, and a root left standing proud reads as a cut slab), sunk under it and coloured by its coat
-    const R2 = (1.3 * L0) ** 2, sk = ray.filter(j => (Q[j * 3] - p.x) ** 2 + (Q[j * 3 + 1] - p.y) ** 2 + (Q[j * 3 + 2] - p.z) ** 2 < R2 && Nq[j * 3] * n.x + Nq[j * 3 + 1] * n.y + Nq[j * 3 + 2] * n.z > 0);
+    const R2 = (1.3 * L0) ** 2; let sk = ray.filter(j => (Q[j * 3] - p.x) ** 2 + (Q[j * 3 + 1] - p.y) ** 2 + (Q[j * 3 + 2] - p.z) ** 2 < R2 && Nq[j * 3] * n.x + Nq[j * 3 + 1] * n.y + Nq[j * 3 + 2] * n.z > 0);
+    // (a dense skin, a sculpted head's cheek round its own tufts, is read every so many vertices: its locks root and
+    // clear it as well, and each of them scans it several times)
+    if (sk.length > 350) { const st = Math.ceil(sk.length / 350); sk = sk.filter((_, q) => q % st === 0); }
     const near = (x, lim, nd, g = S.grow) => { let r = -1, rd = lim; for (const q of sk) { const e = (Q[q * 3] - x.x) ** 2 + (Q[q * 3 + 1] - x.y) ** 2 + (Q[q * 3 + 2] - x.z) ** 2; if (e < rd && Nq[q * 3] * n.x + Nq[q * 3 + 1] * n.y + Nq[q * 3 + 2] * n.z > nd && g(q)) { rd = e; r = q; } } return r; };
     // how far a point stands out of the skin nearest it, any skin (false: none near)
     const out = x => { const q = near(x, Infinity, 0, () => true); return q >= 0 && (x.x - Q[q * 3]) * Nq[q * 3] + (x.y - Q[q * 3 + 1]) * Nq[q * 3 + 1] + (x.z - Q[q * 3 + 2]) * Nq[q * 3 + 2]; };
@@ -364,8 +367,9 @@ function fluffGeo(m) {
       const BC = BH.filter(j => P[j * 3 + 1] < e.y && P[j * 3 + 1] > hs.yc && P[j * 3 + 2] < e.z), near = i => { let r = -1, rd = Infinity; for (const j of BC) { const dd = (P[j * 3] - hs.Q[i * 3]) ** 2 + (P[j * 3 + 1] - hs.Q[i * 3 + 1]) ** 2 + (P[j * 3 + 2] - hs.Q[i * 3 + 2]) ** 2; if (dd < rd) { rd = dd; r = j; } } return r; };
       // the cheek is the side of the face: not the underside of the jaw (whose normals face down: a lock rooted there hangs
       // out under the head) nor the skin near the cut, where the sculpt meets the neck
-      // (the rest of the face's skin is still there to sink the roots under and lift the tips over)
-      const HN = hg.normal.array, Q = hs.Q, face = []; for (let i = 0; i < d.n; i++) if (d.K[i] === 0 && Q[i * 3 + 1] > hs.yc && Q[i * 3 + 1] < e.y + .2 * hh) face.push(i);
+      // (the rest of the face's skin is still there to sink the roots under and lift the tips over; not the muzzle in
+      // front of the eyes, which no cheek lock reaches, its lip line the sculpt's densest skin, nor its neck under the jaw)
+      const HN = hg.normal.array, Q = hs.Q, y0 = Math.max(hs.yc, e.y - .62 * hh), face = []; for (let i = 0; i < d.n; i++) if (d.K[i] === 0 && Q[i * 3 + 1] > y0 && Q[i * 3 + 1] < e.y + .2 * hh && Q[i * 3 + 2] < e.z + .05 * hh) face.push(i);
       S = skin(Q, HN, face, hSI, hSW, hE, near, i => d.ear[i] < 25 && d.jaw[i] < 80 && Q[i * 3 + 1] < e.y && Q[i * 3 + 1] > hs.yc + .25 * hh && Q[i * 3 + 2] < e.z && HN[i * 3 + 1] > -.3 && Math.abs(HN[i * 3]) > .4);
     } else { S = body(4); e = new V3(0, an.L.eyeY, an.L.eyeZ); hh = an.L.hh; }
     for (const sd of [1, -1]) for (const [y, z, dy, l, lf] of [[-.24, -.26, -.3, .3, .55], [-.34, -.3, -.6, .26, .6], [-.13, -.36, 0, .22, .5]].slice(0, k * at[0] > .45 ? 3 : 2))

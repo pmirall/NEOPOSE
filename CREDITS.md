@@ -19,21 +19,6 @@ Modelos y texturas de [Poly Haven](https://polyhaven.com), en dominio público. 
 
 Los 8 panoramas 360° («Panoramas 360°») son HDRI de Poly Haven (CC0) en su versión tonemapeada, reducidos a 3072×1536 con `tools/scenery/hdri.py`.
 
-## Cabezas esculpidas: Sketchfab (CC BY 4.0)
-Adaptadas para NEOPOSE (recortadas por el cuello, simplificadas, con pesos de rig, mandíbula y orejas añadidos):
-
-| Cabeza | Autor | Original |
-|---|---|---|
-| Wolfsaro (realista) | mmdrawstuff | https://sketchfab.com/3d-models/wolfsaro-head-anthro-canine-head-reference-03aadbab477747728acbce807ba467fb |
-| Fox Girl (kemono) | Sour_Cream | https://sketchfab.com/3d-models/fox-girl-head-eb11b55481a447d4ab9f06fb2554416d |
-| Base V2 (kemono) | 取名字好难啊 (12241218) | https://sketchfab.com/3d-models/base-v2-cfd2f5bf90574f1f95df16fc110f3a87 |
-| Kobold (toony) | RhoBoat | https://sketchfab.com/3d-models/furry-kobold-base-ae17d2770b7e498db33c05675db17724 |
-| Goat Head (realista) | 401guy | https://sketchfab.com/3d-models/goat-head-402b25bca04442e0b84f259568206b60 |
-| Kemono Cat v2 (kemono; una de las nueve variantes) | Pluem pp the furry | https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491 |
-| Husky (realista; sin el sombrero ni el monóculo) | sneakyraccoon | https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304 |
-
-Licencia: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
-
 ## Animaciones: Universal Animation Library de Quaternius (CC0 1.0)
 [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) y [Universal Animation Library 2](https://quaternius.com/packs/universalanimationlibrary2.html) (versión Standard), de [Quaternius](https://quaternius.com): 84 animaciones de la galería. Pasadas al esqueleto de NEOPOSE con `tools/anims/build_ual.js` (solo se guardan las poses, no los modelos) en `app/anims/ual.txt`. Licencia: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/); el crédito es cortesía, no obligación.
 

@@ -55,30 +55,29 @@ const STYLE_SLIDERS = [
   ['head','Tamaño de cabeza',.75,2],['legs','Largo de piernas',.55,1.3],['arms','Largo de brazos',.6,1.25],['torso','Largo de torso',.7,1.2]
 ];
 for (const r of [...BODY_SLIDERS, ...STYLE_SLIDERS]) r[1] = tr(r[1]);
-/* species: the head is a downloaded sculpt (see 11-heads.js); tails, horns, antlers and some ears are built here.
-   A species can borrow another's head (head:) and keep its own legs (legs:), so close relatives (coyote, snow leopard,
-   raccoon…) are told apart by their coat, tail, ears and size the way the animals are; hide: parts of the borrowed
-   sculpt left out (1 its ears, 3 its horns), replaced by ears: built for the species. tail.rest is the
-   natural carriage (degrees on tail1..3: x lifts, y swings, z rolls). coat: the default coat (10c-coat.js). */
+/* species: each has a sculpted head of its own (tools/heads, see 11-heads.js); tails, horns and antlers are built here.
+   legs: whose legs a species stands on, when it has none of its own (a coyote a wolf's, a raccoon a fox's); hide: parts
+   of a sculpt left out (3 its horns). tail.rest is the natural carriage (degrees on tail1..3: x lifts, y swings, z
+   rolls). coat: the default coat (10c-coat.js). */
 const SPECIES = {
   humano:   {label:'Humano'},
   lobo:     {label:'Lobo',     fam:'can', coat:'lobo',     tail:{len:.55,r:.065,shape:'tupida', rest:[[-8,0,0],[-6,0,0],[-4,0,0]]}},
   perro:    {label:'Perro',    fam:'can', coat:'perro',    tail:{len:.45,r:.045,shape:'fina',   rest:[[38,0,0],[22,0,0],[14,0,0]]}},
   zorro:    {label:'Zorro',    fam:'can', coat:'zorro',    tail:{len:.7,r:.1,shape:'tupida',    rest:[[4,0,0],[-4,0,0],[4,0,0]]}},
-  coyote:   {label:'Coyote',   fam:'can', head:'lobo', coat:'coyote', tail:{len:.5,r:.07,shape:'tupida', rest:[[-14,0,0],[-6,0,0],[-2,0,0]]}},
-  hiena:    {label:'Hiena',    fam:'can', head:'perro', coat:'hiena', tail:{len:.38,r:.05,shape:'penacho', rest:[[-20,0,0],[-6,0,0],[0,0,0]]}},
+  coyote:   {label:'Coyote',   fam:'can', legs:'lobo', coat:'coyote', tail:{len:.5,r:.07,shape:'tupida', rest:[[-14,0,0],[-6,0,0],[-2,0,0]]}},
+  hiena:    {label:'Hiena',    fam:'can', legs:'perro', coat:'hiena', tail:{len:.38,r:.05,shape:'penacho', rest:[[-20,0,0],[-6,0,0],[0,0,0]]}},
   gato:     {label:'Gato',     fam:'fel', coat:'gato',     tail:{len:.65,r:.045,shape:'fina',   rest:[[58,0,0],[18,0,0],[-26,0,0]]}},
-  tigre:    {label:'Tigre',    fam:'fel', head:'gato', legs:'tigre', coat:'tigre',    tail:{len:.8,r:.06,shape:'fina',     rest:[[-14,0,0],[-8,0,0],[14,0,0]]}},
-  leon:     {label:'León',     fam:'fel', head:'gato', legs:'leon', coat:'leon',     tail:{len:.75,r:.045,shape:'penacho', rest:[[-16,0,0],[-6,0,0],[10,0,0]]}, mane: true},
-  leopardo: {label:'Leopardo de las nieves', fam:'fel', head:'gato', legs:'leon', coat:'leopardo', tail:{len:.9,r:.085,shape:'gruesa', rest:[[-10,0,0],[-4,0,0],[18,0,0]]}},
-  oso:      {label:'Oso',      fam:'otro', head:'zorro', legs:'oso', hide:[1], coat:'oso', tail:{len:.07,r:.06,shape:'pompón',  rest:[[10,0,0],[0,0,0],[0,0,0]]}, ears:{shape:'redonda', h:.26, w:.17, d:.06, out:24, back:6}},
-  mapache:  {label:'Mapache',  fam:'otro', head:'zorro', coat:'mapache', tail:{len:.5,r:.085,shape:'gruesa', rest:[[-6,0,0],[2,0,0],[6,0,0]]}},
-  panda:    {label:'Panda rojo', fam:'otro', head:'zorro', coat:'panda', tail:{len:.6,r:.09,shape:'gruesa', rest:[[-2,0,0],[4,0,0],[6,0,0]]}},
-  mofeta:   {label:'Mofeta',   fam:'otro', head:'gato', coat:'mofeta', tail:{len:.6,r:.12,shape:'tupida', rest:[[70,0,0],[30,0,0],[-30,0,0]]}},
+  tigre:    {label:'Tigre',    fam:'fel', legs:'tigre', coat:'tigre',    tail:{len:.8,r:.06,shape:'fina',     rest:[[-14,0,0],[-8,0,0],[14,0,0]]}},
+  leon:     {label:'León',     fam:'fel', legs:'leon', coat:'leon',     tail:{len:.75,r:.045,shape:'penacho', rest:[[-16,0,0],[-6,0,0],[10,0,0]]}, mane: true},
+  leopardo: {label:'Leopardo de las nieves', fam:'fel', legs:'leon', coat:'leopardo', tail:{len:.9,r:.085,shape:'gruesa', rest:[[-10,0,0],[-4,0,0],[18,0,0]]}},
+  oso:      {label:'Oso',      fam:'otro', legs:'oso', coat:'oso', tail:{len:.07,r:.06,shape:'pompón',  rest:[[10,0,0],[0,0,0],[0,0,0]]}},
+  mapache:  {label:'Mapache',  fam:'otro', legs:'zorro', coat:'mapache', tail:{len:.5,r:.085,shape:'gruesa', rest:[[-6,0,0],[2,0,0],[6,0,0]]}},
+  panda:    {label:'Panda rojo', fam:'otro', legs:'zorro', coat:'panda', tail:{len:.6,r:.09,shape:'gruesa', rest:[[-2,0,0],[4,0,0],[6,0,0]]}},
+  mofeta:   {label:'Mofeta',   fam:'otro', legs:'gato', coat:'mofeta', tail:{len:.6,r:.12,shape:'tupida', rest:[[70,0,0],[30,0,0],[-30,0,0]]}},
   conejo:   {label:'Conejo',   fam:'pre', coat:'conejo',   tail:{len:.08,r:.065,shape:'pompón', rest:[[24,0,0],[0,0,0],[0,0,0]]}},
-  ciervo:   {label:'Ciervo',   fam:'pre', head:'cabra', legs:'ciervo', hide:[3], coat:'ciervo',   tail:{len:.1,r:.045,shape:'pompón',  rest:[[16,0,0],[0,0,0],[0,0,0]]}, horns:{h:.62,r:.035,out:28,back:30,antler:true}},
+  ciervo:   {label:'Ciervo',   fam:'pre', legs:'ciervo', coat:'ciervo',   tail:{len:.1,r:.045,shape:'pompón',  rest:[[16,0,0],[0,0,0],[0,0,0]]}, horns:{h:.62,r:.035,out:28,back:30,antler:true}},
   cabra:    {label:'Cabra',    fam:'pre', coat:'cabra',    tail:{len:.09,r:.04,shape:'pompón',  rest:[[30,0,0],[0,0,0],[0,0,0]]}},
-  caballo:  {label:'Caballo',  fam:'pre', head:'cabra', legs:'caballo', hide:[3], coat:'caballo', tail:{len:.75,r:.075,shape:'crin', rest:[[-10,0,0],[-12,0,0],[-6,0,0]]}},
+  caballo:  {label:'Caballo',  fam:'pre', legs:'caballo', coat:'caballo', tail:{len:.75,r:.075,shape:'crin', rest:[[-10,0,0],[-12,0,0],[-6,0,0]]}},
   dragon:   {label:'Dragón',   fam:'rep', coat:'dragon',   tail:{len:1.1,r:.12,shape:'reptil',  rest:[[-6,0,0],[4,0,0],[8,0,0]]}, horns:{h:.42,r:.05,out:18,back:55}}
 };
 // the tail a body has: its species' unless changed in the panel (shape, length and thickness as factors, or none)
@@ -92,7 +91,7 @@ function tailOf(b) {
 const headSp = b => { if (!b || b.species === 'humano') return 'humano'; const h = b.headModel && typeof HEAD_CATALOG !== 'undefined' && HEAD_CATALOG[b.headModel];
   return h ? h.species[0] : (SPECIES[b.species] && SPECIES[b.species].head) || b.species; };
 // …and its legs: always the body's own species
-const legSp = b => (b && SPECIES[b.species] && (SPECIES[b.species].legs || SPECIES[b.species].head)) || (b && b.species);
+const legSp = b => (b && SPECIES[b.species] && SPECIES[b.species].legs) || (b && b.species);
 tLabels(SPECIES);
 
 /* ---------- hands ---------- */

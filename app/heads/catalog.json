@@ -1,83 +1,194 @@
 {
- "wolfsaro": {
-  "label": "Wolfsaro (realista)",
-  "author": "mmdrawstuff",
-  "url": "https://sketchfab.com/3d-models/wolfsaro-head-anthro-canine-head-reference-03aadbab477747728acbce807ba467fb",
+ "lobo": {
+  "label": "Lobo",
+  "author": "NEOPOSE",
   "species": [
-   "lobo",
+   "lobo"
+  ],
+  "style": "real",
+  "scale": 1.15,
+  "eyes": true
+ },
+ "perro": {
+  "label": "Perro",
+  "author": "NEOPOSE",
+  "species": [
    "perro"
   ],
   "style": "real",
-  "scale": 0.78,
-  "eyes": false
+  "scale": 1.15,
+  "eyes": true
  },
- "foxgirl": {
-  "label": "Fox Girl (kemono)",
-  "author": "Sour_Cream",
-  "url": "https://sketchfab.com/3d-models/fox-girl-head-eb11b55481a447d4ab9f06fb2554416d",
+ "zorro": {
+  "label": "Zorro",
+  "author": "NEOPOSE",
+  "species": [
+   "zorro"
+  ],
+  "style": "real",
+  "scale": 1.12,
+  "eyes": true
+ },
+ "coyote": {
+  "label": "Coyote",
+  "author": "NEOPOSE",
+  "species": [
+   "coyote"
+  ],
+  "style": "real",
+  "scale": 1.12,
+  "eyes": true
+ },
+ "hiena": {
+  "label": "Hiena",
+  "author": "NEOPOSE",
+  "species": [
+   "hiena"
+  ],
+  "style": "real",
+  "scale": 1.15,
+  "eyes": true
+ },
+ "gato": {
+  "label": "Gato",
+  "author": "NEOPOSE",
+  "species": [
+   "gato"
+  ],
+  "style": "real",
+  "scale": 1.1,
+  "eyes": true
+ },
+ "tigre": {
+  "label": "Tigre",
+  "author": "NEOPOSE",
+  "species": [
+   "tigre"
+  ],
+  "style": "real",
+  "scale": 1.18,
+  "eyes": true
+ },
+ "leon": {
+  "label": "León",
+  "author": "NEOPOSE",
+  "species": [
+   "leon"
+  ],
+  "style": "real",
+  "scale": 1.2,
+  "eyes": true
+ },
+ "leopardo": {
+  "label": "Leopardo de las nieves",
+  "author": "NEOPOSE",
+  "species": [
+   "leopardo"
+  ],
+  "style": "real",
+  "scale": 1.12,
+  "eyes": true
+ },
+ "oso": {
+  "label": "Oso",
+  "author": "NEOPOSE",
+  "species": [
+   "oso"
+  ],
+  "style": "real",
+  "scale": 1.2,
+  "eyes": true
+ },
+ "mapache": {
+  "label": "Mapache",
+  "author": "NEOPOSE",
+  "species": [
+   "mapache"
+  ],
+  "style": "real",
+  "scale": 1.08,
+  "eyes": true
+ },
+ "panda": {
+  "label": "Panda rojo",
+  "author": "NEOPOSE",
+  "species": [
+   "panda"
+  ],
+  "style": "real",
+  "scale": 1.08,
+  "eyes": true
+ },
+ "mofeta": {
+  "label": "Mofeta",
+  "author": "NEOPOSE",
+  "species": [
+   "mofeta"
+  ],
+  "style": "real",
+  "scale": 1.05,
+  "eyes": true
+ },
+ "conejo": {
+  "label": "Conejo",
+  "author": "NEOPOSE",
+  "species": [
+   "conejo"
+  ],
+  "style": "real",
+  "scale": 1.05,
+  "eyes": true
+ },
+ "cabra": {
+  "label": "Cabra",
+  "author": "NEOPOSE",
+  "species": [
+   "cabra"
+  ],
+  "style": "real",
+  "scale": 1.12,
+  "eyes": true
+ },
+ "ciervo": {
+  "label": "Ciervo",
+  "author": "NEOPOSE",
+  "species": [
+   "ciervo"
+  ],
+  "style": "real",
+  "scale": 1.12,
+  "eyes": true
+ },
+ "caballo": {
+  "label": "Caballo",
+  "author": "NEOPOSE",
+  "species": [
+   "caballo"
+  ],
+  "style": "real",
+  "scale": 1.1,
+  "eyes": true
+ },
+ "dragon": {
+  "label": "Dragón",
+  "author": "NEOPOSE",
+  "species": [
+   "dragon"
+  ],
+  "style": "real",
+  "scale": 1.15,
+  "eyes": true
+ },
+ "zorro_k": {
+  "label": "Zorro (kemono)",
+  "author": "NEOPOSE",
   "species": [
    "zorro",
    "lobo",
    "perro"
   ],
   "style": "kemono",
-  "scale": 0.95,
+  "scale": 1.0,
   "eyes": true
- },
- "conejo_k": {
-  "label": "Base V2 (kemono)",
-  "author": "取名字好难啊 (12241218)",
-  "url": "https://sketchfab.com/3d-models/base-v2-cfd2f5bf90574f1f95df16fc110f3a87",
-  "species": [
-   "conejo"
-  ],
-  "style": "kemono",
-  "scale": 0.95,
-  "eyes": true
- },
- "kobold": {
-  "label": "Kobold (toony)",
-  "author": "RhoBoat",
-  "url": "https://sketchfab.com/3d-models/furry-kobold-base-ae17d2770b7e498db33c05675db17724",
-  "species": [
-   "dragon"
-  ],
-  "style": "toon",
-  "scale": 0.92,
-  "eyes": true
- },
- "cabra": {
-  "label": "Goat Head (realista)",
-  "author": "401guy",
-  "url": "https://sketchfab.com/3d-models/goat-head-402b25bca04442e0b84f259568206b60",
-  "species": [
-   "cabra"
-  ],
-  "style": "real",
-  "scale": 0.8,
-  "eyes": true
- },
- "gato_k": {
-  "label": "Kemono Cat (kemono)",
-  "author": "Pluem pp the furry",
-  "url": "https://sketchfab.com/3d-models/all-head-kemono-cat-v2-c961bb6f0d8148c8b339391cd9d39491",
-  "species": [
-   "gato"
-  ],
-  "style": "kemono",
-  "scale": 0.95,
-  "eyes": false
- },
- "husky": {
-  "label": "Husky (realista)",
-  "author": "sneakyraccoon",
-  "url": "https://sketchfab.com/3d-models/husky-1fe3b26f5af7438bbc2d4d25c32f2304",
-  "species": [
-   "perro",
-   "lobo"
-  ],
-  "style": "real",
-  "scale": 0.8,
-  "eyes": false
  }
 }

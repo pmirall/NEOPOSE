@@ -1,13 +1,14 @@
 /* ======================= sculpted anthro heads (head swap) =======================
    Modular-character technique: the body's own head is hidden and a sculpted head is put in its place, cut across the
    neck. The seam is matched to the body: at the cut the head's neck takes the body's neck shape and skin weights, and
-   blends back to the sculpt above it. Heads are CC-BY sculpts from Sketchfab, baked by wrap/heads.py: origin at the
-   eyes, unit = head height, with ear, jaw and lip marks so ears bend and the mouth opens like the rest of the rig. */
+   blends back to the sculpt above it. The heads are our own, sculpted from each animal's anatomy (tools/heads/head.py)
+   and baked by tools/heads/bake.py: origin at the eyes, unit = head height, with ear weights and the lip line so ears
+   bend and the mouth opens like the rest of the rig. */
 const HEADS = {cache: new Map()};
 const HEAD_STYLE_SCALE = {real: 1.04, toon: 1.05, kemono: 1.04}; // kemono and toony skulls are already enlarged by effBody
 const SNOUT_BY_LEVEL = [0, .45, .6, .75, .88, 1];
 function headModelFor(b) {
-  // only sculpted (downloaded) heads: the species' own sculpt first, or the one chosen in the panel
+  // only sculpted heads: the species' own sculpt first, or the one chosen in the panel
   if (!b || b.species === 'humano') return null;
   if ((b.kemo ?? 3) <= 1 && !b.headModel) return null;  // a kemonomimi: a human face with the animal's ears
   if (b.headModel && HEAD_CATALOG[b.headModel]) return b.headModel;  // any sculpt, even another species' (a hybrid)
@@ -30,12 +31,12 @@ function loadHeadModel(id) {
    front of the corners of the mouth (mouthFrame) the new vertices are doubled, one for the upper lip and one for the
    lower, so the mouth opens with clean lip edges and closes without a seam; behind the corners they are shared and the
    cheek stretches. Jaw weights come from the same rule as the body's head (jawWeight). The lip edge (rim, points round
-   the arch) is kept for the inside of the mouth to be built on; a sculpt modelled with its lips already apart (the
-   husky) has no skin on the line, and its upper lip's edge just above stands for it. */
+   the arch) is kept for the inside of the mouth to be built on; a sculpt modelled with its lips already apart has
+   no skin on the line, and its upper lip's edge just above stands for it. */
 function cutMouth(d) {
   const L = d.L, F = mouthFrame((HEAD_RECIPES[HEAD_CATALOG[d.id].species[0]] || {}).mouth || 'canino', L.mouthY, L.tip[2], 0, L.hingeZ, 1, L.chin);
   const P = Array.from(d.P), K = Array.from(d.K), ear = Array.from(d.ear), idx = [], cut = new Map(), up = [], n0 = d.n, y = i => P[i * 3 + 1];
-  // a separate piece in front of and below the eyes is the muzzle's, never an ear (the goat's lips came marked as one)
+  // a separate piece in front of and below the eyes is the muzzle's, never an ear (a sculpt's lips may come marked as one)
   for (let i = 0; i < n0; i++) if (K[i] === 1 && P[i * 3 + 2] > .15 && P[i * 3 + 1] < 0) { K[i] = 0; ear[i] = 0; }
   for (let i = 0; i < n0; i++) if (K[i] === 0 && Math.abs(y(i) - F.y) < 1e-4) P[i * 3 + 1] = F.y + 1e-4;
   const vert = (a, b, open) => { const u = (F.y - y(a)) / (y(b) - y(a)), v = P.length / 3;
@@ -64,60 +65,11 @@ function cutMouth(d) {
     let e = Infinity; if (K[i] === 0 && Math.abs(yy - F.y) < .08 && z > F.zc - .08) for (const q of rim) e = Math.min(e, Math.hypot(q[0] - x, q[1] - yy, q[2] - z));
     lip[i] = e < .03 ? 1 + .5 * e / .03 : 2;
   }
-  // some sculpts model the closed mouth as a slit, a roll of lips or a whole mouth going into the head: open, these would
-  // show through the cut (the fox girl's mouth floor, inked, floated over the tongue as a black arch; the rabbit's inner
-  // mouth stood in the opening as white shards). Round the mouth, skin is the sculpt's inside of the mouth when it looks
-  // into a closed space: rays from it, along its normal and leaning four ways off it, all meet
-  // the sculpt again, and above the line some of them below it (the palate sees the floor or the closed lips), where a
-  // receding chin or the underside of an overhanging lip looks out into the open one way or another, and a fold beside
-  // the nose or under the eye, closed as it may be, stays above. Away from the lip edge itself (the rim's outer envelope in plan, as in mouthParts)
-  // it is not drawn while the mouth is open (4): the new inside, whose inner lips are dark, takes its place
-  const zf = Math.max(...rim.map(q => q[2])), Cb = F.zc - .3 * (zf - F.zc), Nv = new Float32Array(n * 3), NS = 16, R = new Array(NS + 1).fill(0), ring = [];
-  let tc = 0; for (const [x, , z] of rim) tc = Math.max(tc, Math.abs(Math.atan2(x, z - Cb)));
-  for (const [x, , z] of rim) { const b = Math.round(Math.abs(Math.atan2(x, z - Cb)) / tc * NS); R[b] = Math.max(R[b], Math.hypot(x, z - Cb)); }
-  for (let k = 0; k <= NS; k++) if (!R[k]) { let a = k - 1, b = k + 1; while (a >= 0 && !R[a]) a--; while (b <= NS && !R[b]) b++; R[k] = a < 0 ? R[b] : b > NS ? R[a] : R[a] + (R[b] - R[a]) * (k - a) / (b - a); }
-  for (let k = -NS; k <= NS; k++) { const t = k / NS * tc; ring.push([R[Math.abs(k)] * Math.sin(t), Cb + R[Math.abs(k)] * Math.cos(t)]); }
-  const inside = (x, z) => { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, zi] = ring[i], [xj, zj] = ring[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
-  const depth = (x, z) => { let e = Infinity; for (let i = 1; i < ring.length; i++) { const [ax, az] = ring[i - 1], dx = ring[i][0] - ax, dz = ring[i][1] - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1), 0, 1); e = Math.min(e, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return e; };
-  const T = [];  // the triangles round the mouth as corner and two edges, flat, for the rays
-  for (let t = 0; t < idx.length; t += 3) { const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3, e1 = [0, 1, 2].map(k => P[b + k] - P[a + k]), e2 = [0, 1, 2].map(k => P[c + k] - P[a + k]);
-    const nn = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
-    for (const v of [a, b, c]) for (let k = 0; k < 3; k++) Nv[v + k] += nn[k];
-    if (Math.abs((P[a + 1] + P[b + 1] + P[c + 1]) / 3 - F.y) < .45 && (P[a + 2] + P[b + 2] + P[c + 2]) / 3 > F.zh - .3 && Math.abs(P[a]) < F.xc + .35) T.push(idx[t], idx[t + 1], idx[t + 2], P[a], P[a + 1], P[a + 2], ...e1, ...e2); }
-  // Möller–Trumbore, from just off the surface, as far as .3 head heights, against the triangles filed in a grid of cells
-  // along the way (each filed under every cell its box reaches, with a margin, so a ray sampled every half cell finds it)
-  const G = .04, cells = new Map(), ck = (a, b, c) => (a + 512) * 1048576 + (b + 512) * 1024 + c + 512, key = (x, y, z) => ck(Math.floor(x / G), Math.floor(y / G), Math.floor(z / G)), seen = new Int32Array(T.length / 12);
-  for (let t = 0; t < T.length; t += 12) { const lo = [0, 1, 2].map(k => Math.floor((T[t + 3 + k] + Math.min(0, T[t + 6 + k], T[t + 9 + k]) - G / 2) / G)), hi = [0, 1, 2].map(k => Math.floor((T[t + 3 + k] + Math.max(0, T[t + 6 + k], T[t + 9 + k]) + G / 2) / G));
-    for (let a = lo[0]; a <= hi[0]; a++) for (let b = lo[1]; b <= hi[1]; b++) for (let c = lo[2]; c <= hi[2]; c++) { const kk = ck(a, b, c); (cells.get(kk) || cells.set(kk, []).get(kk)).push(t); } }
-  let ray = 0;
-  const looksIn = (i, ox, oy, oz, dx, dy, dz) => { ray++; for (let s = 0; s <= .3; s += G / 2) for (const t of cells.get(key(ox + dx * s, oy + dy * s, oz + dz * s)) || []) {
-    if (seen[t / 12] === ray || T[t] === i || T[t + 1] === i || T[t + 2] === i) continue; seen[t / 12] = ray;
-    const e1x = T[t + 6], e1y = T[t + 7], e1z = T[t + 8], e2x = T[t + 9], e2y = T[t + 10], e2z = T[t + 11], px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz;
-    if (det > -1e-12 && det < 1e-12) continue; const iv = 1 / det, sx = ox - T[t + 3], sy = oy - T[t + 4], sz = oz - T[t + 5], u = (sx * px + sy * py + sz * pz) * iv; if (u < 0 || u > 1) continue;
-    const qx = sy * e1z - sz * e1y, qy = sz * e1x - sx * e1z, qz = sx * e1y - sy * e1x, v = (dx * qx + dy * qy + dz * qz) * iv; if (v < 0 || u + v > 1) continue;
-    const tt = (e2x * qx + e2y * qy + e2z * qz) * iv; if (tt > 1e-5 && tt < .3) return (oy + dy * tt - F.y) * (oy - F.y) < 0 ? 2 : 1; } return 0; };
-  for (let i = 0; i < n && ring.length > 2; i++) {
-    const x = P[i * 3], z = P[i * 3 + 2], dy = P[i * 3 + 1] - F.y;
-    if (K[i] === 1 || K[i] === 2 || dy < -.3 || dy > .12 || Math.abs(x) > F.xc + .05 || z < F.zh) continue;
-    if (inside(x, z) && depth(x, z) < .008) continue;
-    const d = new V3(Nv[i * 3], Nv[i * 3 + 1], Nv[i * 3 + 2]).normalize(), t1 = new V3(Math.abs(d.y) > .9 ? 1 : 0, Math.abs(d.y) > .9 ? 0 : 1, 0).cross(d).normalize(), t2 = d.clone().cross(t1);
-    const o = [x + d.x * 1e-4, P[i * 3 + 1] + d.y * 1e-4, z + d.z * 1e-4];
-    const hits = [d, ...[t1, t2].flatMap(t => [1, -1].map(sg => d.clone().addScaledVector(t, sg).normalize()))].map(r => looksIn(i, ...o, r.x, r.y, r.z));
-    if (hits.filter(Boolean).length > 3 && (dy < 0 || hits.includes(2))) lip[i] = 4;
-  }
-  // a triangle that reaches into the marked inside is marked whole (its other corners doubled), so the border between
-  // drawn and not drawn runs along its edges and not across it as a half-drawn band (on the fox girl, such a band of her
-  // mouth floor's outline floated over the tongue as a black arch)
-  const Jw = Array.from(jaw), Lp = Array.from(lip), dup = new Map();
-  for (let t = 0; t < idx.length; t += 3) { if (Lp[idx[t]] < 4 && Lp[idx[t + 1]] < 4 && Lp[idx[t + 2]] < 4) continue;
-    for (let c = t; c < t + 3; c++) { const i = idx[c]; if (Lp[i] === 4) continue; let v = dup.get(i);
-      if (v === undefined) { v = P.length / 3; dup.set(i, v); P.push(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); K.push(K[i]); ear.push(ear[i]); Jw.push(Jw[i]); Lp.push(4); }
-      idx[c] = v; } }
-  // the hem: the open edge of the skin round the neck, which the swap pulls down onto the body's neck (the kemono cat's
-  // ends just under its chin, above the cut, and floated over the body's open neck)
+  // the hem: the open edge of the skin round the neck, which the swap pulls down onto the body's neck (a hem
+  // ending just under the chin, above the cut, would float over the body's open neck)
   const cnt = new Map(), hem = new Set(); for (let t = 0; t < idx.length; t += 3) for (let e = 0; e < 3; e++) { const a = idx[t + e], b = idx[t + (e + 1) % 3], k = Math.min(a, b) * 4194304 + Math.max(a, b); cnt.set(k, (cnt.get(k) || 0) + 1); }
-  for (const [k, c] of cnt) if (c === 1) for (const i of [Math.floor(k / 4194304), k % 4194304]) if (K[i] === 0 && Lp[i] < 4 && P[i * 3 + 1] < Math.min(F.chin + .1, F.y - .1)) hem.add(i);
-  return {...d, P: new Float32Array(P), K: Uint8Array.from(K), ear: Uint8Array.from(ear), idx: Uint32Array.from(idx), n: P.length / 3, nt: idx.length / 3, jaw: Uint8Array.from(Jw), lip: Float32Array.from(Lp),
+  for (const [k, c] of cnt) if (c === 1) for (const i of [Math.floor(k / 4194304), k % 4194304]) if (K[i] === 0 && P[i * 3 + 1] < Math.min(F.chin + .1, F.y - .1)) hem.add(i);
+  return {...d, P: new Float32Array(P), K: Uint8Array.from(K), ear: Uint8Array.from(ear), idx: Uint32Array.from(idx), n: P.length / 3, nt: idx.length / 3, jaw, lip,
     rim, mouth: F, hem};
 }
 // called by build(): the head data must be ready, otherwise it loads and the character is rebuilt when it arrives
@@ -162,8 +114,8 @@ function computeHeadSwap(m, P, J) {
     Q[i * 3] = X; Q[i * 3 + 1] = Y; Q[i * 3 + 2] = Z;
   }
   // the sculpt's edge at the cut goes onto the body's neck ring, and above it whatever lies inside the ring is pushed out
-  // to it, fading upwards (never drawn in: a throat that ends under an overhanging chin, the fox girl's or the rabbit's,
-  // was scaled in with the chin, and the body's neck showed its inside through the gap, inked black)
+  // to it, fading upwards (never drawn in: a throat that ends under an overhanging chin
+  // would be scaled in with the chin, and the body's neck show its inside through the gap, inked black)
   const fade = Math.max(.015 * m.size, chinY - yc);
   for (let i = 0; i < n; i++) {
     if (d.K[i] === 1 || d.K[i] === 2) continue;
@@ -244,7 +196,10 @@ function attachHeadSwap(m) {
     const sd = x > 0 ? 'eyeL' : 'eyeR', c = L[sd], ecx = E.x + c[0] * s, ecy = E.y + c[1] * s, ecz = E.z + c[2] * s;
     const isEye = d.K[i] === 2 || (d.K[i] === 0 && !HEAD_CATALOG[d.id].eyes && Math.hypot(Q[i * 3] - ecx, Q[i * 3 + 1] - ecy, Q[i * 3 + 2] - ecz) < er);
     if (isEye) {
-      const bz = ecz - er; let vx = Q[i * 3] - ecx, vy = Q[i * 3 + 1] - ecy, vz = Q[i * 3 + 2] - bz; const l = Math.hypot(vx, vy, vz) || 1;
+      // (in the eye's own frame: a sculpt's eyes may look out to the sides, a prey animal's or a horse's, L.eyeYaw)
+      const ya = (L.eyeYaw || 0) * DEG * (x > 0 ? 1 : -1), gx = Math.sin(ya), gz = Math.cos(ya);
+      let vx = Q[i * 3] - (ecx - gx * er), vy = Q[i * 3 + 1] - ecy, vz = Q[i * 3 + 2] - (ecz - gz * er); const l = Math.hypot(vx, vy, vz) || 1;
+      [vx, vz] = [vx * gz - vz * gx, vx * gx + vz * gz];
       Ey[i * 4] = vx / l * (x > 0 ? 1 : -1); Ey[i * 4 + 1] = vy / l; Ey[i * 4 + 2] = vz / l; Ey[i * 4 + 3] = 1;
     }
   }
