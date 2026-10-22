@@ -10185,7 +10185,7 @@ function fitLeg(m, d, s) {
     for (let r = 0; r < 3; r++) M[9 + r] = A.o.getComponent(r) - M[r * 3] * C.o.x - M[r * 3 + 1] * C.o.y - M[r * 3 + 2] * C.o.z;
     return M; };
   const seg = (c0, c1, a0, a1, along) => { const C = frame(c0, c1.clone().sub(c0), fwd), A = frame(a0, a1.clone().sub(a0), FW); return map(C, A, along ?? A.len / C.len); };
-  const F = [seg(K, T, Kr, Hr, k), seg(K, H, Kr, Ar), seg(H, E, Ar, heel)], bone = [FIG.jIdx['hip' + s], kb, ab];
+  const F = [seg(K, T, Kr, Hr), seg(K, H, Kr, Ar), seg(H, E, Ar, heel)], bone = [FIG.jIdx['hip' + s], kb, ab];
   const n = d.n, Q = new Float32Array(n * 3), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), B = new Int32Array(n), Ec = new Float32Array(n * 4), DP = d.P;
   for (let i = 0; i < n; i++) {
     const x = DP[i * 3] * mir, y = DP[i * 3 + 1], z = DP[i * 3 + 2]; let ox = 0, oy = 0, oz = 0;
@@ -10196,7 +10196,9 @@ function fitLeg(m, d, s) {
   }
   // the body's shin and metatarsus are what the sculpt is now: not drawn below the knee (the sculpt's stub reaches up
   // over the thigh's end; hidden only where it covered them, the human shin's front stood out of it in patches)
-  const N = partNormals(Q, d.tris[s][0], n), under = [...(L[kb] || []).filter(i => P[i * 3 + 1] < Kr.y - .03 * m.size), ...(L[ab] || [])];
+  // and the thigh's lower half, which its muscles stand for (above, the body's thigh goes on into the sculpt's)
+  const hb = FIG.jIdx['hip' + s], cut = Kr.y + .45 * (Hr.y - Kr.y);
+  const N = partNormals(Q, d.tris[s][0], n), under = [...(L[kb] || []).filter(i => P[i * 3 + 1] < Kr.y - .03 * m.size), ...(L[ab] || []), ...(L[hb] || []).filter(i => P[i * 3 + 1] < cut)];
   return partGeometry(m, d, Q, N, SI, SW, B, s, {pads: false, claws: false, under: Int32Array.from(under), E: Ec});
 }
 function legPartGeos(m) {
