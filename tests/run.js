@@ -1967,9 +1967,10 @@ const SUITES = {
     const aim = (bone, k) => A(([bone, k]) => { const C = window.__cdp, m = C.mq, c = m.joints[bone].getWorldPosition(new THREE.Vector3()), q = m.joints.hips.getWorldQuaternion(new THREE.Quaternion());
       C.controls.target.copy(c); C.camera.position.copy(c).add(new THREE.Vector3(.35, .05, 1).normalize().applyQuaternion(q).multiplyScalar(m.headH * k)); C.camera.lookAt(c); C.controls.update(); }, [bone, k]);
     await aim('head', 3.4);
-    await style('construccion'); const off = await A(() => window.__cdp.ink.inkWanted());
+    await style('silueta'); const off = await A(() => window.__cdp.ink.inkWanted());
+    await style('construccion'); const built = await A(() => window.__cdp.ink.inkWanted());
     await style('contorno'); await page.waitForTimeout(300); const on = await A(() => window.__cdp.ink.inkWanted());
-    ok(on && !off, 'the ink pass runs in Solo línea only (the other styles keep their look)');
+    ok(on && built && !off, 'the ink pass draws the inner lines in every style but the silhouette (a flat shape)');
     // the buffer it reads: the head at the picture's size, seen from outside, its eyes and nose leather no parts of their
     // own (a border drawn on the mesh's eye or nose vertices is a jagged star or polygon, not a lid or a nose); the
     // sculpted head and the neck under it, two materials, apart

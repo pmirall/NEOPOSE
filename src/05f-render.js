@@ -127,6 +127,27 @@ INK.mat = new THREE.ShaderMaterial({
       float fold = smoothstep(.3, .6, 1.0 - dot(Nr(a), Nr(b))) * step(lap, .0005) * step(.5, a.a) * step(.5, b.a) * smoothstep(.2, .4, Nr(c).z) * (1.0 - back);  // turning inwards (not where the surface grazes the eye, the contour's, nor onto a garment's inside at its edge)
       return max(max(step_, fold * .85) * rim, ends(a, b, za, zb, c, zc));
     }
+    // a valley across the pixel, wider than a fold: the groove between two muscles, the dip above a kneecap, the hollow
+    // behind a knee. Read from the normals, which the surface interpolates smoothly (its depth, read so closely, is
+    // grainy): along a direction o the normal's own o-component falls through a hollow and rises over a swell, so its
+    // change across the pixel is the surface's bend that way; a hollow's line is where that bend is most concave, the
+    // pixel more concave than its neighbours along o (one stroke down the groove, not a band). Drawn as the references
+    // draw such forms: a lighter interior stroke, only within one part's surface, never where it grazes the eye
+    float bend(vec2 p, vec2 w, vec2 dir) { vec4 a = texture2D(tN, p + w), b = texture2D(tN, p - w); if (a.a < .9 || b.a < .9) return 0.0; return dot(Nr(a).xy - Nr(b).xy, dir); }
+    float valleyAt(vec2 p, vec2 o, vec4 c, float zc) {
+      vec2 w = o * 3.0, dir = normalize(o / uTx);
+      vec4 a = texture2D(tN, p + w * 2.0), b = texture2D(tN, p - w * 2.0);
+      if (abs(a.b - c.b) > .5 / 255.0 || abs(b.b - c.b) > .5 / 255.0 || abs(Z(p + w * 2.0) + Z(p - w * 2.0) - 2.0 * zc) > zc * .004) return 0.0;
+      float k = bend(p, w, dir), kp = bend(p + o * 1.5, w, dir), km = bend(p - o * 1.5, w, dir);
+      return smoothstep(.05, .14, -k) * step(k, kp - .004) * step(k, km - .004);
+    }
+    // (and a groove runs on: the bend found again a little way along it, either way, or it is a speck — a facet's crease
+    // in a low mesh, a pore of noise — and not drawn)
+    float valley(vec2 o, vec4 c, float zc) {
+      float v = valleyAt(vUv, o, c, zc); if (v < .01) return 0.0;
+      vec2 t = vec2(-o.y, o.x) / uTx.yx * uTx * 2.5;
+      return v * step(.01, min(valleyAt(vUv + t, o, c, zc), valleyAt(vUv - t, o, c, zc))) * smoothstep(.4, .6, Nr(c).z);
+    }
     void main() {
       vec4 c = texture2D(tN, vUv); if (c.a < .5) discard;
       float zc = Z(vUv); vec2 r = uTx * uR;
@@ -135,9 +156,11 @@ INK.mat = new THREE.ShaderMaterial({
       vec2 e = r * 3.0; float rim = step(.5, min(min(min(texture2D(tN, vUv + vec2(e.x, 0.0)).a, texture2D(tN, vUv - vec2(e.x, 0.0)).a), min(texture2D(tN, vUv + vec2(0.0, e.y)).a, texture2D(tN, vUv - vec2(0.0, e.y)).a)),
         min(min(texture2D(tN, vUv + e).a, texture2D(tN, vUv - e).a), min(texture2D(tN, vUv + vec2(e.x, -e.y)).a, texture2D(tN, vUv - vec2(e.x, -e.y)).a))));
       float ink = across(vec2(r.x, 0.0), c, zc, rim) + across(vec2(0.0, r.y), c, zc, rim) + .7 * (across(r, c, zc, rim) + across(vec2(r.x, -r.y), c, zc, rim));
+      // (on the body and its parts: cloth, kind 1, has its folds, and a valley's stroke on its soft creases was a speck)
+      float k = mod(floor(c.b * 255.0 + .5), 8.0);
+      if (abs(k - 1.0) > .5) ink = max(ink, .85 * rim * max(max(valley(vec2(r.x, 0.0), c, zc), valley(vec2(0.0, r.y), c, zc)), max(valley(r * .7, c, zc), valley(vec2(r.x, -r.y) * .7, c, zc))) / .75);
       // a hard part (pad, claw, horn: kinds 2–4) is outlined bold, as the references draw beans and claws with the
       // contour's confidence: its border found again a stroke further in
-      float k = mod(floor(c.b * 255.0 + .5), 8.0);
       if (k > 1.5 && k < 4.5) { vec2 r2 = r * 2.0; ink = max(ink, part(vec2(r2.x, 0.0), c, zc) + part(vec2(0.0, r2.y), c, zc) + .7 * (part(r2, c, zc) + part(vec2(r2.x, -r2.y), c, zc))); }
       ink = clamp(ink * .75, 0.0, 1.0); if (ink < .02) discard;
       gl_FragDepthEXT = texture2D(tD, vUv).r - 2e-6;
@@ -147,7 +170,8 @@ INK.mat = new THREE.ShaderMaterial({
 // the lines go into the picture as a full-frame sheet drawn with the transparent things, under the ghosts, trails and
 // handles (which are drawn later, by their renderOrder), so the gizmos stay on top of the ink
 INK.sheet = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), INK.mat); INK.sheet.frustumCulled = false; INK.sheet.renderOrder = 1; INK.sheet.raycast = () => {};
-const inkWanted = () => LU.uOutW.value > 0 && chars.some(m => m.style === 'contorno' && m.group.visible);
+// (every drawing style but the silhouette, whose figure is a flat shape with nothing inside to draw)
+const inkWanted = () => LU.uOutW.value > 0 && chars.some(m => m.style !== 'silueta' && m.group.visible);
 const inkFree = (k, rt) => { rt.depthTexture.dispose(); rt.dispose(); INK.rts.delete(k); };
 function inkTarget(w, h) {
   const k = w + 'x' + h; let rt = INK.rts.get(k);

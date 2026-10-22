@@ -108,7 +108,7 @@ function garmentMat(style, U) {
         ${tint ? `{ float l = dot(tx.rgb, vec3(.299, .587, .114)), det = clamp(l / max(uAvgL, .05), .35, 1.5);
           diffuseColor.rgb = uMode < .5 ? tx.rgb : (uMode < 1.5 ? uColA * det : garmentColor() * mix(1.0, det, .8)); }` : ''}`)
       .replace('#include <output_fragment>', `#include <output_fragment>\n if (uRender > .5) gl_FragColor.rgb = sketchify(gl_FragColor.rgb);`)
-      .replace('#include <dithering_fragment>', inkFrag('0.0'));
+      .replace('#include <dithering_fragment>', inkFrag('1.0'));   // (kind 1: cloth, whose folds the ink draws, not its valleys)
   };
   mat.customProgramCacheKey = () => 'ropa-' + style;
   return mat;
