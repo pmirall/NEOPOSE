@@ -3878,9 +3878,10 @@ class Mannequin {
       g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
     // a sculpted paw-hand or hind paw (11b-parts) stands for the hand or toes and their lofted pads and claws
-    const handParts = handPartGeos(this), footParts = footPartGeos(this);
+    // (and with a sculpted hind paw, a sculpted lower leg: calf, tendon and the point of the hock)
+    const handParts = handPartGeos(this), footParts = footPartGeos(this), legParts = footParts && legPartGeos(this);
     for (const g of pawGeos(this, this.geo.attributes.position.array, {hands: !handParts, feet: !footParts})) geos.push(g);
-    for (const g of [...handParts || [], ...footParts || []]) geos.push(g);
+    for (const g of [...handParts || [], ...footParts || [], ...legParts || []]) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
     this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));
@@ -8423,7 +8424,7 @@ function kneelPaws(m) {
     (J['knee' + s].rotation.x > 75 * DEG && th.y < -Math.cos(40 * DEG) && ap.y > kp.y && kp.y < o.y + .05 * sc ? kneel : stand).push(s);
   }
   if (!kneel.length) return;
-  const knee = .045 * sc, W = pawFrame(L, m.J, 'R').W * sc;
+  const knee = Math.max(.045, m.kneeR || 0) * sc, W = pawFrame(L, m.J, 'R').W * sc;
   for (const s of kneel) {
     // the shin laid low: the knee unbent until the hock is at most 20° up from it
     const K = J['knee' + s], kp = jw('knee' + s), rise = () => { const d = jw('ankle' + s).sub(kp); return Math.atan2(d.y, Math.hypot(d.x, d.z)); };
@@ -9861,7 +9862,7 @@ function headPick(m, hit) {
   return best === nB ? 'earL' : best === nB + 1 ? 'earR' : m.bonePick[best] || 'head';
 }
 
-/* ======================= sculpted anthro parts: paw-hands and hind paws =======================
+/* ======================= sculpted anthro parts: paw-hands, hind paws and lower legs =======================
    Like the sculpted heads, but made here: each part is sculpted offline as a signed distance field round a canonical
    skeleton (tools/parts: round cones, ellipsoids and smooth unions, measured on real anatomy and furry art — palm as
    wide as long, fingers 1 : .67 : .57, a heart-shaped palm pad with three lobes toward the wrist, claws hooded at the root
@@ -9878,11 +9879,12 @@ const PART_FAMILY = {lobo: 'canid', zorro: 'canid', perro: 'canid', gato: 'felid
 function partFor(b, kind) {
   if (!b || b.species === 'humano') return null;
   if (kind === 'hand' && (b.paws === 'humanas' || !handShape(b) || handShape(b) === HAND_SHAPES.pezuna)) return null;
-  if (kind === 'foot') { const L = legSpec(b); if (!L || L.type !== 'digi') return null; }
+  if (kind === 'foot' || kind === 'leg') { const L = legSpec(b); if (!L || L.type !== 'digi') return null; }
   const fam = PART_FAMILY[legSp(b)]; if (!fam) return null;
+  if (kind === 'leg') return PART_LIST.includes(`foot-${fam}`) ? 'leg-digi' : null;  // (one lower leg for every digitigrade paw)
   const id = `${kind}-${fam}`; return PART_LIST.includes(id) ? id : null;
 }
-const PART_LIST = ['hand-canid', 'hand-felid', 'hand-bear', 'hand-dragon', 'foot-canid', 'foot-felid'];
+const PART_LIST = ['hand-canid', 'hand-felid', 'hand-bear', 'hand-dragon', 'foot-canid', 'foot-felid', 'leg-digi'];
 function loadPart(id) {
   if (PARTS.cache.has(id)) return PARTS.cache.get(id);
   const p = fetch(`parts/${id}.txt`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
@@ -9907,7 +9909,7 @@ function loadPart(id) {
 // the data when it is there; otherwise it loads and the character is built again when it comes
 function partReady(m, id) {
   if (!id) return null; if (PARTS[id]) return PARTS[id];
-  loadPart(id).then(() => { if (m.bones && (partFor(m.body, 'hand') === id || partFor(m.body, 'foot') === id)) m.build(m.body); }).catch(e => console.warn('part', id, e));
+  loadPart(id).then(() => { if (m.bones && ['hand', 'foot', 'leg'].some(k => partFor(m.body, k) === id)) m.build(m.body); }).catch(e => console.warn('part', id, e));
   return null;
 }
 // vertex normals, area-weighted over the triangles (as computeVertexNormals does, on the arrays: a few times quicker)
@@ -10014,7 +10016,7 @@ function partRoots(m, d, key, Q, B) {
 function partGeometry(m, d, Q, N, SI, SW, B, s, o) {
   const n = Q.length / 3, g = new THREE.BufferGeometry(), I = d.tris[s][o.claws ? 0 : 1], key = +o.pads + 2 * o.claws;
   // (the kinds and the lines, the same on every fitting: made once for each way of wearing it)
-  const [line, E] = (d.attrs = d.attrs || {})[key] || (d.attrs[key] = (() => { const line = new Float32Array(n * 4), E = new Float32Array(n * 4);
+  const [line, E] = o.E ? [d.line || (d.line = Float32Array.from({length: n * 4}, (_, i) => i % 4 === 3 ? -1 : 0)), o.E] : (d.attrs = d.attrs || {})[key] || (d.attrs[key] = (() => { const line = new Float32Array(n * 4), E = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) { line[i * 4 + 3] = -1; const k = d.kind[i]; furPack(E, i * 4, 0, 1, 0, k === 0 || k === 2 && !o.pads ? 1 : k, 0); }
     return [line, E]; })());
   g.setAttribute('position', new THREE.BufferAttribute(Q, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N || partNormals(Q, I, n), 3));
@@ -10138,6 +10140,7 @@ function fitFoot(m, d, s) {
     heel = new V3(S[3] / S[0] + bx * (yh - my), yh, S[5] / S[0] + bz * (yh - my)); rise = Math.atan2(1, Math.hypot(bx, bz)); }
   else heel = T.clone().lerp(A, clamp((yh - T.y) / (A.y - T.y), 0, 1));
   const O = heel.clone().addScaledVector(fwd, -st.hy * k); O.y = fr.g;
+  (m.pawHeel = m.pawHeel || {})[s] = heel;   // (where a sculpted lower leg's shaft goes into the paw)
   const claws = !!pawOf(L).claw, n = claws ? d.n : d.ns, Q = new Float32Array(n * 3), N = new Float32Array(n * 3), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4);
   // the bend: about the heel, none at it, all of it a fifth of the paw's length up the stub
   const dA = clamp(rise - st.a, -25 * DEG, 25 * DEG), ca = Math.cos(st.a), sa = Math.sin(st.a);
@@ -10165,13 +10168,48 @@ function fitFoot(m, d, s) {
   }
   return partGeometry(m, d, Q, N, SI, SW, new Int32Array(n).fill(ai), s, {pads: padsOn(m.body), claws, under: partUnder(cov, ankle)});
 }
+/* the lower leg on one side (with a sculpted hind paw): its three canonical bones — the thigh's stub, the shin from the
+   knee to the hock, the metatarsus from the hock to where the paw's heel takes it — each laid on the character's (moved,
+   turned, stretched along it), across scaled by the knee's width (the thigh it grows from), so the calf, the tendon and
+   the point of the hock are the leg's own and it bends at the knee and the hock like the leg it stands for */
+function fitLeg(m, d, s) {
+  const J = m.J, jv = n => new V3(J[FIG.jIdx[n] * 3], J[FIG.jIdx[n] * 3 + 1], J[FIG.jIdx[n] * 3 + 2]), mir = s === 'R' ? -1 : 1, heel = m.pawHeel && m.pawHeel[s]; if (!heel) return null;
+  const [T, K, H, E] = d.LJ.map(p => new V3(p[0] * mir, p[1], p[2])), fwd = new V3(0, 1, 0), FW = new V3(0, 0, 1);
+  const frame = (o, a, f) => { const y = a.clone().normalize(), z = f.clone().addScaledVector(y, -f.dot(y)).normalize(); return {o, x: new V3().crossVectors(y, z), y, z, len: a.length()}; };
+  const Kr = jv('knee' + s), Ar = jv('ankle' + s), Hr = jv('hip' + s), P = m.geo.attributes.position.array, L = domLists(m), kb = FIG.jIdx['knee' + s], ab = FIG.jIdx['ankle' + s];
+  // the knee's width: the skin the shin carries at the knee's height
+  let x0 = Infinity, x1 = -Infinity; for (const i of L[kb] || []) if (Math.abs(P[i * 3 + 1] - Kr.y) < .015 * m.size) { x0 = Math.min(x0, P[i * 3]); x1 = Math.max(x1, P[i * 3]); }
+  const k = (isFinite(x0) ? x1 - x0 : .085 * m.size) / .26 * 1.4; m.kneeR = .125 * k;   // (fuller than the knee: it covers the body's leg; kneelPaws rests a kneel on its knee)
+  const map = (C, A, along) => { const M = new Float64Array(12), ax = ['x', 'y', 'z'], sc = [k, along, k];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) M[r * 3 + c] = ax.reduce((t, a, q) => t + A[a].getComponent(r) * sc[q] * C[a].getComponent(c), 0);
+    for (let r = 0; r < 3; r++) M[9 + r] = A.o.getComponent(r) - M[r * 3] * C.o.x - M[r * 3 + 1] * C.o.y - M[r * 3 + 2] * C.o.z;
+    return M; };
+  const seg = (c0, c1, a0, a1, along) => { const C = frame(c0, c1.clone().sub(c0), fwd), A = frame(a0, a1.clone().sub(a0), FW); return map(C, A, along ?? A.len / C.len); };
+  const F = [seg(K, T, Kr, Hr, k), seg(K, H, Kr, Ar), seg(H, E, Ar, heel)], bone = [FIG.jIdx['hip' + s], kb, ab];
+  const n = d.n, Q = new Float32Array(n * 3), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), B = new Int32Array(n), Ec = new Float32Array(n * 4), DP = d.P;
+  for (let i = 0; i < n; i++) {
+    const x = DP[i * 3] * mir, y = DP[i * 3 + 1], z = DP[i * 3 + 2]; let ox = 0, oy = 0, oz = 0;
+    for (let c = 0; c < 4; c++) { const w = d.w.sw[i * 4 + c], bi = d.w.si[i * 4 + c]; SI[i * 4 + c] = bone[bi]; SW[i * 4 + c] = w; if (!w) continue;
+      const M = F[bi]; ox += w * (M[0] * x + M[1] * y + M[2] * z + M[9]); oy += w * (M[3] * x + M[4] * y + M[5] * z + M[10]); oz += w * (M[6] * x + M[7] * y + M[8] * z + M[11]); }
+    Q[i * 3] = ox; Q[i * 3 + 1] = oy; Q[i * 3 + 2] = oz; B[i] = bone[d.w.si[i * 4]];
+    furPack(Ec, i * 4, 0, clamp((Hr.y - oy) / Hr.y, 0, 1), 0, 1, 0);   // (how far down the leg: socks)
+  }
+  // the body's shin and metatarsus are what the sculpt is now: not drawn below the knee (the sculpt's stub reaches up
+  // over the thigh's end; hidden only where it covered them, the human shin's front stood out of it in patches)
+  const N = partNormals(Q, d.tris[s][0], n), under = [...(L[kb] || []).filter(i => P[i * 3 + 1] < Kr.y - .03 * m.size), ...(L[ab] || [])];
+  return partGeometry(m, d, Q, N, SI, SW, B, s, {pads: false, claws: false, under: Int32Array.from(under), E: Ec});
+}
+function legPartGeos(m) {
+  m.kneeR = 0; const d = partReady(m, partFor(m.body, 'leg')); if (!d || !m.pawHeel) return null;
+  return ['L', 'R'].filter(s => limbCut(m.body, 'leg' + s) == null && m.pawHeel[s]).map(s => fitLeg(m, d, s)).filter(Boolean);
+}
 // none where the limb ends above it (limb differences: the stump closes over the cut)
 function handPartGeos(m) {
   m.pawFist = null; const d = partReady(m, partFor(m.body, 'hand')); if (!d || !m.handAxes) return null;
   return ['L', 'R'].filter(s => limbCut(m.body, 'arm' + s) == null).map(s => fitHand(m, d, s));
 }
 function footPartGeos(m) {
-  m.pawToe = null; const d = partReady(m, partFor(m.body, 'foot')); if (!d) return null;
+  m.pawToe = m.pawHeel = null; const d = partReady(m, partFor(m.body, 'foot')); partReady(m, partFor(m.body, 'leg')); if (!d) return null;   // (the leg loads with the paw)
   return ['L', 'R'].filter(s => limbCut(m.body, 'leg' + s) == null).map(s => fitFoot(m, d, s));
 }
 /* clothes hide a part where they hide its roots: the garments' state (what they hide, 1, and what they only cover, .5,
@@ -22244,7 +22282,7 @@ function start(data) {
     .then(async buf => { parseFigure(buf); const e = await ext; if (e) try { parseFigureExt(e); } catch (err) { console.warn(err); } const eb = await bodyExt; if (eb) try { parseFigureExt(eb); } catch (err) { console.warn(err); } $('#hint').innerHTML = HINT; boot(data, await saved); })
     .catch(err => { console.error(err); $('#hint').textContent = tr('No se ha podido cargar la figura. Recarga la página.'); });
 }
-window.__cdp = {creator: {CR, crGo, crFrame, crRandom, setOutfitSlot, crSearch, crIndex, OUTFIT_SLOTS}, support: {SUP, supportAfterSave, KOFI}, safety: {SNAPS, keepSnap, snapList, beforeReplace, recoverSnap, workData, unlinkPanels, relinkPanels, autosaveNow, readAutosave, openSharedScene, renderSnaps, get shotSeq() { return shotSeq; }}, get FIG() { return FIG; }, bible: {bibleCastFromActive, saveLocation, applyLocation, expressionSheet, lineupSheet, renderBible}, film: {applyFilmFormat, renderFilmList}, comicx: {comicPDF, comicCBZ, comicPSD}, comic: {CM, comic: () => comic(), addPage, editPanel, finishPanelEdit, filmToComic, exportComicPages, readingOrder, panelShot, pageImage, panelKey, layoutPanels, splitPanel, insetPanel, removePanel, panelBox, panelPts, panelAt, setPanelPoly, inPoly, polyArea, drawBalloons, balloonGeom, addJoinedBalloon, removeBalloon, composePage, PANEL_TEMPLATES, BALLOON_KINDS, PANEL_BORDERS, pv, CMH, comicUndo, morph, applyLayout, presetPanels, goPage, swapContents, linkShot, duplicatePage, deletePage, renderTracker, renderScript, comicScriptText, openPanelScene, moveSet, startShapeDrag, moveShapeDrag, PRESET_GROUPS, deskLayout, panelScreenRect, histCommit, drawSfx, sfxLayout, sfxParams, sfxSpot, addSfx, pickSfxStyle, sfxHandles, inSfxBox, SFX_STYLES, SFX_CATALOG, SFX_KEYS, deleteSelection}, project: {PROJECT, projectState, applyProjectState, castFromChar, propagateCast, eachProjectShot}, renderView, ink: {INK, inkWanted, LU}, spaces: {WS, WORKSPACES, setWorkspace, goTab, wsTabs}, keys: {shotKeyPoses, exportKeyLines, keyLinesPreview, KEY_EX, drawKeySheet, inkNow, timingSheet}, get renderer() { return renderer; }, tour: {TOUR, TOURS, tourStart}, kb: {kbJoints}, file: {neoposeBytes, openNeopose, migrateScene, NP_VERSION}, furry: {coatOf, COATS, tailOf, tailLife, tailRest, ANTHRO_EXPR, speciesOf, padsOn, fluffGeo, fluffOf, handGeos, footGeos, remodelHands, PARTS, partFor, handPartGeos, footPartGeos}, tl: {TL, tlView, tlHit, trackX}, ux: {UX, floorAt, charAt, garmentAt, withGlide, openPalette}, script: {SC, enterShot, play, parseScript, scLang, readAction, castOf, scriptToFilm, planShots, verbPats, emotionOf, shotDirection, placeOf, timeOf, VOICE, sayLine, lineTiming, voiceOf, dialogueWav, SC_SAMPLE}, refs: {REF, refSearch, refToScene, openRefs, blocked, nsfwScore, sunFromImage, REF_SOURCES}, layers: {psdBytes, renderLayerSet, layeredPSD, openIn, showOpenIn}, EXK, motionPoseAt, setFrameAnim: setFrame, DYN, TRAIL, balanceOf, accessTick, SAVED_CHARS: () => SAVED_CHARS, importCharacters, placeCharacter, eachFrame, renderExportCanvas, video: {VID, MP4, exportVideo, pickVideoCodec, pickAudioCodec, get jointDots() { return jointDots; }}, board: {BD, splitPanels, detectIn, openBoard, readBoard, animateBoard, photoOrBoard}, clips: {parseAvatar, framesFromModel, framesFromBVH, retargetFrames, packClip, unpackClip, sampleClip, clipSpeed, insertClip, clipPose, facingOf, loadClipLibrary, allClips, openAnimGallery, clipFromTrack, saveMyClip, importAnimFile, CLIPS, AG}, practice, sceneLink, poseFromImage, applyPhotoPose, ANIM, mouthAt, blinkAt, animBVH, exportGLB, exportBVH, panoReady: () => panoSphere.visible && !!panoSphere.material.map, sitOn, makeProp, enforcePins, LANG, I18N_EN, SETS, loadAsset, surfaces, A, loadHeadModel, HEAD_CATALOG, rebuildActive, applyExpression, garmentSpec, clothState, settleAll, setOutfitNow: setOutfit, frameNow: frame, sk, setSketch, redrawSketch, applyRandom, renderExport, ex, makeGhost, lookAtPoint, lookTarget, snapshot, sceneExtras, restore, props, extraLights, get mq() { return mq; }, camera, controls, POSES, GROUP_POSES, renderThumb, get thumbChars() { return thumbChars; }, get chars() { return chars; }, useGroup, usePreset, setEnv, applyAmbient, state, frameAll, setView, buildPoseGrid};
+window.__cdp = {creator: {CR, crGo, crFrame, crRandom, setOutfitSlot, crSearch, crIndex, OUTFIT_SLOTS}, support: {SUP, supportAfterSave, KOFI}, safety: {SNAPS, keepSnap, snapList, beforeReplace, recoverSnap, workData, unlinkPanels, relinkPanels, autosaveNow, readAutosave, openSharedScene, renderSnaps, get shotSeq() { return shotSeq; }}, get FIG() { return FIG; }, bible: {bibleCastFromActive, saveLocation, applyLocation, expressionSheet, lineupSheet, renderBible}, film: {applyFilmFormat, renderFilmList}, comicx: {comicPDF, comicCBZ, comicPSD}, comic: {CM, comic: () => comic(), addPage, editPanel, finishPanelEdit, filmToComic, exportComicPages, readingOrder, panelShot, pageImage, panelKey, layoutPanels, splitPanel, insetPanel, removePanel, panelBox, panelPts, panelAt, setPanelPoly, inPoly, polyArea, drawBalloons, balloonGeom, addJoinedBalloon, removeBalloon, composePage, PANEL_TEMPLATES, BALLOON_KINDS, PANEL_BORDERS, pv, CMH, comicUndo, morph, applyLayout, presetPanels, goPage, swapContents, linkShot, duplicatePage, deletePage, renderTracker, renderScript, comicScriptText, openPanelScene, moveSet, startShapeDrag, moveShapeDrag, PRESET_GROUPS, deskLayout, panelScreenRect, histCommit, drawSfx, sfxLayout, sfxParams, sfxSpot, addSfx, pickSfxStyle, sfxHandles, inSfxBox, SFX_STYLES, SFX_CATALOG, SFX_KEYS, deleteSelection}, project: {PROJECT, projectState, applyProjectState, castFromChar, propagateCast, eachProjectShot}, renderView, ink: {INK, inkWanted, LU}, spaces: {WS, WORKSPACES, setWorkspace, goTab, wsTabs}, keys: {shotKeyPoses, exportKeyLines, keyLinesPreview, KEY_EX, drawKeySheet, inkNow, timingSheet}, get renderer() { return renderer; }, tour: {TOUR, TOURS, tourStart}, kb: {kbJoints}, file: {neoposeBytes, openNeopose, migrateScene, NP_VERSION}, furry: {coatOf, COATS, tailOf, tailLife, tailRest, ANTHRO_EXPR, speciesOf, padsOn, fluffGeo, fluffOf, handGeos, footGeos, remodelHands, PARTS, partFor, handPartGeos, footPartGeos, legPartGeos, loadPart}, tl: {TL, tlView, tlHit, trackX}, ux: {UX, floorAt, charAt, garmentAt, withGlide, openPalette}, script: {SC, enterShot, play, parseScript, scLang, readAction, castOf, scriptToFilm, planShots, verbPats, emotionOf, shotDirection, placeOf, timeOf, VOICE, sayLine, lineTiming, voiceOf, dialogueWav, SC_SAMPLE}, refs: {REF, refSearch, refToScene, openRefs, blocked, nsfwScore, sunFromImage, REF_SOURCES}, layers: {psdBytes, renderLayerSet, layeredPSD, openIn, showOpenIn}, EXK, motionPoseAt, setFrameAnim: setFrame, DYN, TRAIL, balanceOf, accessTick, SAVED_CHARS: () => SAVED_CHARS, importCharacters, placeCharacter, eachFrame, renderExportCanvas, video: {VID, MP4, exportVideo, pickVideoCodec, pickAudioCodec, get jointDots() { return jointDots; }}, board: {BD, splitPanels, detectIn, openBoard, readBoard, animateBoard, photoOrBoard}, clips: {parseAvatar, framesFromModel, framesFromBVH, retargetFrames, packClip, unpackClip, sampleClip, clipSpeed, insertClip, clipPose, facingOf, loadClipLibrary, allClips, openAnimGallery, clipFromTrack, saveMyClip, importAnimFile, CLIPS, AG}, practice, sceneLink, poseFromImage, applyPhotoPose, ANIM, mouthAt, blinkAt, animBVH, exportGLB, exportBVH, panoReady: () => panoSphere.visible && !!panoSphere.material.map, sitOn, makeProp, enforcePins, LANG, I18N_EN, SETS, loadAsset, surfaces, A, loadHeadModel, HEAD_CATALOG, rebuildActive, applyExpression, garmentSpec, clothState, settleAll, setOutfitNow: setOutfit, frameNow: frame, sk, setSketch, redrawSketch, applyRandom, renderExport, ex, makeGhost, lookAtPoint, lookTarget, snapshot, sceneExtras, restore, props, extraLights, get mq() { return mq; }, camera, controls, POSES, GROUP_POSES, renderThumb, get thumbChars() { return thumbChars; }, get chars() { return chars; }, useGroup, usePreset, setEnv, applyAmbient, state, frameAll, setView, buildPoseGrid};
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 
 })();

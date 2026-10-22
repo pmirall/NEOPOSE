@@ -756,9 +756,10 @@ class Mannequin {
       g.setAttribute('aEye', new THREE.BufferAttribute(A, 4)); g.setAttribute('aLine', new THREE.BufferAttribute(ln, 4)); geos.push(g);
     }
     // a sculpted paw-hand or hind paw (11b-parts) stands for the hand or toes and their lofted pads and claws
-    const handParts = handPartGeos(this), footParts = footPartGeos(this);
+    // (and with a sculpted hind paw, a sculpted lower leg: calf, tendon and the point of the hock)
+    const handParts = handPartGeos(this), footParts = footPartGeos(this), legParts = footParts && legPartGeos(this);
     for (const g of pawGeos(this, this.geo.attributes.position.array, {hands: !handParts, feet: !footParts})) geos.push(g);
-    for (const g of [...handParts || [], ...footParts || []]) geos.push(g);
+    for (const g of [...handParts || [], ...footParts || [], ...legParts || []]) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
     this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));

@@ -833,7 +833,7 @@ function kneelPaws(m) {
     (J['knee' + s].rotation.x > 75 * DEG && th.y < -Math.cos(40 * DEG) && ap.y > kp.y && kp.y < o.y + .05 * sc ? kneel : stand).push(s);
   }
   if (!kneel.length) return;
-  const knee = .045 * sc, W = pawFrame(L, m.J, 'R').W * sc;
+  const knee = Math.max(.045, m.kneeR || 0) * sc, W = pawFrame(L, m.J, 'R').W * sc;
   for (const s of kneel) {
     // the shin laid low: the knee unbent until the hock is at most 20° up from it
     const K = J['knee' + s], kp = jw('knee' + s), rise = () => { const d = jw('ankle' + s).sub(kp); return Math.atan2(d.y, Math.hypot(d.x, d.z)); };

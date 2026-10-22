@@ -7,7 +7,7 @@ import sys, json, gzip, base64, struct, numpy as np, bpy
 
 npz, out = sys.argv[1], sys.argv[2]
 NS = int(sys.argv[3]) if len(sys.argv) > 3 else 9000; NC = int(sys.argv[4]) if len(sys.argv) > 4 else 2400
-D = np.load(npz); FOOT = 'J0' not in D; J = {} if FOOT else {f: D[f'J{f}'] for f in range(5)}
+D = np.load(npz); LEG = 'LJ' in D; FOOT = 'J0' not in D and not LEG; J = {} if FOOT or LEG else {f: D[f'J{f}'] for f in range(5)}
 
 def decimate(V, F, target, attr=None):
     """Even quads (QuadriFlow) at about `target` triangles; a per-vertex value comes across from the nearest source vertex."""
@@ -100,7 +100,18 @@ def weights(V, claws=False):
 V, F, K = decimate(D['V'], D['F'], NS, D['kind'].astype(np.float32))
 kind = (K > 1).astype(np.uint8) * 2 if K is not None else np.zeros(len(V), np.uint8)
 CV, CF, _ = decimate(D['CV'], D['CF'], NC) if len(D['CV']) else (np.zeros((0, 3), np.float32), np.zeros((0, 3), np.int32), None)
-if FOOT:  # rigid on the ankle
+if LEG:  # the thigh's stub on the hip bone, the shin on the knee's, the metatarsus on the ankle's, blended over the joints
+    T, K, H, E = D['LJ']; BONES = ['hip', 'knee', 'ankle']
+    ts, ds = seg_param(V, K, H); tm, dm = seg_param(V, H, E); tt, dt = seg_param(V, K, T)
+    sst = lambda a, b, x: (lambda t: t * t * (3 - 2 * t))(np.clip((x - a) / (b - a), 0, 1))
+    # where along the leg each point is: −(up the thigh) … 0 knee … 1 hock … 2 the shaft's end
+    u = np.where(dm < ds, 1 + tm, ts); u = np.where((dt < np.minimum(ds, dm)) & (tt > 0), -tt, u)
+    W3 = np.stack([1 - sst(-.12, .06, u), sst(-.12, .06, u) * (1 - sst(.9, 1.08, u)), sst(.9, 1.08, u)], 1)
+    SI = np.zeros((len(V), 4), np.uint8); SW = np.zeros((len(V), 4), np.uint8)
+    q = np.floor(W3 * 255).astype(np.int32); q[:, 1] += 255 - q.sum(1)
+    SI[:, :3] = [0, 1, 2]; SW[:, :3] = q
+    CSI = np.zeros((0, 4), np.uint8); CSW = np.zeros((0, 4), np.uint8)
+elif FOOT:  # rigid on the ankle
     BONES = ['ankle']; SI = np.zeros((len(V), 4), np.uint8); SW = np.zeros((len(V), 4), np.uint8); SW[:, 0] = 255
     CSI = np.zeros((len(CV), 4), np.uint8); CSW = np.zeros((len(CV), 4), np.uint8); CSW[:, 0] = 255
 else: SI, SW = weights(V); CSI, CSW = weights(CV, claws=True)
@@ -111,6 +122,7 @@ arrs = [Vall.tobytes(), (Fall if big else Fall.astype(np.uint16)).tobytes(), kal
 offs = []; o = 0
 for a in arrs: offs.append(o); o += len(a) + (-len(a)) % 4
 meta = {'n': len(Vall), 'nt': len(Fall), 'big': big, 'offs': offs, 'bones': BONES, 'J': {str(f): J[f].round(5).tolist() for f in J}}
+if LEG: meta['LJ'] = D['LJ'].round(5).tolist()
 if FOOT: meta['Fw'] = float(D['Fw']) if 'Fw' in D else .85
 head = json.dumps(meta).encode()
 head += b' ' * ((-len(head)) % 4)

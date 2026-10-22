@@ -51,7 +51,7 @@ ls.linestyle.color = (.08, .07, .06); ls.linestyle.thickness = 1.8
 
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam; cam.data.lens = 70
 c = Vector(V.mean(0)); ext = float(np.ptp(V, 0).max())
-DIRS = {'back': (0, -.15, 1), 'palm': (0, -.15, -1), 'side': (1, 0, .05), 'inner': (-1, 0, .05), 'three': (.7, -.35, .7), 'front': (0, 1, .25), 'under': (0, -.3, -1), 'top': (0, .2, 1), 'fthree': (.6, .8, .55), 'fside': (1, .1, .15), 'fback': (0, -1, .35)}
+DIRS = {'back': (0, -.15, 1), 'palm': (0, -.15, -1), 'side': (1, 0, .05), 'inner': (-1, 0, .05), 'three': (.7, -.35, .7), 'front': (0, 1, .25), 'under': (0, -.3, -1), 'top': (0, .2, 1), 'fthree': (.6, .8, .55), 'fside': (1, .1, .15), 'fback': (0, -1, .35), 'lside': (1, 0, 0), 'lthree': (.7, .7, .1), 'lback': (.15, -1, .05), 'lfront': (.15, 1, .05)}
 for v in VIEWS:
     d = Vector(DIRS[v]).normalized(); cam.location = c + d * ext * 2.4
     # look at the part with its +y (toward the finger tips / toes) up in the picture, or +z when looking along y

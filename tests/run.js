@@ -841,7 +841,8 @@ const SUITES = {
         const T = new THREE.Triangle(), c = new V(), p = new V();
         return (x, y, z) => { p.set(x, y, z); rc.set(p, dir); if (rc.intersectObject(mesh).length % 2) return true;
           for (let t = 0; t < tri.length; t += 3) { T.set(...[0, 1, 2].map(k => new V().fromArray(Q, tri[t + k] * 3))); if (T.closestPointToPoint(p, c).distanceTo(p) < .002) return true; } return false; }; })();
-      let holes = 0, out = 0; for (let i = 0; i < C.FIG.meta.nV; i++) { if (m.dom[i] !== ai) continue; if (Hd[i] > .99 && P[i * 3 + 1] < gy - .002 && !covered(P[i * 3], P[i * 3 + 1], P[i * 3 + 2])) holes++; if (Math.abs(P[i * 3 + 1] - Ay) < .03 && P[i * 3 + 2] < Az && Hd[i] < .5 && P[i * 3 + 2] < gz - .002) out++; }
+      const lg = m.acc.find(a => !a.userData.hull && a.geometry.userData.part === 'leg-digi' && a.geometry.attributes.position.array[0] < 0), byLeg = new Set(lg ? lg.geometry.userData.under : []);   // (the sculpted leg's skin)
+      let holes = 0, out = 0; for (let i = 0; i < C.FIG.meta.nV; i++) { if (m.dom[i] !== ai) continue; if (Hd[i] > .99 && P[i * 3 + 1] < gy - .002 && !covered(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]) && !byLeg.has(i)) holes++; if (Math.abs(P[i * 3 + 1] - Ay) < .03 && P[i * 3 + 2] < Az && Hd[i] < .5 && P[i * 3 + 2] < gz - .002) out++; }
       return {holes, out, hem: (Ay - gy) / Ay};
     });
     ok(!pants.holes && !pants.out && pants.hem > 0 && pants.hem < .4, `trousers end under the hock (${(pants.hem * 100).toFixed(0)}% down the metatarsus): ${pants.holes} hidden skin vertices below the hem, ${pants.out} behind the hock outside the cloth`);
@@ -876,11 +877,11 @@ const SUITES = {
     const page = await open(browser), A = (f, a) => page.evaluate(f, a);
     await goTab(page, 'cuerpo'); await page.waitForTimeout(400);
     const pick = async sp => { await A(sp => document.querySelector(`#speciesChips .chip[data-v="${sp}"]`).click(), sp); await page.waitForTimeout(1500); await partsReady(page); };
-    // canids and felids wear sculpted paw-hands and hind paws; a bear and a dragon the hands (a bear's foot is plantigrade,
+    // canids and felids wear sculpted paw-hands, hind paws and lower legs; a bear and a dragon the hands (a bear's foot is plantigrade,
     // a dragon's lofted, three toes and a dewclaw); rabbits (furred paws), hooves and humans none
     const worn = () => A(() => window.__cdp.mq.acc.filter(a => !a.userData.hull && a.geometry.userData.part).map(a => a.geometry.userData.part).sort().join());
-    const two = (...ids) => ids.flatMap(i => [i, i]).sort().join(), want = {lobo: two('foot-canid', 'hand-canid'), zorro: two('foot-canid', 'hand-canid'), gato: two('foot-felid', 'hand-felid'),
-      tigre: two('foot-felid', 'hand-felid'), oso: two('hand-bear'), dragon: two('hand-dragon'), conejo: '', caballo: '', humano: ''}, wear = {};
+    const two = (...ids) => ids.flatMap(i => [i, i]).sort().join(), want = {lobo: two('foot-canid', 'hand-canid', 'leg-digi'), zorro: two('foot-canid', 'hand-canid', 'leg-digi'), gato: two('foot-felid', 'hand-felid', 'leg-digi'),
+      tigre: two('foot-felid', 'hand-felid', 'leg-digi'), oso: two('hand-bear'), dragon: two('hand-dragon'), conejo: '', caballo: '', humano: ''}, wear = {};
     for (const sp of Object.keys(want)) { await pick(sp); wear[sp] = await worn(); }
     ok(Object.keys(want).every(k => wear[k] === want[k]), `the sculpted parts each species wears: ${Object.entries(wear).map(([k, v]) => `${k} ${[...new Set(v.split(',').filter(Boolean))].join('+') || 'none'}`).join(', ')}`);
     // the paw-hand's fingers curl with the bones: the points its fingers' outer segments carry alone stay where they were in
@@ -925,14 +926,16 @@ const SUITES = {
       const T = new THREE.Triangle(), cp = new V(), covered = (x, y, z) => { const p = new V(x, y, z); rc.set(p, dir); if (rc.intersectObject(mesh).length % 2) return true;
         for (let t = 0; t < tri.length; t += 3) { T.set(...[0, 1, 2].map(k => new V().fromArray(Q, tri[t + k] * 3))); if (T.closestPointToPoint(p, cp).distanceTo(p) < .002) return true; } return false; };
       let top = -Infinity; for (let i = 1; i < Q.length; i += 3) top = Math.max(top, Q[i]);
+      // (the sculpted lower leg stands for the skin above the paw: hidden there by it, not left bare)
+      const lg = m.acc.find(a => !a.userData.hull && a.geometry.userData.part === 'leg-digi' && a.geometry.attributes.position.array[0] < 0), byLeg = new Set(lg ? lg.geometry.userData.under : []);
       let footHid = 0, loose = 0, leg = 0, legN = 0; for (let i = 0; i < F.meta.nV; i++) { if (m.dom[i] !== ai) continue; const y = P[i * 3 + 1];
-        if (H[i] > .99) { footHid++; if (!covered(P[i * 3], y, P[i * 3 + 2])) loose++; } else if (y > top + .01) legN++; if (y > top + .01 && H[i] > .5) leg++; }
+        if (H[i] > .99 && !(y > top + .01 && byLeg.has(i))) { footHid++; if (!covered(P[i * 3], y, P[i * 3 + 2]) && !byLeg.has(i)) loose++; } else if (y > top + .01) legN++; if (y > top + .01 && H[i] > .5 && !byLeg.has(i)) leg++; }
       return {handHid, handN, arm, footHid, loose, leg, legN}; });
     await A(() => document.querySelector('#handsChips .chip[data-v="humanas"]').click()); await page.waitForTimeout(800);
     const back = await A(() => { const C = window.__cdp, m = C.mq, F = C.FIG, H = m.geo.attributes.aHide.array; let n = 0; for (let i = 0; i < F.meta.nV; i++) if (m.dom[i] === F.jIdx.fR21 && H[i] > .5) n++; return n; });
     await A(() => document.querySelector('#handsChips .chip[data-v="animal"]').click()); await page.waitForTimeout(800);
     ok(hide.handHid === hide.handN && !hide.arm && !back, `the paw-hand hides all of the hand under it (${hide.handHid} of ${hide.handN} points), not the forearm (${hide.arm}); with "Human" hands it is drawn again (${back} hidden)`);
-    ok(hide.footHid > 100 && !hide.loose && hide.legN > 50 && !hide.leg, `the hind paw hides only the skin it covers: ${hide.footHid} points inside it, ${hide.loose} outside; the leg above it drawn (${hide.leg} of ${hide.legN} hidden)`);
+    ok(hide.footHid > 100 && !hide.loose && hide.legN > 50 && !hide.leg, `the hind paw hides only the skin it covers: ${hide.footHid} points inside it, ${hide.loose} outside; the leg above it drawn, by the sculpted leg (${hide.leg} of ${hide.legN} hidden otherwise)`);
     // their cost: built again with the body on every slider drag (where the pads go and the fist's reach are kept), they take
     // no longer than the lofted parts they replace on the same body
     // (each timed in turn with the other, the quickest of twelve: the least a run is disturbed by anything else)
