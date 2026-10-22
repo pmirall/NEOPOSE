@@ -27,7 +27,7 @@ def mesh(name, V, F, mats=None, mi=None):
     return ob
 
 fur, leather, keratin = mat('fur', (.93, .91, .87)), mat('leather', (.12, .1, .1), .5), mat('keratin', (.2, .18, .17), .35)
-V, F = D['V'], D['F']
+V, F = (D['V'], D['F']) if 'V' in D else (D['P'], D['I'])
 kind = D['kind'] if 'kind' in D else np.zeros(len(V), np.int8)
 mi = (kind[F].max(1) == 2).astype(np.int32)   # a face touching a pad vertex is leather
 skin = mesh('skin', V, F, [fur, leather], mi)
@@ -35,8 +35,8 @@ if 'CV' in D and len(D['CV']): mesh('claws', D['CV'], D['CF'], [keratin])
 if 'TV' in D and len(D['TV']): mesh('teeth', D['TV'], D['TF'], [mat('enamel', (.97, .96, .92), .3)])
 
 # light: a soft key, a fill, and the world as soft grey
-w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (.85, .85, .85, 1); w.node_tree.nodes['Background'].inputs[1].default_value = .8
-for nm, loc, e in [('key', (2, -3, 4), 3.5), ('fill', (-3, 2, 1), 1.2)]:
+w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (.85, .85, .85, 1); w.node_tree.nodes['Background'].inputs[1].default_value = .25 if os.environ.get('YUP') else .8
+for nm, loc, e in ([('key', (2.5, 4, 3), 2.2), ('fill', (-3, 1, 1.5), .5), ('rim', (0, 2, -4), .8)] if os.environ.get('YUP') else [('key', (2, -3, 4), 3.5), ('fill', (-3, 2, 1), 1.2)]):
     ld = bpy.data.lights.new(nm, 'SUN'); ld.energy = e; lo = bpy.data.objects.new(nm, ld); sc.collection.objects.link(lo); lo.location = loc; lo.rotation_euler = (Vector((0, 0, 0)) - Vector(loc)).to_track_quat('-Z', 'Y').to_euler()
 
 sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 12; sc.cycles.use_denoising = False
@@ -50,8 +50,8 @@ if ls.linestyle is None: ls.linestyle = bpy.data.linestyles.new('ink')
 ls.linestyle.color = (.08, .07, .06); ls.linestyle.thickness = 1.8
 
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam; cam.data.lens = 70
-c = Vector(V.mean(0)); ext = float(np.ptp(V, 0).max())
-DIRS = {'back': (0, -.15, 1), 'palm': (0, -.15, -1), 'side': (1, 0, .05), 'inner': (-1, 0, .05), 'three': (.7, -.35, .7), 'front': (0, 1, .25), 'under': (0, -.3, -1), 'top': (0, .2, 1), 'fthree': (.6, .8, .55), 'fside': (1, .1, .15), 'fback': (0, -1, .35), 'lside': (1, 0, 0), 'lthree': (.7, .7, .1), 'lback': (.15, -1, .05), 'lfront': (.15, 1, .05)}
+c = Vector(V.mean(0)) if 'CX' not in os.environ else Vector([float(t) for t in os.environ['CX'].split(',')]); ext = float(np.ptp(V, 0).max()) * float(os.environ.get('ZOOM', 1))
+DIRS = {'back': (0, -.15, 1), 'palm': (0, -.15, -1), 'side': (1, 0, .05), 'inner': (-1, 0, .05), 'three': (.7, -.35, .7), 'front': (0, 1, .25), 'under': (0, -.3, -1), 'top': (0, .2, 1), 'fthree': (.6, .8, .55), 'fside': (1, .1, .15), 'fback': (0, -1, .35), 'lside': (1, 0, 0), 'lthree': (.7, .7, .1), 'lback': (.15, -1, .05), 'lfront': (.15, 1, .05), 'bfront': (0, .08, 1), 'bside': (1, .08, 0), 'bback': (0, .08, -1), 'bthree': (.7, .12, .7), 'bthreeb': (-.6, .15, -.7)}
 for v in VIEWS:
     d = Vector(DIRS[v]).normalized(); cam.location = c + d * ext * 2.4
     # look at the part with its +y (toward the finger tips / toes) up in the picture, or +z when looking along y

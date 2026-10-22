@@ -757,9 +757,11 @@ class Mannequin {
     }
     // a sculpted paw-hand or hind paw (11b-parts) stands for the hand or toes and their lofted pads and claws
     // (and with a sculpted hind paw, a sculpted lower leg: calf, tendon and the point of the hock)
-    const handParts = handPartGeos(this), footParts = footPartGeos(this), legParts = footParts && legPartGeos(this);
+    // (and the whole body below the head as one sculpt where there is one: laid with what fitting the parts found)
+    this.partMaps = null;
+    const handParts = handPartGeos(this), footParts = footPartGeos(this), legParts = footParts && legPartGeos(this), bodyPart = handParts && legParts && bodyPartGeo(this);
     for (const g of pawGeos(this, this.geo.attributes.position.array, {hands: !handParts, feet: !footParts})) geos.push(g);
-    for (const g of [...handParts || [], ...footParts || [], ...legParts || []]) geos.push(g);
+    for (const g of bodyPart || [...handParts || [], ...footParts || [], ...legParts || []]) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
     this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));
@@ -805,16 +807,26 @@ class Mannequin {
       const p = meta.parents[i];
       c[i] = p < 0 ? 0 : c[p] + head[i].clone().sub(head[p]).dot(dir[p]);
     });
+    // (kept for the sculpted body, which takes its rings the same way: 11b-parts)
+    this.ringFrame = {head, dir, ref, side, c};
+    this.ringLines(P, meta.nV, FIG.si, (i, k) => FIG.sw[i * 4 + k] / 255, i => FIG.eye[i], this.dom, L);
+    this.geo.attributes.aLine.needsUpdate = true;
+  }
+  /* the construction rings of a skin: per vertex, round each of its bones the angle (cos, sin against the bone's
+     reference) and how far along the chain from the root, blended by its weights; w = 1 on the trunk's bones (drawn
+     axial), −1 none */
+  ringLines(P, nV, SI, W, eye, dom, L) {
+    const {head, dir, ref, side, c} = this.ringFrame, meta = FIG.meta, m = this;
     const v = new V3(), rad = new V3();
     // an animal's metatarsus, laid from skin the shin's and the ankle's bones share, takes its rings from the ankle's bone
     // alone below the joint: measured along the shin too, they would bunch into a line down its front
-    const ank = ['digi', 'ungu'].includes((legSpec(this.body) || {}).type) ? [FIG.jIdx.ankleL, FIG.jIdx.ankleR] : [];
-    for (let i = 0, nV = meta.nV; i < nV; i++) {
+    const ank = ['digi', 'ungu'].includes((legSpec(m.body) || {}).type) ? [FIG.jIdx.ankleL, FIG.jIdx.ankleR] : [];
+    for (let i = 0; i < nV; i++) {
       v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
       let s = 0, cs = 0, sn = 0, sa = null;
       for (let k = 0; k < 4; k++) {
-        const w = FIG.sw[i * 4 + k] / 255; if (!w) continue;
-        const b = FIG.si[i * 4 + k];
+        const w = W(i, k); if (!w) continue;
+        const b = SI[i * 4 + k];
         rad.subVectors(v, head[b]); const t = rad.dot(dir[b]);
         if (ank.includes(b) && t > 0) sa = [c[b] + t, Math.min(1, t / .06)];
         s += w * (c[b] + t);
@@ -824,9 +836,8 @@ class Mannequin {
       }
       if (sa) s += (sa[0] - s) * sa[1];
       L[i * 4] = cs; L[i * 4 + 1] = sn; L[i * 4 + 2] = s;
-      L[i * 4 + 3] = FIG.eye[i] ? -1 : AXIAL.includes(meta.bones[this.dom[i]]) ? 1 : 0;
+      L[i * 4 + 3] = eye(i) ? -1 : AXIAL.includes(meta.bones[dom[i]]) ? 1 : 0;
     }
-    this.geo.attributes.aLine.needsUpdate = true;
   }
   computeHandAxes(jp) {
     this.handAxes = {};

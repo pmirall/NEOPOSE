@@ -186,16 +186,19 @@ function inkBuffer(cam) {
   renderer.getCurrentViewport(INK.vp); const w = INK.vp.z, h = INK.vp.w; if (w < 2 || h < 2) return false;
   const rt = inkTarget(w, h), prev = renderer.getRenderTarget(), groups = new Set(chars.map(m => m.group)), off = [];
   // the set's drawables out (not its lights: the lit materials would change program twice a frame)
-  const unset = o => { if (groups.has(o) || !o.visible) return; if (o.isMesh || o.isLine || o.isPoints || o.isSprite) { o.visible = false; off.push(o); } else o.children.forEach(unset); };
+  // (left out by their layers, not their visibility: a character's own updates while it draws, a mouth closing as the jaw
+  // shuts, set what it shows, and putting back the visibility it had before showed the closed mouth's outline again)
+  const drop = o => { off.push([o, o.layers.mask]); o.layers.mask = 0; };
+  const unset = o => { if (groups.has(o) || !o.visible) return; if (o.isMesh || o.isLine || o.isPoints || o.isSprite) drop(o); else o.children.forEach(unset); };
   scene.children.forEach(unset);
   // (what is drawn with a material that writes the ink pass, see inkFrag in 03-figure.js: not the hulls or the gizmos,
   // nor the faded body over the construction forms, which writes no depth to find its lines by)
   const inked = o => o.material && o.material.userData && o.material.userData.ink && !(o.material.transparent && o.material.opacity < 1);
-  for (const g of groups) if (g.visible) g.traverse(o => { if (o.visible && (o.isMesh || o.isLine || o.isPoints || o.isSprite) && !inked(o)) { o.visible = false; off.push(o); } });
+  for (const g of groups) if (g.visible) g.traverse(o => { if (o.visible && (o.isMesh || o.isLine || o.isPoints || o.isSprite) && !inked(o)) drop(o); });
   const bg = scene.background, ca = renderer.getClearAlpha(), su = renderer.shadowMap.autoUpdate; renderer.getClearColor(INK.cc);
   scene.background = null; renderer.setClearColor(0, 0); renderer.shadowMap.autoUpdate = false; LU.uInk.value = 1;
   try { renderer.setRenderTarget(rt); drawScene(scene, cam); }
-  finally { LU.uInk.value = 0; renderer.setRenderTarget(prev); scene.background = bg; renderer.setClearColor(INK.cc, ca); renderer.shadowMap.autoUpdate = su; off.forEach(o => o.visible = true); }
+  finally { LU.uInk.value = 0; renderer.setRenderTarget(prev); scene.background = bg; renderer.setClearColor(INK.cc, ca); renderer.shadowMap.autoUpdate = su; off.forEach(([o, k]) => o.layers.mask = k); }
   // the stroke: thinner than the contour, in the picture's pixels as the contour's width is (whole pixels: the buffer is read texel by texel)
   const U = INK.mat.uniforms; U.tN.value = rt.texture; U.tD.value = rt.depthTexture; U.uTx.value.set(1 / w, 1 / h);
   U.uR.value = Math.max(1, Math.round(LU.uOutW.value * .8 * LU.uPx.value.x * .5 * w)); U.uNear.value = cam.near; U.uFar.value = cam.far; U.uOrtho.value = cam.isOrthographicCamera ? 1 : 0;

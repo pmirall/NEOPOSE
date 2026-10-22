@@ -7,7 +7,8 @@
 import numpy as np
 from sdf import ellipsoid, round_cone, smin, Field, _n
 
-def build(sp='canid', step=.005):
+def sdf(sp='canid'):
+    """The lower leg's field function and its joints T, K, H, E."""
     u1 = _n([0, -.42, -.906]); K = np.zeros(3, np.float32); H = K + u1                       # shin: down and back
     u2 = _n([0, .34, -.94]); E = H + u2 * .6                                                # metatarsus: down, a little forward
     u0 = _n([0, -.2, .98]); T = K + u0 * .86                                                # the thigh, up to the hip joint
@@ -51,7 +52,10 @@ def build(sp='canid', step=.005):
         d = None
         for g, k in parts: d = g(p) if d is None else smin(d, g(p), k)
         return d
-    J = np.stack([T, K, H, E]).astype(np.float32)
+    return dict(body=body, LJ=np.stack([T, K, H, E]).astype(np.float32))
+
+def build(sp='canid', step=.005):
+    D = sdf(sp); body, J = D['body'], D['LJ']
     lo = J.min(0) - .2; hi = J.max(0) + .2
     V, F, _ = Field(lo, hi, step).mesh(body)
     return dict(V=V, F=F, kind=np.zeros(len(V), np.int8), CV=np.zeros((0, 3), np.float32), CF=np.zeros((0, 3), np.int32), LJ=J)

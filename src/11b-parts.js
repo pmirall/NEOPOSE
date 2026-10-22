@@ -14,21 +14,26 @@ const PARTS = {cache: new Map()};
 const PART_FAMILY = {lobo: 'canid', zorro: 'canid', perro: 'canid', gato: 'felid', tigre: 'felid', leon: 'felid', oso: 'bear', dragon: 'dragon'};
 function partFor(b, kind) {
   if (!b || b.species === 'humano') return null;
+  if (kind === 'body') { const h = partFor(b, 'hand'), f = partFor(b, 'foot'); return h && f && PART_LIST.includes(`body-${PART_FAMILY[legSp(b)]}`) && h === `hand-${PART_FAMILY[legSp(b)]}` ? `body-${PART_FAMILY[legSp(b)]}` : null; }
   if (kind === 'hand' && (b.paws === 'humanas' || !handShape(b) || handShape(b) === HAND_SHAPES.pezuna)) return null;
   if (kind === 'foot' || kind === 'leg') { const L = legSpec(b); if (!L || L.type !== 'digi') return null; }
   const fam = PART_FAMILY[legSp(b)]; if (!fam) return null;
   if (kind === 'leg') return PART_LIST.includes(`foot-${fam}`) ? 'leg-digi' : null;  // (one lower leg for every digitigrade paw)
   const id = `${kind}-${fam}`; return PART_LIST.includes(id) ? id : null;
 }
-const PART_LIST = ['hand-canid', 'hand-felid', 'hand-bear', 'hand-dragon', 'foot-canid', 'foot-felid', 'leg-digi'];
+const PART_LIST = ['hand-canid', 'hand-felid', 'hand-bear', 'hand-dragon', 'foot-canid', 'foot-felid', 'leg-digi', 'body-canid', 'body-felid'];
 function loadPart(id) {
   if (PARTS.cache.has(id)) return PARTS.cache.get(id);
   const p = fetch(`parts/${id}.txt`).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
     .then(b64 => { const bin = atob(b64.trim()), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return gunzip(u8.buffer); })
     .then(buf => {
       const hl = new DataView(buf).getUint32(0, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl))), b0 = 4 + hl, o = h.offs, n = h.n;
-      const d = {...h, id, P: new Float32Array(buf, b0 + o[0], n * 3), idx: h.big ? new Uint32Array(buf, b0 + o[1], h.nt * 3) : new Uint16Array(buf, b0 + o[1], h.nt * 3),
+      // (a whole body's positions come as 16-bit steps over their box)
+      const deq = (a, [lo, sc]) => Float32Array.from(a, (v, i) => lo[i % 3] + v * sc[i % 3]);
+      const d = {...h, id, P: h.q ? deq(new Uint16Array(buf, b0 + o[0], n * 3), h.q.p) : new Float32Array(buf, b0 + o[0], n * 3), idx: h.big ? new Uint32Array(buf, b0 + o[1], h.nt * 3) : new Uint16Array(buf, b0 + o[1], h.nt * 3),
         kind: new Uint8Array(buf, b0 + o[2], n), si: new Uint8Array(buf, b0 + o[3], n * 4), sw: new Uint8Array(buf, b0 + o[4], n * 4), roots: {}};
+      if (h.body) Object.assign(d, {gw: new Uint8Array(buf, b0 + o[5], n * 4), lw: new Uint8Array(buf, b0 + o[6], n * 4), rt: new Uint16Array(buf, b0 + o[7], n * 4),
+        rw: new Uint8Array(buf, b0 + o[8], n * 4), r1: new Uint16Array(buf, b0 + o[9], n), off: deq(new Uint16Array(buf, b0 + o[10], n * 3), h.q.o)});
       // the claws (keratin, kind 3) are pieces of their own, baked after the skin: a paw without them fits the skin's
       // vertices alone (ns) and draws its triangles. The windings of both sides, with claws and without, made here once,
       // and the normals of the canonical shape (a hind paw is laid rigidly: they only turn)
@@ -45,7 +50,7 @@ function loadPart(id) {
 // the data when it is there; otherwise it loads and the character is built again when it comes
 function partReady(m, id) {
   if (!id) return null; if (PARTS[id]) return PARTS[id];
-  loadPart(id).then(() => { if (m.bones && ['hand', 'foot', 'leg'].some(k => partFor(m.body, k) === id)) m.build(m.body); }).catch(e => console.warn('part', id, e));
+  loadPart(id).then(() => { if (m.bones && ['hand', 'foot', 'leg', 'body'].some(k => partFor(m.body, k) === id)) m.build(m.body); }).catch(e => console.warn('part', id, e));
   return null;
 }
 // vertex normals, area-weighted over the triangles (as computeVertexNormals does, on the arrays: a few times quicker)
@@ -198,6 +203,7 @@ function fitHand(m, d, s) {
     B[i] = d.w.si[i * 4] === 0 && y < 0 ? arm : bone[d.w.si[i * 4]];
   }
   (m.pawFist = m.pawFist || {})[s] = pawFist(m, d, s, Q, SI, SW);
+  ((m.partMaps = m.partMaps || {}).hand = m.partMaps.hand || {})[s] = {F, bone};
   // the body's hand under it is hidden whole: the paw is what the hand is now, and the human fingers, thicker than the
   // sculpt's here and there, would show through it (its edge at the wrist lies inside the paw's stub of forearm)
   const L = domLists(m), under = Int32Array.from(bone.flatMap(b => Array.from(L[b] || [])));
@@ -280,6 +286,7 @@ function fitFoot(m, d, s) {
   const claws = !!pawOf(L).claw, n = claws ? d.n : d.ns, Q = new Float32Array(n * 3), N = new Float32Array(n * 3), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4);
   // the bend: about the heel, none at it, all of it a fifth of the paw's length up the stub
   const dA = clamp(rise - st.a, -25 * DEG, 25 * DEG), ca = Math.cos(st.a), sa = Math.sin(st.a);
+  ((m.partMaps = m.partMaps || {}).foot = m.partMaps.foot || {})[s] = {O, side, fwd, k, hy: st.hy, dA, ca, sa, ai};
   // canonical +x is toward the body's midline: on the left foot that is the character's −x
   for (let i = 0; i < n; i++) {
     let y = d.P[i * 3 + 1] - st.hy, z = d.P[i * 3 + 2] - .22, ny = d.N[i * 3 + 1], nz = d.N[i * 3 + 2];
@@ -334,6 +341,7 @@ function fitLeg(m, d, s) {
   // over the thigh's end; hidden only where it covered them, the human shin's front stood out of it in patches)
   // and the thigh's lower half, which its muscles stand for (above, the body's thigh goes on into the sculpt's)
   const hb = FIG.jIdx['hip' + s], cut = Kr.y + .45 * (Hr.y - Kr.y);
+  ((m.partMaps = m.partMaps || {}).leg = m.partMaps.leg || {})[s] = {F, bone};
   const N = partNormals(Q, d.tris[s][0], n), under = [...(L[kb] || []).filter(i => P[i * 3 + 1] < Kr.y - .03 * m.size), ...(L[ab] || []), ...(L[hb] || []).filter(i => P[i * 3 + 1] < cut)];
   return partGeometry(m, d, Q, N, SI, SW, B, s, {pads: false, claws: false, under: Int32Array.from(under), E: Ec});
 }
@@ -347,7 +355,7 @@ function handPartGeos(m) {
   return ['L', 'R'].filter(s => limbCut(m.body, 'arm' + s) == null).map(s => fitHand(m, d, s));
 }
 function footPartGeos(m) {
-  m.pawToe = m.pawHeel = null; const d = partReady(m, partFor(m.body, 'foot')); partReady(m, partFor(m.body, 'leg')); if (!d) return null;   // (the leg loads with the paw)
+  m.pawToe = m.pawHeel = null; const d = partReady(m, partFor(m.body, 'foot')); partReady(m, partFor(m.body, 'leg')); partReady(m, partFor(m.body, 'body')); if (!d) return null;   // (the leg and the whole body load with the paw)
   return ['L', 'R'].filter(s => limbCut(m.body, 'leg' + s) == null).map(s => fitFoot(m, d, s));
 }
 /* clothes hide a part where they hide its roots: the garments' state (what they hide, 1, and what they only cover, .5,
@@ -357,4 +365,106 @@ function hideUnderParts(m, H) {
   const parts = (m.acc || []).filter(a => !a.userData.hull && a.geometry.userData.part);
   for (const a of parts) { const g = a.geometry, R = g.attributes.aRoot.array, A = g.attributes.aHide.array; for (let i = 0; i < A.length; i++) A[i] = H[R[i]]; g.attributes.aHide.needsUpdate = true; }
   for (const a of parts) for (const i of a.geometry.userData.under) H[i] = 1;
+}
+/* the whole anthro body below the head as one sculpt (tools/parts/body.py): torso, arms, thighs, paw-hands, lower legs
+   and hind paws are one continuous skin, so nothing meets at the wrist, the knee or the ankle. Each point is a blend (gw)
+   of four pieces, as the sculpt's field blended them: the core (trunk, neck, arms, thighs) rides on the body's own skin —
+   four roots among its vertices and its offset from them on the default wolf, so it follows every slider that skin
+   does, and takes its weights —, while the paw-hand, the lower leg and the hind paw are laid exactly as their own parts
+   are (the same bone maps, from the point's place in the part's frame) with the parts' weights. The human body below the
+   head is then not drawn */
+function bodyCanon(d) {
+  const n = d.n, out = {};
+  for (const k of ['hand', 'leg', 'foot']) {
+    const M = d.frames[k].M, o = d.frames[k].o, a = M[0][0], b = M[0][1], c = M[0][2], e = M[1][0], f = M[1][1], g = M[1][2], h = M[2][0], i = M[2][1], j = M[2][2];
+    const det = a * (f * j - g * i) - b * (e * j - g * h) + c * (e * i - f * h), Mi = [(f * j - g * i) / det, (c * i - b * j) / det, (b * g - c * f) / det, (g * h - e * j) / det, (a * j - c * h) / det, (c * e - a * g) / det, (e * i - f * h) / det, (b * h - a * i) / det, (a * f - b * e) / det];
+    const C = out[k] = new Float32Array(n * 3);
+    for (let v = 0; v < n; v++) { const x = Math.abs(d.P[v * 3]) - o[0], y = d.P[v * 3 + 1] - o[1], z = d.P[v * 3 + 2] - o[2];
+      for (let r = 0; r < 3; r++) C[v * 3 + r] = Mi[r * 3] * x + Mi[r * 3 + 1] * y + Mi[r * 3 + 2] * z; }
+  }
+  return out;
+}
+function bodyPartGeo(m) {
+  const d = partReady(m, partFor(m.body, 'body')), PM = m.partMaps; if (!d || !m.headSwap || !m.ringFrame || !PM || !PM.hand || !PM.leg || !PM.foot) return null;
+  if (['L', 'R'].some(s => !PM.hand[s] || !PM.leg[s] || !PM.foot[s] || limbCut(m.body, 'arm' + s) != null || limbCut(m.body, 'leg' + s) != null)) return null;
+  const n = d.n, P = m.geo.attributes.position.array, BSI = m.geo.attributes.skinIndex.array, BSW = m.geo.attributes.skinWeight.array, A = m.geo.attributes.aEye.array;
+  const C = d.canon || (d.canon = bodyCanon(d)), nB = FIG.meta.bones.length, acc = new Float32Array(nB), used = [];
+  const Q = new Float32Array(n * 3), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), E = new Float32Array(n * 4), dom = new Int32Array(n);
+  const handClaws = !!ANIMAL_LEGS[legSp(m.body)].hand, footClaws = !!pawOf(legSpec(m.body)).claw, pads = padsOn(m.body);
+  const add = (b, w) => { if (!w) return; if (!acc[b]) used.push(b); acc[b] += w; };
+  for (let i = 0; i < n; i++) {
+    const s = d.P[i * 3] >= 0 ? 'L' : 'R', mir = s === 'R' ? -1 : 1, cl = d.kind[i] === 3 ? 1 : 0, g = d.gw.subarray(i * 4, i * 4 + 4);
+    let ox = 0, oy = 0, oz = 0;
+    if (g[0]) {  // the core: on its roots, offset as on the default body
+      const k = g[0] / 255; let x = d.off[i * 3], y = d.off[i * 3 + 1], z = d.off[i * 3 + 2];
+      for (let c = 0; c < 4; c++) { const w = d.rw[i * 4 + c] / 255, r = d.rt[i * 4 + c]; if (!w) continue; x += w * P[r * 3]; y += w * P[r * 3 + 1]; z += w * P[r * 3 + 2];
+        for (let q = 0; q < 4; q++) add(BSI[r * 4 + q], k * w * BSW[r * 4 + q]); }
+      ox += k * x; oy += k * y; oz += k * z;
+    }
+    if (g[1]) {  // the paw-hand: its bones' maps (the claws' keep their shape)
+      const k = g[1] / 255, H = PM.hand[s], x = C.hand[i * 3] * mir, y = C.hand[i * 3 + 1], z = C.hand[i * 3 + 2];
+      for (let c = 0; c < 4; c++) { const w = d.w.sw[i * 4 + c], bi = d.w.si[i * 4 + c]; if (!w) continue; const M = H.F[bi][cl];
+        ox += k * w * (M[0] * x + M[1] * y + M[2] * z + M[9]); oy += k * w * (M[3] * x + M[4] * y + M[5] * z + M[10]); oz += k * w * (M[6] * x + M[7] * y + M[8] * z + M[11]); add(H.bone[bi], k * w); }
+    }
+    if (g[2]) {  // the lower leg: the thigh's stub, the shin and the metatarsus
+      const k = g[2] / 255, L = PM.leg[s], x = C.leg[i * 3] * mir, y = C.leg[i * 3 + 1], z = C.leg[i * 3 + 2];
+      for (let c = 0; c < 3; c++) { const w = d.lw[i * 4 + c] / 255; if (!w) continue; const M = L.F[c];
+        ox += k * w * (M[0] * x + M[1] * y + M[2] * z + M[9]); oy += k * w * (M[3] * x + M[4] * y + M[5] * z + M[10]); oz += k * w * (M[6] * x + M[7] * y + M[8] * z + M[11]); add(L.bone[c], k * w); }
+    }
+    if (g[3]) {  // the hind paw, rigid on the ankle, bent at the heel into the shaft's slope (fitFoot)
+      const k = g[3] / 255, F = PM.foot[s]; let y = C.foot[i * 3 + 1] - F.hy, z = C.foot[i * 3 + 2] - .22;
+      const b = -F.dA * sstep(0, .2, -y * F.ca + z * F.sa); if (b) { const c = Math.cos(b), sn = Math.sin(b); [y, z] = [y * c - z * sn, y * sn + z * c]; }
+      const x = -C.foot[i * 3] * mir; y += F.hy; z += .22;
+      ox += k * (F.O.x + (F.side.x * x + F.fwd.x * y) * F.k); oy += k * (F.O.y + z * F.k); oz += k * (F.O.z + (F.side.z * x + F.fwd.z * y) * F.k); add(F.ai, k);
+    }
+    Q[i * 3] = ox; Q[i * 3 + 1] = oy; Q[i * 3 + 2] = oz;
+    // the four strongest bones, strongest first
+    let t = 0;
+    for (let c = 0; c < 4; c++) { let bj = -1; for (const b of used) if (acc[b] > 0 && (bj < 0 || acc[b] > acc[bj])) bj = b; if (bj < 0) break; SI[i * 4 + c] = bj; SW[i * 4 + c] = acc[bj]; t += acc[bj]; acc[bj] = 0; }
+    for (let c = 0; c < 4; c++) SW[i * 4 + c] /= t || 1;
+    for (const b of used) acc[b] = 0; used.length = 0; dom[i] = SI[i * 4];
+    // the coat as on the skin it stands for; its pads leather (when the paws have them) and its claws keratin
+    const r = d.r1[i]; for (let c = 0; c < 4; c++) E[i * 4 + c] = A[r * 4 + c];
+    const kd = d.kind[i], kn = kd === 3 ? 3 : kd === 2 && pads ? 2 : -1;
+    if (kn >= 0) { const v = -E[i * 4 + 3] - 1; E[i * 4 + 3] = -(1 + kn + (v - Math.floor(v))); }
+  }
+  // the claws a species has (a hand's are the ones the hand piece holds)
+  const key = +handClaws + 2 * footClaws, I = (d.bodyTris = d.bodyTris || {})[key] || (d.bodyTris[key] = (() => {
+    const T = d.tris.L[0], out = [], keep = v => d.kind[v] !== 3 || (d.gw[v * 4 + 1] ? handClaws : footClaws);
+    for (let t = 0; t < T.length; t += 3) if (keep(T[t]) && keep(T[t + 1]) && keep(T[t + 2])) out.push(T[t], T[t + 1], T[t + 2]);
+    return d.big ? Uint32Array.from(out) : Uint16Array.from(out); })());
+  const line = new Float32Array(n * 4); m.ringLines(Q, n, SI, (i, c) => SW[i * 4 + c], () => false, dom, line);
+  const N = partNormals(Q, I, n);
+  // the body under it: all of it but the head (its throat under the sculpted head's cut stays, drawn without its outline, as
+  // the head swap leaves it: the sculpt's neck goes up round it)
+  const Hb = FIG.jIdx.head, Jw = FIG.jIdx.jaw, under = [];
+  for (let i = 0; i < FIG.meta.nV; i++) if (!FIG.eye[i] && m.dom[i] !== Hb && m.dom[i] !== Jw) under.push(i);
+  /* handed out in pieces, each triangle to the piece most of its corners are: the core (named for the body), and per side
+     the paw-hand, the lower leg and the hind paw (named as their parts), so gloves, socks and a paw's fist find them as
+     they found the parts. Where two pieces meet they share the same points, normals and weights: one skin to the eye and
+     to the ink (one material, one part in the ink buffer) */
+  const fam = d.id.slice(5), names = ['body-' + fam, 'hand-' + fam, 'leg-digi', 'foot-' + fam];
+  const pieceOf = d.pieces || (d.pieces = (() => { const T = d.tris.L[0], pc = new Uint8Array(T.length / 3);
+    for (let t = 0; t < T.length; t += 3) { const s = [0, 0, 0, 0]; for (let e = 0; e < 3; e++) for (let g = 0; g < 4; g++) s[g] += d.gw[T[t + e] * 4 + g];
+      let g = 0; for (let k = 1; k < 4; k++) if (s[k] > s[g]) g = k;
+      if ([0, 1, 2].some(e => d.kind[T[t + e]] > 1)) g = s[1] >= s[3] ? 1 : 3;   // (a pad or a claw whole in its paw's piece)
+      pc[t / 3] = g ? g * 2 - 1 + (d.P[T[t] * 3] < 0 ? 1 : 0) : 0; }
+    return pc; })());
+  const T = d.tris.L[0], lists = Array.from({length: 7}, () => []), keep = v => d.kind[v] !== 3 || (d.gw[v * 4 + 1] ? handClaws : footClaws);
+  for (let t = 0; t < T.length; t += 3) if (keep(T[t]) && keep(T[t + 1]) && keep(T[t + 2])) lists[pieceOf[t / 3]].push(T[t], T[t + 1], T[t + 2]);
+  const root = Float32Array.from(d.r1), out = [];
+  lists.forEach((L, pi) => {
+    if (!L.length) return;
+    const map = new Int32Array(n).fill(-1), vs = []; for (const v of L) if (map[v] < 0) { map[v] = vs.length; vs.push(v); }
+    const k = vs.length, pick = (src, w) => { const a = new src.constructor(k * w); for (let j = 0; j < k; j++) for (let c = 0; c < w; c++) a[j * w + c] = src[vs[j] * w + c]; return a; };
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pick(Q, 3), 3)); g.setAttribute('normal', new THREE.BufferAttribute(pick(N, 3), 3));
+    g.setAttribute('aLine', new THREE.BufferAttribute(pick(line, 4), 4)); g.setAttribute('aEye', new THREE.BufferAttribute(pick(E, 4), 4));
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(pick(SI, 4), 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(pick(SW, 4), 4));
+    g.setIndex(new THREE.BufferAttribute((k > 65535 ? Uint32Array : Uint16Array).from(L, v => map[v]), 1));
+    g.setAttribute('aRoot', new THREE.BufferAttribute(pick(root, 1), 1)); g.setAttribute('aHide', new THREE.BufferAttribute(new Float32Array(k), 1));
+    g.userData.skin = true; g.userData.part = names[pi ? (pi + 1) >> 1 : 0]; g.userData.body = d.id; g.userData.under = pi ? new Int32Array(0) : Int32Array.from(under);
+    out.push(g);
+  });
+  return out;
 }

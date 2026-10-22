@@ -307,7 +307,16 @@ function fluffGeo(m) {
   // a skin: positions, normals, its vertices (grow: those that may grow a tuft, all by default), and per vertex its bones,
   // its coat and the body vertex whose clothes hide it
   const skin = (Q, Nq, idx, si, sw, ey, root, grow = () => true) => ({Q, Nq, idx, si, sw, eye: i => ey.slice(i * 4, i * 4 + 4), root, grow});
-  const body = (...c) => skin(P, N, [].concat(...c.map(k => byPart[k])), SI, SW, E, i => i);
+  let body = (...c) => skin(P, N, [].concat(...c.map(k => byPart[k])), SI, SW, E, i => i);
+  // a sculpted body (11b-parts) is the skin below the head now: the tufts grow on it, by the bone each of its points
+  // goes with most, and hide with the body skin it stands for
+  const sculpt = (m.acc || []).filter(a => !a.userData.hull && a.geometry.userData.body);
+  if (sculpt.length) {
+    const At = k => sculpt.map(a => a.geometry.attributes[k].array), cat = (L, C) => { const o = new C(L.reduce((t, a) => t + a.length, 0)); let q = 0; for (const a of L) { o.set(a, q); q += a.length; } return o; };
+    const Q = cat(At('position'), Float32Array), Nq = cat(At('normal'), Float32Array), si = cat(At('skinIndex'), Uint16Array), sw = cat(At('skinWeight'), Float32Array), ey = cat(At('aEye'), Float32Array), rt = cat(At('aRoot'), Float32Array);
+    const bp = [[], [], [], [], [], []]; for (let i = 0; i < Q.length / 3; i++) bp[part[si[i * 4]]].push(i);
+    body = (...c) => skin(Q, Nq, [].concat(...c.map(k => bp[k])), si, sw, ey, i => rt[i]);
+  }
   // where a ray from inside (a bone) going out along d meets the skin: the vertex nearest the ray that faces it; in the
   // same pass, the skin within r of the ray (the clump's neighbourhood is in it), so a clump scans its skin once
   const hit = (S, o, d, r, near) => { let best = -1, bs = Infinity; const Q = S.Q, Nq = S.Nq, r2 = r * r;

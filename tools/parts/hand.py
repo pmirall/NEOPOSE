@@ -47,7 +47,8 @@ def skeleton(sp):
     J[0] = pts; R[0] = r * 1.05
     return J, R
 
-def build(sp='canid', step=.004):
+def sdf(sp='canid'):
+    """The paw-hand's field functions (skin with its pads, the pads alone, the claws) and its skeleton."""
     S = SPECIES[sp]; J, R = skeleton(sp); P, W = S['P'], S['W']
     up = np.array([0, 0, 1], np.float32)
     skin, pads, claws = [], [], []
@@ -109,6 +110,10 @@ def build(sp='canid', step=.004):
         dd = None
         for g in claws: dd = g(p) if dd is None else np.minimum(dd, g(p))
         return dd
+    return dict(body=body, pad=pad_f, claw=claw_f, J=J, R=R)
+
+def build(sp='canid', step=.004):
+    D = sdf(sp); body, pad_f, claw_f, J, R = D['body'], D['pad'], D['claw'], D['J'], D['R']
     allp = np.concatenate([np.stack(v) for v in J.values()])
     lo = allp.min(0) - .16; hi = allp.max(0) + .16; lo[1] = -.5
     V, F, N = Field(lo, hi, step).mesh(body)

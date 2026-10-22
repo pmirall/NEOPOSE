@@ -15,7 +15,8 @@ SPECIES = {
                   mt=(.34, .23, 3), claw=(.07, 60, .045, .55, .006, 20), arch=.55, meta=(.24, 70)),   # (retracted: only the points show)
 }
 
-def build(sp='canid', step=.005):
+def sdf(sp='canid'):
+    """The hind paw's field functions (skin with its pads, standing on z = 0; the pads; the claws, or None)."""
     S = SPECIES[sp]; skin, pads, claws = [], [], []
     tw = 2 * S['toes'][1][2]                                   # a toe's width ~ its pad's
     # metatarsus stub rising up and back from the paw's heel (overlaps the body's leg)
@@ -67,14 +68,18 @@ def build(sp='canid', step=.005):
         s = skin_f(p); pd = pad_f(p)
         s = smin(ssub(s, pd - .007, .009), pd, .003)   # a deep groove round every pad, so each one pops
         return np.maximum(s, -p[:, 2] + .0)   # flat on the ground
+    def claw_f(p):
+        dd = None
+        for g in claws: dd = g(p) if dd is None else np.minimum(dd, g(p))
+        return dd
+    return dict(body=body, pad=pad_f, claw=claw_f if claws else None, Fw=S['Fw'])
+
+def build(sp='canid', step=.005):
+    D = sdf(sp); body, pad_f, claw_f, S = D['body'], D['pad'], D['claw'], SPECIES[sp]
     lo = np.array([-.62, -.85, -.02], np.float32); hi = np.array([.62, 1.25, 1.05], np.float32)
     V, F, N = Field(lo, hi, step).mesh(body)
     kind = (pad_f(V) < .006).astype(np.int8) * 2   # the pad and where it presses flat on the ground
-    if claws:
-        def claw_f(p):
-            dd = None
-            for g in claws: dd = g(p) if dd is None else np.minimum(dd, g(p))
-            return dd
+    if claw_f:
         CV, CF, _ = Field(np.array([-.6, .4, -.02]), np.array([.6, 1.4, .4]), step * .5).mesh(claw_f)
     else: CV, CF = np.zeros((0, 3), np.float32), np.zeros((0, 3), np.int32)
     return dict(V=V, F=F, kind=kind, CV=CV, CF=CF, Fw=np.float32(S['Fw']))

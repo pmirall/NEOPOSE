@@ -3,13 +3,13 @@
 #   bvenv/bin/python export.py part.npz out.txt [skin_faces] [claw_faces]
 # Bones (canonical, names as in the app's rig without the side letter): 'wrist', 'f00'..'f42'. Every vertex: up to four
 # (bone, weight); kind 0 fur, 2 leather (pads), 3 keratin (claws).
-import sys, json, gzip, base64, struct, numpy as np, bpy
+import sys, os, json, gzip, base64, struct, numpy as np, bpy
 
 npz, out = sys.argv[1], sys.argv[2]
 NS = int(sys.argv[3]) if len(sys.argv) > 3 else 9000; NC = int(sys.argv[4]) if len(sys.argv) > 4 else 2400
-D = np.load(npz); LEG = 'LJ' in D; FOOT = 'J0' not in D and not LEG; J = {} if FOOT or LEG else {f: D[f'J{f}'] for f in range(5)}
+D = np.load(npz); BODY = os.environ.get('BODY'); LEG = 'LJ' in D and not BODY; FOOT = 'J0' not in D and not LEG and not BODY; J = {} if FOOT or LEG or BODY else {f: D[f'J{f}'] for f in range(5)}
 
-def decimate(V, F, target, attr=None):
+def decimate(V, F, target, attr=None, remesh=True, speck=.02):
     """Even quads (QuadriFlow) at about `target` triangles; a per-vertex value comes across from the nearest source vertex."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     me = bpy.data.meshes.new('m'); me.vertices.add(len(V)); me.vertices.foreach_set('co', V.astype(np.float32).ravel())
@@ -20,8 +20,9 @@ def decimate(V, F, target, attr=None):
     bpy.context.view_layer.objects.active = ob; ob.select_set(True)
     bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.mesh.remove_doubles(threshold=1e-5); bpy.ops.object.mode_set(mode='OBJECT')
     # voxel remesh (watertight, even), then collapse to the budget; QuadriFlow lost whole skins on some parts
-    m = ob.modifiers.new('rm', 'REMESH'); m.mode = 'VOXEL'; m.voxel_size = float(np.ptp(V, 0).max()) / 160; m.use_smooth_shade = True
-    bpy.ops.object.modifier_apply(modifier='rm')
+    if remesh:
+        m = ob.modifiers.new('rm', 'REMESH'); m.mode = 'VOXEL'; m.voxel_size = float(np.ptp(V, 0).max()) / 160; m.use_smooth_shade = True
+        bpy.ops.object.modifier_apply(modifier='rm')
     d = ob.modifiers.new('dec', 'DECIMATE'); d.ratio = min(1, target / max(1, len(ob.data.polygons) * (1 if ob.data.polygons[0].loop_total == 3 else 2))); d.use_collapse_triangulate = True
     bpy.ops.object.modifier_apply(modifier='dec')
     s = ob.modifiers.new('sm', 'CORRECTIVE_SMOOTH'); s.factor = .35; s.iterations = 3; s.use_only_smooth = True; bpy.ops.object.modifier_apply(modifier='sm')
@@ -38,7 +39,7 @@ def decimate(V, F, target, attr=None):
                 y = e.other_vert(x)
                 if y.index not in seen: seen.add(y.index); st.append(y)
         pieces.append(comp)
-    small = [x for c in pieces if len(c) < .02 * len(bm.verts) for x in c]
+    small = [x for c in pieces if len(c) < speck * len(bm.verts) for x in c]
     if small: bmesh.ops.delete(bm, geom=small, context='VERTS'); bm.to_mesh(m2); m2.update(); m2.calc_loop_triangles()
     bm.free()
     V2 = np.empty(len(m2.vertices) * 3, np.float32); m2.vertices.foreach_get('co', V2); V2 = V2.reshape(-1, 3)
@@ -97,6 +98,7 @@ def weights(V, claws=False):
     q = np.floor(w4 * 255).astype(np.int32); q[:, 0] += 255 - q.sum(1)   # exactly 255 in all (rounding left some at 256)
     return idx.astype(np.uint8), q.astype(np.uint8)
 
+if BODY: exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'export_body.py')).read()); sys.exit(0)
 V, F, K = decimate(D['V'], D['F'], NS, D['kind'].astype(np.float32))
 kind = (K > 1).astype(np.uint8) * 2 if K is not None else np.zeros(len(V), np.uint8)
 CV, CF, _ = decimate(D['CV'], D['CF'], NC) if len(D['CV']) else (np.zeros((0, 3), np.float32), np.zeros((0, 3), np.int32), None)
