@@ -94,7 +94,11 @@ def bake(hid, step=.006, budget=24000):
     open(f'{OUT}/{hid}.txt', 'w').write(base64.b64encode(gzip.compress(data, 9)).decode())
     print(hid, 'verts', n, 'tris', len(I), 'kB', os.path.getsize(f'{OUT}/{hid}.txt') // 1024, 'ear verts', int((E > 128).sum()))
     np.savez_compressed(os.path.join(HERE, '.out', f'{hid}.low.npz'), V=P, F=I[K[I].max(1) == 0], TV=P, TF=I[K[I].min(1) == 2], ear=E, K=K, L=json.dumps(m['L']))
-    return {'label': cfg['label'], 'author': 'NEOPOSE', 'species': cfg['species'], 'style': cfg['style'], 'scale': cfg['scale'], 'eyes': True}
+    out = {'label': cfg['label'], 'author': 'NEOPOSE', 'species': cfg['species'], 'style': cfg['style'], 'scale': cfg['scale'], 'eyes': True}
+    S = HD.params(cfg.get('head', hid))
+    if S.get('tufts'): out['ruff'] = True   # its cheeks carry their own tufts (the app adds none)
+    out['nose'] = HD.leather(S)             # the nose leather's reach round the snout's tip (0: none)
+    return out
 
 if __name__ == '__main__':
     # bake.py [id ...]: bake those heads (all by default), each one's catalog entry in .out/<id>.cat.json (so several can

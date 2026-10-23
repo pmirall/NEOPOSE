@@ -243,6 +243,8 @@ function furAttrsHead(m, geo, hs) {
   const earTop = {L: -Infinity, R: -Infinity}, eb = hs.earBase || {};
   for (let i = 0; i < n; i++) if (d.ear[i] > 128) { const k = Q[i * 3] > 0 ? 'L' : 'R'; earTop[k] = Math.max(earTop[k], Q[i * 3 + 1]); }
   const tip = [E.x + s * L.tip[0], E.y + s * L.tip[1], E.z + s * L.tip[2] * (hs.kSn || 1)], chinY = E.y + s * L.chin;
+  // the nose leather: as far round the tip as the sculpt's own (its catalog entry), none on a muzzle of skin or scales
+  const nr = ((HEAD_CATALOG[d.id] || {}).nose ?? .075) * s;
   for (let i = 0; i < n; i++) {
     const o = i * 4; if (A[o + 3] > .5) continue;  // an eye
     const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2];
@@ -253,10 +255,10 @@ function furAttrsHead(m, geo, hs) {
     let dm = -(1 - sstep(.06 * s, .14 * s, Math.abs(y - E.y))) * sstep(E.z - .38 * s, E.z - .12 * s, z) * (1 - sstep(E.z + .08 * s, E.z + .22 * s, z)), tp = 0, kind = 1;
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly *= 1 - e; dm *= 1 - e; }
-    if (Math.hypot(x - tip[0], y - tip[1], z - tip[2]) < .075 * s && z > tip[2] - .06 * s) kind = 2;
+    if (nr > 0 && Math.hypot(x - tip[0], y - tip[1], z - tip[2]) < nr && z > tip[2] - .8 * nr) kind = 2;
     furPack(A, o, belly, 0, tp, kind, dm);
   }
-  noseAt(m, tip, .075 * s, E.y + s * L.mouthY);
+  noseAt(m, nr > 0 ? tip : null, nr, E.y + s * L.mouthY);
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
@@ -357,8 +359,9 @@ function fluffGeo(m) {
   };
   const on = x => x * k > .06, head = jp('head'), chest = jp('chest'), hs = m.headSwap, an = m.anthro;
   const axisAt = y => { const t = clamp((y - chest.y) / (head.y - chest.y), 0, 1); return chest.clone().lerp(head, t).setY(y); };
-  // cheeks: behind the corner of the mouth, below and behind the eye, swept back and down (the sculpted head's own skin when it has one)
-  if (on(at[0]) && an && !((b.kemo ?? 3) <= 1 && !b.headModel)) {
+  // cheeks: behind the corner of the mouth, below and behind the eye, swept back and down (the sculpted head's own skin when it has one;
+  // none on a sculpt whose cheeks carry their own tufts, a ruff)
+  if (on(at[0]) && an && !((b.kemo ?? 3) <= 1 && !b.headModel) && !(hs && (HEAD_CATALOG[hs.d.id] || {}).ruff)) {
     let S, e, hh;
     if (hs && m.headMesh && m.headMesh.geometry.attributes.position.array === hs.Q) {
       const hg = m.headMesh.geometry.attributes, d = hs.d, hSI = hg.skinIndex.array, hSW = hg.skinWeight.array, hE = hg.aEye.array;

@@ -13,6 +13,15 @@ is kept in the repository.
 - **Live animals.** Animal Diversity Web photo galleries for the same species, plus *Equus caballus*,
   *Odocoileus virginianus* and the domestic dog: heads in profile, three-quarter and front views, for the soft
   parts the skull doesn't show (fur, nose leather, lips, ears).
+- **Stylised busts.** Professional anthro sculpts (canids, felids, a rabbit, dragons), looked at in public previews
+  for how a stylised head is built, not copied:
+  - heavy brow ridges that stand out of the forehead and overhang the eyes, with a furrow between them;
+  - almond eyes under a heavy upper lid, held in the flesh of the face;
+  - the muzzle a box with a flat bridge and full upper lips that overhang a narrower lower jaw;
+  - a big nose leather with comma nostrils;
+  - cheek fur in a few big flame-shaped tufts, flaring out behind the jaw;
+  - thick ears with a deep cup and a rim;
+  - planes that meet in creases rather than blobs.
 - **Construction.** Furry and animal drawing practice:
   - the braincase drawn as a ball and the muzzle as a box set on its lower front;
   - the eye at the meeting of the two;
@@ -46,12 +55,13 @@ Fitted on a body, they read as helmets with a small face.
 
 | Family | Crown | Nose ahead of the eye | Features |
 |---|---|---|---|
-| Canids | 0.44–0.46 | 0.55–0.65 | Muzzle a third of the head wide at its base |
-| Felids | 0.45 | 0.33 (cat) to 0.53 (lion) | Whisker pads either side of a split lip; ears on the top corners: big triangles on a cat, small and round on the big cats |
-| Bear | 0.45 | 0.58 | Steep forehead (the dished profile); small round ears set wide; small eyes looking forward |
-| Raccoon, red panda, skunk | 0.44–0.45 | — | Broad cheeks with fur flaring out; a narrow pointed muzzle (shorter on the red panda); round ears |
-| Rabbit | 0.45 | 0.33 | Round skull; eyes on the sides (looking 34° out); ears 0.85 tall |
-| Goat, deer | 0.43 | 0.72 | Eyes on the sides (32–36°); ears held out sideways; the goat's horns sweep back and its beard hangs from the chin |
-| Horse | 0.38 | 1.0 | Big round jaw (the masseter) at the back of the cheek; nostrils on the front corners of a deep muzzle |
-| Dragon | 0.42 | 0.75 | Box-section snout; heavy brow ridges; horns swept back; frills behind the jaw |
-| Kemono fox | 0.55 | 0.36 | Big round skull; eyes 0.13 across |
+| Canids | 0.45 | 0.58 (wolf), shorter on a dog, longer on a fox | Muzzle a third of the head wide at its base, upper lips overhanging the jaw; brow ridges; four tufts of cheek fur; tall cupped ears |
+| Cat | 0.47 | 0.3 | Whisker pads either side of a split lip; a small triangular nose; big eyes held in the face; big ears on the top corners |
+| Big cats | 0.45 | 0.47 (tiger), longer on a lion, shorter on a snow leopard | A broad deep muzzle with big whisker pads, a broad nose, a strong chin; small round ears |
+| Bear | 0.45 | 0.52 | Steep forehead (the dished profile); small round ears set wide; small eyes looking forward |
+| Raccoon, red panda, skunk | 0.45 | 0.5 | Broad cheeks with fur flaring out; a narrow pointed muzzle (shorter on the red panda); round ears |
+| Rabbit | 0.43 | 0.38 | An egg-shaped head, the nose line convex; full cheeks; eyes on the sides (looking 32° out); ears 0.85 tall |
+| Goat, deer | 0.44 | 0.74 | Eyes on the sides (32–36°); ears held out sideways; the goat's horns sweep back and a goatee hangs from its chin |
+| Horse | 0.38 | 1.0 | A big blunt muzzle with the nostrils on its front corners; a deep round jaw (the masseter) at the back of the cheek |
+| Dragon | 0.44 | 0.75 | Box-section snout with raised nostrils; heavy brow ridges; horns swept back; frills behind the jaw |
+| Kemono fox | 0.55 | 0.35 | Big round skull; big eyes held in the face |

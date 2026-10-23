@@ -206,12 +206,14 @@ const SUITES = {
     const lipsOf = async sp => { if (sp) await pick(...sp); const r = await inLips(); return `${sp ? sp[0] : 'lobo'} ${r.out}/${r.n} out, front ${r.front.toFixed(3)}` + (r.rim > 20 && r.out === 0 && r.front < -.005 ? '' : ' ✗'); };
     { const r = [await lipsOf()]; for (const sp of [['zorro'], ['gato'], ['conejo'], ['dragon'], ['cabra'], ['caballo', true]]) r.push(await lipsOf(sp));
       ok(!r.join().includes('✗'), `teeth inside the lips and the cheeks, behind the lip front (${r.join('; ')})`); }
-    // our sculpts are modelled closed, the lips meeting on the line: the cut finds the lip edge round the arch up to the
-    // front of the snout, and none of the head's skin is hidden while the mouth is open (it has no inside of its own)
+    // our sculpts are modelled closed, the upper lip overhanging the lower jaw: the cut finds the lip edge round the arch
+    // up to the front of the jaw (the chin, under the overhang), and none of the head's skin is hidden while the mouth
+    // is open (it has no inside of its own)
     await pick('zorro');
-    const fox = await A(() => { const d = window.__cdp.mq.headSwap.d, F = d.mouth, rim = d.rim;
-      return {id: d.id, n: rim.length, front: (Math.max(...rim.map(q => q[2])) - F.zc) / (d.L.tip[2] - F.zc), hid: [...d.lip].filter(v => v > 3).length}; });
-    ok(fox.id === 'zorro' && fox.n > 20 && fox.front > .9 && fox.hid === 0, `the fox's lips part along the arch (${fox.n} points on the edge, reaching ${(fox.front * 100).toFixed(0)}% of the way to the snout's tip) and none of its skin is hidden (${fox.hid})`);
+    const fox = await A(() => { const d = window.__cdp.mq.headSwap.d, F = d.mouth, rim = d.rim, P = d.P; let chin = -Infinity;
+      for (let i = 0; i < d.n; i++) if (d.K[i] === 0 && Math.abs(P[i * 3]) < .03 && P[i * 3 + 1] < F.y - .01 && P[i * 3 + 1] > F.y - .08) chin = Math.max(chin, P[i * 3 + 2]);
+      return {id: d.id, n: rim.length, front: (Math.max(...rim.map(q => q[2])) - F.zc) / (chin - F.zc), hid: [...d.lip].filter(v => v > 3).length}; });
+    ok(fox.id === 'zorro' && fox.n > 20 && fox.front > .9 && fox.hid === 0, `the fox's lips part along the arch (${fox.n} points on the edge, reaching ${(fox.front * 100).toFixed(0)}% of the way to the front of its jaw) and none of its skin is hidden (${fox.hid})`);
     await pick('lobo');
     // hidden while closed; an expression opens it, the margin uniform is set
     await goTab(page, 'pose'); await page.waitForTimeout(300);
@@ -261,8 +263,9 @@ const SUITES = {
     for (const sp of ['zorro', 'dragon', 'lobo']) { await pick(sp); const c = await A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, g = m.mouthMeshes.find(x => x.geometry.userData.teeth).geometry, P = g.attributes.position.array, S = .35 * Math.min(F.tip - F.zc, F.xc);
         let n = 0; for (let i = 0; i < P.length / 3; i++) if (P[i * 3 + 2] - F.zc < .25 * S) n++; return n; });
       ok(c === 0, `${sp}: no tooth in the corners, where the lips have hardly parted (${c} vertices)`); }
+    // (the half arch runs on round the corner, where the upper lip's overhang meets the cheek and no tooth stands)
     { const wr = await row(); await pick('caballo', true); const hr = await row(); await pick('lobo');
-      ok(wr.n === 8 && wr.gap < .03 && wr.end > .75 && wr.end < 1 && hr.gap > .035 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
+      ok(wr.n === 8 && wr.gap < .03 && wr.end > .55 && wr.end < 1 && hr.gap > .035 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
       ok(wr.hi < .032 && wr.lo > -.032 && hr.hi < .032 && hr.lo > -.032, `roots end in the gums (wolf ${wr.hi.toFixed(3)}/${wr.lo.toFixed(3)}, horse ${hr.hi.toFixed(3)}/${hr.lo.toFixed(3)} head heights from the lip line)`); }
     // panting lolls the tongue out past the lips; any other expression keeps it in
     { const t = async e => A(e => { const C = window.__cdp, m = C.mq; C.applyExpression(m, e); C.renderView({w: 64, h: 64}); const p = m.mouthMeshes.find(x => x.geometry.userData.tongue), g = p.geometry, P = g.attributes.position.array, D = g.morphAttributes.position[0].array, k = p.morphTargetInfluences[0];
@@ -363,8 +366,9 @@ const SUITES = {
     ok(ruff.some(l => l.belly > .4) && ruff.some(l => l.belly < .1), `the neck ruff is light at the throat and takes the side coat behind (${ruff.filter(l => l.belly > .4).length} light, ${ruff.filter(l => l.belly < .1).length} dark)`);
     const lens = f.L.map(l => l.len / f.size);
     ok(Math.max(...lens) < .12 && Math.min(...lens) > .01, `locks are tufts, not spikes: ${(Math.min(...lens) * 100).toFixed(1)}–${(Math.max(...lens) * 100).toFixed(1)} cm per metre of body`);
-    const cheek = f.L.filter(l => l.part === 'cheek');
-    ok(cheek.length >= 6 && cheek.filter(l => l.tip[2] < l.base[2]).length >= cheek.length * .8, `cheek ruffs on the sculpted head, swept back (${cheek.length} locks)`);
+    // the fox's sculpt carries its own cheek ruff (tufts sculpted on its cheeks), so no locks are added there
+    const cheek = f.L.filter(l => l.part === 'cheek'), ruffed = await A(() => { const C = window.__cdp, m = C.mq; return !!(C.HEAD_CATALOG[m.headSwap.d.id] || {}).ruff; });
+    ok(ruffed && cheek.length === 0, `the sculpted head's own cheek ruff stands for the cheek tufts (ruff ${ruffed}, ${cheek.length} cheek locks)`);
     ok(f.L.every(l => !l.hid), `with nothing worn every tuft is drawn, the sculpted head's cheeks too (${f.L.filter(l => l.hid).length} hidden)`);
     const bib = f.L.filter(l => l.part === 'torso' && l.root[2] > f.chest[2] && Math.abs(l.root[0]) < .08 * f.size);
     ok(bib.length >= 10 && bib.filter(l => l.tip[1] < l.base[1]).length >= bib.length * .8, `a chest bib falling down the breastbone (${bib.length} locks)`);
