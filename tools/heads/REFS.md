@@ -53,6 +53,8 @@ Fitted on a body, they read as helmets with a small face.
 
 ### Per family
 
+Each family's animal head, as the generator first builds it (the stylisation below then reshapes it):
+
 | Family | Crown | Nose ahead of the eye | Features |
 |---|---|---|---|
 | Canids | 0.45 | 0.58 (wolf), shorter on a dog, longer on a fox | Muzzle a third of the head wide at its base, upper lips overhanging the jaw; brow ridges; four tufts of cheek fur; tall cupped ears |
@@ -65,3 +67,28 @@ Fitted on a body, they read as helmets with a small face.
 | Horse | 0.38 | 1.0 | A soft muzzle, round in profile, with big comma nostrils on its front corners in a flared rim; the facial crest running forward under the eye; a deep round jaw (the masseter) at the back of the cheek; big eyes under a strong brow; a forelock between the ears |
 | Dragon | 0.44 | 0.75 | Box-section snout with raised nostrils; heavy brow ridges; horns swept back; frills behind the jaw |
 | Kemono fox | 0.55 | 0.35 | Big round skull; big eyes held in the face |
+
+### Stylised
+
+Fitted on a body, the animal heads still read as animals' heads on a person: a long, boxy snout in front of a small
+braincase, with small eyes. So every head but the kemono fox is then turned into a character's head (`stylise` in
+`head.py`), the way anthro artists and VRChat-style avatar makers proportion one:
+- the braincase is a big ball, its front a broad face plane;
+- the eyes are set flush in that plane, big and looking to the front (a prey animal's a little further out), under a
+  soft brow;
+- the animal's snout springs from the plane's lower middle and is shortened, each family by its own amount
+  (`FAM_STYLE`);
+- the ears, cheek fur and horns move onto the bigger ball, and the ears grow a little.
+
+Each family keeps its own muzzle sections, jaw, nose, pads, fur and ears. Measured on the baked heads:
+
+| Family | Crown | Nose ahead of the eye | Eye radius |
+|---|---|---|---|
+| Canids, raccoons | 0.45 → 0.52 | 0.53–0.62 → 0.40–0.44 | 0.10–0.11 → 0.13 |
+| Cat | 0.46 → 0.53 | 0.29 → 0.26 | 0.12 → 0.13 |
+| Big cats | 0.45 → 0.51 | 0.41 → 0.30–0.31 | 0.09–0.10 → 0.13 |
+| Bear | 0.45 → 0.51 | 0.49 → 0.42 | 0.08 → 0.13 |
+| Rabbit | 0.43 → 0.52 | 0.38 → 0.27 | 0.13 |
+| Goat, deer | 0.44 → 0.49 | 0.66–0.70 → 0.54–0.59 | 0.11 → 0.14 |
+| Horse | 0.40 → 0.44 | 0.83 → 0.69 | 0.10 → 0.13 |
+| Dragon | 0.44 → 0.50 | 0.75 → 0.53 | 0.10 → 0.14 |
