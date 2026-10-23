@@ -266,8 +266,8 @@ function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib &&
    and the mouth: a tabby's M on the forehead, a line back from each eye and two on the cheek; a tiger's bars stacked
    on the forehead, a stripe up to each ear and four sweeping back over the cheek (any other head: the tiger's).
    mask: what the mask paints; light: more of the muzzle mark (the raccoon's brows, the tiger's white over the eyes);
-   muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes. Worked out once for
-   each sculpt. */
+   muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes; earIn: the inside of
+   the ears, which the belly's colour lights. Worked out once for each sculpt. */
 const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face', ciervo: 'deer', cabra: 'deer', mofeta: 'blaze'};
 const FACE_STRIPES = {
   gato: [[[[.03, .13, null], [.04, .21, null], [.05, .3, null], [.06, .38, null]], [.021, .022, .021, .016]],
@@ -334,10 +334,30 @@ function faceMarks(d) {
     const C = [0, (cy + T[1]) / 2 - .04, T[2] * .45], R = [cx + .16, .25, T[2] * .55 + .12];
     for (let i = 0; i < n; i++) if (skin[i]) mask[i] = 1 - sstep(.8, 1.15, Math.hypot(ax(i) / R[0], (P[i * 3 + 1] - C[1]) / R[1], (P[i * 3 + 2] - C[2]) / R[2]));
   }
+  // the inside of the ears: the ear's skin facing out of its cup, above its root. An ear is a thin shell: of how its
+  // vertices spread, the most is up it, the next across it and the least through it, the way its cup faces (turned to
+  // the front); the normals from its triangles
+  const earIn = new Float32Array(n), ev = []; for (let i = 0; i < n; i++) if (d.ear[i] > 128 && P[i * 3] > 0) ev.push(i);
+  if (ev.length > 30) {
+    const mu = [0, 1, 2].map(k => ev.reduce((a, i) => a + P[i * 3 + k], 0) / ev.length), C = [0, 1, 2].map(() => [0, 0, 0]);
+    for (const i of ev) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a][b] += (P[i * 3 + a] - mu[a]) * (P[i * 3 + b] - mu[b]);
+    const top = M => { let v = [.3, .9, .2]; for (let it = 0; it < 40; it++) { const w = M.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]), l = Math.hypot(...w) || 1; v = w.map(x => x / l); }
+      return [v, M.reduce((a, r, k) => a + v[k] * (r[0] * v[0] + r[1] * v[1] + r[2] * v[2]), 0)]; };
+    const [v1, l1] = top(C), [v2] = top(C.map((r, a) => r.map((x, b) => x - l1 * v1[a] * v1[b])));
+    let v3 = [v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]]; if (v3[2] < 0) v3 = v3.map(x => -x);
+    const up = v1[1] < 0 ? v1.map(x => -x) : v1, along = i => up[0] * Math.abs(P[i * 3]) + up[1] * P[i * 3 + 1] + up[2] * P[i * 3 + 2];
+    let t0 = Infinity, t1 = -Infinity; for (const i of ev) { const t = along(i); t0 = Math.min(t0, t); t1 = Math.max(t1, t); }
+    const Nr = new Float32Array(n * 3), I = d.idx;
+    for (let t = 0; t < I.length; t += 3) { const a = I[t] * 3, b = I[t + 1] * 3, c2 = I[t + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], wx = P[c2] - P[a], wy = P[c2 + 1] - P[a + 1], wz = P[c2 + 2] - P[a + 2];
+      const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx; for (const k of [a, b, c2]) { Nr[k] += nx; Nr[k + 1] += ny; Nr[k + 2] += nz; } }
+    for (let i = 0; i < n; i++) { if (d.ear[i] < 64) continue; const l = Math.hypot(Nr[i * 3], Nr[i * 3 + 1], Nr[i * 3 + 2]) || 1, sx = P[i * 3] < 0 ? -1 : 1;
+      const f = (Nr[i * 3] * sx * v3[0] + Nr[i * 3 + 1] * v3[1] + Nr[i * 3 + 2] * v3[2]) / l;
+      earIn[i] = sstep(.1, .45, f) * sstep(.12, .3, (along(i) - t0) / (t1 - t0 || 1)); }
+  }
   // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
   let nIn = 0, nN = 0; const N = L.nose;
   if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
-  return d.marks = {mask, light, muz, stripes, noseIn: nN && nIn / nN > .5 ? 1 : 0};
+  return d.marks = {mask, light, muz, stripes, earIn, noseIn: nN && nIn / nN > .5 ? 1 : 0};
 }
 // the sculpted head: muzzle, cheeks and throat; the face's markings (faceMarks); the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
@@ -359,7 +379,7 @@ function furAttrsHead(m, geo, hs) {
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
     let dm = -FM.mask[i], tp = 0, kind = 1;
     const e = d.ear[i] / 255;
-    if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly *= 1 - e; dm *= 1 - e; }
+    if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly = Math.max(belly * (1 - e), FM.earIn[i] * e); dm *= 1 - e; }
     if (N && leather(x, y, z)) kind = 2;
     furPack(A, o, belly, -.05 - .95 * FM.stripes[i] * (1 - e), tp, kind, dm);
   }
