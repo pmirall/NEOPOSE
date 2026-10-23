@@ -89,14 +89,17 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
+        // (an animal's iris amber, a person's the eye's own colour, and both a grey of the paper in the flat styles; uShine:
+        // 1 two catchlights, a toon's or a kemono's, .5 one small one, a realistic animal's)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
           vec3 d = normalize(vEye.xyz); float ang = acos(clamp(d.z, -1.0, 1.0));
           if (ang > uIris) return c;
           vec2 uv = d.xy / max(sin(uIris), 1e-3);
-          vec3 iris = mix(c, ink, .38), col = iris;
+          vec3 iris = mix(${mat.isMeshBasicMaterial ? 'c' : 'uFurOn > .5 ? c * vec3(1.08, .8, .42) : c'}, ink, .38), col = iris;
           float ring = ${mat.isMeshBasicMaterial ? 'smoothstep(uIris * .93 - fwidth(ang), uIris * .93, ang)' : 'smoothstep(uIris * .9, uIris, ang)'}; col = mix(col, ink, ring * .85);  // (the limbal ring: in the flat styles a crisp inked ring, not shading)
           vec2 pu = uv / uPupil.yz; if (dot(pu, pu) < 1.0) col = mix(ink, ink * .6, .3);
-          if (uShine > .5) { vec2 h = uv - vec2(-.32, .38); if (dot(h, h) < .045) col = paper; vec2 h2 = uv - vec2(.28, -.3); if (dot(h2, h2) < .01) col = paper; }
+          if (uShine > .75) { vec2 h = uv - vec2(-.32, .38); if (dot(h, h) < .045) col = paper; vec2 h2 = uv - vec2(.28, -.3); if (dot(h2, h2) < .01) col = paper; }
+          else if (uShine > .25) { vec2 h = uv - vec2(-.3, .34); if (dot(h, h) < .018) col = paper; }
           return col;
         }
         uniform float uStride, uLineW, uLineA, uMer, uCenter;
@@ -116,7 +119,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
       .replace('#include <color_fragment>', `#include <color_fragment>
         noseF = max(fwidth(noseD()), 1e-6);${mat.isMeshBasicMaterial ? (uFur ? `
         diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb), step(6.0, -vEye.w));  // (but the inside of an open mouth, toned below)` : '') : `
-        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, ${uFur ? 'max(uFurOn, step(6.0, -vEye.w))' : 'uFurOn'});`}`)
+        diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, ${uFur ? 'max(uFurOn, step(6.0, -vEye.w))' : 'uFurOn'} * step(vEye.w, .5));  // (not the eyes: their own colour, as a human's)`}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         if (vHide > .999) discard;
         // open mouth: on a head that is not cut, triangles that join the upper lip (+1) to the lower (−1) are dropped

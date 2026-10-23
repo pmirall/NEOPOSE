@@ -61,7 +61,7 @@ Fitted on a body, they read as helmets with a small face.
 | Bear | 0.45 | 0.52 | Steep forehead (the dished profile); small round ears set wide; small eyes looking forward |
 | Raccoon, red panda, skunk | 0.45 | 0.5 | Broad cheeks with fur flaring out; a narrow pointed muzzle (shorter on the red panda); round ears |
 | Rabbit | 0.43 | 0.38 | An egg-shaped head, the nose line convex; full cheeks; eyes on the sides (looking 32° out); ears 0.85 tall |
-| Goat, deer | 0.44 | 0.74 | Eyes on the sides (32–36°); ears held out sideways; the goat's horns sweep back and a goatee hangs from its chin |
-| Horse | 0.38 | 1.0 | A big blunt muzzle with the nostrils on its front corners; a deep round jaw (the masseter) at the back of the cheek |
+| Goat, deer | 0.44 | 0.74 | Eyes to the sides (27°, drawn rounder than the animal's 32–36° so they read from the front) under a heavy lid; a soft muzzle with comma nostrils and a split lip; ears held out sideways, a deer's broad and oval, with a tear pit in front of each eye; the goat's horns sweep back and a goatee hangs from its chin |
+| Horse | 0.38 | 1.0 | A soft muzzle, round in profile, with big comma nostrils on its front corners in a flared rim; the facial crest running forward under the eye; a deep round jaw (the masseter) at the back of the cheek; big eyes under a strong brow; a forelock between the ears |
 | Dragon | 0.44 | 0.75 | Box-section snout with raised nostrils; heavy brow ridges; horns swept back; frills behind the jaw |
 | Kemono fox | 0.55 | 0.35 | Big round skull; big eyes held in the face |

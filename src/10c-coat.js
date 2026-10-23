@@ -49,8 +49,8 @@ const COATS = {
   mofeta:    {label: 'Mofeta', for: ['mofeta'], c: ['#1f1d1c', '#f2efea', '#141312'], m: {dorsal: 1, tail: 1}, tip: .35, le: '#2a2422'},
   conejo:    {label: 'Conejo gris', for: ['conejo'], c: ['#9c9288', '#efe9df', '#5a524a'], m: {belly: 1, tail: 1, ears: 2}, tip: 1, le: '#c98b86'},
   conejo_bl: {label: 'Conejo blanco', for: ['conejo'], c: ['#f5f2ec', '#fbfaf7', '#d9d2c6'], m: {}, le: '#d19a96'},
-  ciervo:    {label: 'Ciervo', for: ['ciervo', 'cabra'], c: ['#9b6b43', '#efe4d0', '#3a2a1e'], m: {belly: 1, tail: 1}, tip: 1, le: '#231d1a'},
-  cervato:   {label: 'Cervatillo', for: ['ciervo'], c: ['#a8703f', '#f1e6d3', '#3a2a1e'], m: {belly: 1, spots: 1, tail: 1}, tip: 1, le: '#231d1a'},
+  ciervo:    {label: 'Ciervo', for: ['ciervo', 'cabra'], c: ['#9b6b43', '#efe4d0', '#3a2a1e'], m: {belly: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a'},
+  cervato:   {label: 'Cervatillo', for: ['ciervo'], c: ['#a8703f', '#f1e6d3', '#3a2a1e'], m: {belly: 1, spots: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a'},
   cabra:     {label: 'Cabra blanca', for: ['cabra'], c: ['#ebe5d9', '#f7f3ec', '#9d9282'], m: {}, le: '#3a302a'},
   cabra_pa:  {label: 'Cabra parda', for: ['cabra'], c: ['#7b5b3f', '#dccbb0', '#2c2119'], m: {belly: 1, dorsal: 2, socks: 2}, sock: .72, le: '#2a221d'},
   caballo:   {label: 'Castaño', for: ['caballo'], c: ['#7a4527', '#b3825a', '#1c1410'], m: {socks: 2, tail: 2}, sock: .7, tip: 1, le: '#2a2220'},
@@ -258,14 +258,15 @@ function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib &&
      eyes to the corners of the mouth, which keep the coat's red;
    - patches (the giant panda): a drop round each eye, slanting down and out;
    - snout (the hyena): the muzzle dark from the nose back to below the eyes;
-   - face (the Siamese, the shepherd): the face dark from the nose up round the eyes, fading out over the forehead.
+   - face (the Siamese, the shepherd): the face dark from the nose up round the eyes, fading out over the forehead;
+   - deer: pale rings round the eyes, a pale band round the muzzle behind the nose and a pale chin.
    And the stripes a striped coat draws on the face, where the body's run round it in rings that would cross the eyes
    and the mouth: a tabby's M on the forehead, a line back from each eye and two on the cheek; a tiger's bars stacked
    on the forehead, a stripe up to each ear and four sweeping back over the cheek (any other head: the tiger's).
    mask: what the mask paints; light: more of the muzzle mark (the raccoon's brows, the tiger's white over the eyes);
    muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes. Worked out once for
    each sculpt. */
-const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face'};
+const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face', ciervo: 'deer', cabra: 'deer'};
 const FACE_STRIPES = {
   gato: [[[[.03, .13, null], [.04, .21, null], [.05, .3, null], [.06, .38, null]], [.021, .022, .021, .016]],
     [[[.12, .14, null], [.13, .22, null], [.16, .3, null], [.19, .36, null]], [.02, .022, .021, .016]],
@@ -315,6 +316,10 @@ function faceMarks(d) {
     stroke(mask, [[cx - .04, cy + .12, null], [cx + .03, cy + .125, null]], [.04, .035]);
     const cheek = new Float32Array(n); stroke(cheek, [[null, cy - .1, cz + .02], [null, cy - .16, cz - .1], [null, cy - .18, cz - .2]], [.08, .1, .07]);
     for (let i = 0; i < n; i++) if (skin[i]) mask[i] = Math.max(mask[i], cheek[i] * sstep(.03, .05, zt(P[i * 3 + 1]) - P[i * 3 + 2]));
+  } else if (kind === 'deer') {
+    stroke(mask, [[cx - .03, cy + .02, null], eye, [cx + .05, cy - .03, null]], [.045, .08, .045]);
+    const zb = T[2] - .11; stroke(mask, [[0, null, zb], [null, T[1] + .02, zb - .01], [null, T[1] - .07, zb - .02]], [.035, .032, .03]);
+    stroke(mask, [[0, F.y - .05, null], [.05, F.y - .06, null]], [.05, .035]);
   } else if (kind === 'patches') {
     stroke(mask, [[cx - .04, cy + .05, null], eye, [cx + .1, cy - .14, null]], [.065, .11, .085]);
   } else if (kind === 'snout') {

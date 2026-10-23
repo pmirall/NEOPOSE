@@ -282,6 +282,7 @@ def forms(S):
     if S.get('goatee'): r, m, t, w, th = S['goatee']; ops.append(('+', Tuft(r, m, t, w, th, (1, 0, 0)), .03))
     N = S['nose']
     if N.get('pts'): ops.append(('+', Hull(sym(*N['pts']), N.get('r', .025)), N.get('k', .015)))
+    if N.get('rim'): c, r = N['rim']; ops.append(('+', Ell(c, r), .02))   # the flesh a horse's nostril flares out of
     for c, r in N.get('ells', []): ops.append(('+', Ell(c, r), N.get('k', .02)))
     return ops
 
@@ -311,6 +312,13 @@ def muz(z, top, w, lip):
     H = top - lip
     return (z, [(0, top), (.45 * w, top - .01 * H), (.78 * w, top - .09 * H), (.95 * w, top - .28 * H), (w, lip + .4 * H),
                 (.97 * w, lip + .2 * H), (.86 * w, lip + .04 * H), (.57 * w, lip + .009), (0, lip + .009)])
+
+def smuz(z, top, w, lip):
+    """A soft muzzle's cross-section at z (a horse's, a deer's): narrower over the bridge and rounded off it, widest low
+    down where the nostrils flare over the upper lip, the lip's edge turning in at the lip line `lip`."""
+    H = top - lip
+    return (z, [(0, top), (.34 * w, top - .015 * H), (.65 * w, top - .09 * H), (.88 * w, top - .27 * H), (w, lip + .38 * H), (.97 * w, lip + .17 * H),
+                (.84 * w, lip + .04 * H), (.5 * w, lip + .009), (0, lip + .009)])
 
 def jaw(z, w, bot, top):
     """The lower jaw's cross-section at z: w its half width, its bottom `bot`; it meets the lip line (just under `top`) at
@@ -449,34 +457,40 @@ RABBIT = dict(
            ((.28, -.27, -.07), (.35, -.32, -.11), (.41, -.37, -.15), .08, .025)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 GOAT = dict(
-    head=dict(rf=.09, rb=.04, st=[muz(.66, -.17, .058, -.32), muz(.58, -.115, .078, -.32), muz(.46, -.05, .105, -.32), muz(.32, .015, .14, -.32),
+    head=dict(rf=.08, rb=.04, st=[smuz(.66, -.17, .06, -.32), smuz(.58, -.115, .08, -.32), smuz(.46, -.05, .105, -.32), muz(.32, .015, .14, -.32),
         muz(.17, .07, .185, -.32), cran(.05, .17, .27, -.07, -.33), cran(-.05, .3, .33, -.07, -.38), cran(-.18, .4, .34, -.05, -.45),
         cran(-.32, .44, .32, 0, -.44), cran(-.44, .39, .27, .03, -.32), cran(-.53, .27, .2, .04, -.2), cran(-.58, .14, .11, .04, -.08)]),
     jaw=dict(k=.008, rf=.05, rb=.06, st=[jaw(.6, .042, -.37, -.315), jaw(.48, .065, -.405, -.315), jaw(.3, .095, -.45, -.315),
         jaw(.1, .13, -.5, -.315), jaw(-.08, .17, -.55, -.32), jaw(-.2, .17, -.55, -.33)]),
     brow=dict(pts=[(.1, .1, .12), (.18, .12, .09), (.26, .1, .02), (.3, .05, -.06)], r=[.024, .03, .026, .016], sq=.7, k=.035),
-    nose=dict(kind='none', nostril=(.048, -.18, .65), nr=.022),
+    nose=dict(kind='none', comma=[(.028, -.185, .7), (.047, -.2, .7), (.053, -.226, .7), (.045, -.25, .7)], nr=.014, philtrum=(-.24, .69)),
     mouth=dict(y=-.32, corner=.3, smile=(.06, .02)),
     jawh=dict(hinge=-.22),
-    eye=dict(x=.24, re=.1, yaw=36, pitch=-2, w=.08, hu=.054, hl=.048, tilt=0, shift=0, sink=.004, lu=.016, ll=.008, lo=.86, mound=(1.5, 1.35, 1.0, .08)),
+    eye=dict(x=.24, re=.104, yaw=27, pitch=-2, w=.095, hu=.06, hl=.05, tilt=0, shift=0, sink=.004, lu=.02, ll=.009, lo=.86, mound=(1.5, 1.35, 1.0, .08),
+             crease=(.005, .007)),
     ears=dict(base=(.24, .2, -.2), out=72, back=10, turn=-40, H=.34, W=.18, D=.12, lean=.04, rim=.03, fluff=2, fl=.7),
     horns=dict(base=(.11, .36, -.08), d0=(.15, 1, -.3), d1=(.1, -.15, -1), R=.32, sweep=125, r0=.055, r1=.012),
     goatee=((0, -.36, .55), (0, -.44, .57), (0, -.53, .6), .045, .035),
     neck=((0, -.32, -.24), (0, -1.05, -.21), .19, .18))
 HORSE = dict(
-    head=dict(rf=.11, rb=.04, st=[muz(.98, -.17, .14, -.42), muz(.9, -.13, .155, -.42), muz(.78, -.095, .145, -.42), muz(.62, -.055, .13, -.42),
-        muz(.44, -.01, .14, -.42), muz(.26, .05, .18, -.42), cran(.08, .14, .26, -.1, -.43), cran(-.05, .27, .31, -.15, -.6),
+    head=dict(rf=.1, rb=.04, st=[smuz(1.0, -.25, .11, -.41), smuz(.95, -.17, .15, -.42), smuz(.88, -.13, .16, -.42), smuz(.76, -.095, .146, -.42),
+        smuz(.6, -.055, .128, -.42), smuz(.44, -.012, .134, -.42), muz(.26, .05, .178, -.42), cran(.08, .14, .26, -.1, -.43), cran(-.05, .27, .31, -.15, -.6),
         cran(-.18, .36, .33, -.18, -.64), cran(-.3, .38, .31, -.12, -.58), cran(-.4, .34, .26, -.05, -.42), cran(-.47, .22, .19, 0, -.25),
         cran(-.51, .1, .1, 0, -.1)]),
-    jaw=dict(k=.008, rf=.08, rb=.06, st=[jaw(.93, .11, -.56, -.415), jaw(.8, .1, -.56, -.415), jaw(.6, .085, -.53, -.415), jaw(.38, .1, -.56, -.415),
-        jaw(.16, .15, -.6, -.415), jaw(0, .2, -.64, -.42), jaw(-.15, .22, -.65, -.44), jaw(-.28, .2, -.6, -.46)]),
-    masses=[dict(c=(.2, -.36, -.16), r=(.145, .24, .26), k=.08), dict(c=(-.2, -.36, -.16), r=(.145, .24, .26), k=.08)],
-    brow=dict(pts=[(.1, .08, .12), (.18, .1, .09), (.26, .08, .02), (.3, .03, -.06)], r=[.024, .03, .026, .016], sq=.7, k=.035),
-    nose=dict(kind='none', nostril=(.105, -.26, .97), nr=.055),
+    jaw=dict(k=.008, rf=.08, rb=.06, st=[jaw(.93, .11, -.565, -.415), jaw(.82, .1, -.565, -.415), jaw(.66, .082, -.525, -.415), jaw(.44, .1, -.55, -.415),
+        jaw(.2, .15, -.6, -.415), jaw(0, .2, -.64, -.42), jaw(-.15, .22, -.65, -.44), jaw(-.28, .2, -.6, -.46)]),
+    masses=[dict(c=(.21, -.36, -.17), r=(.16, .25, .27), k=.07), dict(c=(-.21, -.36, -.17), r=(.16, .25, .27), k=.07)],
+    brow=dict(pts=[(.13, .1, .1), (.2, .128, .07), (.28, .115, .005), (.32, .07, -.07)], r=[.026, .037, .035, .02], sq=.7, k=.035),
+    ridges=[dict(pts=[(.33, -.11, -.06), (.3, -.13, .06), (.25, -.15, .18), (.2, -.16, .3)], r=[.042, .036, .026, .012], sink=.45, sq=.5, k=.03)],
+    nose=dict(kind='none', comma=[(.11, -.22, 1.0), (.132, -.245, 1.0), (.128, -.285, 1.0), (.105, -.315, 1.0), (.08, -.33, 1.0)], nr=.024,
+              rim=((.135, -.255, .92), (.04, .065, .045))),
     mouth=dict(y=-.42, corner=.45, smile=(.06, .02)),
     jawh=dict(hinge=-.25),
-    eye=dict(x=.25, re=.1, yaw=40, pitch=-2, w=.085, hu=.056, hl=.05, tilt=0, shift=0, sink=.004, lu=.017, ll=.008, lo=.86, mound=(1.5, 1.35, 1.0, .08)),
+    eye=dict(x=.25, re=.108, yaw=28, pitch=-2, w=.1, hu=.064, hl=.052, tilt=0, shift=0, sink=.004, lu=.022, ll=.009, lo=.86, mound=(1.55, 1.4, 1.05, .08),
+             crease=(.006, .008)),
     ears=dict(base=(.15, .33, -.22), out=10, back=4, turn=-30, H=.36, W=.2, D=.15, lean=.06, rim=.03, fluff=2, fl=.7),
+    tufts=[((.02, .39, -.27), (.03, .3, -.06), (.05, .15, .12), .095, .04), ((.07, .38, -.29), (.09, .3, -.1), (.12, .16, .07), .08, .036),
+           ((.11, .36, -.3), (.15, .28, -.15), (.2, .19, -.02), .07, .03)],
     neck=((0, -.36, -.26), (0, -1.05, -.21), .19, .18))
 DRAGON = dict(
     head=dict(rf=.1, rb=.04, st=[muz(.73, -.1, .065, -.28), muz(.62, -.07, .11, -.28), muz(.45, -.03, .14, -.28), muz(.3, .01, .16, -.28),
@@ -536,9 +550,10 @@ SPECIES = {
                  tufts=[((.37, -.1, -.17), (.44, -.15, -.26), (.52, -.19, -.33), .09, .028)]),
   'conejo': dict(fam='conejo'),
   'cabra': dict(fam='cabra'),
-  'ciervo': dict(fam='cabra', xf=dict(mw=.92, mz=.96), eye=dict(re=.105, w=.1, hu=.054, yaw=32),
+  'ciervo': dict(fam='cabra', xf=dict(mw=.86, mz=.96), eye=dict(re=.112, w=.108, hu=.064, hl=.054, yaw=27),
+                 pits=[dict(pts=[(.165, -.035, .12), (.14, -.065, .18), (.122, -.09, .23)], r=[.013, .012, .007])],
                  nose=dict(kind='can', ells=[((0, -.15, .66), (.07, .05, .05))], k=.03, comma=[(.02, -.16, .705), (.045, -.155, .7), (.062, -.165, .688)], nr=.013, philtrum=(-.2, .69)),
-                 ears=dict(H=.46, W=.24, D=.13, out=50, back=14), horns=None, goatee=None),
+                 ears=dict(H=.5, W=.36, D=.15, out=58, back=12, turn=-34, round_=.55, lean=.05), horns=None, goatee=None),
   'caballo': dict(fam='caballo', xf=dict(mz=.94)),
   'dragon': dict(fam='dragon'),
   'zorro_k': dict(fam='kemono'),
@@ -558,6 +573,8 @@ def xform(P, mz=1., mw=1., sk=1.):
     if N.get('comma'): N['comma'] = [(x * mw, y, zx(z)) for x, y, z in N['comma']]
     if N.get('philtrum'): N['philtrum'] = (N['philtrum'][0], zx(N['philtrum'][1]))
     if N.get('nostril'): x, y, z = N['nostril']; N['nostril'] = (x * mw, y, zx(z))
+    if N.get('rim'): (x, y, z), r = N['rim']; N['rim'] = ((x * mw, y, zx(z)), r)
+    for R_ in (P.get('ridges') or []) + (P.get('pits') or []): R_['pts'] = [(x * (mw if z > zs else 1), y, zx(z)) for x, y, z in R_['pts']]
     for p in P.get('pads') or []: p['c'] = (p['c'][0] * mw, p['c'][1], zx(p['c'][2])); p['r'] = (p['r'][0] * mw, p['r'][1], p['r'][2] * (1 + (mz - 1) * .6))
     if P.get('tufts'): P['tufts'] = [tuple((x * (sk if z < 0 else 1), y, z) for x, y, z in t[:3]) + tuple(t[3:]) for t in P['tufts']]
     if P['mouth']['corner'] > zs: P['mouth']['corner'] = zx(P['mouth']['corner'])
@@ -602,6 +619,13 @@ def build_sdf(S):
     if B:
         for sd in (1, -1): ops.append(('+', Tube([(x * sd, y, z) for x, y, z in B['pts']], B['r'], squash=((0, 1, 0), B.get('sq', .7))), B.get('k', .03)))
     core = lambda q: run(ops, q)
+    # ridges: a curve laid on the skin, sunk so it stands out (1 - sink) of its radius, flattened along the skin's normal
+    # (a horse's facial crest)
+    for R_ in S.get('ridges') or []:
+        P = onskin(core, R_['pts'], [-r * R_.get('sink', .4) for r in R_['r']]); nr = grad(core, P[len(P) // 2:len(P) // 2 + 1])[0]
+        ops.append(('+', Tube(list(P), R_['r'], squash=(nr / np.linalg.norm(nr), R_.get('sq', .6))), R_.get('k', .03)))
+    # and pits: a curve sunk into the skin (a deer's tear pit in front of its eye)
+    for C_ in S.get('pits') or []: ops.append(('-', Tube(list(onskin(core, C_['pts'], [r * C_.get('lift', 0) for r in C_['r']])), C_['r'], n=6), C_.get('k', .006)))
     # the tufts: the root sunk into the skin, the bend just over it, the tip lifted off; flat along the skin
     tufts = []
     for r, m, t, w, th in S.get('tufts') or []:
@@ -617,7 +641,13 @@ def build_sdf(S):
     off = A(0, 0, (zf - E['re'] - E.get('sink', .004)) * g[2])
     ec = A(E['x'], 0, 0); eye = {**E, 'c': ec + off}
     M = S['mouth']
-    if N.get('comma'): nostril = Tube(N['comma'], [N.get('nr', .014)] * len(N['comma']), n=6)
+    if N.get('comma'):
+        if N.get('kind') == 'none':   # (an ungulate's comma: drawn on the skin, wide at its top, narrowing down its tail,
+            # opening into a deep hole behind its top)
+            P = onskin(core, N['comma'], -N['nr'] * .45); g0 = grad(core, P[:1])[0]; g0 /= np.linalg.norm(g0)
+            com = Tube(list(P), [N['nr'] * f for f in (1.2, 1.05, .8, .45, .25)][:len(P)], n=6); hole = Ell(P[0] - g0 * N['nr'] * 1.5, (N['nr'] * 1.05,) * 3)
+            nostril = lambda q: smin(com(q), hole(q), .01)
+        else: nostril = Tube(N['comma'], [N.get('nr', .014)] * len(N['comma']), n=6)
     def skin(p):
         q = mir(p) + off                              # (the head moved back so the eyes sit at z = 0)
         d = core(q)
@@ -633,10 +663,11 @@ def build_sdf(S):
                 d = ssub(d, nostril(q), .004)
             else:
                 nr = N.get('nr', .02); d = ssub(d, ellipsoid(q, A(*N['nostril']), (nr, nr * .55, nr * 1.1), rot((0, 0, 1), 28) @ rot((0, 1, 0), 25)), .006)
-            nb, nf = N['philtrum']   # the philtrum: a groove from the notch under the leather down to the lip
-            d = ssub(d, round_cone(q, A(0, nb, nf), A(0, my + .008, nf - .025), .01, .006), .006)
         elif N.get('kind') == 'none':   # a horse's or a goat's: long open nostrils on the muzzle's front corners
-            nr = N['nr']; d = ssub(d, ellipsoid(q, A(*N['nostril']), (nr * .55, nr * 1.2, nr), rot((0, 0, 1), -18) @ rot((0, 1, 0), 35)), .012)
+            if N.get('comma'): d = ssub(d, nostril(q), .008)
+            else: nr = N['nr']; d = ssub(d, ellipsoid(q, A(*N['nostril']), (nr * .55, nr * 1.2, nr), rot((0, 0, 1), -18) @ rot((0, 1, 0), 35)), .012)
+        if N.get('philtrum') and N.get('kind') in ('can', 'fel', 'none'):   # the philtrum: a groove from the notch under the nose down to the lip
+            nb, nf = N['philtrum']; d = ssub(d, round_cone(q, A(0, nb, nf), A(0, my + .008, nf - .025), .01, .006), .006)
         elif N.get('kind') == 'drag':   # a dragon's: on top of its raised nostril bumps, opening up and forward
             nr = N['nr']; d = ssub(d, ellipsoid(q, A(*N['nostril']), (nr, nr * .6, nr * 1.4), rot((1, 0, 0), -30)), .006)
         if S.get('furrow'):   # the furrow up the forehead between the brows

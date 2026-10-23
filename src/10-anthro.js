@@ -556,7 +556,7 @@ function syncHeadUI() {
 /* eyes (researched): kemono irises are oversized and glossy, often most of the visible eye; western semi-realistic
    eyes keep the white around a smaller iris; pupils follow the animal: round (canids, bears, big cats), vertical slit
    (house cats, foxes, reptiles), horizontal bar (horses, deer, goats). Prey animals' eyes sit more to the side. */
-const PUPILS = {redonda: [0, .42, .42], rendija: [1, .12, .85], horizontal: [2, .8, .28]};
+const PUPILS = {redonda: [0, .42, .42], rendija: [1, .12, .85], horizontal: [2, .6, .2]};
 const IRIS = {humano: .5, real: .62, toon: .78, kemono: 1.0};
 function eyeSetup(m, P) {
   const nV = FIG.meta.nV;
@@ -576,7 +576,7 @@ function eyeSetup(m, P) {
   m.geo.attributes.aEye.needsUpdate = true;
   const U = m.lib.uEye; if (!U) return;
   const lvl = m.body.kemo ?? 5, pup = r ? PUPILS[style === 'kemono' && r.pupil === 'rendija' ? 'redonda' : r.pupil] : PUPILS.redonda;
-  U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' ? 1 : 0;
+  U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' ? 1 : style === 'humano' ? 0 : .5;
   U.uPupil.value.set(pup[0], pup[1] * (style === 'kemono' ? 1.15 : 1), pup[2]);
 }
 
