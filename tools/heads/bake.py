@@ -97,7 +97,6 @@ def bake(hid, step=.006, budget=24000):
     out = {'label': cfg['label'], 'author': 'NEOPOSE', 'species': cfg['species'], 'style': cfg['style'], 'scale': cfg['scale'], 'eyes': True}
     S = HD.params(cfg.get('head', hid))
     if S.get('tufts'): out['ruff'] = True   # its cheeks carry their own tufts (the app adds none)
-    out['nose'] = HD.leather(S)             # the nose leather's reach round the snout's tip (0: none)
     return out
 
 if __name__ == '__main__':

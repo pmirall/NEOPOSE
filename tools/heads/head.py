@@ -176,7 +176,13 @@ def eye_ops(d, q, E):
     a = almond(x2, vu, E['w'], E['hu'], E['hl'])
     d = ssub(d, np.maximum(a, -vg - re * .5), E.get('soft', .006))
     lid = np.where(vu > 0, E.get('lu', .02), E.get('ll', .011)); off = np.where(vu > 0, E.get('lo', .9), .84)
-    return smin(d, np.hypot(np.abs(a) - lid * .35, vg - re * off) - lid, .01)
+    d = smin(d, np.hypot(np.abs(a) - lid * .35, vg - re * off) - lid, .01)
+    cr = E.get('crease')   # the fold over the upper lid: a groove along its arc, lifted off it, fading out to the corners
+    if cr:
+        w = E['w'] * 1.06; ya = vu - E.get('lu', .02) * 1.5 - cr[1]; arc = almond(x2, ya, w, E['hu'] * .9, E['hu'] * .9)
+        R = cr[0] * (1 - sstep(.55 * w, .92 * w, np.abs(x2))) * (ya > -.003) * (vg > -re * .2)
+        d = groove(d, np.where(R > 0, arc, 1.), .002 + R, .002)
+    return d
 
 # ---------- fur, ears, horns ----------
 def Tuft(root, mid, tip, w, t, normal):
@@ -259,7 +265,12 @@ def forms(S):
     a, b, ra, rb = S['neck']; ops.append(('+', Cone(a, b, ra, rb), .12))
     J = S.get('jaw')
     if J: ops.append(('+', Sections(J['st'], rf=J.get('rf', .03), rb=J.get('rb', .05)), J.get('k', .02)))
-    for f in S.get('masses', []): ops.append(('+', Ell(f['c'], f['r'], f.get('R')), f.get('k', .06)))
+    M = S['mouth']; Y0, Z0 = M['y'] + .009, M['corner'] - .02
+    def lipsafe(F):
+        """A form kept off the mouth's cut: in front of the corners nothing of it under the lip line (the cut there would
+        hand it to the jaw), behind them all of it (a heavy cheek fills out down to the jaw)."""
+        g = F.f; F.f = lambda q: smax(g(q), np.minimum(Y0 - q[:, 1], q[:, 2] - Z0), .01); return F
+    for f in S.get('masses', []): ops.append(('+', lipsafe(Ell(f['c'], f['r'], f.get('R'))), f.get('k', .06)))
     E = S['eye']
     if E.get('mound'):   # the flesh round the eyeball, so a short face still holds it (an ellipsoid along the gaze)
         sx, sy, sz, k = E['mound']; g, rg, up = eye_frame(E); R = np.stack([rg, up, g], 1)
@@ -337,7 +348,7 @@ WOLF = dict(
               comma=[(.022, -.078, .578), (.052, -.07, .574), (.078, -.08, .558), (.09, -.104, .534)], nr=.022, philtrum=(-.138, .565)),
     mouth=dict(y=-.26, corner=.02, smile=(.1, .05)),
     jawh=dict(hinge=-.3),
-    eye=dict(x=.2, re=.11, yaw=14, pitch=-2, w=.108, hu=.047, hl=.042, tilt=12, shift=.12, sink=.004, lu=.016, ll=.007, lo=.86),
+    eye=dict(x=.2, re=.11, yaw=14, pitch=-2, w=.108, hu=.047, hl=.042, tilt=12, shift=.12, sink=.004, lu=.016, ll=.007, lo=.86, crease=(.006, .008)),
     ears=dict(base=(.24, .34, -.33), out=16, back=8, turn=-14, H=.52, W=.4, D=.27, lean=.16, rim=.035),
     tufts=[((.34, .03, -.21), (.42, -.01, -.32), (.52, -.04, -.45), .11, .03),
            ((.36, -.11, -.19), (.45, -.16, -.3), (.56, -.21, -.41), .12, .032),
@@ -345,22 +356,23 @@ WOLF = dict(
            ((.29, -.37, -.15), (.36, -.45, -.24), (.41, -.54, -.32), .09, .026)],
     neck=((0, -.32, -.26), (0, -1.05, -.21), .2, .19))
 CAT = dict(
-    head=dict(rf=.05, rb=.04, st=[muz(.3, -.085, .072, -.2), muz(.23, -.035, .125, -.2), cran(.13, .055, .235, -.05, -.205),
-        cran(.05, .12, .3, -.04, -.215), cran(-.06, .24, .37, -.04, -.3), cran(-.19, .37, .41, -.02, -.38), cran(-.33, .45, .4, .02, -.4),
-        cran(-.46, .42, .35, .04, -.32), cran(-.57, .32, .27, .04, -.21), cran(-.64, .17, .15, .04, -.09)]),
+    head=dict(rf=.05, rb=.04, st=[muz(.3, -.085, .072, -.2), muz(.23, -.035, .125, -.2), cran(.13, .055, .25, -.03, -.205),
+        cran(.05, .12, .31, -.03, -.215), cran(-.06, .25, .38, -.02, -.3), cran(-.19, .38, .43, .03, -.38), cran(-.33, .45, .42, .06, -.4),
+        cran(-.46, .42, .37, .06, -.32), cran(-.57, .32, .28, .05, -.21), cran(-.64, .17, .15, .04, -.09)]),
     jaw=dict(k=.008, rf=.035, rb=.06, st=[jaw(.25, .035, -.25, -.195), jaw(.17, .075, -.31, -.195), jaw(.06, .125, -.4, -.195),
         jaw(-.1, .18, -.52, -.2), jaw(-.22, .19, -.54, -.22)]),
-    pads=[dict(c=(.06, -.148, .245), r=(.072, .058, .068), k=.02)],
-    brow=dict(pts=[(.1, .115, .115), (.18, .145, .095), (.26, .13, .05), (.31, .08, -.02)], r=[.022, .03, .026, .016], sq=.7, k=.03),
+    pads=[dict(c=(.062, -.148, .245), r=(.08, .062, .072), k=.02)],
+    masses=[dict(c=(.21, -.15, -.04), r=(.15, .13, .15), k=.07), dict(c=(-.21, -.15, -.04), r=(.15, .13, .15), k=.07)],
+    brow=dict(pts=[(.1, .115, .115), (.18, .145, .095), (.26, .13, .05), (.31, .08, -.02)], r=[.016, .022, .019, .012], sq=.7, k=.03),
     nose=dict(kind='fel', pts=[(.052, -.045, .24), (.056, -.053, .305), (.03, -.09, .322), (0, -.108, .32), (0, -.055, .245)], r=.016, k=.012,
               comma=[(.018, -.075, .322), (.034, -.073, .315), (.045, -.083, .3)], nr=.009, philtrum=(-.105, .31)),
     mouth=dict(y=-.2, corner=.03, smile=(.08, .03)),
     jawh=dict(hinge=-.28),
-    eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.118, hu=.064, hl=.056, tilt=14, shift=.1, sink=.004, lu=.014, ll=.007, lo=.86, mound=(1.45, 1.3, 1.02, .06)),
-    ears=dict(base=(.22, .34, -.22), out=18, back=4, turn=-18, H=.44, W=.42, D=.22, lean=.1, rim=.035),
-    tufts=[((.35, -.06, -.16), (.43, -.11, -.27), (.52, -.15, -.37), .1, .03),
-           ((.34, -.19, -.15), (.42, -.25, -.25), (.49, -.32, -.33), .095, .028),
-           ((.3, -.31, -.14), (.36, -.38, -.22), (.41, -.46, -.28), .08, .025)],
+    eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.12, hu=.054, hl=.054, tilt=12, shift=.1, sink=.004, lu=.016, ll=.007, lo=.86, mound=(1.45, 1.3, .96, .06)),
+    ears=dict(base=(.25, .34, -.23), out=20, back=4, turn=-18, H=.45, W=.44, D=.22, lean=.1, rim=.035),
+    tufts=[((.33, -.1, -.14), (.42, -.14, -.2), (.5, -.17, -.26), .1, .03),
+           ((.33, -.21, -.13), (.41, -.26, -.18), (.48, -.31, -.23), .1, .03),
+           ((.3, -.31, -.12), (.37, -.37, -.16), (.42, -.43, -.2), .085, .026)],
     neck=((0, -.32, -.24), (0, -1.05, -.22), .2, .19))
 BIGCAT = dict(
     head=dict(rf=.06, rb=.04, st=[muz(.46, -.065, .1, -.27), muz(.38, -.022, .165, -.27), muz(.28, .018, .205, -.27), muz(.17, .055, .235, -.27),
@@ -368,7 +380,8 @@ BIGCAT = dict(
         cran(-.46, .42, .39, .04, -.32), cran(-.58, .31, .3, .04, -.2), cran(-.66, .16, .16, .04, -.08)]),
     jaw=dict(k=.008, rf=.045, rb=.06, st=[jaw(.37, .065, -.375, -.265), jaw(.28, .105, -.425, -.265), jaw(.15, .15, -.48, -.265),
         jaw(0, .2, -.53, -.265), jaw(-.15, .23, -.555, -.28), jaw(-.26, .23, -.55, -.3)]),
-    pads=[dict(c=(.085, -.19, .385), r=(.1, .075, .085), k=.03)],
+    pads=[dict(c=(.085, -.19, .37), r=(.1, .075, .085), k=.03)],
+    masses=[dict(c=(.25, -.17, -.09), r=(.16, .15, .18), k=.08), dict(c=(-.25, -.17, -.09), r=(.16, .15, .18), k=.08)],
     brow=dict(pts=[(.08, .1, .15), (.15, .13, .13), (.23, .137, .1), (.3, .11, .04), (.34, .06, -.04)], r=[.03, .04, .042, .034, .022], sq=.7, k=.035),
     furrow=(.1, .24, .008),
     nose=dict(kind='fel', pts=[(.1, -.005, .36), (.105, -.012, .438), (.075, -.05, .462), (0, -.09, .466), (0, -.02, .37)], r=.022, k=.015,
@@ -377,8 +390,9 @@ BIGCAT = dict(
     jawh=dict(hinge=-.3),
     eye=dict(x=.2, re=.1, yaw=10, pitch=-2, w=.1, hu=.05, hl=.044, tilt=8, shift=.08, sink=.004, lu=.015, ll=.007, lo=.86, mound=(1.4, 1.25, 1.0, .06)),
     ears=dict(base=(.28, .33, -.26), out=26, back=6, turn=-12, H=.25, W=.3, D=.16, lean=.04, rim=.035, round_=.9),
-    tufts=[((.38, -.04, -.17), (.48, -.09, -.28), (.6, -.13, -.38), .12, .032), ((.37, -.18, -.16), (.47, -.25, -.26), (.58, -.32, -.35), .12, .03),
-           ((.32, -.31, -.14), (.4, -.39, -.23), (.47, -.47, -.3), .1, .028)],
+    tufts=[((.38, -.08, -.15), (.51, -.13, -.23), (.66, -.17, -.31), .13, .032),
+           ((.37, -.2, -.14), (.5, -.27, -.21), (.63, -.33, -.28), .13, .032),
+           ((.33, -.31, -.13), (.44, -.39, -.19), (.54, -.47, -.25), .11, .028)],
     neck=((0, -.32, -.26), (0, -1.05, -.21), .22, .2))
 BEAR = dict(
     head=dict(rf=.05, rb=.04, st=[muz(.47, -.075, .1, -.27), muz(.38, -.035, .14, -.27), muz(.26, .01, .18, -.27), muz(.14, .055, .22, -.27),
@@ -416,36 +430,38 @@ COON = dict(
            ((.34, -.31, -.13), (.41, -.39, -.21), (.48, -.47, -.27), .085, .026)],
     neck=((0, -.32, -.24), (0, -1.05, -.21), .2, .19))
 RABBIT = dict(
-    head=dict(rf=.07, rb=.04, st=[muz(.36, -.085, .075, -.2), muz(.29, -.035, .125, -.2), muz(.21, .02, .165, -.2), cran(.12, .1, .23, -.06, -.21),
+    head=dict(rf=.08, rb=.04, st=[muz(.35, -.075, .09, -.2), muz(.29, -.03, .13, -.2), muz(.21, .02, .165, -.2), cran(.12, .1, .23, -.06, -.21),
         cran(.03, .19, .3, -.05, -.25), cran(-.09, .3, .35, -.05, -.34), cran(-.23, .37, .36, -.03, -.42), cran(-.37, .39, .34, 0, -.42),
         cran(-.5, .34, .29, .03, -.32), cran(-.6, .24, .21, .04, -.2), cran(-.66, .12, .11, .04, -.08)]),
     jaw=dict(k=.008, rf=.04, rb=.06, st=[jaw(.28, .035, -.245, -.195), jaw(.2, .075, -.3, -.195), jaw(.08, .125, -.39, -.195),
         jaw(-.06, .17, -.5, -.2), jaw(-.2, .18, -.54, -.22)]),
-    pads=[dict(c=(.055, -.14, .3), r=(.07, .058, .065), k=.025)],
+    pads=[dict(c=(.062, -.135, .3), r=(.082, .066, .072), k=.025)],
     masses=[dict(c=(.21, -.105, .02), r=(.14, .085, .15), k=.07), dict(c=(-.21, -.105, .02), r=(.14, .085, .15), k=.07)],
     brow=dict(pts=[(.12, .1, .1), (.19, .13, .07), (.26, .12, .02)], r=[.016, .02, .014], sq=.7, k=.03),
     nose=dict(kind='fel', pts=[(.034, -.055, .31), (.036, -.06, .36), (.018, -.08, .368), (0, -.093, .366), (0, -.06, .315)], r=.012, k=.01,
               comma=[(.012, -.069, .368), (.024, -.067, .362), (.032, -.075, .35)], nr=.007, philtrum=(-.09, .358)),
     mouth=dict(y=-.2, corner=.08, smile=(.06, .02)),
     jawh=dict(hinge=-.22),
-    eye=dict(x=.22, re=.11, yaw=32, pitch=-2, w=.1, hu=.072, hl=.062, tilt=4, shift=0, sink=.004, lu=.013, ll=.007, lo=.86, mound=(1.45, 1.35, 1.02, .07)),
+    eye=dict(x=.22, re=.12, yaw=24, pitch=-2, w=.11, hu=.07, hl=.064, tilt=4, shift=0, sink=.004, lu=.014, ll=.007, lo=.86, mound=(1.45, 1.35, 1.0, .07)),
     ears=dict(base=(.13, .36, -.26), out=6, back=14, turn=-22, H=.85, W=.3, D=.14, lean=.08, rim=.04, round_=.6, fluff=2, fl=.5),
-    tufts=[((.34, -.12, -.12), (.4, -.17, -.2), (.47, -.21, -.27), .08, .026)],
+    tufts=[((.31, -.1, -.05), (.41, -.14, -.11), (.5, -.17, -.17), .1, .03),
+           ((.31, -.19, -.06), (.4, -.24, -.11), (.47, -.29, -.16), .095, .028),
+           ((.28, -.27, -.07), (.35, -.32, -.11), (.41, -.37, -.15), .08, .025)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 GOAT = dict(
-    head=dict(rf=.1, rb=.04, st=[muz(.7, -.17, .062, -.32), muz(.62, -.125, .082, -.32), muz(.48, -.065, .108, -.32), muz(.32, .0, .14, -.32),
-        muz(.17, .062, .185, -.32), cran(.05, .17, .27, -.07, -.33), cran(-.05, .3, .33, -.07, -.38), cran(-.18, .4, .34, -.05, -.45),
+    head=dict(rf=.09, rb=.04, st=[muz(.66, -.17, .058, -.32), muz(.58, -.115, .078, -.32), muz(.46, -.05, .105, -.32), muz(.32, .015, .14, -.32),
+        muz(.17, .07, .185, -.32), cran(.05, .17, .27, -.07, -.33), cran(-.05, .3, .33, -.07, -.38), cran(-.18, .4, .34, -.05, -.45),
         cran(-.32, .44, .32, 0, -.44), cran(-.44, .39, .27, .03, -.32), cran(-.53, .27, .2, .04, -.2), cran(-.58, .14, .11, .04, -.08)]),
-    jaw=dict(k=.008, rf=.05, rb=.06, st=[jaw(.64, .04, -.375, -.315), jaw(.5, .065, -.41, -.315), jaw(.3, .095, -.45, -.315),
+    jaw=dict(k=.008, rf=.05, rb=.06, st=[jaw(.6, .042, -.37, -.315), jaw(.48, .065, -.405, -.315), jaw(.3, .095, -.45, -.315),
         jaw(.1, .13, -.5, -.315), jaw(-.08, .17, -.55, -.32), jaw(-.2, .17, -.55, -.33)]),
     brow=dict(pts=[(.1, .1, .12), (.18, .12, .09), (.26, .1, .02), (.3, .05, -.06)], r=[.024, .03, .026, .016], sq=.7, k=.035),
-    nose=dict(kind='none', nostril=(.05, -.18, .69), nr=.022),
+    nose=dict(kind='none', nostril=(.048, -.18, .65), nr=.022),
     mouth=dict(y=-.32, corner=.3, smile=(.06, .02)),
     jawh=dict(hinge=-.22),
     eye=dict(x=.24, re=.1, yaw=36, pitch=-2, w=.08, hu=.054, hl=.048, tilt=0, shift=0, sink=.004, lu=.016, ll=.008, lo=.86, mound=(1.5, 1.35, 1.0, .08)),
     ears=dict(base=(.24, .2, -.2), out=72, back=10, turn=-40, H=.34, W=.18, D=.12, lean=.04, rim=.03, fluff=2, fl=.7),
     horns=dict(base=(.11, .36, -.08), d0=(.15, 1, -.3), d1=(.1, -.15, -1), R=.32, sweep=125, r0=.055, r1=.012),
-    goatee=((0, -.37, .6), (0, -.45, .61), (0, -.53, .64), .05, .03),
+    goatee=((0, -.36, .55), (0, -.44, .57), (0, -.53, .6), .045, .035),
     neck=((0, -.32, -.24), (0, -1.05, -.21), .19, .18))
 HORSE = dict(
     head=dict(rf=.11, rb=.04, st=[muz(.98, -.17, .14, -.42), muz(.9, -.13, .155, -.42), muz(.78, -.095, .145, -.42), muz(.62, -.055, .13, -.42),
@@ -454,7 +470,7 @@ HORSE = dict(
         cran(-.51, .1, .1, 0, -.1)]),
     jaw=dict(k=.008, rf=.08, rb=.06, st=[jaw(.93, .11, -.56, -.415), jaw(.8, .1, -.56, -.415), jaw(.6, .085, -.53, -.415), jaw(.38, .1, -.56, -.415),
         jaw(.16, .15, -.6, -.415), jaw(0, .2, -.64, -.42), jaw(-.15, .22, -.65, -.44), jaw(-.28, .2, -.6, -.46)]),
-    masses=[dict(c=(.2, -.37, -.14), r=(.13, .22, .24), k=.08), dict(c=(-.2, -.37, -.14), r=(.13, .22, .24), k=.08)],
+    masses=[dict(c=(.2, -.36, -.16), r=(.145, .24, .26), k=.08), dict(c=(-.2, -.36, -.16), r=(.145, .24, .26), k=.08)],
     brow=dict(pts=[(.1, .08, .12), (.18, .1, .09), (.26, .08, .02), (.3, .03, -.06)], r=[.024, .03, .026, .016], sq=.7, k=.035),
     nose=dict(kind='none', nostril=(.105, -.26, .97), nr=.055),
     mouth=dict(y=-.42, corner=.45, smile=(.06, .02)),
@@ -511,7 +527,8 @@ SPECIES = {
                ears=dict(base=(.29, .33, -.28), round_=1, H=.21, W=.26, D=.15, out=30), tufts=None),
   'leopardo': dict(fam='felino', xf=dict(mz=.84, mw=.9, sk=.96), eye=dict(re=.108, w=.106, hu=.056, hl=.048, tilt=10),
                    ears=dict(base=(.27, .34, -.26), round_=.9, H=.24, W=.28, D=.15, out=24),
-                   tufts=[((.36, -.05, -.16), (.45, -.1, -.26), (.56, -.14, -.35), .11, .03), ((.34, -.19, -.15), (.43, -.26, -.24), (.52, -.33, -.32), .1, .028)]),
+                   tufts=[((.36, -.07, -.15), (.47, -.12, -.22), (.59, -.16, -.29), .11, .03), ((.35, -.19, -.14), (.46, -.26, -.2), (.56, -.32, -.26), .11, .03),
+                          ((.32, -.3, -.13), (.41, -.37, -.18), (.49, -.44, -.23), .09, .026)]),
   'oso': dict(fam='oso'),
   'mapache': dict(fam='mapache'),
   'panda': dict(fam='mapache', xf=dict(mz=.8, sk=1.04), ears=dict(base=(.27, .36, -.26), round_=.6, H=.32, W=.36, out=22)),
@@ -555,13 +572,18 @@ def params(sp):
     seat(P)
     return P
 
-def leather(P):
-    """How far round the snout's tip its nose leather reaches (head heights): a canid's or a bear's wide pad, a cat's small
-    one; none on a horse, a goat or a dragon, whose muzzles are skin or scales to the front."""
-    N = P['nose']
-    if N.get('kind') == 'can' and N.get('ells'): return round(.9 * max(r[0] for _, r in N['ells']), 3)
-    if N.get('kind') == 'fel' and N.get('pts'): return round(.85 * max(abs(x) for x, _, _ in N['pts']) + N.get('r', .02), 3)
-    return 0.
+def leather(N):
+    """The nose leather as an ellipsoid round the sculpted nose (its box: centre and half extents, design frame), or
+    None: a canid's or a bear's wide pad, a cat's small triangle; none on a horse, a goat or a dragon, whose muzzles are
+    skin or scales to the front."""
+    if N.get('kind') == 'can' and N.get('ells'):
+        lo = np.min([A(*c) - A(*r) for c, r in N['ells']], 0); hi = np.max([A(*c) + A(*r) for c, r in N['ells']], 0)
+    elif N.get('kind') == 'fel' and N.get('pts'):
+        P = np.array(sym(*N['pts']), np.float32); r = N.get('r', .02); lo, hi = P.min(0) - r, P.max(0) + r
+    else: return None
+    c, r = (lo + hi) / 2, (hi - lo) / 2 + .004
+    c[2] += .3 * r[2]; r[2] *= .7   # (its back blends into the bridge and the pads, which are fur)
+    return c, r
 
 def seat(P):
     """The mouth's cut is a plane at the lip line: in front of the corners nothing of the upper lip may hang under it
@@ -641,6 +663,8 @@ def build_sdf(S):
     oz = float(off[2]); jaw_bot = min(p[1] for _, sec in S['jaw']['st'] for p in sec)
     L = dict(eyeL=[E['x'], 0., 0.], eyeR=[-E['x'], 0., 0.], mouthY=float(my), hingeZ=float(S['jawh']['hinge'] - oz),
              neck=[0., float(jaw_bot + .02), float(S['neck'][0][2] - oz)], eyeR_=float(E['re']), eyeYaw=float(E['yaw']))
+    le = leather(N)   # (moved with the head, as everything is: the eyes stay at z = 0)
+    if le: L['nose'] = [float(v) for v in (le[0] - off)] + [float(v) for v in le[1]]
     return dict(skin=skin, ear=ear_w, horns=horns, eyes=[(ec, E['re']), (ec * A(-1, 1, 1), E['re'])], L=L, oz=oz, jaw_bot=jaw_bot)
 
 def build(sp, step=.006):
@@ -661,6 +685,7 @@ def build(sp, step=.006):
     V, EV, HV = V * u, EV * u, HV * u
     for k in ('eyeL', 'eyeR', 'neck'): L[k] = [float(v * u) for v in L[k]]
     for k in ('mouthY', 'hingeZ', 'eyeR_'): L[k] = float(L[k] * u)
+    if 'nose' in L: L['nose'] = [float(v * u) for v in L['nose']]
     L['crown'], L['chin'] = crown * u, D['jaw_bot'] * u
     mid = (np.abs(V[:, 0]) < .03) & (V[:, 1] > L['mouthY']) & (V[:, 1] < .05)
     tip = V[mid][np.argmax(V[mid][:, 2])]; L['tip'] = [0., float(tip[1]), float(tip[2])]

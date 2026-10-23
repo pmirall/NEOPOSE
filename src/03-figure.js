@@ -114,7 +114,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
       // the eyes and on the nose as polygons the ink does not fit; the rings and the centre line faint, guides under
       // the contour and the ink of the interior lines. Silueta is flat and has no coat either)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        noseF = max(fwidth(length(vFurP - uNose.xyz)), 1e-6);${mat.isMeshBasicMaterial ? (uFur ? `
+        noseF = max(fwidth(noseD()), 1e-6);${mat.isMeshBasicMaterial ? (uFur ? `
         diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb), step(6.0, -vEye.w));  // (but the inside of an open mouth, toned below)` : '') : `
         diffuseColor.rgb = mix(diffuseColor.rgb, furPaint(diffuseColor.rgb) * .58, ${uFur ? 'max(uFurOn, step(6.0, -vEye.w))' : 'uFurOn'});`}`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>

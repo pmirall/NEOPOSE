@@ -73,7 +73,7 @@ function coatOf(b) {
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
-const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
+const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
   uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25}});
 const FUR_OFF = makeFurU();
 function applyCoat(m) {
@@ -83,7 +83,7 @@ function applyCoat(m) {
   U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
 }
 const FUR_GLSL = `
-  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose;
+  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR;
   varying vec3 vFurP;
   float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
   float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -99,8 +99,10 @@ const FUR_GLSL = `
   // pixel, a rounded shape where the coarse mesh's own patch of vertices was a star (or, on a sculpted head, a blot);
   // only on that patch and the triangles round it, where the kinds meet, and above the lips (vLip: a snout whose tip
   // is at the mouth, a dragon's, had its nose run down onto the jaw) (noseF: the sphere's edge one pixel soft)
+  // (an ellipsoid where the sculpted head says how far its nose reaches each way: uNoseR, its radii over the largest)
   float noseF;
-  float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 && vLip >= 0.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, length(vFurP - uNose.xyz)) : 0.0; }
+  float noseD() { return length((vFurP - uNose.xyz) / uNoseR); }
+  float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 && vLip >= 0.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, noseD()) : 0.0; }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
     float kind = floor(w) - 1.0, fr = fract(w) - .5, nose = 0.0;
@@ -235,16 +237,19 @@ function furAttrsBody(m, P) {
 }
 // the nose (see noseMask) and the mouth's level (the closed mouth's line in the flat styles), in the space vFurP is
 // in (position / size); no tip, no nose
-function noseAt(m, tip, r, lipY) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
-  if (tip) U.uNose.value.set(tip[0] * k, tip[1] * k, tip[2] * k, r * k), U.uLipY.value = lipY * k; else U.uNose.value.set(0, 0, 0, 0); }
+function noseAt(m, tip, r, lipY, R = [1, 1, 1]) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
+  if (tip) U.uNose.value.set(tip[0] * k, tip[1] * k, tip[2] * k, r * k), U.uLipY.value = lipY * k; else U.uNose.value.set(0, 0, 0, 0);
+  U.uNoseR.value.set(...R); }
 // the sculpted head: muzzle, cheeks and throat; the eye band; the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
   const d = hs.d, n = d.n, Q = hs.Q, E = hs.E, s = hs.s, L = d.L, A = geo.attributes.aEye.array;
   const earTop = {L: -Infinity, R: -Infinity}, eb = hs.earBase || {};
   for (let i = 0; i < n; i++) if (d.ear[i] > 128) { const k = Q[i * 3] > 0 ? 'L' : 'R'; earTop[k] = Math.max(earTop[k], Q[i * 3 + 1]); }
-  const tip = [E.x + s * L.tip[0], E.y + s * L.tip[1], E.z + s * L.tip[2] * (hs.kSn || 1)], chinY = E.y + s * L.chin;
-  // the nose leather: as far round the tip as the sculpt's own (its catalog entry), none on a muzzle of skin or scales
-  const nr = ((HEAD_CATALOG[d.id] || {}).nose ?? .075) * s;
+  const chinY = E.y + s * L.chin;
+  // the nose leather: the sculpt's own nose (an ellipsoid round it, L.nose: centre and radii, the snout's level
+  // shortening it with the rest of the muzzle), none on a muzzle of skin or scales
+  const N = L.nose, kz = z => z > 0 ? hs.kSn || 1 : 1, nc = N && [E.x + s * N[0], E.y + s * N[1], E.z + s * N[2] * kz(N[2])], nR = N && [s * N[3], s * N[4], s * N[5] * kz(N[2])];
+  const leather = (x, y, z) => ((x - nc[0]) / nR[0]) ** 2 + ((y - nc[1]) / nR[1]) ** 2 + ((z - nc[2]) / nR[2]) ** 2 < 1.3;
   for (let i = 0; i < n; i++) {
     const o = i * 4; if (A[o + 3] > .5) continue;  // an eye
     const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2];
@@ -255,10 +260,10 @@ function furAttrsHead(m, geo, hs) {
     let dm = -(1 - sstep(.06 * s, .14 * s, Math.abs(y - E.y))) * sstep(E.z - .38 * s, E.z - .12 * s, z) * (1 - sstep(E.z + .08 * s, E.z + .22 * s, z)), tp = 0, kind = 1;
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly *= 1 - e; dm *= 1 - e; }
-    if (nr > 0 && Math.hypot(x - tip[0], y - tip[1], z - tip[2]) < nr && z > tip[2] - .8 * nr) kind = 2;
+    if (N && leather(x, y, z)) kind = 2;
     furPack(A, o, belly, 0, tp, kind, dm);
   }
-  noseAt(m, nr > 0 ? tip : null, nr, E.y + s * L.mouthY);
+  const nr = N ? Math.max(...nR) : 0; noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined);
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
