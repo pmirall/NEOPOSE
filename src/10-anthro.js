@@ -344,9 +344,12 @@ function mouthParts(m) {
         if (N.x * base.x + N.z * (base.z - Cz) < 0) N.negate();
         const lean = shape === 'i' || shape === 'f' ? .05 : shape === 'c' ? .08 : 0, dep = w * (shape === 'i' || shape === 'f' ? .6 : shape === 'p' || shape === 'k' ? .42 : .9);
         base.addScaledVector(N, -Math.max(0, dep + lean * len + .005 * h - lt));
-        // also where the edge comes to a point at the front (a dragon's tapering snout), the arch there lying nearer the
-        // edge than along the sides: moved in towards the middle of the mouth
-        for (let it = 0; it < 8 && inside(base.x, base.z) < dep + .004 * h; it++) base.add(new V3(-base.x, 0, Cz - base.z).setLength(.3 * dep));
+        // also where the edge comes to a point at the front (a dragon's tapering snout) or dents in where the snout's side
+        // meets the corner of the mouth, the arch there lying nearer the edge than along the sides: its root's footprint
+        // (along the arch and across it) moved in towards the middle of the mouth until it is all inside
+        const fp = () => Math.min(inside(base.x, base.z) - dep, inside(base.x + T.x * w, base.z + T.z * w), inside(base.x - T.x * w, base.z - T.z * w),
+          inside(base.x + N.x * dep, base.z + N.z * dep), inside(base.x - N.x * dep, base.z - N.z * dep));
+        for (let it = 0; it < 10 && fp() < .004 * h; it++) base.add(new V3(-base.x, 0, Cz - base.z).setLength(.3 * dep));
         const ax = V.clone().addScaledVector(N, lean).normalize(), c = shape === 'c' ? .28 * len : shape === 'r' ? .32 * len : 0;
         // cones curve back to a point, incisors to a rounded peg (a horse's and a rabbit's to a straight chisel edge),
         // blades to a point; cheek teeth are square blocks with a flat grinding crown

@@ -652,7 +652,7 @@ def stylise(P, tip=.52, drop=.14, lip=.1, mw=1.4, crown=.58, skull=.5, face=.36,
     B = copy.deepcopy(STY_BROW); B['pts'] = [(x * ex / STY_EYE['x'], y, z) for x, y, z in B['pts']]; P['brow'] = B; P.pop('furrow', None)
     M['y'] = L2; M['corner'] = max(f(M['corner']), .1)
     # (its corners just outside the snout's root, as illustrators draw the mouth: not out across the cheeks)
-    M['xc'] = 1.1 * max(x for x, _ in snout[0][1]) * mw
+    M['xc'] = max(x for x, _ in snout[0][1]) * mw
 
 def params(sp):
     S = SPECIES[sp]; P = copy.deepcopy(FAMS[S.get('fam', 'lobo')])
