@@ -567,9 +567,10 @@ const IRIS = {humano: .5, real: .62, toon: .78, kemono: 1.0};
 function eyeSetup(m, P) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aEye) m.geo.setAttribute('aEye', new THREE.BufferAttribute(new Float32Array(nV * 4), 4));
-  // (a sculpted head's own style when the body names none: a stylised sculpt's big eyes are drawn as a toon's)
+  // (a sculpted head draws its eyes in its own style, whatever the body's proportions round it: a stylised sculpt's big
+  // eyes as a toon's)
   const hm = typeof headModelFor === 'function' && headModelFor(m.body), hc = hm && HEAD_CATALOG[hm];
-  const A = m.geo.attributes.aEye.array, r = HEAD_RECIPES[headSp(m.body)], style = r ? (m.body.headStyle || (hc && hc.style) || 'real') : 'humano';
+  const A = m.geo.attributes.aEye.array, r = HEAD_RECIPES[headSp(m.body)], style = r ? ((hc && hc.eyeStyle) || m.body.headStyle || 'real') : 'humano';
   const cen = {1: [0, 0, 0, 0], [-1]: [0, 0, 0, 0]};
   for (let i = 0; i < nV; i++) if (FIG.eye[i]) { const s = P[i * 3] > 0 ? 1 : -1, c = cen[s]; c[0] += P[i * 3]; c[1] += P[i * 3 + 1]; c[2] += P[i * 3 + 2]; c[3]++; }
   const side = r && r.side ? 28 * DEG : 6 * DEG;

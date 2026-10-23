@@ -5,10 +5,11 @@
   "species": [
    "lobo"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.15,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "perro": {
   "label": "Perro",
@@ -16,10 +17,11 @@
   "species": [
    "perro"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.15,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "zorro": {
   "label": "Zorro",
@@ -27,10 +29,11 @@
   "species": [
    "zorro"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.12,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "coyote": {
   "label": "Coyote",
@@ -38,10 +41,11 @@
   "species": [
    "coyote"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.12,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "hiena": {
   "label": "Hiena",
@@ -49,10 +53,11 @@
   "species": [
    "hiena"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.15,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "gato": {
   "label": "Gato",
@@ -60,10 +65,11 @@
   "species": [
    "gato"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.1,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "tigre": {
   "label": "Tigre",
@@ -71,10 +77,11 @@
   "species": [
    "tigre"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.18,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "leon": {
   "label": "León",
@@ -82,9 +89,10 @@
   "species": [
    "leon"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.2,
-  "eyes": true
+  "eyes": true,
+  "eyeStyle": "toon"
  },
  "leopardo": {
   "label": "Leopardo de las nieves",
@@ -92,10 +100,11 @@
   "species": [
    "leopardo"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.12,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "oso": {
   "label": "Oso",
@@ -103,10 +112,11 @@
   "species": [
    "oso"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.2,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "mapache": {
   "label": "Mapache",
@@ -114,10 +124,11 @@
   "species": [
    "mapache"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.08,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "panda": {
   "label": "Panda rojo",
@@ -125,10 +136,11 @@
   "species": [
    "panda"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.08,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "mofeta": {
   "label": "Mofeta",
@@ -136,10 +148,11 @@
   "species": [
    "mofeta"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.05,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "conejo": {
   "label": "Conejo",
@@ -147,10 +160,11 @@
   "species": [
    "conejo"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.05,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "cabra": {
   "label": "Cabra",
@@ -158,9 +172,10 @@
   "species": [
    "cabra"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.12,
-  "eyes": true
+  "eyes": true,
+  "eyeStyle": "toon"
  },
  "ciervo": {
   "label": "Ciervo",
@@ -168,9 +183,10 @@
   "species": [
    "ciervo"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.12,
-  "eyes": true
+  "eyes": true,
+  "eyeStyle": "toon"
  },
  "caballo": {
   "label": "Caballo",
@@ -178,10 +194,11 @@
   "species": [
    "caballo"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.1,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "dragon": {
   "label": "Dragón",
@@ -189,10 +206,11 @@
   "species": [
    "dragon"
   ],
-  "style": "toon",
+  "style": "real",
   "scale": 1.15,
   "eyes": true,
-  "ruff": true
+  "ruff": true,
+  "eyeStyle": "toon"
  },
  "zorro_k": {
   "label": "Zorro (kemono)",

@@ -6,26 +6,27 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import head as HD
 OUT = os.path.join(HERE, '..', '..', 'app', 'heads')
 
-# id: species it is the head of (the first names its mouth and eyes), label, style, size against the body's head
+# id: species it is the head of (the first names its mouth and eyes), label, style (the body's proportions round it:
+# a kemono head's are rounder, see effBody), size against the body's head
 CATALOG = {
-  'lobo':     dict(species=['lobo'], label='Lobo', style='toon', scale=1.15),
-  'perro':    dict(species=['perro'], label='Perro', style='toon', scale=1.15),
-  'zorro':    dict(species=['zorro'], label='Zorro', style='toon', scale=1.12),
-  'coyote':   dict(species=['coyote'], label='Coyote', style='toon', scale=1.12),
-  'hiena':    dict(species=['hiena'], label='Hiena', style='toon', scale=1.15),
-  'gato':     dict(species=['gato'], label='Gato', style='toon', scale=1.1),
-  'tigre':    dict(species=['tigre'], label='Tigre', style='toon', scale=1.18),
-  'leon':     dict(species=['leon'], label='León', style='toon', scale=1.2),
-  'leopardo': dict(species=['leopardo'], label='Leopardo de las nieves', style='toon', scale=1.12),
-  'oso':      dict(species=['oso'], label='Oso', style='toon', scale=1.2),
-  'mapache':  dict(species=['mapache'], label='Mapache', style='toon', scale=1.08),
-  'panda':    dict(species=['panda'], label='Panda rojo', style='toon', scale=1.08),
-  'mofeta':   dict(species=['mofeta'], label='Mofeta', style='toon', scale=1.05),
-  'conejo':   dict(species=['conejo'], label='Conejo', style='toon', scale=1.05),
-  'cabra':    dict(species=['cabra'], label='Cabra', style='toon', scale=1.12),
-  'ciervo':   dict(species=['ciervo'], label='Ciervo', style='toon', scale=1.12),
-  'caballo':  dict(species=['caballo'], label='Caballo', style='toon', scale=1.1),
-  'dragon':   dict(species=['dragon'], label='Dragón', style='toon', scale=1.15),
+  'lobo':     dict(species=['lobo'], label='Lobo', style='real', scale=1.15),
+  'perro':    dict(species=['perro'], label='Perro', style='real', scale=1.15),
+  'zorro':    dict(species=['zorro'], label='Zorro', style='real', scale=1.12),
+  'coyote':   dict(species=['coyote'], label='Coyote', style='real', scale=1.12),
+  'hiena':    dict(species=['hiena'], label='Hiena', style='real', scale=1.15),
+  'gato':     dict(species=['gato'], label='Gato', style='real', scale=1.1),
+  'tigre':    dict(species=['tigre'], label='Tigre', style='real', scale=1.18),
+  'leon':     dict(species=['leon'], label='León', style='real', scale=1.2),
+  'leopardo': dict(species=['leopardo'], label='Leopardo de las nieves', style='real', scale=1.12),
+  'oso':      dict(species=['oso'], label='Oso', style='real', scale=1.2),
+  'mapache':  dict(species=['mapache'], label='Mapache', style='real', scale=1.08),
+  'panda':    dict(species=['panda'], label='Panda rojo', style='real', scale=1.08),
+  'mofeta':   dict(species=['mofeta'], label='Mofeta', style='real', scale=1.05),
+  'conejo':   dict(species=['conejo'], label='Conejo', style='real', scale=1.05),
+  'cabra':    dict(species=['cabra'], label='Cabra', style='real', scale=1.12),
+  'ciervo':   dict(species=['ciervo'], label='Ciervo', style='real', scale=1.12),
+  'caballo':  dict(species=['caballo'], label='Caballo', style='real', scale=1.1),
+  'dragon':   dict(species=['dragon'], label='Dragón', style='real', scale=1.15),
   'zorro_k':  dict(species=['zorro', 'lobo', 'perro'], label='Zorro (kemono)', style='kemono', scale=1.0),
 }
 
@@ -97,6 +98,7 @@ def bake(hid, step=.006, budget=24000):
     out = {'label': cfg['label'], 'author': 'NEOPOSE', 'species': cfg['species'], 'style': cfg['style'], 'scale': cfg['scale'], 'eyes': True}
     S = HD.params(cfg.get('head', hid))
     if S.get('tufts'): out['ruff'] = True   # its cheeks carry their own tufts (the app adds none)
+    if HD.SPECIES[cfg.get('head', hid)].get('fam') != 'kemono': out['eyeStyle'] = 'toon'   # stylised (head.py): its big eyes drawn as a toon's
     return out
 
 if __name__ == '__main__':
