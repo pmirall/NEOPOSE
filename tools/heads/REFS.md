@@ -70,25 +70,42 @@ Each family's animal head, as the generator first builds it (the stylisation bel
 
 ### Stylised
 
-Fitted on a body, the animal heads still read as animals' heads on a person: a long, boxy snout in front of a small
-braincase, with small eyes. So every head but the kemono fox is then turned into a character's head (`stylise` in
-`head.py`), the way anthro artists and VRChat-style avatar makers proportion one:
+Fitted on a body, the animal heads read as animals' heads on a person: a long, boxy snout coming straight out between
+the eyes, in front of a small braincase. Anthro illustrators build a character's head instead. A set of such
+illustrations was measured in front, three-quarter and profile views (canids, a hyena, a fox, felids, a goat):
+- the eye line about halfway down the head (0.48–0.55 of it from the top);
+- big eyes on the front of the face, almond-shaped under a heavy upper lid, their centres 0.4–0.5 apart;
+- the nose 0.15–0.25 under the eye line and 0.3–0.45 ahead of the eye (a cat's 0.17–0.25);
+- the mouth about 0.3 under the eye line, its corners under the eyes;
+- a broad muzzle, about as wide as the eyes are apart;
+- full cheeks, the widest part of the face, with fur flaring off them;
+- big ears on the top corners;
+- often a crest or a forelock on top.
+
+The figures carrying these heads are 6.8–7.4 heads tall, like ours.
+
+So every head but the kemono fox is turned into a character's head (`stylise` in `head.py`):
 - the braincase is a big ball, its front a broad face plane;
-- the eyes are set flush in that plane, big and looking to the front (a prey animal's a little further out), under a
-  soft brow;
-- the animal's snout springs from the plane's lower middle and is shortened, each family by its own amount
-  (`FAM_STYLE`);
-- the ears, cheek fur and horns move onto the bigger ball, and the ears grow a little.
+- the eyes are set flush in that plane, big and wide apart, under a heavy lid and a soft brow;
+- the snout springs from the plane's lower middle, short and broad;
+- the snout hangs low: its bridge slopes down from between the eyes to a nose under them, and the mouth and the jaw come
+  down with it;
+- full cheeks are laid either side of the face, and the jaw widens back towards them;
+- the ears, the cheek fur and the horns move onto the bigger ball;
+- a species may grow a mane on top (the hyena's crest).
 
-Each family keeps its own muzzle sections, jaw, nose, pads, fur and ears. Measured on the baked heads:
+Each family keeps its own muzzle sections, nose, pads, fur and ears; `FAM_STYLE` holds its amounts. Measured on the
+baked heads (the animal's head → the character's):
 
-| Family | Crown | Nose ahead of the eye | Eye radius |
-|---|---|---|---|
-| Canids, raccoons | 0.45 → 0.52 | 0.53–0.62 → 0.40–0.44 | 0.10–0.11 → 0.13 |
-| Cat | 0.46 → 0.53 | 0.29 → 0.26 | 0.12 → 0.13 |
-| Big cats | 0.45 → 0.51 | 0.41 → 0.30–0.31 | 0.09–0.10 → 0.13 |
-| Bear | 0.45 → 0.51 | 0.49 → 0.42 | 0.08 → 0.13 |
-| Rabbit | 0.43 → 0.52 | 0.38 → 0.27 | 0.13 |
-| Goat, deer | 0.44 → 0.49 | 0.66–0.70 → 0.54–0.59 | 0.11 → 0.14 |
-| Horse | 0.40 → 0.44 | 0.83 → 0.69 | 0.10 → 0.13 |
-| Dragon | 0.44 → 0.50 | 0.75 → 0.53 | 0.10 → 0.14 |
+| Family | Nose ahead of the eye | Nose under the eye | Mouth under the eye | Eye half spacing |
+|---|---|---|---|---|
+| Canids | 0.58 → 0.45 | 0.04 → 0.16 | 0.23 → 0.29 | 0.20 |
+| Hyena | 0.5 → 0.41 | 0.04 → 0.15 | 0.23 → 0.27 | 0.18 |
+| Cat | 0.29 → 0.31 | 0.08 → 0.15 | 0.17 → 0.22 | 0.21 |
+| Big cats | 0.41 → 0.31 | 0.17 → 0.22 | 0.24 → 0.29 | 0.21 |
+| Bear | 0.49 → 0.41 | 0.06 → 0.17 | 0.24 → 0.3 | 0.2 |
+| Raccoon | 0.51 → 0.4 | 0.06 → 0.15 | 0.22 → 0.28 | 0.2 |
+| Rabbit | 0.38 → 0.28 | 0.12 → 0.14 | 0.18 → 0.23 | 0.21 |
+| Goat, deer | 0.66–0.7 → 0.42–0.46 | 0.14–0.24 → 0.26–0.31 | 0.3 → 0.36 | 0.2 |
+| Horse | 0.83 → 0.46 | 0.28 → 0.37 | 0.36 → 0.41 | 0.18 |
+| Dragon | 0.75 → 0.44 | 0.19 → 0.24 | 0.25 → 0.31 | 0.21 |
