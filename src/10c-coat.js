@@ -35,8 +35,8 @@ const COATS = {
   gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422'},
   siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e'},
   esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86'},
-  tigre:     {label: 'Tigre de Bengala', for: ['tigre'], c: ['#d8822c', '#f6f0e5', '#1f1a17'], m: {belly: 1, stripes: 2, ears: 2, rings: 2}, le: '#c07a72'},
-  tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86'},
+  tigre:     {label: 'Tigre de Bengala', for: ['tigre'], c: ['#d8822c', '#f6f0e5', '#1f1a17'], m: {belly: 1, muzzle: 1, stripes: 2, ears: 2, rings: 2}, le: '#c07a72'},
+  tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, muzzle: 1, stripes: 2, rings: 2}, le: '#c98b86'},
   leon:      {label: 'León', for: ['leon'], c: ['#c99b5f', '#ebd8b6', '#4a3524'], m: {belly: 1, ears: 2, tail: 2}, tip: .14, le: '#5a3a30'},
   leopardo:  {label: 'Leopardo de las nieves', for: ['leopardo'], c: ['#d6d2ca', '#f3f1ec', '#46433f'], m: {belly: 1, rosettes: 2, tail: 2}, tip: .12, le: '#c98b86'},
   leopardo2: {label: 'Leopardo', for: ['leopardo', 'gato'], c: ['#d9a85b', '#f4ead7', '#2a221a'], m: {belly: 1, rosettes: 2}, le: '#2a2422'},
@@ -44,7 +44,7 @@ const COATS = {
   oso:       {label: 'Oso pardo', for: ['oso'], c: ['#6b4a32', '#8d674a', '#33241a'], m: {socks: 2}, sock: .7, le: '#211b18'},
   oso_po:    {label: 'Oso polar', for: ['oso'], c: ['#efeadf', '#f8f5ee', '#cfc6b4'], m: {}, le: '#1e1b1a'},
   panda_g:   {label: 'Panda gigante', for: ['oso'], c: ['#f3f1ec', '#f8f6f2', '#1e1c1b'], m: {socks: 2, ears: 2, mask: 2}, sock: .45, le: '#1e1c1b'},
-  mapache:   {label: 'Mapache', for: ['mapache'], c: ['#8a8784', '#e8e5e0', '#2b2928'], m: {belly: 1, mask: 2, rings: 2, socks: 2, tail: 2}, sock: .86, tip: .12, le: '#2b2524'},
+  mapache:   {label: 'Mapache', for: ['mapache'], c: ['#8a8784', '#e8e5e0', '#2b2928'], m: {belly: 1, muzzle: 1, mask: 2, ears: 1, rings: 2, socks: 2, tail: 2}, sock: .86, tip: .12, le: '#2b2524'},
   panda:     {label: 'Panda rojo', for: ['panda'], c: ['#b4532a', '#f2e8d8', '#35201a'], m: {belly: 2, muzzle: 1, socks: 2, ears: 1, rings: 1, mask: 1}, sock: .5, le: '#251c19'},
   mofeta:    {label: 'Mofeta', for: ['mofeta'], c: ['#1f1d1c', '#f2efea', '#141312'], m: {dorsal: 1, tail: 1}, tip: .35, le: '#2a2422'},
   conejo:    {label: 'Conejo gris', for: ['conejo'], c: ['#9c9288', '#efe9df', '#5a524a'], m: {belly: 1, tail: 1, ears: 2}, tip: 1, le: '#c98b86'},
@@ -73,7 +73,7 @@ function coatOf(b) {
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
-const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
+const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uNoseIn: {value: 0}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
   uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25}});
 const FUR_OFF = makeFurU();
 function applyCoat(m) {
@@ -83,7 +83,7 @@ function applyCoat(m) {
   U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
 }
 const FUR_GLSL = `
-  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR;
+  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR; uniform float uNoseIn;
   varying vec3 vFurP;
   float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
   float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -112,22 +112,29 @@ const FUR_GLSL = `
     if (kind > 5.5) return vec3(.74, .37, .41);                  // tongue
     if (kind > 4.5) return vec3(.97, .95, .9);                   // teeth
     #ifdef SKIN
-    // (round the nose the skin is fur, with no back line or mask, which the kinds' meeting read from the fraction)
+    // (round the nose the skin is fur, with no back line or mask, which the kinds' meeting read from the fraction;
+    // all mask, where the face's mask runs on round the nose: uNoseIn)
     nose = noseMask(w); if (w > 2.55 && w < 4.0) { kind = 1.0; fr = 0.0; }
+    if (uNoseIn > .5 && kind < 1.5 && noseD() < uNose.w * 1.6) fr = -.45;
     #endif
     if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
     if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
     if (kind > 1.5) return uFurLe;                               // nose and pads
     vec3 p = vFurP, c = uFurC0; float m, belly = max(vEye.x, 0.0), muz = max(-vEye.x, 0.0), dist = vEye.y, tip = vEye.z, dors = clamp(fr / .45, 0.0, 1.0), mask = clamp(-fr / .45, 0.0, 1.0);
     float onTail = step(1.5, tip), u = tip - 2.0, body = 1.0 - smoothstep(.3, .6, belly);
+    // (a sculpted head brings its own stripes, below 0 where the socks are measured; its spots come smaller)
+    float face = step(dist, -.02), fs = 1.0 + face;
     m = uFurM[0]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, belly));
     m = uFurM[1]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, muz));
     m = uFurM[6]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .7, dors));
     m = uFurM[7]; if (m > .5) { float s = sin(p.y * 64.0 + fNoise(p * 7.0) * 5.0 + fNoise(p * 2.5) * 6.0); float w = smoothstep(.58, .76, s + (fNoise(p * 16.0) - .5) * .7);
+      if (face > .5) w = smoothstep(.3, .6, (-dist - .05) / .95);
       c = mix(c, furSlot(m, c), w * body * (1.0 - onTail)); }
-    m = uFurM[8]; if (m > .5) { vec2 ce = fCell(p * 15.0); float r = .2 + .14 * ce.y; c = mix(c, furSlot(m, c), (1.0 - smoothstep(r - .05, r, ce.x)) * body); }
-    m = uFurM[9]; if (m > .5) { vec2 ce = fCell(p * 14.0); float ring = smoothstep(.16, .22, ce.x) * (1.0 - smoothstep(.34, .42, ce.x)) * step(.28, fNoise(p * 46.0));
-      float dot2 = 1.0 - smoothstep(.07, .11, fCell(p * 21.0 + 3.1).x); c = mix(c, furSlot(m, c), max(ring, dot2 * step(.6, ce.y)) * body); }
+    m = uFurM[8]; if (m > .5) { vec2 ce = fCell(p * 15.0 * fs); float r = .2 + .14 * ce.y; c = mix(c, furSlot(m, c), (1.0 - smoothstep(r - .05, r, ce.x)) * body); }
+    m = uFurM[9]; if (m > .5) { vec2 ce = fCell(p * 14.0 * fs); float ring = smoothstep(.16, .22, ce.x) * (1.0 - smoothstep(.34, .42, ce.x)) * step(.28, fNoise(p * 46.0 * fs));
+      float dot2 = 1.0 - smoothstep(.07, .11, fCell(p * 21.0 * fs + 3.1).x), v = max(ring, dot2 * step(.6, ce.y));
+      if (face > .5) v = 1.0 - smoothstep(.13 + .1 * ce.y, .18 + .1 * ce.y, ce.x);  // (solid spots on a face, as a leopard's)
+      c = mix(c, furSlot(m, c), v * body); }
     m = uFurM[2]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(uSock - .025, uSock + .025, dist));
     m = uFurM[3]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.3, .6, mask));
     m = uFurM[4]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.55, .7, tip) * (1.0 - onTail));
@@ -160,14 +167,15 @@ function furPaintJS(C, E, px, py, pz) {
   if (kind > 4.5) return [[.97, .95, .9], [.74, .37, .41], [.78, .52, .54], [.56, .31, .34], [.24, .11, .13]][Math.min(kind, 9) - 5];  // the mouth
   if (kind > 3.5) return [.86, .81, .7]; if (kind > 2.5) return mix(C.le, [.32, .29, .26], .45); if (kind > 1.5) return C.le;
   let c = C.c0, m; const belly = Math.max(E[0], 0), muz = Math.max(-E[0], 0), dist = E[1], tip = E[2], dors = clamp(fr / .45, 0, 1), mask = clamp(-fr / .45, 0, 1);
-  const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly);
+  const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly), face = dist <= -.02, fs = face ? 2 : 1;
   if ((m = M[0]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, belly));
   if ((m = M[1]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, muz));
   if ((m = M[6]) > .5) c = mix(c, slot(m, c), smooth(.35, .7, dors));
-  if ((m = M[7]) > .5) { const s = Math.sin(py * 64 + fNoiseJS(px * 7, py * 7, pz * 7) * 5 + fNoiseJS(px * 2.5, py * 2.5, pz * 2.5) * 6), ww = smooth(.58, .76, s + (fNoiseJS(px * 16, py * 16, pz * 16) - .5) * .7); c = mix(c, slot(m, c), ww * body * (1 - onTail)); }
-  if ((m = M[8]) > .5) { const ce = fCellJS(px * 15, py * 15, pz * 15), r = .2 + .14 * ce[1]; c = mix(c, slot(m, c), (1 - smooth(r - .05, r, ce[0])) * body); }
-  if ((m = M[9]) > .5) { const ce = fCellJS(px * 14, py * 14, pz * 14), ring = smooth(.16, .22, ce[0]) * (1 - smooth(.34, .42, ce[0])) * (fNoiseJS(px * 46, py * 46, pz * 46) >= .28 ? 1 : 0);
-    const dot2 = 1 - smooth(.07, .11, fCellJS(px * 21 + 3.1, py * 21 + 3.1, pz * 21 + 3.1)[0]); c = mix(c, slot(m, c), Math.max(ring, dot2 * (ce[1] >= .6 ? 1 : 0)) * body); }
+  if ((m = M[7]) > .5) { const s = Math.sin(py * 64 + fNoiseJS(px * 7, py * 7, pz * 7) * 5 + fNoiseJS(px * 2.5, py * 2.5, pz * 2.5) * 6), ww = face ? smooth(.3, .6, (-dist - .05) / .95) : smooth(.58, .76, s + (fNoiseJS(px * 16, py * 16, pz * 16) - .5) * .7); c = mix(c, slot(m, c), ww * body * (1 - onTail)); }
+  if ((m = M[8]) > .5) { const k = 15 * fs, ce = fCellJS(px * k, py * k, pz * k), r = .2 + .14 * ce[1]; c = mix(c, slot(m, c), (1 - smooth(r - .05, r, ce[0])) * body); }
+  if ((m = M[9]) > .5) { const k = 14 * fs, k2 = 21 * fs, ce = fCellJS(px * k, py * k, pz * k), ring = smooth(.16, .22, ce[0]) * (1 - smooth(.34, .42, ce[0])) * (fNoiseJS(px * 46 * fs, py * 46 * fs, pz * 46 * fs) >= .28 ? 1 : 0);
+    const dot2 = 1 - smooth(.07, .11, fCellJS(px * k2 + 3.1, py * k2 + 3.1, pz * k2 + 3.1)[0]), v = face ? 1 - smooth(.13 + .1 * ce[1], .18 + .1 * ce[1], ce[0]) : Math.max(ring, dot2 * (ce[1] >= .6 ? 1 : 0));
+    c = mix(c, slot(m, c), v * body); }
   if ((m = M[2]) > .5) c = mix(c, slot(m, c), smooth(C.sock - .025, C.sock + .025, dist));
   if ((m = M[3]) > .5) c = mix(c, slot(m, c), smooth(.3, .6, mask));
   if ((m = M[4]) > .5) c = mix(c, slot(m, c), smooth(.55, .7, tip) * (1 - onTail));
@@ -236,11 +244,93 @@ function furAttrsBody(m, P) {
   g.attributes.aEye.needsUpdate = true;
 }
 // the nose (see noseMask) and the mouth's level (the closed mouth's line in the flat styles), in the space vFurP is
-// in (position / size); no tip, no nose
-function noseAt(m, tip, r, lipY, R = [1, 1, 1]) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
+// in (position / size); no tip, no nose; masked: the face's mask runs on round it
+function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
   if (tip) U.uNose.value.set(tip[0] * k, tip[1] * k, tip[2] * k, r * k), U.uLipY.value = lipY * k; else U.uNose.value.set(0, 0, 0, 0);
-  U.uNoseR.value.set(...R); }
-// the sculpted head: muzzle, cheeks and throat; the eye band; the ears from base to tip; the nose leather
+  U.uNoseR.value.set(...R); U.uNoseIn.value = masked; }
+/* The face's markings on a sculpted head, laid on the way a painter marks up a model: strokes along the skin, each a
+   run of points with a radius at each, in the sculpt's own units (the eyes' midpoint at the origin, its right side,
+   mirrored). A point with one coordinate left null is found on the skin: the outermost skin along that axis, through
+   the other two. What the coat's mask paints, by head:
+   - bandit (the raccoon, and any head not listed): a band round each eye, swept back and down onto the cheek and joined
+     over the bridge, a stripe down the nose and pale brows over it;
+   - tears (the red panda): white brows and cheek patches, the muzzle white in front of the tear lines that run from the
+     eyes to the corners of the mouth, which keep the coat's red;
+   - patches (the giant panda): a drop round each eye, slanting down and out;
+   - snout (the hyena): the muzzle dark from the nose back to below the eyes;
+   - face (the Siamese, the shepherd): the face dark from the nose up round the eyes, fading out over the forehead.
+   And the stripes a striped coat draws on the face, where the body's run round it in rings that would cross the eyes
+   and the mouth: a tabby's M on the forehead, a line back from each eye and two on the cheek; a tiger's bars stacked
+   on the forehead, a stripe up to each ear and four sweeping back over the cheek (any other head: the tiger's).
+   mask: what the mask paints; light: more of the muzzle mark (the raccoon's brows, the tiger's white over the eyes);
+   muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes. Worked out once for
+   each sculpt. */
+const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face'};
+const FACE_STRIPES = {
+  gato: [[[[.03, .13, null], [.04, .21, null], [.05, .3, null], [.06, .38, null]], [.021, .022, .021, .016]],
+    [[[.12, .14, null], [.13, .22, null], [.16, .3, null], [.19, .36, null]], [.02, .022, .021, .016]],
+    [[[null, .02, .0], [null, .03, -.11], [null, .0, -.22]], [.02, .019, .012]],
+    [[[null, -.08, -.03], [null, -.1, -.14], [null, -.07, -.25]], [.022, .022, .014]],
+    [[[null, -.17, -.06], [null, -.19, -.17], [null, -.17, -.27]], [.02, .02, .012]]],
+  tiger: [[[[.03, .19, null], [.1, .21, null], [.15, .25, null]], [.028, .028, .018]],
+    [[[0, .27, null], [.08, .28, null], [.14, .32, null]], [.028, .028, .018]],
+    [[[.02, .35, null], [.09, .37, null]], [.024, .014]],
+    [[[.19, .17, null], [.24, .25, null], [.27, .34, null], [.27, .42, null]], [.03, .03, .026, .014]],
+    [[[.31, .1, null], [.36, .18, null], [.38, .27, null]], [.026, .024, .012]],
+    [[[null, -.01, -.02], [null, -.05, -.12], [null, -.04, -.22], [null, .0, -.3]], [.032, .03, .025, .012]],
+    [[[null, -.1, .02], [null, -.14, -.1], [null, -.13, -.21], [null, -.09, -.31]], [.032, .03, .025, .012]],
+    [[[null, -.2, -.04], [null, -.23, -.15], [null, -.21, -.27]], [.028, .026, .012]],
+    [[[null, -.29, -.1], [null, -.31, -.22]], [.024, .012]]]};
+function faceMarks(d) {
+  if (d.marks) return d.marks;
+  const n = d.n, P = d.P, L = d.L, c = L.eyeL, T = L.tip, F = d.mouth, kind = FACE_MASK[d.id] || 'bandit';
+  const skin = new Uint8Array(n); for (let i = 0; i < n; i++) skin[i] = d.K[i] === 0 && d.ear[i] < 128 ? 1 : 0;
+  const ax = i => Math.abs(P[i * 3]);
+  const snap = p => { const a = p.indexOf(null); if (a < 0) return p; let best = -Infinity;
+    for (let tol = .012; best === -Infinity && tol < .1; tol *= 2) for (let i = 0; i < n; i++) {
+      if (!skin[i] || P[i * 3] < 0) continue; const q = [ax(i), P[i * 3 + 1], P[i * 3 + 2]];
+      if ((a === 0 || Math.abs(q[0] - p[0]) < tol) && (a === 1 || Math.abs(q[1] - p[1]) < tol) && (a === 2 || Math.abs(q[2] - p[2]) < tol)) best = Math.max(best, q[a]); }
+    const q = p.slice(); q[a] = best === -Infinity ? 0 : best; return q; };
+  // a stroke: how much of each skin vertex it covers (1 inside its radius; its edge soft over a triangle or two, which
+  // keeps it a smooth line across the coarse mesh's triangles, not their zigzag)
+  const stroke = (out, pts, rad, soft = .03) => { const S = pts.map(snap); if (S.length === 1) { S.push(S[0]); rad = [rad[0], rad[0]]; }
+    for (let i = 0; i < n; i++) { if (!skin[i]) continue; const x = ax(i), y = P[i * 3 + 1], z = P[i * 3 + 2];
+      for (let k = 0; k + 1 < S.length; k++) { const a = S[k], b = S[k + 1], ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+        const t = clamp(((x - a[0]) * ux + (y - a[1]) * uy + (z - a[2]) * uz) / (ux * ux + uy * uy + uz * uz || 1), 0, 1), r = rad[k] + (rad[k + 1] - rad[k]) * t;
+        out[i] = Math.max(out[i], 1 - sstep(r - soft, r + soft, Math.hypot(x - a[0] - t * ux, y - a[1] - t * uy, z - a[2] - t * uz))); } } };
+  const mask = new Float32Array(n), light = new Float32Array(n), muz = new Float32Array(n).fill(1), stripes = new Float32Array(n);
+  for (const [pts, rad] of FACE_STRIPES[d.id] || FACE_STRIPES.tiger) stroke(stripes, pts, rad, .015);
+  const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
+  if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);
+  if (kind === 'bandit') {
+    stroke(mask, [[0, null, cz + .2], [cx - .07, cy - .03, null], eye, [null, cy - .08, cz - .05], [null, cy - .15, cz - .2], [null, cy - .2, cz - .32]], [.06, .08, .11, .1, .07, .03]);
+    stroke(mask, [[0, null, cz + .2], [0, null, (cz + .2 + T[2]) / 2], [0, null, T[2] - .06]], [.07, .055, .04]);
+    stroke(light, [[cx - .09, cy + .11, null], [cx + .03, cy + .12, null], [cx + .12, cy + .09, null]], [.035, .04, .03]);
+  } else if (kind === 'tears') {
+    // the tear line in profile: from under the inner corner of the eye to the corner of the mouth
+    let mc = null; for (const q of d.rim || []) if (q[0] > 0 && (!mc || q[2] < mc[2])) mc = q;
+    const A = snap([cx - .05, cy - .06, null]), B = mc || [F.xc, F.y, F.zc], zt = y => A[2] + (B[2] - A[2]) * clamp((y - A[1]) / (B[1] - A[1]), 0, 1.5);
+    for (let i = 0; i < n; i++) if (skin[i]) { const y = P[i * 3 + 1], z = P[i * 3 + 2]; muz[i] = sstep(-.005, .015, z - zt(y)); }
+    stroke(light, [[0, null, T[2] - .05], [0, null, cz + .2]], [.08, .06]);
+    stroke(mask, [[cx - .04, cy + .12, null], [cx + .03, cy + .125, null]], [.04, .035]);
+    const cheek = new Float32Array(n); stroke(cheek, [[null, cy - .1, cz + .02], [null, cy - .16, cz - .1], [null, cy - .18, cz - .2]], [.08, .1, .07]);
+    for (let i = 0; i < n; i++) if (skin[i]) mask[i] = Math.max(mask[i], cheek[i] * sstep(.03, .05, zt(P[i * 3 + 1]) - P[i * 3 + 2]));
+  } else if (kind === 'patches') {
+    stroke(mask, [[cx - .04, cy + .05, null], eye, [cx + .1, cy - .14, null]], [.065, .11, .085]);
+  } else if (kind === 'snout') {
+    // (further back along the lips than over the bridge)
+    for (let i = 0; i < n; i++) if (skin[i]) { const y = P[i * 3 + 1]; mask[i] = sstep(-.03, .03, P[i * 3 + 2] - (cz + .17 + .28 * (y - cy))) * sstep(cy + .07, cy - .01, y); }
+  } else {
+    // an egg round the face: from under the eyes to the nose, wide enough to take the eyes in
+    const C = [0, (cy + T[1]) / 2 - .04, T[2] * .45], R = [cx + .16, .25, T[2] * .55 + .12];
+    for (let i = 0; i < n; i++) if (skin[i]) mask[i] = 1 - sstep(.8, 1.15, Math.hypot(ax(i) / R[0], (P[i * 3 + 1] - C[1]) / R[1], (P[i * 3 + 2] - C[2]) / R[2]));
+  }
+  // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
+  let nIn = 0, nN = 0; const N = L.nose;
+  if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
+  return d.marks = {mask, light, muz, stripes, noseIn: nN && nIn / nN > .5 ? 1 : 0};
+}
+// the sculpted head: muzzle, cheeks and throat; the face's markings (faceMarks); the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
   const d = hs.d, n = d.n, Q = hs.Q, E = hs.E, s = hs.s, L = d.L, A = geo.attributes.aEye.array;
   const earTop = {L: -Infinity, R: -Infinity}, eb = hs.earBase || {};
@@ -250,20 +340,21 @@ function furAttrsHead(m, geo, hs) {
   // shortening it with the rest of the muzzle), none on a muzzle of skin or scales
   const N = L.nose, kz = z => z > 0 ? hs.kSn || 1 : 1, nc = N && [E.x + s * N[0], E.y + s * N[1], E.z + s * N[2] * kz(N[2])], nR = N && [s * N[3], s * N[4], s * N[5] * kz(N[2])];
   const leather = (x, y, z) => ((x - nc[0]) / nR[0]) ** 2 + ((y - nc[1]) / nR[1]) ** 2 + ((z - nc[2]) / nR[2]) ** 2 < 1.3;
+  const FM = faceMarks(d);
   for (let i = 0; i < n; i++) {
     const o = i * 4; if (A[o + 3] > .5) continue;  // an eye
     const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2];
     const low = sstep(E.y - .02 * s, E.y - .2 * s, y), front = sstep(E.z - .34 * s, E.z - .08 * s, z);
     const mouthY = E.y + s * L.mouthY, bridge = (1 - sstep(.07 * s, .14 * s, Math.abs(x - E.x))) * sstep(mouthY - .01 * s, mouthY + .05 * s, y);
-    const muz = low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
+    const muz = Math.max(low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i]), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
-    let dm = -(1 - sstep(.06 * s, .14 * s, Math.abs(y - E.y))) * sstep(E.z - .38 * s, E.z - .12 * s, z) * (1 - sstep(E.z + .08 * s, E.z + .22 * s, z)), tp = 0, kind = 1;
+    let dm = -FM.mask[i], tp = 0, kind = 1;
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly *= 1 - e; dm *= 1 - e; }
     if (N && leather(x, y, z)) kind = 2;
-    furPack(A, o, belly, 0, tp, kind, dm);
+    furPack(A, o, belly, -.05 - .95 * FM.stripes[i] * (1 - e), tp, kind, dm);
   }
-  const nr = N ? Math.max(...nR) : 0; noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined);
+  const nr = N ? Math.max(...nR) : 0; noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined, FM.noseIn);
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
