@@ -35,6 +35,8 @@ function loadHeadModel(id) {
    no skin on the line, and its upper lip's edge just above stands for it. */
 function cutMouth(d) {
   const L = d.L, F = mouthFrame((HEAD_RECIPES[HEAD_CATALOG[d.id].species[0]] || {}).mouth || 'canino', L.mouthY, L.tip[2], 0, L.hingeZ, 1, L.chin);
+  // (a stylised sculpt says how wide its mouth is: its corners just outside the snout's root, not out across the cheeks)
+  if (L.mouthX) F.xc = L.mouthX;
   const P = Array.from(d.P), K = Array.from(d.K), ear = Array.from(d.ear), idx = [], cut = new Map(), up = [], n0 = d.n, y = i => P[i * 3 + 1];
   // a separate piece in front of and below the eyes is the muzzle's, never an ear (a sculpt's lips may come marked as one)
   for (let i = 0; i < n0; i++) if (K[i] === 1 && P[i * 3 + 2] > .15 && P[i * 3 + 1] < 0) { K[i] = 0; ear[i] = 0; }

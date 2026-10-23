@@ -651,6 +651,8 @@ def stylise(P, tip=.52, drop=.14, lip=.1, mw=1.4, crown=.58, skull=.5, face=.36,
     E = P['eye']; P['eye'] = {**STY_EYE, 'x': ex, 'yaw': yaw, 'tilt': E.get('tilt', 8) * .7 if tilt is None else tilt}
     B = copy.deepcopy(STY_BROW); B['pts'] = [(x * ex / STY_EYE['x'], y, z) for x, y, z in B['pts']]; P['brow'] = B; P.pop('furrow', None)
     M['y'] = L2; M['corner'] = max(f(M['corner']), .1)
+    # (its corners just outside the snout's root, as illustrators draw the mouth: not out across the cheeks)
+    M['xc'] = 1.1 * max(x for x, _ in snout[0][1]) * mw
 
 def params(sp):
     S = SPECIES[sp]; P = copy.deepcopy(FAMS[S.get('fam', 'lobo')])
@@ -774,7 +776,7 @@ def build_sdf(S):
             for (a, ra), (b, rb) in zip(spine, spine[1:]): e = round_cone(q, a, b, ra, rb); d = e if d is None else np.minimum(d, e)
             return d
     oz = float(off[2]); jaw_bot = min(p[1] for _, sec in S['jaw']['st'] for p in sec)
-    L = dict(eyeL=[E['x'], 0., 0.], eyeR=[-E['x'], 0., 0.], mouthY=float(my), hingeZ=float(S['jawh']['hinge'] - oz),
+    L = dict(eyeL=[E['x'], 0., 0.], eyeR=[-E['x'], 0., 0.], mouthY=float(my), hingeZ=float(S['jawh']['hinge'] - oz), **({'mouthX': float(M['xc'])} if M.get('xc') else {}),
              neck=[0., float(jaw_bot + .02), float(S['neck'][0][2] - oz)], eyeR_=float(E['re']), eyeYaw=float(E['yaw']))
     le = leather(N)   # (moved with the head, as everything is: the eyes stay at z = 0)
     if le: L['nose'] = [float(v) for v in (le[0] - off)] + [float(v) for v in le[1]]
@@ -799,7 +801,8 @@ def build(sp, step=.006):
     crown = float(V[skull, 1].max()); u = 1 / (crown - D['jaw_bot'])
     V, EV, HV = V * u, EV * u, HV * u
     for k in ('eyeL', 'eyeR', 'neck'): L[k] = [float(v * u) for v in L[k]]
-    for k in ('mouthY', 'hingeZ', 'eyeR_'): L[k] = float(L[k] * u)
+    for k in ('mouthY', 'hingeZ', 'eyeR_', 'mouthX'):
+        if k in L: L[k] = float(L[k] * u)
     if 'nose' in L: L['nose'] = [float(v * u) for v in L['nose']]
     L['crown'], L['chin'] = crown * u, D['jaw_bot'] * u
     mid = (np.abs(V[:, 0]) < .03) & (V[:, 1] > L['mouthY']) & (V[:, 1] < .05)

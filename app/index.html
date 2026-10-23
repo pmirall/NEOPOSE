@@ -7811,7 +7811,8 @@ function shiftAnthro(m, dy) {
      herbivoro  horses: flat spatulate incisors, a long toothless gap (the bars), square grinding cheek teeth; ruminants
                 (goat, deer: recipe pad) have no upper incisors, a hard dental pad bites on the lower ones instead.
      reptil     rows of near-equal conical teeth that curve back.
-   gape: where the corners are, from the nose (0) to the eyes (1); xc: widest opening; fmin: how small the teeth may get
+   gape: where the corners are, from the nose (0) to the eyes (1); xc: widest opening; open: how far the jaw drops for an
+   expression against a carnivore's (a grazer's or a rodent's gape is smaller); fmin: how small the teeth may get
    on a short (kemono) muzzle, so a cat keeps its fangs and a rabbit its incisors; teeth: [shape, u, length,
    half-width] with u along the half arch, 0 front middle … 1 corner, and sizes in head heights (i incisor, f flat
    chisel incisor, c canine, p premolar, k carnassial, m molar, r reptile cone). */
@@ -7821,9 +7822,9 @@ const MOUTHS = {
                                lo: [['i', .04, .028, .01], ['i', .09, .03, .011], ['i', .14, .032, .012], ['c', .21, .1, .021], ['p', .38, .038, .022], ['p', .53, .048, .026], ['k', .71, .07, .036], ['p', .87, .035, .026]]},
   felino: {gape: .9, xc: .27, fmin: .8, up: [['i', .05, .018, .009], ['i', .1, .02, .01], ['i', .15, .022, .011], ['c', .27, .14, .026], ['p', .56, .045, .024], ['k', .76, .075, .04]],
                               lo: [['i', .04, .017, .008], ['i', .08, .019, .009], ['i', .12, .02, .01], ['c', .2, .115, .023], ['p', .52, .045, .024], ['k', .72, .07, .038]]},
-  roedor: {gape: .8, xc: .2, fmin: .85, up: [['f', .07, .085, .026], ['i', .17, .028, .011], ['m', .8, .018, .018], ['m', .92, .016, .016]],
+  roedor: {gape: .8, xc: .2, fmin: .85, open: .85, up: [['f', .07, .085, .026], ['i', .17, .028, .011], ['m', .8, .018, .018], ['m', .92, .016, .016]],
                                lo: [['f', .06, .07, .022], ['m', .78, .018, .018], ['m', .9, .016, .016]]},
-  herbivoro: {gape: .55, xc: .36, up: [['f', .05, .05, .019], ['f', .13, .05, .018], ['f', .21, .046, .017], ['m', .52, .03, .034], ['m', .63, .03, .036], ['m', .74, .03, .036], ['m', .85, .03, .034], ['m', .95, .028, .03]],
+  herbivoro: {gape: .55, xc: .36, open: .75, up: [['f', .05, .05, .019], ['f', .13, .05, .018], ['f', .21, .046, .017], ['m', .52, .03, .034], ['m', .63, .03, .036], ['m', .74, .03, .036], ['m', .85, .03, .034], ['m', .95, .028, .03]],
                                    lo: [['f', .04, .052, .018], ['f', .12, .05, .017], ['f', .2, .046, .016], ['m', .5, .03, .034], ['m', .61, .03, .036], ['m', .72, .03, .036], ['m', .83, .03, .034], ['m', .93, .028, .03]]},
   reptil: {gape: 1.08, xc: .3, pack: 1, up: reptRow(11, .085, .04, .015), lo: reptRow(10, .07, .035, .014)}
 };
@@ -8075,9 +8076,10 @@ function exprJoints(m, id) {
   // the jaw opens by angle, so a long muzzle (a horse's) opens less and a short one (a kemono cat's) a little more, but
   // never so far that the front of the chin swings back into the throat under it (a kemono cat or rabbit: its short jaw
   // sits right over the neck; z' = A cos θ + B sin θ about the joint must stay in front of the throat). A canid's jaw,
-  // from the joint to the nose (.7 head heights on the stylised heads), opens by the expression's own angle
+  // from the joint to the nose (.7 head heights on the stylised heads), opens by the expression's own angle; a grazer's
+  // or a rodent's gape is smaller than a carnivore's (MOUTHS: open)
   const F = m.anthro && m.anthro.mouth; let jaw = e.jaw * DEG;
-  if (F) { jaw *= clamp(.7 * F.h / Math.max(F.tip - F.jz, .1 * F.h), .55, 1.1);
+  if (F) { jaw *= clamp(.7 * F.h / Math.max(F.tip - F.jz, .1 * F.h), .55, 1.1) * ((F.M && F.M.open) || 1);
     const A = (F.zc + F.tip) / 2 - F.jz, B = F.chin - F.jy, R = Math.hypot(A, B), c = F.nz + .06 * F.h - F.jz;
     jaw = Math.min(jaw, Math.max(.5 * jaw, Math.acos(clamp(c / R, -1, 1)) - Math.atan2(-B, A))); }
   const out = {jaw: [jaw, 0, 0]};
@@ -9834,6 +9836,8 @@ function loadHeadModel(id) {
    no skin on the line, and its upper lip's edge just above stands for it. */
 function cutMouth(d) {
   const L = d.L, F = mouthFrame((HEAD_RECIPES[HEAD_CATALOG[d.id].species[0]] || {}).mouth || 'canino', L.mouthY, L.tip[2], 0, L.hingeZ, 1, L.chin);
+  // (a stylised sculpt says how wide its mouth is: its corners just outside the snout's root, not out across the cheeks)
+  if (L.mouthX) F.xc = L.mouthX;
   const P = Array.from(d.P), K = Array.from(d.K), ear = Array.from(d.ear), idx = [], cut = new Map(), up = [], n0 = d.n, y = i => P[i * 3 + 1];
   // a separate piece in front of and below the eyes is the muzzle's, never an ear (a sculpt's lips may come marked as one)
   for (let i = 0; i < n0; i++) if (K[i] === 1 && P[i * 3 + 2] > .15 && P[i * 3 + 1] < 0) { K[i] = 0; ear[i] = 0; }
