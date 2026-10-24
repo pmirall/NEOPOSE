@@ -528,7 +528,7 @@ KEMONO = dict(
            ((.33, -.22, -.1), (.41, -.29, -.19), (.49, -.36, -.25), .09, .028)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 # each family's stylised proportions (stylise), and a species' own on top (its 'sty')
-FAM_STYLE = dict(lobo=dict(ear=1.35), gato=dict(tip=.35, drop=.09, lip=.07, mw=1.4, cheek=.48, skull=.5, face=.35),
+FAM_STYLE = dict(lobo=dict(mw=1.15, cheek=.44, ear=1.5, eye=dict(hu=.078, hl=.058)), gato=dict(tip=.35, drop=.09, lip=.07, mw=1.4, cheek=.48, skull=.5, face=.35),
                  felino=dict(tip=.43, drop=.11, lip=.08, mw=1.45, cheek=.54, skull=.52, face=.36, crown=.56, ear=1.4),
                  oso=dict(tip=.46, drop=.13, lip=.1, mw=1.5, cheek=.54, skull=.52, face=.36, crown=.56, ear=1.5),
                  mapache=dict(tip=.46, drop=.12, lip=.09, mw=1.35, cheek=.54, ear=1.3), conejo=dict(tip=.34, drop=.09, lip=.07, mw=1.35, cheek=.46, yaw=12, crown=.56, skull=.45),
@@ -540,8 +540,10 @@ FAMS = dict(lobo=WOLF, gato=CAT, felino=BIGCAT, oso=BEAR, mapache=COON, conejo=R
 SPECIES = {
   'lobo': {},
   'perro': dict(xf=dict(mz=.88, mw=1.08), eye=dict(hu=.054), ears=dict(H=.46, W=.42, round_=.25),
-                tufts=[((.34, .0, -.21), (.41, -.04, -.31), (.49, -.07, -.42), .1, .03), ((.35, -.14, -.19), (.43, -.19, -.29), (.51, -.24, -.38), .1, .03)]),
+                tufts=[((.34, .0, -.21), (.41, -.04, -.31), (.49, -.07, -.42), .1, .03), ((.35, -.14, -.19), (.43, -.19, -.29), (.51, -.24, -.38), .1, .03)],
+                sty=dict(mw=1.3)),   # (a dog's muzzle broader and blunter than a wolf's)
   'zorro': dict(xf=dict(mw=.82, sk=.96, mz=1.04), eye=dict(tilt=18, hu=.044), ears=dict(base=(.24, .35, -.3), H=.62, W=.5, D=.27), mane=None,
+                sty=dict(ear=1.6, tilt=16, eye=dict(hu=.064, hl=.05, lu=.026)),   # (huge ears; narrow eyes under a heavy lid, slanting up at their outer corners)
                 tufts=[((.33, .03, -.21), (.43, -.02, -.33), (.56, -.05, -.47), .12, .03), ((.35, -.11, -.19), (.46, -.17, -.31), (.6, -.22, -.43), .13, .032),
                        ((.33, -.25, -.17), (.43, -.32, -.28), (.54, -.4, -.38), .12, .03), ((.28, -.37, -.15), (.35, -.46, -.24), (.42, -.56, -.32), .1, .026)]),
   'coyote': dict(xf=dict(mw=.9, mz=1.03), ears=dict(H=.56, W=.44)),

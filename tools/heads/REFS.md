@@ -94,6 +94,11 @@ So every head but the kemono fox is turned into a character's head (`stylise` in
 - the ears, the cheek fur and the horns move onto the bigger ball;
 - a species may grow a mane on top (the hyena's crest).
 
+A closer look at the canids (the fox measured in its three-quarter view) narrowed theirs again: its muzzle is 0.23 head
+heights wide at the nose (ours was 0.32), its ears 0.62 tall (ours 0.5), its eyes narrow under a heavy lid and slanting
+up at their outer corners. So the canids' snout is narrower than the other families' (a dog's broader and blunter, as
+in the white dog's portrait), their ears bigger, and the fox's eyes narrow and slanted.
+
 Each family keeps its own muzzle sections, nose, pads, fur and ears; `FAM_STYLE` holds its amounts. Measured on the
 baked heads (the animal's head → the character's):
 
