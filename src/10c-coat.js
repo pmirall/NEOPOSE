@@ -122,7 +122,7 @@ const FUR_GLSL = `
     return 1.0 - smoothstep(-strF, strF, d); }
   // (along the top and out to the outer corner, as illustrators ink the upper lid; the lower lid's rim thinner)
   float lidRim() { float re = uLidC.w; if (re <= 0.0) return 0.0; vec3 q = faceP() - uLidC.xyz;
-    float k = re * mix(1.07, 1.17, max(smoothstep(-.25 * re, -.05 * re, q.y), smoothstep(.35 * re, .55 * re, q.x)));
+    float k = re * mix(1.04, 1.17, max(smoothstep(-.25 * re, -.05 * re, q.y), smoothstep(.35 * re, .55 * re, q.x)));
     return smoothstep(.15 * re, .25 * re, q.z) * (1.0 - smoothstep(k - strF, k + strF, length(q))); }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
@@ -457,7 +457,7 @@ function furAttrsHead(m, geo, hs) {
     // (and the cheek ruff: the tufts standing off the skull below the eyes go with the muzzle and cheeks, as illustrators
     // colour cheek fluff in the light: a fox's white, a hyena's cream; the fur's depth, d.fur, says which those are)
     // (a cat's ruff keeps its coat down to the root, only its tips light, as a tabby's cheeks are striped up to the white)
-    const ruff = i < d.fur.length && !(d.hair[i] > 128) ? (FM.muzOwn ? sstep(.11, .16, d.fur[i] / 510) : sstep(.006, .02, d.fur[i] / 510)) * sstep(E.y + .02 * s, E.y - .08 * s, y) : 0;
+    const ruff = i < d.fur.length && !(d.hair[i] > 128) ? (FM.muzOwn ? sstep(.15, .21, d.fur[i] / 510) : sstep(.006, .02, d.fur[i] / 510)) * sstep(E.y + .02 * s, E.y - .08 * s, y) : 0;
     const muz = Math.max(FM.muzOwn ? FM.muz[i] : low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i], ruff), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
     if (FM.hair[i] > Math.max(thr, muz)) belly = FM.hair[i];  // (the mane with the belly)

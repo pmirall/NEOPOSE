@@ -120,8 +120,11 @@ never what had changed). Its deep jaw read as a dog's, and without it the cat ha
 - the muzzle is short (0.35 ahead of the eye), its bridge sloping from between the eyes;
 - the nose is a raised wedge of leather laid out in the stylised frame itself (`muzzle`: the animal's own nose, squashed
   with the snout, had flattened to a sliver), with the two whisker pads under and beside it;
-- the eyes turn out a little more, so they show in profile, under a lighter brow and lid;
-- thick cheek tufts sweep back and down;
+- the eyes turn out a little more, so they show in profile, under a lighter brow and lid, a little narrower than round;
+- the braincase is narrower, so the cheek ruff is the widest part of the face, its thick tufts swept back towards the
+  ears, orange with cream tips;
+- the muzzle's front is rounded, and the closed mouth's line stops at the pads (the seam had run on across the cheeks,
+  which on a cat's flat face lie in front of the mouth's corners);
 - the tabby's coat is white only on the pads, the chin and the throat, with an M of thin rust lines up the forehead and
   on over the crown to the nape, and dark lid rims.
 

@@ -85,7 +85,9 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           // a small mouth as on a big one; closed, a thin seam on the line itself that thins out to nothing at the corners,
           // unbroken however the sculpt's vertices fall
           if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.016 * uLip.z, .022 * uLip.z, abs(r.y - uLip.x));
-            float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * .007 * uLip.z; return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
+            // (and no further out than the corners: a cat's sit forward, and the seam ran on across its cheeks)
+            float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * (1.0 - smoothstep(.75 * abs(uLip.w), abs(uLip.w), abs(r.x))) * .007 * uLip.z;
+            return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
