@@ -263,10 +263,11 @@ const SUITES = {
     for (const sp of ['zorro', 'dragon', 'lobo']) { await pick(sp); const c = await A(() => { const m = window.__cdp.mq, F = m.anthro.mouth, g = m.mouthMeshes.find(x => x.geometry.userData.teeth).geometry, P = g.attributes.position.array, S = .35 * Math.min(F.tip - F.zc, F.xc);
         let n = 0; for (let i = 0; i < P.length / 3; i++) if (P[i * 3 + 2] - F.zc < .25 * S) n++; return n; });
       ok(c === 0, `${sp}: no tooth in the corners, where the lips have hardly parted (${c} vertices)`); }
-    // (the half arch runs on round the corner, where the upper lip's overhang meets the cheek and no tooth stands; a
-    // stylised wolf's short muzzle has room for all but one cheek tooth: drawn fewer and bigger)
+    // (the half arch runs on round the corner, where the upper lip's overhang meets the cheek and no tooth stands, and on
+    // a stylised head along the root of the snout to the corner; its short muzzle has room for all but one cheek tooth:
+    // drawn fewer and bigger)
     { const wr = await row(); await pick('caballo', true); const hr = await row(); await pick('lobo');
-      ok(wr.n >= 7 && wr.gap < .03 && wr.end > .55 && wr.end < 1 && hr.gap > .035 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
+      ok(wr.n >= 7 && wr.gap < .03 && wr.end > .5 && wr.end < 1 && hr.gap > .035 && hr.end < 1, `a wolf's row of teeth is closed (${wr.n} teeth a side, widest gap ${wr.gap.toFixed(3)} of the half arch, ending at ${wr.end.toFixed(2)}), a horse's has its bars (${hr.gap.toFixed(2)})`);
       ok(wr.hi < .032 && wr.lo > -.032 && hr.hi < .032 && hr.lo > -.032, `roots end in the gums (wolf ${wr.hi.toFixed(3)}/${wr.lo.toFixed(3)}, horse ${hr.hi.toFixed(3)}/${hr.lo.toFixed(3)} head heights from the lip line)`); }
     // panting lolls the tongue out past the lips; any other expression keeps it in
     { const t = async e => A(e => { const C = window.__cdp, m = C.mq; C.applyExpression(m, e); C.renderView({w: 64, h: 64}); const p = m.mouthMeshes.find(x => x.geometry.userData.tongue), g = p.geometry, P = g.attributes.position.array, D = g.morphAttributes.position[0].array, k = p.morphTargetInfluences[0];
