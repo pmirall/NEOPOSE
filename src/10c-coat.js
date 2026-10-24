@@ -118,7 +118,7 @@ const FUR_GLSL = `
     if (uNoseIn > .5 && kind < 1.5 && noseD() < uNose.w * 1.6) fr = -.45;
     #endif
     if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
-    if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
+    if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves (and a sculpted head's eyelids' rims)
     if (kind > 1.5) return uFurLe;                               // nose and pads
     vec3 p = vFurP, c = uFurC0; float m, belly = max(vEye.x, 0.0), muz = max(-vEye.x, 0.0), dist = vEye.y, tip = vEye.z, dors = clamp(fr / .45, 0.0, 1.0), mask = clamp(-fr / .45, 0.0, 1.0);
     float onTail = step(1.5, tip), u = tip - 2.0, body = 1.0 - smoothstep(.3, .6, belly);
@@ -354,10 +354,15 @@ function faceMarks(d) {
       const f = (Nr[i * 3] * sx * v3[0] + Nr[i * 3 + 1] * v3[1] + Nr[i * 3 + 2] * v3[2]) / l;
       earIn[i] = sstep(.1, .45, f) * sstep(.12, .3, (along(i) - t0) / (t1 - t0 || 1)); }
   }
+  // the rims of the eyelids: dark skin round the opening, as round a dog's, a cat's or a hyena's eye (and as illustrators
+  // ink the upper lid), along the top and out to the outer corner, the lower lid's rim thinner
+  const lid = new Uint8Array(n), re = L.eyeR_ || .12;
+  for (let i = 0; i < n; i++) { if (!skin[i]) continue; const dx = ax(i) - c[0], dy = P[i * 3 + 1] - c[1], dz = P[i * 3 + 2] - c[2], r = Math.hypot(dx, dy, dz);
+    if (dz > .2 * re && r < re * (dy > -.15 * re || dx > .45 * re ? 1.17 : 1.07)) lid[i] = 1; }
   // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
   let nIn = 0, nN = 0; const N = L.nose;
   if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
-  return d.marks = {mask, light, muz, stripes, earIn, noseIn: nN && nIn / nN > .5 ? 1 : 0};
+  return d.marks = {mask, light, muz, stripes, earIn, lid, noseIn: nN && nIn / nN > .5 ? 1 : 0};
 }
 // the sculpted head: muzzle, cheeks and throat; the face's markings (faceMarks); the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
@@ -381,6 +386,9 @@ function furAttrsHead(m, geo, hs) {
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly = Math.max(belly * (1 - e), FM.earIn[i] * e); dm *= 1 - e; }
     if (N && leather(x, y, z)) kind = 2;
+    // (the eyelids' rims: dark, a hard part's kind, next to the fur's, so no other kind's colour shows between them where
+    // the triangles blend the two, and inked as the hard parts are: bold, as illustrators ink the upper lid)
+    if (FM.lid[i]) kind = 3;
     furPack(A, o, belly, -.05 - .95 * FM.stripes[i] * (1 - e), tp, kind, dm);
   }
   const nr = N ? Math.max(...nR) : 0; noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined, FM.noseIn);
