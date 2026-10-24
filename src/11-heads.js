@@ -22,7 +22,7 @@ function loadHeadModel(id) {
     .then(buf => {
       const hl = new DataView(buf).getUint32(0, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl))), b0 = 4 + hl, o = h.offs, n = h.n;
       return {...h, id, P: new Float32Array(buf, b0 + o[0], n * 3), idx: h.big ? new Uint32Array(buf, b0 + o[1], h.nt * 3) : new Uint16Array(buf, b0 + o[1], h.nt * 3),
-        K: new Uint8Array(buf, b0 + o[2], n), ear: new Uint8Array(buf, b0 + o[3], n)};
+        K: new Uint8Array(buf, b0 + o[2], n), ear: new Uint8Array(buf, b0 + o[3], n), hair: new Uint8Array(buf, b0 + o[4], n)};  // (hair: the mane's share)
     }).then(cutMouth);
   HEADS.cache.set(id, p); p.then(d => { HEADS.cache.set(id, Promise.resolve(d)); HEADS[id] = d; }, () => HEADS.cache.delete(id));
   return p;

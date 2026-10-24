@@ -76,7 +76,8 @@ def icosphere(c, r, sub=3):
 def bake(hid, step=.006, budget=24000):
     cfg = CATALOG[hid]; m = HD.build(cfg.get('head', hid), step)
     my, hz = m['L']['mouthY'], m['L']['hingeZ']
-    V, F, ear = decimate(m['V'], m['F'], budget, m['ear'], keep=lambda P: np.where((np.abs(P[:, 1] - my) < .015) & (P[:, 2] > hz - .05), 0., 1.))
+    V, F, VA = decimate(m['V'], m['F'], budget, np.c_[m['ear'], m['hair']], keep=lambda P: np.where((np.abs(P[:, 1] - my) < .015) & (P[:, 2] > hz - .05), 0., 1.))
+    ear, hair = VA[:, 0], VA[:, 1]
     EV, EF = [], []
     for c, r in m['eyes']:
         v, f = icosphere(np.asarray(c, float), r); EF.append(f + len(V) + sum(len(x) for x in EV)); EV.append(v)
@@ -87,7 +88,8 @@ def bake(hid, step=.006, budget=24000):
     K = np.concatenate([np.zeros(len(V), np.uint8), np.full(ne, 2, np.uint8), np.full(len(HV), 3, np.uint8)])
     E = np.concatenate([np.round(np.clip(ear, 0, 1) * 255), np.zeros(ne + len(HV))]).astype(np.uint8)
     n = len(P); big = n > 65535
-    arrs = [P.tobytes(), (I.astype(np.uint32) if big else I.astype(np.uint16)).tobytes(), K.tobytes(), E.tobytes(), np.zeros(n, np.uint8).tobytes(), np.ones(n, np.int8).tobytes()]
+    Hr = np.concatenate([np.round(np.clip(hair, 0, 1) * 255), np.zeros(ne + len(HV))]).astype(np.uint8)   # (the mane's share of each vertex)
+    arrs = [P.tobytes(), (I.astype(np.uint32) if big else I.astype(np.uint16)).tobytes(), K.tobytes(), E.tobytes(), Hr.tobytes(), np.ones(n, np.int8).tobytes()]
     blob = b''; offs = []
     for a in arrs: offs.append(len(blob)); blob += a + b'\0' * ((4 - len(a) % 4) % 4)
     hdr = json.dumps({'n': n, 'nt': len(I), 'big': big, 'offs': offs, 'L': m['L']}).encode(); hdr += b' ' * ((4 - len(hdr) % 4) % 4)

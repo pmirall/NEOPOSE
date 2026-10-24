@@ -30,7 +30,7 @@ const COATS = {
   zorro:     {label: 'Zorro rojo', for: ['zorro'], c: ['#c9652b', '#f5eee3', '#2a1f1a'], m: {belly: 1, socks: 2, ears: 2, tail: 1}, sock: .68, le: '#231c19'},
   zorro_ar:  {label: 'Zorro ártico', for: ['zorro'], c: ['#ebe9e3', '#fbfaf6', '#3a3836'], m: {belly: 1}, le: '#2a2624'},
   zorro_pl:  {label: 'Zorro plateado', for: ['zorro'], c: ['#3b3836', '#8e8a85', '#1e1c1b'], m: {belly: 2, muzzle: 0, tail: 1}, le: '#1e1a19'},
-  hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#b59b73', '#dccaa9', '#3a2e24'], m: {spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
+  hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#c4935c', '#f0e0bf', '#6a4730'], m: {belly: 1, muzzle: 1, spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
   gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#5a3e27'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86'},
   gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422'},
   siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e'},
@@ -302,6 +302,8 @@ function faceMarks(d) {
         const t = clamp(((x - a[0]) * ux + (y - a[1]) * uy + (z - a[2]) * uz) / (ux * ux + uy * uy + uz * uz || 1), 0, 1), r = rad[k] + (rad[k + 1] - rad[k]) * t;
         out[i] = Math.max(out[i], 1 - sstep(r - soft, r + soft, Math.hypot(x - a[0] - t * ux, y - a[1] - t * uy, z - a[2] - t * uz))); } } };
   const mask = new Float32Array(n), light = new Float32Array(n), muz = new Float32Array(n).fill(1), stripes = new Float32Array(n);
+  // (the mane on top of the head: the belly's colour, plain, as illustrators colour a crest or a forelock apart)
+  const hair = new Float32Array(n); if (d.hair) for (let i = 0; i < Math.min(n, d.hair.length); i++) if (skin[i]) hair[i] = d.hair[i] / 255;
   for (const [pts, rad] of FACE_STRIPES[d.id] || FACE_STRIPES.tiger) stroke(stripes, pts, rad, .015);
   const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
   if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);
@@ -362,7 +364,7 @@ function faceMarks(d) {
   // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
   let nIn = 0, nN = 0; const N = L.nose;
   if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
-  return d.marks = {mask, light, muz, stripes, earIn, lid, noseIn: nN && nIn / nN > .5 ? 1 : 0};
+  return d.marks = {mask, light, muz, stripes, earIn, lid, hair, noseIn: nN && nIn / nN > .5 ? 1 : 0};
 }
 // the sculpted head: muzzle, cheeks and throat; the face's markings (faceMarks); the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
@@ -382,6 +384,7 @@ function furAttrsHead(m, geo, hs) {
     const mouthY = E.y + s * L.mouthY, bridge = (1 - sstep(.07 * s, .14 * s, Math.abs(x - E.x))) * sstep(mouthY - .01 * s, mouthY + .05 * s, y);
     const muz = Math.max(low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i]), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
+    if (FM.hair[i] > Math.max(thr, muz)) belly = FM.hair[i];  // (the mane with the belly)
     let dm = -FM.mask[i], tp = 0, kind = 1;
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly = Math.max(belly * (1 - e), FM.earIn[i] * e); dm *= 1 - e; }
