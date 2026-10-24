@@ -895,6 +895,15 @@ const SUITES = {
     await A(() => document.querySelector('#outfitNone').click()); await page.waitForTimeout(500); await goTab(page, 'cuerpo'); await page.waitForTimeout(400);
     await A(() => document.querySelector('#feetChips .chip[data-v="humano"]').click()); await page.waitForTimeout(800);
     const hum = await feet(); ok(hum.L === null && hum.R === null && hum.hock < .12 && hum.toe > .05, `"Human feet": a human foot again, flat on the floor (ankle at ${(hum.hock * 100).toFixed(0)}% of the hip)`);
+    // a shoe refused for the paws comes with the way to wear it: human feet, one tap away
+    await A(() => document.querySelector('#feetChips .chip[data-v="animal"]').click()); await page.waitForTimeout(1500);
+    await goTab(page, 'ropa'); await page.waitForTimeout(1500);
+    await A(() => { const d = document.querySelector('#garmentAdd details[data-cat="Calzado y calcetines"]'); if (d) d.open = true; }); await page.waitForTimeout(800);
+    await A(() => document.querySelector('#garmentAdd .libItem[data-id="m_shoes06"]').click()); await page.waitForTimeout(500);  // (aria-disabled: Playwright would not tap it)
+    const offer = await A(() => { const b = document.querySelector('#hint button.undo'); return b ? b.textContent : null; });
+    if (offer) await page.click('#hint button.undo'); await page.waitForTimeout(3500);
+    const shod = await A(() => { const m = window.__cdp.mq, g = m.garments.find(x => x.spec.id === 'm_shoes06'); return {feet: m.body.feet, worn: !!(g && g.geo), drawn: !!(g && g.meshes[0] && g.meshes[0].visible)}; });
+    ok(offer && shod.feet === 'humano' && shod.worn && shod.drawn, `a shoe refused for the paws offers human feet, and with them it goes on (${JSON.stringify({offer, ...shod})})`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

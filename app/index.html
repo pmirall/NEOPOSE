@@ -2603,7 +2603,7 @@ body.creator .hint:not(.toast){display:none}
 </div>
 
 <script>(function () { var all = ["ca", "de", "en", "fr", "it", "ja", "ko", "pt", "zh"], l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}
-  var h = {"ca": "fc5adbfd5d", "de": "bc751fd3c4", "en": "38d5da1906", "fr": "bfd5f8ca58", "it": "5f644ea753", "ja": "1991cdac06", "ko": "52d7ae46a4", "pt": "cf16019d09", "zh": "f19234eff1"};
+  var h = {"ca": "61ae4f8448", "de": "dba3ad9a2b", "en": "603496d54b", "fr": "2f1f90162a", "it": "cc153e26c1", "ja": "78d4d5682b", "ko": "aa2d064eb5", "pt": "825880dbe6", "zh": "1c9426dd45"};
   ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write('<script src="i18n/' + c + '.js?h=' + h[c] + '"><\/script>'); });
 })();</script>
 <script src="vendor/three.min.js"></script>
@@ -7581,15 +7581,20 @@ function renderGarmentList() {
     box.appendChild(card);
   });
 }
+// footwear refused for an animal's paws goes on human feet: the toast offers them, one tap away (and then wears it)
+const shoeBlocked = (m, it) => it && it.cat === 'Calzado y calcetines' && animalFeet(m);
+const toHumanFeet = (m, then) => ['Pies humanos', () => { m.body.feet = 'humano'; rebuildActive(true); if (typeof syncHeadUI === 'function') syncHeadUI(); then(); pushHistory(); }];
 function wearOutfit(m, specs) {
-  const blocked = (specs || []).filter(sp => garmentBlock(m, ROPA.byId[sp.id]));
-  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp)); toast(tr('Sin {x}: {why}', {x: blocked.map(b => garmentTitle(b.id)).join(', '), why: garmentBlock(m, ROPA.byId[blocked[0].id])})); }
+  const all = specs, blocked = (specs || []).filter(sp => garmentBlock(m, ROPA.byId[sp.id]));
+  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp));
+    toast(tr('Sin {x}: {why}', {x: blocked.map(b => garmentTitle(b.id)).join(', '), why: garmentBlock(m, ROPA.byId[blocked[0].id])}),
+      m === mq && blocked.every(b => shoeBlocked(m, ROPA.byId[b.id])) ? {act: toHumanFeet(m, () => { wearOutfit(m, all); renderGarmentList(); renderLibrary(); })} : {}); }
   const p = setOutfit(m, specs); p.then(() => { if (m === mq) renderGarmentList(); }); return p; }
 function removeGarment(gi) { wearOutfit(mq, mq.outfit.filter((_, i) => i !== gi)); renderGarmentList(); renderLibrary(); pushHistory(); }
 function toggleGarment(id) {
   const i = mq.outfit.findIndex(s => s.id === id);
   if (i >= 0) return removeGarment(i);
-  const why = garmentBlock(mq, ROPA.byId[id]); if (why) return toast(why);
+  const why = garmentBlock(mq, ROPA.byId[id]); if (why) return toast(why, shoeBlocked(mq, ROPA.byId[id]) ? {act: toHumanFeet(mq, () => toggleGarment(id))} : {});
   const list = [...mq.outfit, garmentSpec(id)];
   wearOutfit(mq, list).then(() => { const g = mq.garments.find(x => x.spec.id === id); if (g) { g.open = true; renderGarmentList(); } });
   renderGarmentList(); renderLibrary(); pushHistory();

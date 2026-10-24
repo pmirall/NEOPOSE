@@ -123,15 +123,20 @@ function renderGarmentList() {
     box.appendChild(card);
   });
 }
+// footwear refused for an animal's paws goes on human feet: the toast offers them, one tap away (and then wears it)
+const shoeBlocked = (m, it) => it && it.cat === 'Calzado y calcetines' && animalFeet(m);
+const toHumanFeet = (m, then) => ['Pies humanos', () => { m.body.feet = 'humano'; rebuildActive(true); if (typeof syncHeadUI === 'function') syncHeadUI(); then(); pushHistory(); }];
 function wearOutfit(m, specs) {
-  const blocked = (specs || []).filter(sp => garmentBlock(m, ROPA.byId[sp.id]));
-  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp)); toast(tr('Sin {x}: {why}', {x: blocked.map(b => garmentTitle(b.id)).join(', '), why: garmentBlock(m, ROPA.byId[blocked[0].id])})); }
+  const all = specs, blocked = (specs || []).filter(sp => garmentBlock(m, ROPA.byId[sp.id]));
+  if (blocked.length) { specs = specs.filter(sp => !blocked.includes(sp));
+    toast(tr('Sin {x}: {why}', {x: blocked.map(b => garmentTitle(b.id)).join(', '), why: garmentBlock(m, ROPA.byId[blocked[0].id])}),
+      m === mq && blocked.every(b => shoeBlocked(m, ROPA.byId[b.id])) ? {act: toHumanFeet(m, () => { wearOutfit(m, all); renderGarmentList(); renderLibrary(); })} : {}); }
   const p = setOutfit(m, specs); p.then(() => { if (m === mq) renderGarmentList(); }); return p; }
 function removeGarment(gi) { wearOutfit(mq, mq.outfit.filter((_, i) => i !== gi)); renderGarmentList(); renderLibrary(); pushHistory(); }
 function toggleGarment(id) {
   const i = mq.outfit.findIndex(s => s.id === id);
   if (i >= 0) return removeGarment(i);
-  const why = garmentBlock(mq, ROPA.byId[id]); if (why) return toast(why);
+  const why = garmentBlock(mq, ROPA.byId[id]); if (why) return toast(why, shoeBlocked(mq, ROPA.byId[id]) ? {act: toHumanFeet(mq, () => toggleGarment(id))} : {});
   const list = [...mq.outfit, garmentSpec(id)];
   wearOutfit(mq, list).then(() => { const g = mq.garments.find(x => x.spec.id === id); if (g) { g.open = true; renderGarmentList(); } });
   renderGarmentList(); renderLibrary(); pushHistory();
