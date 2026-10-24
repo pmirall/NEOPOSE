@@ -384,7 +384,10 @@ function furAttrsHead(m, geo, hs) {
     const x = Q[i * 3], y = Q[i * 3 + 1], z = Q[i * 3 + 2];
     const low = sstep(E.y - .02 * s, E.y - .2 * s, y), front = sstep(E.z - .34 * s, E.z - .08 * s, z);
     const mouthY = E.y + s * L.mouthY, bridge = (1 - sstep(.07 * s, .14 * s, Math.abs(x - E.x))) * sstep(mouthY - .01 * s, mouthY + .05 * s, y);
-    const muz = Math.max(low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i]), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
+    // (and the cheek ruff: the tufts standing off the skull below the eyes go with the muzzle and cheeks, as illustrators
+    // colour cheek fluff in the light: a fox's white, a hyena's cream; the fur's depth, d.fur, says which those are)
+    const ruff = i < d.fur.length && !(d.hair[i] > 128) ? sstep(.006, .02, d.fur[i] / 510) * sstep(E.y + .02 * s, E.y - .08 * s, y) : 0;
+    const muz = Math.max(low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i], ruff), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
     if (FM.hair[i] > Math.max(thr, muz)) belly = FM.hair[i];  // (the mane with the belly)
     let dm = -FM.mask[i], tp = 0, kind = 1;
