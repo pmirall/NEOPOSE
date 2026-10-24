@@ -792,7 +792,8 @@ def build_sdf(S):
              neck=[0., float(jaw_bot + .02), float(S['neck'][0][2] - oz)], eyeR_=float(E['re']), eyeYaw=float(E['yaw']))
     le = leather(N)   # (moved with the head, as everything is: the eyes stay at z = 0)
     if le: L['nose'] = [float(v) for v in (le[0] - off)] + [float(v) for v in le[1]]
-    return dict(skin=skin, ear=ear_w, horns=horns, mane=mane_f if mane else None, eyes=[(ec, E['re']), (ec * A(-1, 1, 1), E['re'])], L=L, oz=oz, jaw_bot=jaw_bot)
+    return dict(skin=skin, ear=ear_w, horns=horns, mane=mane_f if mane else None, core=lambda p: core(mir(p) + off), eyes=[(ec, E['re']), (ec * A(-1, 1, 1), E['re'])],
+                L=L, oz=oz, jaw_bot=jaw_bot)
 
 def build(sp, step=.006):
     S = params(sp); D = build_sdf(S)
@@ -801,6 +802,9 @@ def build(sp, step=.006):
     ear = D['ear'](V).astype(np.float32)
     # (how much of each vertex is the mane's: the fur on top of the head, which the app paints in the coat's light)
     hair = np.clip(1 - D['mane'](V) / .025, 0, 1).astype(np.float32) if D['mane'] else np.zeros(len(V), np.float32)
+    # (and how far it stands off the skull: the fur's depth over the tufts and the mane, nothing on the skin; the app lays
+    # hairstyles on the skull under the fur)
+    fur = np.maximum(D['core'](V), 0).astype(np.float32)
     HV, HF = np.zeros((0, 3), np.float32), np.zeros((0, 3), np.int32)
     if D['horns']: HV, HF, _ = Field(A(-.8, -.2, -1.4 - D['oz']), A(.8, 1.4, .3 - D['oz']), step * .7).mesh(D['horns'])
     EV, EF = [], []; n0 = 0
@@ -813,7 +817,7 @@ def build(sp, step=.006):
     L = D['L']; skull = (ear < .3) & (np.abs(V[:, 0]) < .3) & (V[:, 2] < .2)
     if D['mane']: skull &= D['mane'](V) > .035
     crown = float(V[skull, 1].max()); u = 1 / (crown - D['jaw_bot'])
-    V, EV, HV = V * u, EV * u, HV * u
+    V, EV, HV, fur = V * u, EV * u, HV * u, fur * u
     for k in ('eyeL', 'eyeR', 'neck'): L[k] = [float(v * u) for v in L[k]]
     for k in ('mouthY', 'hingeZ', 'eyeR_', 'mouthX'):
         if k in L: L[k] = float(L[k] * u)
@@ -821,7 +825,7 @@ def build(sp, step=.006):
     L['crown'], L['chin'] = crown * u, D['jaw_bot'] * u
     mid = (np.abs(V[:, 0]) < .03) & (V[:, 1] > L['mouthY']) & (V[:, 1] < .05)
     tip = V[mid][np.argmax(V[mid][:, 2])]; L['tip'] = [0., float(tip[1]), float(tip[2])]
-    return dict(V=V.astype(np.float32), F=F, ear=ear, hair=hair, EV=EV, EF=EF, HV=HV.astype(np.float32), HF=HF.astype(np.int32), L=L,
+    return dict(V=V.astype(np.float32), F=F, ear=ear, hair=hair, fur=fur, EV=EV, EF=EF, HV=HV.astype(np.float32), HF=HF.astype(np.int32), L=L,
                 eyes=[(c * u, r * u) for c, r in D['eyes']])
 
 if __name__ == '__main__':

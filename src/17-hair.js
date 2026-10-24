@@ -1,7 +1,8 @@
 /* ======================= hair =======================
    MakeHuman's system hairstyles (CC0), converted like the clothes: every strand card hangs from the scalp, so the
    hair follows head size, age and pose. It is one more garment on the character (kept apart from the outfit, so
-   dressing or undressing leaves it alone), tinted with the chosen colour. Sculpted anthro heads bring their own. */
+   dressing or undressing leaves it alone), tinted with the chosen colour. A sculpted anthro head wears it too, its
+   anchors carried out onto the sculpt (headSwapHairAnchors). */
 const HAIR = {list: null};
 const HAIR_COLORS = [['#1b1512', 'Negro'], ['#3a2a20', 'Castaño oscuro'], ['#6b4a31', 'Castaño'], ['#94622f', 'Avellana'], ['#8a3a1c', 'Pelirrojo'], ['#c7a066', 'Rubio'],
   ['#e3cf9f', 'Rubio claro'], ['#8f8a84', 'Canoso'], ['#e6e3dd', 'Blanco'], ['#3d55b0', 'Azul'], ['#cf6a9b', 'Rosa'], ['#4b8a5c', 'Verde']];
@@ -14,8 +15,9 @@ function loadHairList() {
 }
 // why this character cannot wear the hair, or null
 function hairBlock(m) {
-  // (a kemonomimi — a human head with the animal's ears — has human hair)
-  if (m.body.species !== 'humano' && !((m.body.kemo ?? 3) <= 1 && !m.body.headModel)) return tr('Las cabezas de especie traen su propio pelaje y peinado.');
+  // (a kemonomimi — a human head with the animal's ears — has human hair, and a sculpted anthro head wears it over its
+  // fur, its ears coming up through it)
+  if (m.body.species !== 'humano' && !((m.body.kemo ?? 3) <= 1 && !m.body.headModel) && !headModelFor(m.body)) return tr('Las cabezas de especie traen su propio pelaje y peinado.');
   if (m.avatar) return tr('Los avatares importados traen su propio pelo.');
   return null;
 }

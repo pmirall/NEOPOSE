@@ -22,7 +22,8 @@ function loadHeadModel(id) {
     .then(buf => {
       const hl = new DataView(buf).getUint32(0, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl))), b0 = 4 + hl, o = h.offs, n = h.n;
       return {...h, id, P: new Float32Array(buf, b0 + o[0], n * 3), idx: h.big ? new Uint32Array(buf, b0 + o[1], h.nt * 3) : new Uint16Array(buf, b0 + o[1], h.nt * 3),
-        K: new Uint8Array(buf, b0 + o[2], n), ear: new Uint8Array(buf, b0 + o[3], n), hair: new Uint8Array(buf, b0 + o[4], n)};  // (hair: the mane's share)
+        K: new Uint8Array(buf, b0 + o[2], n), ear: new Uint8Array(buf, b0 + o[3], n), hair: new Uint8Array(buf, b0 + o[4], n), fur: new Uint8Array(buf, b0 + o[5], n)};
+      // (hair: the mane's share; fur: how far it stands off the skull, in 1/510 of the head)
     }).then(cutMouth);
   HEADS.cache.set(id, p); p.then(d => { HEADS.cache.set(id, Promise.resolve(d)); HEADS[id] = d; }, () => HEADS.cache.delete(id));
   return p;
@@ -153,6 +154,46 @@ function fillRing(R) {
   const n = R.length;
   for (let pass = 0; pass < n; pass++) for (let k = 0; k < n; k++) if (!R[k]) { const a = R[(k + n - 1) % n], b = R[(k + 1) % n]; if (a || b) R[k] = a && b ? (a + b) / 2 : a || b; }
 }
+/* Hair on a sculpted head. MakeHuman's hairstyles hang from the human scalp, so the scalp's anchors are carried out onto
+   the sculpt: seen from the middle of the skull, each direction has the human head's surface at one distance and the
+   sculpt's skin (no ears, horns or eyes) at another, and the anchors move by the difference, in full on the head and
+   fading down the neck with its weights. The human head's surface leaves out its ears (narrow across the directions,
+   an opening removes them); the sculpt's is its skull under the fur (each vertex taken in by its fur's depth), without
+   the snout, so the hair lies on the head and the fur comes out from under it, or lies flat under it (headSwapFur). */
+function headSwapHairAnchors(m) {
+  const hs = m.headSwap, A = m.anchors; if (!hs || !A) return null;
+  const nV = FIG.meta.nV, nH = FIG.nH, Hb = FIG.jIdx.head, Jw = FIG.jIdx.jaw, d = hs.d, Q = hs.Q, s = hs.s, E = hs.E, NA = 36, NE = 18;
+  // the middle of the human skull: a little above the eyes, halfway through the head's depth
+  let z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < nV; i++) if (m.dom[i] === Hb && !FIG.eye[i] && A[i * 3 + 1] > E.y) { const z = A[i * 3 + 2]; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+  const cx = E.x, cy = E.y + .1 * s, cz = (z0 + z1) / 2;
+  const dir = (x, y, z) => { const dx = x - cx, dy = y - cy, dz = z - cz, r = Math.hypot(dx, dy, dz) || 1e-6;
+    return [(Math.atan2(dx, dz) / (2 * Math.PI) + .5) * NA, (Math.asin(clamp(dy / r, -1, 1)) / Math.PI + .5) * NE, r, dx / r, dy / r, dz / r]; };
+  const Rm = new Float32Array(NA * NE), Rs = new Float32Array(NA * NE);
+  const put = (R, x, y, z) => { const [a, e, r] = dir(x, y, z), k = Math.min(NE - 1, Math.floor(e)) * NA + Math.floor(a) % NA; if (r > R[k]) R[k] = r; };
+  for (let i = 0; i < nV; i++) if ((m.dom[i] === Hb || m.dom[i] === Jw) && !FIG.eye[i]) put(Rm, A[i * 3], A[i * 3 + 1], A[i * 3 + 2]);
+  for (let i = 0; i < d.n; i++) { if (d.K[i] !== 0 || d.ear[i] >= 64 || d.P[i * 3 + 2] > .1 && d.P[i * 3 + 1] < .03) continue;
+    const f = i < d.fur.length ? d.fur[i] / 510 * s : 0, [a, e, r] = dir(Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]), k = Math.min(NE - 1, Math.floor(e)) * NA + Math.floor(a) % NA;
+    if (r - f > Rs[k]) Rs[k] = r - f; }
+  // empty cells take their row's neighbours, empty rows the next row's
+  const fill = R => { for (let e = 0; e < NE; e++) fillRing(R.subarray(e * NA, e * NA + NA));
+    for (let pass = 0; pass < NE; pass++) for (let e = 0; e < NE; e++) if (!R[e * NA]) { const o = e > 0 && R[(e - 1) * NA] ? e - 1 : e < NE - 1 && R[(e + 1) * NA] ? e + 1 : -1; if (o >= 0) R.copyWithin(e * NA, o * NA, o * NA + NA); } };
+  const pass = (R, f, wa, we) => { const O = new Float32Array(R.length);
+    for (let e = 0; e < NE; e++) for (let a = 0; a < NA; a++) { let v = f === Math.min ? Infinity : f === Math.max ? -Infinity : 0, c = 0;
+      for (let de = -we; de <= we; de++) { const ee = e + de; if (ee < 0 || ee >= NE) continue; for (let da = -wa; da <= wa; da++) { const x = R[ee * NA + (a + da + NA) % NA]; v = f ? f(v, x) : v + x; c++; } }
+      O[e * NA + a] = f ? v : v / c; }
+    return O; };
+  fill(Rm); fill(Rs);
+  const M = pass(pass(pass(Rm, Math.min, 2, 0), Math.max, 2, 0), null, 1, 1), S = pass(Rs, null, 1, 1);
+  const D = M.map((v, k) => clamp(S[k] - v, -.05 * s, .3 * s));
+  const at = (a, e) => { a -= .5; e = clamp(e - .5, 0, NE - 1); const a0 = Math.floor(a), e0 = Math.min(NE - 2, Math.floor(e)), u = a - a0, v = e - e0, A0 = (a0 + NA) % NA, A1 = (a0 + 1 + NA) % NA;
+    return (D[e0 * NA + A0] * (1 - u) + D[e0 * NA + A1] * u) * (1 - v) + (D[(e0 + 1) * NA + A0] * (1 - u) + D[(e0 + 1) * NA + A1] * u) * v; };
+  const out = A.slice(), move = (o, w) => { if (w < .01) return; const [a, e, , ux, uy, uz] = dir(A[o], A[o + 1], A[o + 2]), t = at(a, e) * w; out[o] += ux * t; out[o + 1] += uy * t; out[o + 2] += uz * t; };
+  const wHead = (si, sw, i) => { let w = 0; for (let k = 0; k < 4; k++) if (si[i * 4 + k] === Hb || si[i * 4 + k] === Jw) w += sw[i * 4 + k]; return w / 255; };
+  for (let i = 0; i < nV; i++) move(i * 3, wHead(FIG.si, FIG.sw, i));
+  for (let h = 0; h < nH; h++) move((nV + h) * 3, wHead(FIG.hsi, FIG.hsw, h));
+  return out;
+}
 // body vertices the new head replaces (the human head and the neck above the cut)
 function headSwapMask(m) {
   const hs = m.headSwap; if (!hs) return null;
@@ -215,6 +256,29 @@ function attachHeadSwap(m) {
   if (m.lib.outline) { const o = new THREE.SkinnedMesh(geo, m.lib.outline); o.frustumCulled = false; o.userData.hull = true; m.group.add(o); o.bind(m.skeleton, I); m.acc.push(o); m.hulls.push(o);
     o.onBeforeRender = () => { const U = OUTLINE_MAT.uniforms; U.uOpenO.value = m.mouthOpen ? 1 : 0; U.uLipO.value.copy(m.lib.uEye.uLip.value); OUTLINE_MAT.uniformsNeedUpdate = true; }; }
   m.headMesh = mesh;
+}
+// a hairstyle lies over the fur: worn, the mane it takes the place of lies flat on the skull under it, and so does every
+// tuft it covers (each vertex taken in towards the middle of the head by its fur's depth); taken off, they stand again
+function headSwapFur(m) {
+  const hs = m.headSwap, d = hs && hs.d; if (!d || !m.headMesh) return;
+  if (!hs.fur) {  // the fur's vertices: index, the way in (x, y, z), the mane's share
+    const L = [], src = d.P;
+    for (let i = 0; i < Math.min(d.n, d.fur.length); i++) {
+      const f = d.fur[i] / 510 * hs.s; if (f < .002 * hs.s || d.ear[i] > 25) continue;  // (the ears stand off the skull too, and come up through the hair)
+      const x = src[i * 3], y = src[i * 3 + 1] - .1, z = src[i * 3 + 2] + .32, l = Math.hypot(x, y, z) || 1;  // (from the middle of the skull)
+      L.push(i, -x / l * f, -y / l * f, -z / l * f, i < d.hair.length ? d.hair[i] / 255 : 0);
+    }
+    hs.fur = Float32Array.from(L); hs.furK = new Float32Array(L.length / 5);  // (how far in each is now, 0 … 1)
+  }
+  const F = hs.fur, K = hs.furK, Q = hs.Q, hg = m.hairG && m.hairG.geo, o = hg && surfaceGrid(hg);
+  let moved = false;
+  for (let j = 0, v = 0; j < F.length; j += 5, v++) {
+    const i = F[j] * 3, x = Q[i] - K[v] * F[j + 1], y = Q[i + 1] - K[v] * F[j + 2], z = Q[i + 2] - K[v] * F[j + 3];
+    const k = !o ? 0 : Math.max(F[j + 4], coveredBy(o, x + F[j + 1], y + F[j + 2], z + F[j + 3]) ? 1 : 0);
+    if (k === K[v]) continue;
+    K[v] = k; Q[i] = x + k * F[j + 1]; Q[i + 1] = y + k * F[j + 2]; Q[i + 2] = z + k * F[j + 3]; moved = true;
+  }
+  if (moved) { const geo = m.headMesh.geometry; geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); }
 }
 // picking on the sculpted head: the bone with most weight
 function headPick(m, hit) {

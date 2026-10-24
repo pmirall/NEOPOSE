@@ -567,6 +567,7 @@ class Mannequin {
     this.geo.computeVertexNormals();
     this.rootY = J[FIG.jIdx.hips * 3 + 1];
     computeHeadSwap(this, P, J);
+    if (this.headSwap) this.anchorsHair = headSwapHairAnchors(this);  // (the hair goes on the sculpt)
     // head measurements for the canon and for furry parts
     const hb = FIG.jIdx.head, hd = {x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity};
     let top = 0, backZ = Infinity;

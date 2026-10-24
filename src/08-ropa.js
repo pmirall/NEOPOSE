@@ -265,6 +265,7 @@ function updateBodyHide(m) {
   if (m.mouthOpen && m.anthro && m.anthro.lip) for (const i of m.anthro.lip) H[i] = 1;
   // the fur tufts hide with what is worn over their skin; a sculpted head's cheek tufts root in the head skin it replaces, so that is hidden after
   if (typeof hideFluff === 'function') hideFluff(m, H); if (typeof hideHandParts === 'function') hideHandParts(m, H); if (typeof hideUnderParts === 'function') hideUnderParts(m, H);
+  if (typeof headSwapFur === 'function') headSwapFur(m);  // (and a sculpted head's fur lies flat under the hair)
   // (2: the throat below the cut, drawn but not outlined; never over what a garment hides)
   const HM = typeof headSwapMask === 'function' ? headSwapMask(m) : null; if (HM) for (let i = 0; i < nV; i++) if (HM[i]) H[i] = Math.max(H[i], HM[i] > 1 ? .5 : 1);
   m.geo.attributes.aHide.needsUpdate = true;

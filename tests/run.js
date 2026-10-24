@@ -142,7 +142,7 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
-  // hairstyles: worn and tinted, kept when dressing, undone, refused by species heads
+  // hairstyles: worn and tinted, kept when dressing, undone; a sculpted anthro head wears them too
   async hair(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
     await goTab(page, 'cuerpo'); await page.waitForTimeout(500);
@@ -162,8 +162,12 @@ const SUITES = {
     for (let i = 0; i < 4; i++) { await page.click('#undo'); await page.waitForTimeout(600); }
     ok(await A(() => !window.__cdp.mq.hairG && !window.__cdp.mq.body.hair), 'undo takes the hair off again');
     await page.click('#redo'); await page.waitForTimeout(1500);
-    await goTab(page, 'cuerpo'); await page.click('#speciesChips .chip:nth-child(2)'); await page.waitForTimeout(1500);
-    ok(await A(() => !window.__cdp.mq.hairG && document.querySelector('#hairGrid').classList.contains('off')), 'species heads do not wear human hair');
+    // a sculpted anthro head wears it too, carried out onto the sculpt: over its crown, lying on it, not hovering
+    await goTab(page, 'cuerpo'); await page.click('#speciesChips .chip[data-v="lobo"]'); await page.waitForTimeout(4000);
+    s = await A(() => { const m = window.__cdp.mq, g = m.hairG; if (!g || !g.geo || !m.headSwap) return {worn: !!g, swap: !!m.headSwap};
+      const P = g.geo.attributes.position.array; let top = -Infinity; for (let i = 1; i < P.length; i += 3) top = Math.max(top, P[i]);
+      return {worn: true, swap: true, off: document.querySelector('#hairGrid').classList.contains('off'), over: +((top - m.anthro.L.crown) / m.anthro.L.hh).toFixed(3)}; });
+    ok(s.worn && s.swap && !s.off && s.over > 0 && s.over < .15, `a sculpted anthro head wears the hair over its crown (top ${s.over} head heights above it) (${JSON.stringify(s)})`);
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
