@@ -149,9 +149,10 @@ function hiddenAwareShadow(mat) {
   return mat;
 }
 /* ---------- fitting ---------- */
-// rest-pose positions of the garment on this character's body
+// rest-pose positions of the garment on this character's body (the hair and what is worn on the head on a sculpted
+// head's anchors, carried out onto it, or a kemonomimi's, without its ears)
 function fitPositions(m, d, out) {
-  const A = (d.hair && m.anchorsHair) || m.anchors, n = d.n, R = d.refs, W = d.w, O = d.off, s = [1, 1, 1];
+  const A = ((d.hair || d.head) && m.anchorsHair) || m.anchors, n = d.n, R = d.refs, W = d.w, O = d.off, s = [1, 1, 1];
   d.sc.forEach(([a, b, d0, sc0], k) => { const dist = Math.abs(A[a * 3 + k] - A[b * 3 + k]); s[k] = d0 > 1e-6 ? sc0 * dist / d0 : sc0; });
   for (let i = 0; i < n; i++) {
     const r0 = R[i * 3] * 3, r1 = R[i * 3 + 1] * 3, r2 = R[i * 3 + 2] * 3, w0 = W[i * 3], w1 = W[i * 3 + 1], w2 = W[i * 3 + 2];
@@ -200,7 +201,7 @@ function createGarment(m, spec) {
   const g = {spec, U: makeGarmentUniforms(), mats: {}, meshes: [], hull: null, geo: null, d: null};
   g.ready = Promise.all([loadItem(spec.id), loadCatalog().catch(() => null)]).then(([d]) => {
     if (!m.garments.includes(g)) return;
-    g.d = d; if (spec.hair) d.hair = true;
+    g.d = d; if (spec.hair) d.hair = true; if ((ROPA.byId[spec.id] || {}).cat === 'Sombreros, cascos y máscaras') d.head = true;  // (worn on the head: see fitPositions)
     g.mat = style => { if (!g.mats[style]) { g.mats[style] = garmentMat(style, g.U); setLayerOffset(g); } return g.mats[style]; };
     g.geo = buildGeometry(m, d); garmentMuscles(m, g);
     const s = new THREE.SkinnedMesh(g.geo, g.mat(m.style)); s.frustumCulled = false; s.castShadow = s.receiveShadow = true; s.userData.garment = g;

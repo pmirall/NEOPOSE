@@ -597,12 +597,12 @@ function hideFluff(m, H) {
   const g = m.fluffGeo; if (!g) return;
   const R = g.attributes.aRoot.array, A = g.attributes.aHide.array;
   for (let i = 0; i < R.length; i++) A[i] = R[i] >= 0 && H[R[i]] >= .5 ? 1 : 0;
-  // nor under a hairstyle: a tuft the hair lies over (the cheek ruff under a bob) would come out through it
-  const hg = m.hairG && m.hairG.geo;
-  if (hg) {
-    const o = surfaceGrid(hg), P = g.attributes.position.array, mid = new Map(), under = new Set();
+  // nor under a hairstyle or a hat: a tuft the hair lies over (the cheek ruff under a bob) would come out through it
+  const O = typeof headCovers === 'function' ? headCovers(m) : [];
+  if (O.length) {
+    const P = g.attributes.position.array, mid = new Map(), under = new Set();
     for (let i = 0; i < R.length; i++) { if (R[i] < 0) continue; let c = mid.get(R[i]); if (!c) mid.set(R[i], c = [0, 0, 0, 0]); c[0] += P[i * 3]; c[1] += P[i * 3 + 1]; c[2] += P[i * 3 + 2]; c[3]++; }
-    for (const [r, c] of mid) if (coveredBy(o, c[0] / c[3], c[1] / c[3], c[2] / c[3])) under.add(r);
+    for (const [r, c] of mid) if (O.some(o => coveredBy(o, c[0] / c[3], c[1] / c[3], c[2] / c[3]))) under.add(r);
     for (let i = 0; i < R.length; i++) if (under.has(R[i])) A[i] = 1;
   }
   g.attributes.aHide.needsUpdate = true;

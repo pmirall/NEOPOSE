@@ -142,7 +142,7 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
-  // hairstyles: worn and tinted, kept when dressing, undone; a sculpted anthro head wears them too; the eyes' colour
+  // hairstyles: worn and tinted, kept when dressing, undone; a sculpted anthro head wears them too, and hats; the eyes' colour
   async hair(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
     await goTab(page, 'cuerpo'); await page.waitForTimeout(500);
@@ -175,6 +175,15 @@ const SUITES = {
     const e1 = await eyeC(), b1 = await A(() => window.__cdp.mq.body.eyeCol); await page.click('#eyeSw button[data-c=""]'); await page.waitForTimeout(300);
     const e2 = await eyeC(), b2 = await A(() => window.__cdp.mq.body.eyeCol);
     ok(e0[2] > e0[0] && e1[1] > e1[0] && e1[1] > e1[2] && b1 === '#4f9a4a' && e2.join() === e0.join() && b2 === undefined, `the eyes: a husky's blue, green when picked, its own again on Natural (${JSON.stringify({e0, e1, e2})})`);
+    // and a hat: not refused for the ears, it goes on over the sculpt as the hair does (the ears come up through it)
+    await goTab(page, 'ropa'); await page.waitForTimeout(1500);
+    await A(() => { const d = document.querySelector('#garmentAdd details[data-cat="Sombreros, cascos y máscaras"]'); if (d) d.open = true; }); await page.waitForTimeout(800);
+    const hatOff = await A(() => { const b = document.querySelector('#garmentAdd .libItem[data-id="m_fedora01"]'); return !b ? 'missing' : b.classList.contains('blocked'); });
+    await page.click('#garmentAdd .libItem[data-id="m_fedora01"]'); await page.waitForTimeout(3500);
+    s = await A(() => { const m = window.__cdp.mq, g = m.garments.find(x => x.spec.id === 'm_fedora01'); if (!g || !g.geo) return {worn: false};
+      const P = g.geo.attributes.position.array; let top = -Infinity; for (let i = 1; i < P.length; i += 3) top = Math.max(top, P[i]);
+      return {worn: true, over: +((top - m.anthro.L.crown) / m.anthro.L.hh).toFixed(3)}; });
+    ok(hatOff === false && s.worn && s.over > .05 && s.over < .5, `a hat goes on a sculpted head too, over its crown (${JSON.stringify({blocked: hatOff, ...s})})`);
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },

@@ -257,8 +257,9 @@ function attachHeadSwap(m) {
     o.onBeforeRender = () => { const U = OUTLINE_MAT.uniforms; U.uOpenO.value = m.mouthOpen ? 1 : 0; U.uLipO.value.copy(m.lib.uEye.uLip.value); OUTLINE_MAT.uniformsNeedUpdate = true; }; }
   m.headMesh = mesh;
 }
-// a hairstyle lies over the fur: worn, the mane it takes the place of lies flat on the skull under it, and so does every
-// tuft it covers (each vertex taken in towards the middle of the head by its fur's depth); taken off, they stand again
+// a hairstyle or a hat lies over the fur: a hairstyle's mane, the one it takes the place of, lies flat on the skull under
+// it, and so does every tuft either covers (each vertex taken in towards the middle of the head by its fur's depth);
+// taken off, they stand again
 function headSwapFur(m) {
   const hs = m.headSwap, d = hs && hs.d; if (!d || !m.headMesh) return;
   if (!hs.fur) {  // the fur's vertices: index, the way in (x, y, z), the mane's share
@@ -270,16 +271,18 @@ function headSwapFur(m) {
     }
     hs.fur = Float32Array.from(L); hs.furK = new Float32Array(L.length / 5);  // (how far in each is now, 0 … 1)
   }
-  const F = hs.fur, K = hs.furK, Q = hs.Q, hg = m.hairG && m.hairG.geo, o = hg && surfaceGrid(hg);
+  const F = hs.fur, K = hs.furK, Q = hs.Q, O = headCovers(m), mane = m.hairG && m.hairG.geo ? 1 : 0;
   let moved = false;
   for (let j = 0, v = 0; j < F.length; j += 5, v++) {
     const i = F[j] * 3, x = Q[i] - K[v] * F[j + 1], y = Q[i + 1] - K[v] * F[j + 2], z = Q[i + 2] - K[v] * F[j + 3];
-    const k = !o ? 0 : Math.max(F[j + 4], coveredBy(o, x + F[j + 1], y + F[j + 2], z + F[j + 3]) ? 1 : 0);
+    const k = !O.length ? 0 : Math.max(F[j + 4] * mane, O.some(o => coveredBy(o, x + F[j + 1], y + F[j + 2], z + F[j + 3])) ? 1 : 0);
     if (k === K[v]) continue;
     K[v] = k; Q[i] = x + k * F[j + 1]; Q[i + 1] = y + k * F[j + 2]; Q[i + 2] = z + k * F[j + 3]; moved = true;
   }
   if (moved) { const geo = m.headMesh.geometry; geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); }
 }
+// what lies over the head's fur: the hair and the hats, as surface grids (coveredBy)
+const headCovers = m => (m.garments || []).filter(g => g.geo && g.d && (g.d.hair || g.d.head)).map(g => surfaceGrid(g.geo));
 // picking on the sculpted head: the bone with most weight
 function headPick(m, hit) {
   const g = hit.object.geometry, a = g.index.getX(hit.faceIndex * 3), si = g.attributes.skinIndex, sw = g.attributes.skinWeight, nB = FIG.meta.bones.length;

@@ -18,7 +18,8 @@ function garmentBlock(m, it) {
   if (/glass|gafa|goggle|lentes/.test(t) && snout > .22) return tr('Las gafas no se apoyan en un hocico de {sp}.', {sp});
   if (/mask|máscara|mascarilla|cov|mouth protection/.test(t) && snout > .22) return tr('La máscara está hecha para una cara humana, no para un hocico de {sp}.', {sp});
   if (it.cat === 'Calzado y calcetines' && animalFeet(m)) return tr('Las patas de {sp} no entran en calzado humano.', {sp});
-  if (it.cat === 'Sombreros, cascos y máscaras' && ears && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return tr('Las orejas de {sp} no caben dentro: haría falta una versión con agujeros para las orejas.', {sp});
+  // (a sculpted head wears a hat as it wears hair, its ears coming up through it)
+  if (it.cat === 'Sombreros, cascos y máscaras' && ears && !headModelFor(m.body) && !/hood|capucha|bonnet|cap \(|tiara|horn|cuerno/.test(t)) return tr('Las orejas de {sp} no caben dentro: haría falta una versión con agujeros para las orejas.', {sp});
   return null;
 }
 /* ---------- Ropa tab: outfits, worn garments, and the whole library in folders ---------- */
