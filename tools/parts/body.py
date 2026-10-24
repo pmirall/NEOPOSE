@@ -38,15 +38,15 @@ def torso_arm_thigh():
     add(E((.112, 1.045, .03), (.05, .065, .075)), .03)               # obliques over the hip bone
     add(E((0, 1.47, .0), (.185, .085, .085)), .05)                   # the shoulder girdle: the chest's top as wide as the shoulders
     # chest: the pectorals, two thick slabs hung from the clavicle and the sternum, their lower edge a crease
-    add(E((.08, 1.42, .1), (.1, .062, .046), tilt((0, 0, 1), 18)), .014)
-    add(E((.15, 1.45, .068), (.05, .04, .04), tilt((0, 0, 1), 35)), .02)   # (its tendon sweeping into the deltoid)
-    # abdominal wall: six pads in three rows and a softer lower one, a groove down the middle (the linea alba)
-    for y, h in ((1.285, .03), (1.215, .031), (1.145, .031)):
-        add(E((.033, y, .113), (.03, h, .022)), .01)
-    add(E((.035, 1.075, .104), (.04, .05, .024)), .02)
+    add(E((.08, 1.42, .098), (.1, .062, .044), tilt((0, 0, 1), 18)), .026)
+    add(E((.15, 1.45, .068), (.05, .04, .04), tilt((0, 0, 1), 35)), .03)   # (its tendon sweeping into the deltoid)
+    # abdominal wall: toned, not a bodybuilder's (as the illustrations draw an anthro's): one smooth plate either side
+    # of a shallow groove down the middle (the linea alba), no pads between creases for the ink to find
+    add(E((.034, 1.2, .1), (.036, .12, .024)), .04)
+    add(E((.035, 1.075, .098), (.04, .05, .022)), .035)
     # serratus: the saw-teeth on the ribs under the arm
     for i, y in enumerate((1.35, 1.315, 1.28)):
-        add(E((.122 - i * .004, y, .07 - i * .006), (.012, .011, .024), tilt((1, 0, 0), -25)), .015)
+        add(E((.12 - i * .004, y, .07 - i * .006), (.01, .009, .02), tilt((1, 0, 0), -25)), .025)
     # back: the lats' wings from the armpit to the waist, the traps from the neck to the shoulder and down to mid-back,
     # the shoulder blades, the erectors either side of the spine (a groove between them)
     add(E((.112, 1.3, -.028), (.052, .15, .058), tilt((0, 0, 1), -12)), .03)
@@ -68,18 +68,18 @@ def torso_arm_thigh():
     P = Ar
     add(E((.212, 1.455, .022), (.066, .088, .07), tilt((0, 0, 1), -10)), .015)
     add(C(sh + A(0, -.02, .012), el + A(0, 0, .012), .044, .036), .03)
-    add(E((.206, 1.32, .055), (.034, .07, .032)), .012)
-    add(E((.216, 1.36, -.012), (.036, .085, .036), tilt((0, 0, 1), -4)), .012)
+    add(E((.206, 1.32, .052), (.032, .068, .03)), .022)
+    add(E((.216, 1.36, -.01), (.034, .083, .034), tilt((0, 0, 1), -4)), .022)
     add(E((.205, 1.22, -.012), (.022, .024, .02)), .015)
     add(C(el + A(0, .01, .012), wr + A(0, .02, .012), .04, .026), .025)
-    add(E((.225, 1.16, .035), (.034, .085, .032), tilt((0, 0, 1), 6)), .012)
+    add(E((.225, 1.16, .033), (.032, .083, .03), tilt((0, 0, 1), 6)), .022)
     add(E((.188, 1.15, .018), (.03, .075, .03)), .02)
     # --- the thigh above the lower leg's own: from the hip into the pelvis, the adductors inside
     P = T
     add(C((.1, .98, .03), (.106, .74, .05), .088, .064), .04)
     add(E((.055, .87, .03), (.04, .1, .055)), .03)
-    cuts = [(C((.105, 1.06, .1), (.03, .925, .118), .007, .006), .012),     # the inguinal line: the V from the hip bone to the pubis
-            (C((.0, 1.33, .13), (.0, 1.05, .115), .005, .005), .01)]      # the linea alba down the abdomen
+    cuts = [(C((.105, 1.06, .1), (.03, .925, .118), .005, .004), .014),     # the inguinal line: the V from the hip bone to the pubis
+            (C((.0, 1.33, .124), (.0, 1.05, .11), .004, .004), .014)]     # the linea alba down the abdomen
     def field(L, cut):
         def f(p):
             q = p.copy(); q[:, 0] = np.abs(q[:, 0]); d = None

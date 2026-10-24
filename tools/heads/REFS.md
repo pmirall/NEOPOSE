@@ -97,7 +97,9 @@ So every head but the kemono fox is turned into a character's head (`stylise` in
 A closer look at the canids (the fox measured in its three-quarter view) narrowed theirs again: its muzzle is 0.23 head
 heights wide at the nose (ours was 0.32), its ears 0.62 tall (ours 0.5), its eyes narrow under a heavy lid and slanting
 up at their outer corners. So the canids' snout is narrower than the other families' (a dog's broader and blunter, as
-in the white dog's portrait), their ears bigger, and the fox's eyes narrow and slanted.
+in the white dog's portrait), their ears bigger, and the fox's eyes narrow and slanted. The goat in the illustrations is
+drawn as a kid: a short round muzzle and big broad ears hanging out to the sides, so ours has them too (the deer keeps
+the family's longer face).
 
 Each family keeps its own muzzle sections, nose, pads, fur and ears; `FAM_STYLE` holds its amounts. Measured on the
 baked heads (the animal's head → the character's):

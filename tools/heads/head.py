@@ -571,7 +571,8 @@ SPECIES = {
   'mofeta': dict(fam='mapache', xf=dict(mw=.86), eye=dict(re=.09, w=.088, hu=.046), ears=dict(base=(.26, .35, -.27), round_=1, H=.18, W=.22, D=.12),
                  tufts=[((.37, -.1, -.17), (.44, -.15, -.26), (.52, -.19, -.33), .09, .028)]),
   'conejo': dict(fam='conejo'),
-  'cabra': dict(fam='cabra'),
+  # (as the goat in the illustrations: a kid's short round muzzle, and big broad ears hanging out to the sides)
+  'cabra': dict(fam='cabra', ears=dict(W=.27, round_=.7, out=90), sty=dict(tip=.42, drop=.12, lip=.09, ear=1.5, cheek=.48)),
   'ciervo': dict(fam='cabra', xf=dict(mw=.86, mz=.96), eye=dict(re=.112, w=.108, hu=.064, hl=.054, yaw=27),
                  pits=[dict(pts=[(.165, -.035, .12), (.14, -.065, .18), (.122, -.09, .23)], r=[.013, .012, .007])],
                  nose=dict(kind='can', ells=[((0, -.15, .66), (.07, .05, .05))], k=.03, comma=[(.02, -.16, .705), (.045, -.155, .7), (.062, -.165, .688)], nr=.013, philtrum=(-.2, .69)),
