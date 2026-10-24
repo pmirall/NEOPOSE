@@ -467,6 +467,7 @@ body.practicing .modebar{display:none}
 .hairsw .swatches button{width:24px;height:24px;border:1.5px solid var(--line)}
 .hairsw .swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--page),0 0 0 3.5px var(--ink);border-color:transparent}
 .hairsw .swatches .orig{background:conic-gradient(#3a2a20 0 25%,#6b4a31 0 50%,#c7a066 0 75%,#94622f 0)}
+#eyeSw .orig{background:conic-gradient(#c98a2e 0 25%,#4f9a4a 0 50%,#3d86d8 0 75%,#5a3a22 0)}
 .hairsw input[type=color]{width:34px;height:28px;padding:0;border:1.5px solid var(--line);border-radius:6px;background:none;cursor:pointer;flex:none}
 /* pose blend */
 .blendbar{display:flex;align-items:flex-end;gap:6px;border:1.5px dashed var(--line);border-radius:6px;padding:6px 8px;margin:0 0 8px;background:var(--page)}
@@ -1785,6 +1786,10 @@ body.creator .hint:not(.toast){display:none}
             <p class="note" id="hairNote" hidden></p>
             <p class="note">Peinados de MakeHuman (CC0): siguen la cabeza, la edad y la pose.</p>
           </details>
+          <details class="sec" data-sec="ojos" open>
+            <summary><h3>Ojos</h3></summary>
+            <div class="hairsw"><div class="swatches" id="eyeSw"></div><input type="color" id="eyeColor" aria-label="Color de los ojos"></div>
+          </details>
           <div class="crcat" data-cat="species" id="crCatSpecies">
             <h3><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14.5" cy="6" r="1.8"/><circle cx="18" cy="10" r="1.8"/><path d="M7.5 17.5c0-3.2 2.1-5.5 4.7-5.5s4.6 2.3 4.6 5.5c0 2-1.9 3-4.6 2.5-2.8.5-4.7-.5-4.7-2.5Z"/></svg>Especie <span>cabeza, pelaje y avatar</span></h3>
             <button class="btn icon small crdice" type="button" data-dice="species" title="Especie al azar" aria-label="Especie al azar"></button>
@@ -2598,7 +2603,7 @@ body.creator .hint:not(.toast){display:none}
 </div>
 
 <script>(function () { var all = ["ca", "de", "en", "fr", "it", "ja", "ko", "pt", "zh"], l = null; try { l = JSON.parse(localStorage.getItem("cdp.lang")); } catch (e) {}
-  var h = {"ca": "0a0001fcd8", "de": "9eeb4c7543", "en": "8db6c7a9c0", "fr": "182ac4531a", "it": "4e1153d374", "ja": "6c229e2156", "ko": "d260faa0ce", "pt": "c7c9883967", "zh": "58a974d83e"};
+  var h = {"ca": "fc5adbfd5d", "de": "bc751fd3c4", "en": "38d5da1906", "fr": "bfd5f8ca58", "it": "5f644ea753", "ja": "1991cdac06", "ko": "52d7ae46a4", "pt": "cf16019d09", "zh": "f19234eff1"};
   ["en"].concat(l && l !== "en" && all.indexOf(l) >= 0 ? [l] : []).forEach(function (c) { document.write('<script src="i18n/' + c + '.js?h=' + h[c] + '"><\/script>'); });
 })();</script>
 <script src="vendor/three.min.js"></script>
@@ -3194,7 +3199,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
-        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil; uniform vec4 uLip; uniform float uFurK;
+        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil, uEyeC; uniform vec4 uLip; uniform float uFurK;
         ${FUR_GLSL}
         // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
         // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
@@ -3210,13 +3215,13 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
-        // (an animal's iris amber, a person's the eye's own colour, and both a grey of the paper in the flat styles; uShine:
-        // 1 two catchlights, a toon's or a kemono's, .5 one small one, a realistic animal's)
+        // (the iris tinted uEyeC: the colour chosen, an animal's own or amber, or a person's eye's own colour; a grey of the
+        // paper in the flat styles; uShine: 1 two catchlights, a toon's or a kemono's, .5 one small one, a realistic animal's)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
           vec3 d = normalize(vEye.xyz); float ang = acos(clamp(d.z, -1.0, 1.0));
           if (ang > uIris) return c;
           vec2 uv = d.xy / max(sin(uIris), 1e-3);
-          vec3 iris = mix(${mat.isMeshBasicMaterial ? 'c' : 'uFurOn > .5 ? c * vec3(1.08, .8, .42) : c'}, ink, .38), col = iris;
+          vec3 iris = mix(${mat.isMeshBasicMaterial ? 'c' : 'c * uEyeC'}, ink, .38), col = iris;
           float ring = ${mat.isMeshBasicMaterial ? 'smoothstep(uIris * .93 - fwidth(ang), uIris * .93, ang)' : 'smoothstep(uIris * .9, uIris, ang)'}; col = mix(col, ink, ring * .85);  // (the limbal ring: in the flat styles a crisp inked ring, not shading)
           vec2 pu = uv / uPupil.yz; if (dot(pu, pu) < 1.0) col = mix(ink, ink * .6, .3);
           if (uShine > .75) { vec2 h = uv - vec2(-.22, .2); if (dot(h, h) < .024) col = paper; vec2 h2 = uv - vec2(.2, -.12); if (dot(h2, h2) < .006) col = paper; }
@@ -3378,9 +3383,9 @@ function twoSided(mat, kind = 0) {
   return c;
 }
 // one material set per character, so each can highlight its own selected joint and fade on its own
-const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}};
+const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}};
 function makeCharMats() {
-  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
+  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
   const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye, uFur);
   return {uHi, uMouth, uEye, uFur,
     construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),
@@ -5494,7 +5499,7 @@ function buildBodyUI() {
     const id = b.dataset.v; spBox.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
     // a new species starts from its own head, coat and tail
     if (id !== mq.body.species) { mq.body.species = id; delete mq.body.coat; delete mq.body.tail; delete mq.body.headModel; delete mq.body.pads; }
-    tourEvent('body'); tourEvent('species'); rebuildActive(true); restTail(mq); syncHeadUI(); syncExprUI(); syncCoatUI(); renderHairUI(); pushHistory();
+    tourEvent('body'); tourEvent('species'); rebuildActive(true); restTail(mq); syncHeadUI(); syncExprUI(); syncCoatUI(); renderHairUI(); renderEyeUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -5506,7 +5511,7 @@ function buildBodyUI() {
 }
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
-  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncCoatUI === 'function') syncCoatUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI();
+  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncCoatUI === 'function') syncCoatUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI(); if (typeof renderEyeUI === 'function') renderEyeUI();
   $('#headsOut').textContent = dec(mq.heads);
   if (typeof syncAdvancedUI === 'function') { syncAdvancedUI(); renderBuilds(); }
   if (typeof syncLimbsUI === 'function') syncLimbsUI();
@@ -6249,7 +6254,7 @@ function boot(data, saved) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildCoatUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
+  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildCoatUI(); buildHairUI(); buildEyeUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
   setLightPreset('estudio');
   const snap = data && data.snap && data.snap.chars && data.snap.chars.length ? data.snap : saved && saved.chars && saved.chars.length ? saved : null;
   if (snap) { AUTO.base = histStr(); AUTO.fresh = {...snapshot(), ...sceneExtras(true)}; try { restore(snap); } catch (e) { console.warn('restore', e); } }
@@ -8230,6 +8235,40 @@ function eyeSetup(m, P) {
   // (a toon's iris is drawn bigger, its round pupil not with it: the iris's colour shows round it)
   const pk = style === 'kemono' ? 1.15 : style === 'toon' && !pup[0] ? .72 : 1;
   U.uPupil.value.set(pup[0], pup[1] * pk, pup[2] * (pup[0] === 1 ? 1 : pk));
+  applyEyeCol(m);
+}
+/* the iris's colour: the one chosen for the character (body.eyeCol), else its coat's (an animal's own: a husky's blue
+   eyes, a cat's green), else amber on an animal and the eye's own colour on a person */
+const EYE_COLORS = [['#5a3a22', 'Marrón'], ['#c98a2e', 'Ámbar'], ['#8a7a3a', 'Avellana'], ['#4f9a4a', 'Verde'], ['#3d86d8', 'Azul'], ['#8c9aa6', 'Gris'],
+  ['#c8303c', 'Rojo'], ['#d65aa4', 'Rosa'], ['#7d52c8', 'Violeta'], ['#dcb22c', 'Dorado']];
+for (const c of EYE_COLORS) c[1] = tr(c[1]);
+function applyEyeCol(m) {
+  const U = m.lib && m.lib.uEye; if (!U || !U.uEyeC) return;
+  const c = typeof coatOf === 'function' ? coatOf(m.body) : null, hex = m.body.eyeCol || (c && c.eye);
+  // (the colour times a little over one: it is mixed with the ink for the iris's shade)
+  if (hex) { const n = parseInt(hex.slice(1), 16); U.uEyeC.value.set((n >> 16 & 255) / 212, (n >> 8 & 255) / 212, (n & 255) / 212); }
+  else if (c) U.uEyeC.value.set(1.08, .8, .42); else U.uEyeC.value.set(1, 1, 1);
+}
+function setEyeCol(m, col) { if (col) m.body.eyeCol = col; else delete m.body.eyeCol; applyEyeCol(m); }
+/* ---------- Body tab: the eyes' colour ---------- */
+function renderEyeUI() {
+  const sw = $('#eyeSw'); if (!sw) return;
+  const col = mq.body.eyeCol || '';
+  sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === col)));
+  const c = typeof coatOf === 'function' ? coatOf(mq.body) : null; $('#eyeColor').value = col || (c && c.eye) || (c ? '#c98a2e' : '#6b5a4a');
+}
+function buildEyeUI() {
+  const sw = $('#eyeSw'); if (!sw) return; sw.innerHTML = '';
+  for (const [c, name] of [['', tr('Natural')], ...EYE_COLORS]) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.c = c; b.title = name; b.setAttribute('aria-label', name);
+    if (c) b.style.background = c; else b.className = 'orig';
+    b.onclick = () => { setEyeCol(mq, c); renderEyeUI(); pushHistory(); };
+    sw.appendChild(b);
+  }
+  const inp = $('#eyeColor');
+  inp.oninput = () => { setEyeCol(mq, inp.value); sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', 'false')); };
+  inp.onchange = pushHistory;
+  renderEyeUI();
 }
 
 /* ---------- animal legs (researched) ----------
@@ -9173,13 +9212,14 @@ const COAT_MARKS = [
   ['dorsal', 'Raya del lomo'], ['stripes', 'Rayas'], ['spots', 'Manchas'], ['rosettes', 'Rosetas'], ['rings', 'Anillos en la cola']
 ];
 const COAT_ORDER = COAT_MARKS.map(m => m[0]);
-// c: base, light, dark; m: mark → 1 light, 2 dark (absent: off); sock: how far up the socks go (0 hip … 1 toes); tip: how much of the tail is its tip
+// c: base, light, dark; m: mark → 1 light, 2 dark (absent: off); sock: how far up the socks go (0 hip … 1 toes); tip: how much of the tail is its tip;
+// eye: the animal's eyes when they are not amber (a husky's blue, a cat's green, a deer's dark brown)
 const COATS = {
   lobo:      {label: 'Lobo gris', for: ['lobo', 'coyote', 'perro'], c: ['#8b8680', '#ebe6dc', '#3a3632'], m: {belly: 1, dorsal: 2, ears: 2, tail: 2}, le: '#2a2422'},
   lobo_bl:   {label: 'Lobo ártico', for: ['lobo', 'perro'], c: ['#e6e3dc', '#f8f6f1', '#b4ada2'], m: {belly: 1}, le: '#2a2422'},
   lobo_ng:   {label: 'Lobo negro', for: ['lobo', 'perro'], c: ['#33302d', '#5a544e', '#1b1918'], m: {belly: 1}, le: '#1e1a19'},
   coyote:    {label: 'Coyote', for: ['coyote', 'lobo'], c: ['#a8865f', '#efe4cf', '#3d3125'], m: {belly: 1, dorsal: 2, tail: 2, ears: 2}, le: '#2a2422'},
-  perro:     {label: 'Husky', for: ['perro', 'lobo'], c: ['#5e6166', '#f3f0ea', '#2a2a2d'], m: {belly: 1, socks: 1, dorsal: 2}, sock: .74, le: '#252223'},
+  perro:     {label: 'Husky', for: ['perro', 'lobo'], c: ['#5e6166', '#f3f0ea', '#2a2a2d'], m: {belly: 1, socks: 1, dorsal: 2}, sock: .74, le: '#252223', eye: '#5aa6e6'},
   pastor:    {label: 'Pastor alemán', for: ['perro'], c: ['#b57c43', '#dcb47e', '#2b2420'], m: {dorsal: 2, mask: 2, tail: 2}, le: '#221d1b'},
   dalmata:   {label: 'Dálmata', for: ['perro'], c: ['#f4f1ea', '#f8f6f1', '#232120'], m: {spots: 2}, le: '#2a2422'},
   labrador:  {label: 'Labrador', for: ['perro'], c: ['#d6a862', '#ecd29c', '#8a6230'], m: {belly: 1}, le: '#4a3426'},
@@ -9187,35 +9227,35 @@ const COATS = {
   zorro_ar:  {label: 'Zorro ártico', for: ['zorro'], c: ['#ebe9e3', '#fbfaf6', '#3a3836'], m: {belly: 1}, le: '#2a2624'},
   zorro_pl:  {label: 'Zorro plateado', for: ['zorro'], c: ['#3b3836', '#8e8a85', '#1e1c1b'], m: {belly: 2, muzzle: 0, tail: 1}, le: '#1e1a19'},
   hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#c4935c', '#f0e0bf', '#6a4730'], m: {belly: 1, muzzle: 1, spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
-  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#5a3e27'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86'},
-  gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422'},
-  siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e'},
-  esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86'},
+  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#5a3e27'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#8fbf3a'},
+  gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422', eye: '#d0c040'},
+  siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e', eye: '#4a8ee0'},
+  esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86', eye: '#8fbf3a'},
   tigre:     {label: 'Tigre de Bengala', for: ['tigre'], c: ['#d8822c', '#f6f0e5', '#1f1a17'], m: {belly: 1, muzzle: 1, stripes: 2, ears: 2, rings: 2}, le: '#c07a72'},
-  tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, muzzle: 1, stripes: 2, rings: 2}, le: '#c98b86'},
+  tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, muzzle: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#4a8ee0'},
   leon:      {label: 'León', for: ['leon'], c: ['#c99b5f', '#ebd8b6', '#4a3524'], m: {belly: 1, ears: 2, tail: 2}, tip: .14, le: '#5a3a30'},
-  leopardo:  {label: 'Leopardo de las nieves', for: ['leopardo'], c: ['#d6d2ca', '#f3f1ec', '#46433f'], m: {belly: 1, rosettes: 2, tail: 2}, tip: .12, le: '#c98b86'},
+  leopardo:  {label: 'Leopardo de las nieves', for: ['leopardo'], c: ['#d6d2ca', '#f3f1ec', '#46433f'], m: {belly: 1, rosettes: 2, tail: 2}, tip: .12, le: '#c98b86', eye: '#9fb8a0'},
   leopardo2: {label: 'Leopardo', for: ['leopardo', 'gato'], c: ['#d9a85b', '#f4ead7', '#2a221a'], m: {belly: 1, rosettes: 2}, le: '#2a2422'},
   guepardo:  {label: 'Guepardo', for: ['leopardo', 'gato'], c: ['#dcb36f', '#f4ead8', '#241d16'], m: {belly: 1, spots: 2, rings: 2}, le: '#2a2422'},
-  oso:       {label: 'Oso pardo', for: ['oso'], c: ['#6b4a32', '#8d674a', '#33241a'], m: {socks: 2}, sock: .7, le: '#211b18'},
-  oso_po:    {label: 'Oso polar', for: ['oso'], c: ['#efeadf', '#f8f5ee', '#cfc6b4'], m: {}, le: '#1e1b1a'},
-  panda_g:   {label: 'Panda gigante', for: ['oso'], c: ['#f3f1ec', '#f8f6f2', '#1e1c1b'], m: {socks: 2, ears: 2, mask: 2}, sock: .45, le: '#1e1c1b'},
-  mapache:   {label: 'Mapache', for: ['mapache'], c: ['#8a8784', '#e8e5e0', '#2b2928'], m: {belly: 1, muzzle: 1, mask: 2, ears: 1, rings: 2, socks: 2, tail: 2}, sock: .86, tip: .12, le: '#2b2524'},
+  oso:       {label: 'Oso pardo', for: ['oso'], c: ['#6b4a32', '#8d674a', '#33241a'], m: {socks: 2}, sock: .7, le: '#211b18', eye: '#5a3a22'},
+  oso_po:    {label: 'Oso polar', for: ['oso'], c: ['#efeadf', '#f8f5ee', '#cfc6b4'], m: {}, le: '#1e1b1a', eye: '#5a3a22'},
+  panda_g:   {label: 'Panda gigante', for: ['oso'], c: ['#f3f1ec', '#f8f6f2', '#1e1c1b'], m: {socks: 2, ears: 2, mask: 2}, sock: .45, le: '#1e1c1b', eye: '#5a3a22'},
+  mapache:   {label: 'Mapache', for: ['mapache'], c: ['#8a8784', '#e8e5e0', '#2b2928'], m: {belly: 1, muzzle: 1, mask: 2, ears: 1, rings: 2, socks: 2, tail: 2}, sock: .86, tip: .12, le: '#2b2524', eye: '#5a3a22'},
   panda:     {label: 'Panda rojo', for: ['panda'], c: ['#b4532a', '#f2e8d8', '#35201a'], m: {belly: 2, muzzle: 1, socks: 2, ears: 1, rings: 1, mask: 1}, sock: .5, le: '#251c19'},
   mofeta:    {label: 'Mofeta', for: ['mofeta'], c: ['#1f1d1c', '#f2efea', '#141312'], m: {dorsal: 1, mask: 1, tail: 1}, tip: .35, le: '#2a2422'},
-  conejo:    {label: 'Conejo gris', for: ['conejo'], c: ['#9c9288', '#efe9df', '#5a524a'], m: {belly: 1, tail: 1, ears: 2}, tip: 1, le: '#c98b86'},
+  conejo:    {label: 'Conejo gris', for: ['conejo'], c: ['#9c9288', '#efe9df', '#5a524a'], m: {belly: 1, tail: 1, ears: 2}, tip: 1, le: '#c98b86', eye: '#6a3a2a'},
   conejo_bl: {label: 'Conejo blanco', for: ['conejo'], c: ['#f5f2ec', '#fbfaf7', '#d9d2c6'], m: {}, le: '#d19a96'},
-  ciervo:    {label: 'Ciervo', for: ['ciervo', 'cabra'], c: ['#9b6b43', '#efe4d0', '#3a2a1e'], m: {belly: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a'},
-  cervato:   {label: 'Cervatillo', for: ['ciervo'], c: ['#a8703f', '#f1e6d3', '#3a2a1e'], m: {belly: 1, spots: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a'},
+  ciervo:    {label: 'Ciervo', for: ['ciervo', 'cabra'], c: ['#9b6b43', '#efe4d0', '#3a2a1e'], m: {belly: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a', eye: '#4a3020'},
+  cervato:   {label: 'Cervatillo', for: ['ciervo'], c: ['#a8703f', '#f1e6d3', '#3a2a1e'], m: {belly: 1, spots: 1, mask: 1, tail: 1}, tip: 1, le: '#231d1a', eye: '#4a3020'},
   cabra:     {label: 'Cabra blanca', for: ['cabra'], c: ['#ebe5d9', '#f7f3ec', '#9d9282'], m: {}, le: '#3a302a'},
   cabra_pa:  {label: 'Cabra parda', for: ['cabra'], c: ['#7b5b3f', '#dccbb0', '#2c2119'], m: {belly: 1, dorsal: 2, socks: 2}, sock: .72, le: '#2a221d'},
-  caballo:   {label: 'Castaño', for: ['caballo'], c: ['#7a4527', '#b3825a', '#1c1410'], m: {socks: 2, tail: 2}, sock: .7, tip: 1, le: '#2a2220'},
-  alazan:    {label: 'Alazán', for: ['caballo'], c: ['#9a5228', '#c98e5e', '#5a2e16'], m: {tail: 1}, tip: 1, le: '#3a2a24'},
-  tordo:     {label: 'Tordo', for: ['caballo'], c: ['#bdbab4', '#e9e7e2', '#4a4845'], m: {spots: 2, socks: 2, tail: 2}, sock: .8, tip: 1, le: '#2a2828'},
-  dragon:    {label: 'Dragón verde', for: ['dragon'], c: ['#4f7a4a', '#d9cf9a', '#26391f'], m: {belly: 1, dorsal: 2}, le: '#2a2620'},
-  dragon_r:  {label: 'Dragón rojo', for: ['dragon'], c: ['#a63b2a', '#e8ca90', '#4a1710'], m: {belly: 1, dorsal: 2}, le: '#2a1a16'},
-  dragon_a:  {label: 'Dragón azul', for: ['dragon'], c: ['#3e5f8f', '#cad8e7', '#1c2a40'], m: {belly: 1, dorsal: 2, spots: 2}, le: '#1c2230'},
-  dragon_n:  {label: 'Dragón negro', for: ['dragon'], c: ['#2b2a30', '#7a6a9a', '#141318'], m: {belly: 1}, le: '#141318'}
+  caballo:   {label: 'Castaño', for: ['caballo'], c: ['#7a4527', '#b3825a', '#1c1410'], m: {socks: 2, tail: 2}, sock: .7, tip: 1, le: '#2a2220', eye: '#4a3020'},
+  alazan:    {label: 'Alazán', for: ['caballo'], c: ['#9a5228', '#c98e5e', '#5a2e16'], m: {tail: 1}, tip: 1, le: '#3a2a24', eye: '#4a3020'},
+  tordo:     {label: 'Tordo', for: ['caballo'], c: ['#bdbab4', '#e9e7e2', '#4a4845'], m: {spots: 2, socks: 2, tail: 2}, sock: .8, tip: 1, le: '#2a2828', eye: '#4a3020'},
+  dragon:    {label: 'Dragón verde', for: ['dragon'], c: ['#4f7a4a', '#d9cf9a', '#26391f'], m: {belly: 1, dorsal: 2}, le: '#2a2620', eye: '#dcc22c'},
+  dragon_r:  {label: 'Dragón rojo', for: ['dragon'], c: ['#a63b2a', '#e8ca90', '#4a1710'], m: {belly: 1, dorsal: 2}, le: '#2a1a16', eye: '#e8a020'},
+  dragon_a:  {label: 'Dragón azul', for: ['dragon'], c: ['#3e5f8f', '#cad8e7', '#1c2a40'], m: {belly: 1, dorsal: 2, spots: 2}, le: '#1c2230', eye: '#e8c030'},
+  dragon_n:  {label: 'Dragón negro', for: ['dragon'], c: ['#2b2a30', '#7a6a9a', '#141318'], m: {belly: 1}, le: '#141318', eye: '#c03030'}
 };
 tLabels(COATS);
 const tColor = h => new THREE.Color(h);
@@ -9225,7 +9265,7 @@ function coatOf(b) {
   if (b.coat && b.coat.c) return b.coat;
   const id = (b.coat && b.coat.preset) || (SPECIES[b.species] || {}).coat, p = COATS[id]; if (!p) return null;
   const m = {...p.m}; if (m.belly && m.muzzle === undefined) m.muzzle = m.belly;  // the muzzle is as light as the belly unless the animal says otherwise
-  return {preset: id, c: p.c.slice(), m, sock: p.sock ?? .72, tip: p.tip ?? .25, le: p.le || '#2a2422'};
+  return {preset: id, c: p.c.slice(), m, sock: p.sock ?? .72, tip: p.tip ?? .25, le: p.le || '#2a2422', ...(p.eye ? {eye: p.eye} : {})};
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
@@ -9237,6 +9277,7 @@ function applyCoat(m) {
   const c = coatOf(m.body); U.uFurOn.value = c ? 1 : 0; U.uFurK.value = 1 / (m.size || 1); if (!c) return;
   U.uFurC0.value.set(c.c[0]); U.uFurC1.value.set(c.c[1]); U.uFurC2.value.set(c.c[2]); U.uFurLe.value.set(c.le || '#2a2422');
   U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
+  if (typeof applyEyeCol === 'function') applyEyeCol(m);  // (a coat may bring its animal's eyes)
 }
 const FUR_GLSL = `
   uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR; uniform float uNoseIn;
@@ -19263,6 +19304,7 @@ function castOf(P, text) {
     // an animal's coat in the colour said («una gata blanca», «a brown dog»); a kemonomimi's ears and tail
     if (sp && sp !== 'humano') { const base = coatOf({...BODY_BASE, species: sp}), col = look.furCol || look.tailCol || (body.kemo === 1 ? look.hairCol : null);
       if (base && col) body.coat = body.kemo === 1 ? {...base, c: [col, mixHex(col, '#ffffff', .5), mixHex(col, '#000000', .25)], m: {}, tip: 0} : {...base, c: [col, mixHex(col, '#ffffff', .55), shadeHex(col, .45)]}; }
+    if (look.eyeCol) body.eyeCol = look.eyeCol;  // («ojos verdes», «blue-eyed»)
     // hair (people, and the half-human, who have a human head)
     const h = Math.abs(Math.sin((scWords(n.name)[0].length + out.length * 7.1) * 12.9898) * 43758.5453) % 1, old = (body.age ?? 1) > 1.55, kid = (body.age ?? 1) < .5;
     if (!sp || sp === 'humano' || body.kemo === 1) {

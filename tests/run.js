@@ -142,7 +142,7 @@ const SUITES = {
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
-  // hairstyles: worn and tinted, kept when dressing, undone; a sculpted anthro head wears them too
+  // hairstyles: worn and tinted, kept when dressing, undone; a sculpted anthro head wears them too; the eyes' colour
   async hair(browser) {
     const page = await open(browser), A = f => page.evaluate(f);
     await goTab(page, 'cuerpo'); await page.waitForTimeout(500);
@@ -168,6 +168,13 @@ const SUITES = {
       const P = g.geo.attributes.position.array; let top = -Infinity; for (let i = 1; i < P.length; i += 3) top = Math.max(top, P[i]);
       return {worn: true, swap: true, off: document.querySelector('#hairGrid').classList.contains('off'), over: +((top - m.anthro.L.crown) / m.anthro.L.hh).toFixed(3)}; });
     ok(s.worn && s.swap && !s.off && s.over > 0 && s.over < .15, `a sculpted anthro head wears the hair over its crown (top ${s.over} head heights above it) (${JSON.stringify(s)})`);
+    // the eyes: an animal's own (a husky's blue) until a colour is picked, then that one, and its own again on Natural
+    await page.click('#speciesChips .chip[data-v="perro"]'); await page.waitForTimeout(3000);
+    const eyeC = () => A(() => window.__cdp.mq.lib.uEye.uEyeC.value.toArray().map(v => +v.toFixed(2)));
+    const e0 = await eyeC(); await page.click('#eyeSw button[data-c="#4f9a4a"]'); await page.waitForTimeout(300);
+    const e1 = await eyeC(), b1 = await A(() => window.__cdp.mq.body.eyeCol); await page.click('#eyeSw button[data-c=""]'); await page.waitForTimeout(300);
+    const e2 = await eyeC(), b2 = await A(() => window.__cdp.mq.body.eyeCol);
+    ok(e0[2] > e0[0] && e1[1] > e1[0] && e1[1] > e1[2] && b1 === '#4f9a4a' && e2.join() === e0.join() && b2 === undefined, `the eyes: a husky's blue, green when picked, its own again on Natural (${JSON.stringify({e0, e1, e2})})`);
     ok(page.errors.length === 0, `no JS errors ${page.errors.slice(0, 2).join(' | ')}`);
     await page.context().close();
   },
@@ -1474,9 +1481,9 @@ const SUITES = {
     ok(cuts.builds === 0 && cuts.mean < 40, `playing through the cuts rebuilds nobody and takes ${cuts.mean.toFixed(0)} ms a cut (worst ${cuts.worst.toFixed(0)} ms)`);
     ok(cuts.moving > .6 && cuts.lenses >= 5 && cuts.kinds >= 6, `the shots are not all alike: ${Math.round(cuts.moving * 100)} % of them move, ${cuts.lenses} lens lengths, ${cuts.kinds} kinds and sizes of shot`);
     // the set and the look come from what the script says
-    const lab = await A(async () => { const S = window.__cdp.script; const r = await S.scriptToFilm('INT. LABORATORIO - NOCHE\n\nUn laboratorio lleno de tubos de ensayo y pantallas. La científica ANA lleva una bata blanca, pelirroja y con coleta.\n\nANA\nYa casi está.\n\nAna observa una muestra.\n', {cams: false, online: false});
-      const A = window.__cdp.ANIM, c = A.shots[0].scene.chars[0]; return {warn: r.warn, env: A.shots[0].scene.extras.env, outfit: c.outfit.map(g => g.id), hair: c.body.hair, col: c.body.hairCol}; });
-    ok(lab.env === 'laboratorio' && (lab.outfit.includes('c1412') || lab.outfit.includes('c157')) && lab.hair === 'h-ponytail01' && lab.col === '#8a3a1c' && !lab.warn.length, `a lab scene: the lab set, Ana in a lab coat with a red ponytail, nothing misunderstood (${lab.env}, ${lab.outfit.join('+')}, ${lab.hair} ${lab.col}${lab.warn.length ? ', ' + lab.warn.join(' | ') : ''})`);
+    const lab = await A(async () => { const S = window.__cdp.script; const r = await S.scriptToFilm('INT. LABORATORIO - NOCHE\n\nUn laboratorio lleno de tubos de ensayo y pantallas. La científica ANA lleva una bata blanca, pelirroja y con coleta, de ojos verdes.\n\nANA\nYa casi está.\n\nAna observa una muestra.\n', {cams: false, online: false});
+      const A = window.__cdp.ANIM, c = A.shots[0].scene.chars[0]; return {warn: r.warn, env: A.shots[0].scene.extras.env, outfit: c.outfit.map(g => g.id), hair: c.body.hair, col: c.body.hairCol, eye: c.body.eyeCol}; });
+    ok(lab.env === 'laboratorio' && (lab.outfit.includes('c1412') || lab.outfit.includes('c157')) && lab.hair === 'h-ponytail01' && lab.col === '#8a3a1c' && lab.eye === '#3d7a46' && !lab.warn.length, `a lab scene: the lab set, Ana in a lab coat with a red ponytail and green eyes, nothing misunderstood (${lab.env}, ${lab.outfit.join('+')}, ${lab.hair} ${lab.col}, eyes ${lab.eye}${lab.warn.length ? ', ' + lab.warn.join(' | ') : ''})`);
     ok(!page.errors.length, 'no errors' + (page.errors.length ? ': ' + page.errors.join(' | ') : ''));
     await page.context().close();
   },

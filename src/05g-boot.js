@@ -3,7 +3,7 @@ function boot(data, saved) {
   addChar('hombre', null, false); mq = chars[0];
   mq.joints.hips.position.set(0, mq.rootY, 0); applyPreset(mq, POSE.contra); state.posePreset = 'contra';
   setEnv('estudio'); applyTheme();
-  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildCoatUI(); buildHairUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
+  buildDrawUI(); buildBodyUI(); buildBodiesUI(); buildLimbsUI(); buildDynamicsUI(); buildCharactersUI(); buildHandUI(); buildLightUI(); buildSceneUI(); buildCamUI(); buildToolsUI(); buildClothesUI(); buildClothUI(); buildExprUI(); buildHeadUI(); buildCoatUI(); buildHairUI(); buildEyeUI(); buildPinUI(); buildBlendUI(); buildSceneExtrasUI(); buildExportUI(); buildLayersUI(); buildAnimUI(); buildAnimGalleryUI(); buildBoardUI(); buildPhotoUI(); buildQualityUI();
   setLightPreset('estudio');
   const snap = data && data.snap && data.snap.chars && data.snap.chars.length ? data.snap : saved && saved.chars && saved.chars.length ? saved : null;
   if (snap) { AUTO.base = histStr(); AUTO.fresh = {...snapshot(), ...sceneExtras(true)}; try { restore(snap); } catch (e) { console.warn('restore', e); } }

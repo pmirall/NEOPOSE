@@ -123,6 +123,7 @@ function castOf(P, text) {
     // an animal's coat in the colour said («una gata blanca», «a brown dog»); a kemonomimi's ears and tail
     if (sp && sp !== 'humano') { const base = coatOf({...BODY_BASE, species: sp}), col = look.furCol || look.tailCol || (body.kemo === 1 ? look.hairCol : null);
       if (base && col) body.coat = body.kemo === 1 ? {...base, c: [col, mixHex(col, '#ffffff', .5), mixHex(col, '#000000', .25)], m: {}, tip: 0} : {...base, c: [col, mixHex(col, '#ffffff', .55), shadeHex(col, .45)]}; }
+    if (look.eyeCol) body.eyeCol = look.eyeCol;  // («ojos verdes», «blue-eyed»)
     // hair (people, and the half-human, who have a human head)
     const h = Math.abs(Math.sin((scWords(n.name)[0].length + out.length * 7.1) * 12.9898) * 43758.5453) % 1, old = (body.age ?? 1) > 1.55, kid = (body.age ?? 1) < .5;
     if (!sp || sp === 'humano' || body.kemo === 1) {

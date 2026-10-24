@@ -294,7 +294,7 @@ function buildBodyUI() {
     const id = b.dataset.v; spBox.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
     // a new species starts from its own head, coat and tail
     if (id !== mq.body.species) { mq.body.species = id; delete mq.body.coat; delete mq.body.tail; delete mq.body.headModel; delete mq.body.pads; }
-    tourEvent('body'); tourEvent('species'); rebuildActive(true); restTail(mq); syncHeadUI(); syncExprUI(); syncCoatUI(); renderHairUI(); pushHistory();
+    tourEvent('body'); tourEvent('species'); rebuildActive(true); restTail(mq); syncHeadUI(); syncExprUI(); syncCoatUI(); renderHairUI(); renderEyeUI(); pushHistory();
   });
   const mk2 = (box, list) => { box.innerHTML = ''; for (const [k, label, mn, mx, fmt] of list)
     bodyEls[k] = slider(box, {id: 'b_' + k, label, min: mn, max: mx, step: .01, value: mq.body[k], fmt: fmt || pctFmt,
@@ -306,7 +306,7 @@ function buildBodyUI() {
 }
 function syncBodyUI() {
   for (const k in bodyEls) bodyEls[k].set(mq.body[k]);
-  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncCoatUI === 'function') syncCoatUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI();
+  setPressed($('#bodyChips'), mq.bodyPreset || ''); setPressed($('#speciesChips'), mq.body.species); if (typeof syncHeadUI === 'function') syncHeadUI(); if (typeof syncCoatUI === 'function') syncCoatUI(); if (typeof syncExprUI === 'function') syncExprUI(); if (typeof renderHairUI === 'function') renderHairUI(); if (typeof renderEyeUI === 'function') renderEyeUI();
   $('#headsOut').textContent = dec(mq.heads);
   if (typeof syncAdvancedUI === 'function') { syncAdvancedUI(); renderBuilds(); }
   if (typeof syncLimbsUI === 'function') syncLimbsUI();

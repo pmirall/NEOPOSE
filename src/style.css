@@ -450,6 +450,7 @@ body.practicing .modebar{display:none}
 .hairsw .swatches button{width:24px;height:24px;border:1.5px solid var(--line)}
 .hairsw .swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--page),0 0 0 3.5px var(--ink);border-color:transparent}
 .hairsw .swatches .orig{background:conic-gradient(#3a2a20 0 25%,#6b4a31 0 50%,#c7a066 0 75%,#94622f 0)}
+#eyeSw .orig{background:conic-gradient(#c98a2e 0 25%,#4f9a4a 0 50%,#3d86d8 0 75%,#5a3a22 0)}
 .hairsw input[type=color]{width:34px;height:28px;padding:0;border:1.5px solid var(--line);border-radius:6px;background:none;cursor:pointer;flex:none}
 /* pose blend */
 .blendbar{display:flex;align-items:flex-end;gap:6px;border:1.5px dashed var(--line);border-radius:6px;padding:6px 8px;margin:0 0 8px;background:var(--page)}

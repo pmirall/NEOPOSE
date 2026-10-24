@@ -73,7 +73,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
-        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil; uniform vec4 uLip; uniform float uFurK;
+        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil, uEyeC; uniform vec4 uLip; uniform float uFurK;
         ${FUR_GLSL}
         // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
         // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
@@ -89,13 +89,13 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
-        // (an animal's iris amber, a person's the eye's own colour, and both a grey of the paper in the flat styles; uShine:
-        // 1 two catchlights, a toon's or a kemono's, .5 one small one, a realistic animal's)
+        // (the iris tinted uEyeC: the colour chosen, an animal's own or amber, or a person's eye's own colour; a grey of the
+        // paper in the flat styles; uShine: 1 two catchlights, a toon's or a kemono's, .5 one small one, a realistic animal's)
         vec3 eyeShade(vec3 c, vec3 ink, vec3 paper) {
           vec3 d = normalize(vEye.xyz); float ang = acos(clamp(d.z, -1.0, 1.0));
           if (ang > uIris) return c;
           vec2 uv = d.xy / max(sin(uIris), 1e-3);
-          vec3 iris = mix(${mat.isMeshBasicMaterial ? 'c' : 'uFurOn > .5 ? c * vec3(1.08, .8, .42) : c'}, ink, .38), col = iris;
+          vec3 iris = mix(${mat.isMeshBasicMaterial ? 'c' : 'c * uEyeC'}, ink, .38), col = iris;
           float ring = ${mat.isMeshBasicMaterial ? 'smoothstep(uIris * .93 - fwidth(ang), uIris * .93, ang)' : 'smoothstep(uIris * .9, uIris, ang)'}; col = mix(col, ink, ring * .85);  // (the limbal ring: in the flat styles a crisp inked ring, not shading)
           vec2 pu = uv / uPupil.yz; if (dot(pu, pu) < 1.0) col = mix(ink, ink * .6, .3);
           if (uShine > .75) { vec2 h = uv - vec2(-.22, .2); if (dot(h, h) < .024) col = paper; vec2 h2 = uv - vec2(.2, -.12); if (dot(h2, h2) < .006) col = paper; }
@@ -257,9 +257,9 @@ function twoSided(mat, kind = 0) {
   return c;
 }
 // one material set per character, so each can highlight its own selected joint and fade on its own
-const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}};
+const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}};
 function makeCharMats() {
-  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
+  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
   const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye, uFur);
   return {uHi, uMouth, uEye, uFur,
     construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),

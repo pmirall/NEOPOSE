@@ -596,6 +596,40 @@ function eyeSetup(m, P) {
   // (a toon's iris is drawn bigger, its round pupil not with it: the iris's colour shows round it)
   const pk = style === 'kemono' ? 1.15 : style === 'toon' && !pup[0] ? .72 : 1;
   U.uPupil.value.set(pup[0], pup[1] * pk, pup[2] * (pup[0] === 1 ? 1 : pk));
+  applyEyeCol(m);
+}
+/* the iris's colour: the one chosen for the character (body.eyeCol), else its coat's (an animal's own: a husky's blue
+   eyes, a cat's green), else amber on an animal and the eye's own colour on a person */
+const EYE_COLORS = [['#5a3a22', 'Marrón'], ['#c98a2e', 'Ámbar'], ['#8a7a3a', 'Avellana'], ['#4f9a4a', 'Verde'], ['#3d86d8', 'Azul'], ['#8c9aa6', 'Gris'],
+  ['#c8303c', 'Rojo'], ['#d65aa4', 'Rosa'], ['#7d52c8', 'Violeta'], ['#dcb22c', 'Dorado']];
+for (const c of EYE_COLORS) c[1] = tr(c[1]);
+function applyEyeCol(m) {
+  const U = m.lib && m.lib.uEye; if (!U || !U.uEyeC) return;
+  const c = typeof coatOf === 'function' ? coatOf(m.body) : null, hex = m.body.eyeCol || (c && c.eye);
+  // (the colour times a little over one: it is mixed with the ink for the iris's shade)
+  if (hex) { const n = parseInt(hex.slice(1), 16); U.uEyeC.value.set((n >> 16 & 255) / 212, (n >> 8 & 255) / 212, (n & 255) / 212); }
+  else if (c) U.uEyeC.value.set(1.08, .8, .42); else U.uEyeC.value.set(1, 1, 1);
+}
+function setEyeCol(m, col) { if (col) m.body.eyeCol = col; else delete m.body.eyeCol; applyEyeCol(m); }
+/* ---------- Body tab: the eyes' colour ---------- */
+function renderEyeUI() {
+  const sw = $('#eyeSw'); if (!sw) return;
+  const col = mq.body.eyeCol || '';
+  sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === col)));
+  const c = typeof coatOf === 'function' ? coatOf(mq.body) : null; $('#eyeColor').value = col || (c && c.eye) || (c ? '#c98a2e' : '#6b5a4a');
+}
+function buildEyeUI() {
+  const sw = $('#eyeSw'); if (!sw) return; sw.innerHTML = '';
+  for (const [c, name] of [['', tr('Natural')], ...EYE_COLORS]) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.c = c; b.title = name; b.setAttribute('aria-label', name);
+    if (c) b.style.background = c; else b.className = 'orig';
+    b.onclick = () => { setEyeCol(mq, c); renderEyeUI(); pushHistory(); };
+    sw.appendChild(b);
+  }
+  const inp = $('#eyeColor');
+  inp.oninput = () => { setEyeCol(mq, inp.value); sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', 'false')); };
+  inp.onchange = pushHistory;
+  renderEyeUI();
 }
 
 /* ---------- animal legs (researched) ----------
