@@ -111,6 +111,20 @@ in the white dog's portrait), their ears bigger, and the fox's eyes narrow and s
 drawn as a kid: a short round muzzle and big broad ears hanging out to the sides, so ours has them too (the deer keeps
 the family's longer face).
 
+The cat was then gone over from every angle with blind reviewers (agents shown only the renders and the illustrations,
+never what had changed). Its deep jaw read as a dog's, and without it the cat had no chin. Now:
+- a small round chin sits just behind the whisker pads, and the jaw's underside is a broad U that melts into the cheeks
+  behind the mouth's corners, so the mouth's line ends at the pads instead of running round the face;
+- the cheeks sit high on the cheekbones (no jowls), and the skull narrows to the chin from the front, its underside
+  higher, its back pulled in, its forehead domed;
+- the muzzle is short (0.35 ahead of the eye), its bridge sloping from between the eyes;
+- the nose is a raised wedge of leather laid out in the stylised frame itself (`muzzle`: the animal's own nose, squashed
+  with the snout, had flattened to a sliver), with the two whisker pads under and beside it;
+- the eyes turn out a little more, so they show in profile, under a lighter brow and lid;
+- thick cheek tufts sweep back and down;
+- the tabby's coat is white only on the pads, the chin and the throat, with an M of thin rust lines up the forehead and
+  on over the crown to the nape, and dark lid rims.
+
 Each family keeps its own muzzle sections, nose, pads, fur and ears; `FAM_STYLE` holds its amounts. Measured on the
 baked heads:
 
@@ -118,7 +132,7 @@ baked heads:
 |---|---|---|---|---|---|
 | Canids | 0.56 | 0.18 | 0.29 | 0.20 | 0.12 |
 | Hyena | 0.56 | 0.17 | 0.29 | 0.21 | 0.12 |
-| Cat | 0.33 | 0.15 | 0.21 | 0.20 | 0.11 |
+| Cat | 0.35 | 0.12 | 0.28 | 0.24 | 0.16 |
 | Big cats | 0.47 | 0.22 | 0.28 | 0.19 | 0.11 |
 | Bear | 0.44 | 0.16 | 0.28 | 0.19 | 0.11 |
 | Raccoon | 0.45 | 0.15 | 0.27 | 0.20 | 0.11 |

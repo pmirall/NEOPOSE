@@ -263,9 +263,14 @@ def forms(S):
     """The head's masses in order, each blended into what is there (+), or cut out of it (-): (op, form, blend)."""
     H = S['head']; ops = [('+', Sections(H['st'], rf=H.get('rf', .04), rb=H.get('rb', .04)), 0)]
     a, b, ra, rb = S['neck']; ops.append(('+', Cone(a, b, ra, rb), .12))
-    J = S.get('jaw')
-    if J: ops.append(('+', Sections(J['st'], rf=J.get('rf', .03), rb=J.get('rb', .05)), J.get('k', .02)))
-    M = S['mouth']; Y0, Z0 = M['y'] + .009, M['corner'] - .02
+    J = S.get('jaw'); M = S['mouth']
+    if J:
+        k = J.get('k', .02)
+        # (kb: behind the mouth's corners the jaw melts into the cheeks, so the mouth's line ends at the corners and does
+        # not run on round the face as a seam; in front of them the lips' crease stays crisp)
+        if J.get('kb'): k = lambda q, k=k, kb=J['kb'], zc=M['corner']: np.interp(q[:, 2], [zc - .12, zc - .02], [kb, k])
+        ops.append(('+', Sections(J['st'], rf=J.get('rf', .03), rb=J.get('rb', .05)), k))
+    Y0, Z0 = M['y'] + .009, M['corner'] - .02
     def lipsafe(F):
         """A form kept off the mouth's cut: in front of the corners nothing of it under the lip line (the cut there would
         hand it to the jaw), behind them all of it (a heavy cheek fills out down to the jaw)."""
@@ -289,6 +294,8 @@ def forms(S):
 def run(ops, q):
     d = ops[0][1].f(q)   # (the first form whole: what stands in for a form away from its box is only good next to another's)
     for op, F, k in ops[1:]:
+        if callable(k):   # (a blend that changes along the form: k(q), each point's own)
+            K = k(q).astype(np.float32); e = F(q, float(K.max()) + .02); h = np.clip(.5 + .5 * (e - d) / K, 0, 1); d = e + (d - e) * h - K * h * (1 - h); continue
         e = F(q, k + .02)
         d = smin(d, e, k) if op == '+' else ssub(d, e, k)
     return d
@@ -368,23 +375,31 @@ WOLF = dict(
           ((.23, .44, -.13), (.29, .37, .0), (.37, .25, .06), .12, .042), ((.07, .57, -.3), (.09, .66, -.22), (.12, .7, -.08), .13, .045),
           ((.17, .53, -.3), (.22, .6, -.24), (.28, .62, -.12), .11, .04)])
 CAT = dict(
-    head=dict(rf=.05, rb=.04, st=[muz(.3, -.085, .072, -.2), muz(.23, -.035, .125, -.2), cran(.13, .055, .25, -.03, -.205),
+    head=dict(rf=.05, rb=.04, st=[muz(.3, -.06, .085, -.2), muz(.23, -.005, .15, -.2), cran(.13, .055, .25, -.03, -.205),
         cran(.05, .12, .31, -.03, -.215), cran(-.06, .25, .38, -.02, -.3), cran(-.19, .38, .43, .03, -.38), cran(-.33, .45, .42, .06, -.4),
         cran(-.46, .42, .37, .06, -.32), cran(-.57, .32, .28, .05, -.21), cran(-.64, .17, .15, .04, -.09)]),
-    jaw=dict(k=.008, rf=.035, rb=.06, st=[jaw(.25, .035, -.25, -.195), jaw(.17, .075, -.31, -.195), jaw(.06, .125, -.4, -.195),
-        jaw(-.1, .18, -.52, -.2), jaw(-.22, .19, -.54, -.22)]),
-    pads=[dict(c=(.062, -.148, .245), r=(.08, .062, .072), k=.02)],
-    masses=[dict(c=(.21, -.15, -.04), r=(.15, .13, .15), k=.07), dict(c=(-.21, -.15, -.04), r=(.15, .13, .15), k=.07)],
+    # (a small round chin just behind the whisker pads, its underside a broad U spreading back to the jaw's corners and
+    # running back level to the throat, melted into the cheeks behind the mouth's corners: not the long jaw of a dog)
+    jaw=dict(k=.008, kb=.06, rf=.035, rb=.06, st=[jaw(.27, .05, -.305, -.195), jaw(.21, .09, -.312, -.195), jaw(.1, .14, -.316, -.195),
+        jaw(-.05, .2, -.315, -.2), jaw(-.2, .25, -.3, -.21)]),
+    # (the nose and the whisker pads in the stylised frame, z from the snout's tip: the nose a wedge on the end of the
+    # bridge, its front a triangle; the pads two puffs either side of the philtrum, under the nose and flanking it: the W)
+    muzzle=dict(nose=[(.06, -.02, -.07), (.065, -.05, -.01), (.033, -.1, .004), (0, -.125, .008), (0, -.018, -.075), (0, -.105, -.06)],
+                comma=[(.022, -.098, .006), (.038, -.09, 0), (.048, -.097, -.012)], philtrum=(-.125, -.004),
+                pads=[dict(c=(.1, -.17, -.065), r=(.09, .06, .065))]),
+    masses=[],   # (no jowls: the stylised cheeks sit high, on the cheekbones)
     brow=dict(pts=[(.1, .115, .115), (.18, .145, .095), (.26, .13, .05), (.31, .08, -.02)], r=[.016, .022, .019, .012], sq=.7, k=.03),
     nose=dict(kind='fel', pts=[(.052, -.045, .24), (.056, -.053, .305), (.03, -.09, .322), (0, -.108, .32), (0, -.055, .245)], r=.016, k=.012,
               comma=[(.018, -.075, .322), (.034, -.073, .315), (.045, -.083, .3)], nr=.009, philtrum=(-.105, .31)),
     mouth=dict(y=-.2, corner=.03, smile=(.08, .03)),
     jawh=dict(hinge=-.28),
     eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.12, hu=.054, hl=.054, tilt=12, shift=.1, sink=.004, lu=.016, ll=.007, lo=.86, mound=(1.45, 1.3, .96, .06)),
-    ears=dict(base=(.25, .34, -.23), out=20, back=4, turn=-18, H=.45, W=.44, D=.22, lean=.1, rim=.035),
-    tufts=[((.33, -.1, -.14), (.42, -.14, -.2), (.5, -.17, -.26), .1, .03),
-           ((.33, -.21, -.13), (.41, -.26, -.18), (.48, -.31, -.23), .1, .03),
-           ((.3, -.31, -.12), (.37, -.37, -.16), (.42, -.43, -.2), .085, .026)],
+    ears=dict(base=(.3, .33, -.23), out=26, back=4, turn=-18, H=.42, W=.46, D=.22, lean=.1, rim=.035, round_=.25),
+    # (the cheek ruff: three clumps of mixed sizes swept back and down along the jaw, thick at the root; none hanging
+    # under it)
+    tufts=[((.33, -.06, -.12), (.42, -.09, -.2), (.47, -.11, -.36), .1, .055),
+           ((.32, -.16, -.11), (.42, -.21, -.19), (.48, -.27, -.35), .12, .06),
+           ((.28, -.25, -.1), (.35, -.3, -.17), (.39, -.35, -.28), .08, .05)],
     neck=((0, -.32, -.24), (0, -1.05, -.22), .2, .19))
 BIGCAT = dict(
     head=dict(rf=.06, rb=.04, st=[muz(.46, -.065, .1, -.27), muz(.38, -.022, .165, -.27), muz(.28, .018, .205, -.27), muz(.17, .055, .235, -.27),
@@ -528,7 +543,9 @@ KEMONO = dict(
            ((.33, -.22, -.1), (.41, -.29, -.19), (.49, -.36, -.25), .09, .028)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 # each family's stylised proportions (stylise), and a species' own on top (its 'sty')
-FAM_STYLE = dict(lobo=dict(mw=1.12, cheek=.38, ear=1.5, eye=dict(hu=.06, hl=.046)), gato=dict(tip=.38, drop=.08, lip=.04, mw=1.25, cheek=.42, skull=.48, face=.33),
+FAM_STYLE = dict(lobo=dict(mw=1.12, cheek=.38, ear=1.5, eye=dict(hu=.06, hl=.046)), gato=dict(tip=.35, drop=0, lip=.05, mw=1.25, cheek=.38, skull=.48, face=.33,
+                                                                                                     ear=1.25, eye=dict(re=.14, w=.135, hu=.074, hl=.06, lu=.007), chy=-.1, low=.72, under=.6, back=.85,
+                                                                                                     yaw=16, brow=dict(r=[.014, .02, .018, .01], sq=.5, k=.05), dome=.05, mxc=.2),
                  felino=dict(tip=.66, drop=.12, lip=.05, mw=1.3, cheek=.42, skull=.48, face=.33, crown=.52, ear=1.4),
                  oso=dict(tip=.5, drop=.1, lip=.05, mw=1.35, cheek=.46, skull=.48, face=.34, crown=.52, ear=1.5),
                  mapache=dict(tip=.52, drop=.1, lip=.05, mw=1.2, cheek=.46, ear=1.3), conejo=dict(tip=.36, drop=.07, lip=.04, mw=1.2, cheek=.44, yaw=8, crown=.52, skull=.46, eye=dict(re=.14, w=.135, hu=.078, hl=.058)),
@@ -613,16 +630,26 @@ def xform(P, mz=1., mw=1., sk=1.):
 # plane's half width in front of the eyes; cheek: the cheeks' half width (full cheeks laid on either side of the face,
 # the jaw widening back towards them); ex: the eyes' half spacing; yaw: how far they look out (prey animals'
 # further); ear: the ears' size; tw: the cheek tufts'; nose: the nose leather's; eye: the species' own eye on top of
-# the stylised one (a hyena's heavy, half-closed lids).
-def sty_skull(crown, skull, face, bot):
-    """The stylised braincase, from the face plane (z .15, in front of the eyes) round to the nape: (z, section)s."""
+# the stylised one (a hyena's heavy, half-closed lids); brow: its own brow ridge on top of the stylised one; chy: how
+# high the cheeks sit; mxc: the mouth's corners' half width; low, under, back, dome: the braincase's (sty_skull).
+def sty_skull(crown, skull, face, bot, low=1., under=1., back=1., dome=0.):
+    """The stylised braincase, from the face plane (z .15, in front of the eyes) round to the nape: (z, section)s.
+    low: how much of its width the lower half keeps down to the bottom (a cat's face narrows to its chin); under: how far
+    its underside drops behind the face; back: how far back the nape reaches; dome: how far the forehead over the brows
+    swells forward (a cat's round brow)."""
     c, w = crown, skull
-    return [cran(.15, .2, face, -.07, bot), cran(.08, .36 * c / .58, w * .85, -.04, bot - .06), cran(-.04, .5 * c / .58, w * .96, -.01, bot - .12),
-            cran(-.2, c, w, .03, bot - .16), cran(-.36, c, w * .96, .06, bot - .15), cran(-.5, c * .86, w * .85, .07, bot - .08),
-            cran(-.61, c * .62, w * .66, .07, bot + .04), cran(-.68, c * .3, w * .36, .06, bot + .17)]
+    st = [cran(.15, .2, face, -.07, bot), cran(.08 + dome * .6, .36 * c / .58, w * .85, -.04, bot - .06 * under), cran(-.04 + dome, .5 * c / .58, w * .96, -.01, bot - .12 * under),
+          cran(-.2 * back + dome * .5, c, w, .03, bot - .16 * under), cran(-.36 * back, c, w * .96, .06, bot - .15 * under), cran(-.5 * back, c * .86, w * .85, .07, bot - .08 * under),
+          cran(-.61 * back, c * .62, w * .66, .07, bot + .04), cran(-.68 * back, c * .3, w * .36, .06, bot + .17)]
+    if low == 1: return st
+    def taper(sec):
+        wy = max(sec, key=lambda p: p[0])[1]; b = min(y for _, y in sec)
+        return [(x * (1 - (1 - low) * float(np.clip((wy - y) / max(wy - b, 1e-3), 0, 1))), y) for x, y in sec]
+    return [(z, taper(sec)) for z, sec in st]
 STY_EYE = dict(x=.21, re=.125, yaw=6, pitch=-2, w=.12, hu=.066, hl=.05, tilt=8, shift=.05, sink=.004, lu=.013, ll=.006, lo=.9, crease=None)
 STY_BROW = dict(pts=[(.1, .14, .17), (.19, .175, .16), (.28, .165, .12), (.34, .13, .05)], r=[.015, .021, .019, .012], sq=.7, k=.03)
-def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32, cheek=.4, ex=.22, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None):
+def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32, cheek=.4, ex=.22, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None,
+            chy=-.2, low=1., under=1., back=1., brow=None, dome=0., mxc=None):
     st = sorted(P['head']['st'], key=lambda q: q[0]); snout = [q for q in st if q[0] > .16]
     zb, z0 = snout[0][0], snout[-1][0]; mz = (tip - .22) / max(z0 - zb, .02)
     def f(z):   # the snout moved up to the face plane and shortened to its tip
@@ -642,10 +669,10 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     wx = lambda z: mw if f(z) > .16 else 1.
     old_crown = max(y for _, sec in st for _, y in sec); cy = crown / old_crown
     up = lambda p: (p[0] * 1.06, p[1] * cy if p[1] > 0 else p[1] - lip * min(1., -p[1] / .3), p[2] * 1.04 if p[2] < 0 else p[2])
-    P['head']['st'] = [(f(z), [(x * mw, g(y, f(z))) for x, y in sec]) for z, sec in snout] + sty_skull(crown, skull, face, L2 - .03)
+    P['head']['st'] = [(f(z), [(x * mw, g(y, f(z))) for x, y in sec]) for z, sec in snout] + sty_skull(crown, skull, face, L2 - .03, low, under, back, dome)
     jw = lambda z: wx(z) * (1 + (cheek / .5 - .55) * float(sstep(.2, -.15, f(z))))   # (the jaw wider back towards the cheeks)
     P['jaw']['st'] = [(f(z), [(x * jw(z), y - lip) for x, y in sec]) for z, sec in P['jaw']['st']]
-    P['masses'] = (P.get('masses') or []) + [dict(c=(cheek * .62, -.2, -.06), r=(cheek * .34, .14, .17), k=.08)]
+    P['masses'] = (P.get('masses') or []) + [dict(c=(cheek * .62, chy, -.06), r=(cheek * .34, .14, .17), k=.08)]   # (chy: low, full cheeks; high, cheekbones)
     N = P['nose']
     if N.get('ells'): N['ells'] = [(w3(c), (r[0] * mw ** .5 * nose, r[1] * nose, r[2] * nose)) for c, r in N['ells']]
     for k in ('pts', 'comma'):
@@ -661,10 +688,17 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     if P.get('horns'): P['horns']['base'] = up(P['horns']['base'])
     if P.get('ears'): Er = P['ears']; Er['base'] = up(Er['base']); Er['H'] *= ear; Er['W'] *= ear; Er['D'] = Er.get('D', Er.get('T', .1) * 1.8) * ear
     E = P['eye']; P['eye'] = {**STY_EYE, 'x': ex, 'yaw': yaw, 'tilt': E.get('tilt', 8) * .7 if tilt is None else tilt, **(eye or {})}
-    B = copy.deepcopy(STY_BROW); B['pts'] = [(x * ex / STY_EYE['x'], y, z) for x, y, z in B['pts']]; P['brow'] = B; P.pop('furrow', None)
+    B = {**copy.deepcopy(STY_BROW), **(brow or {})}; B['pts'] = [(x * ex / STY_EYE['x'], y, z) for x, y, z in B['pts']]; P['brow'] = B; P.pop('furrow', None)
+    # a muzzle laid out in the stylised frame itself, z from the snout's tip (a cat's: its nose a wedge of leather on the
+    # end of the bridge, the pads flanking it below), where the animal's, squashed with the snout, would be a sliver
+    Mz = P.pop('muzzle', None)
+    if Mz:
+        t = lambda p: (p[0], p[1], tip + p[2])
+        N['pts'] = [t(q) for q in Mz['nose']]; N['comma'] = [t(q) for q in Mz['comma']]; N['philtrum'] = (Mz['philtrum'][0], tip + Mz['philtrum'][1])
+        P['pads'] = [dict(c=t(q['c']), r=q['r'], k=q.get('k', .02)) for q in Mz['pads']]
     M['y'] = L2; M['corner'] = max(f(M['corner']), .1)
     # (its corners just outside the snout's root, as illustrators draw the mouth: not out across the cheeks)
-    M['xc'] = max(x for x, _ in snout[0][1]) * mw
+    M['xc'] = mxc or max(x for x, _ in snout[0][1]) * mw   # (mxc: a cat's, just outside its whisker pads)
 
 def params(sp):
     S = SPECIES[sp]; P = copy.deepcopy(FAMS[S.get('fam', 'lobo')])

@@ -32,7 +32,7 @@ const COATS = {
   zorro_ar:  {label: 'Zorro ártico', for: ['zorro'], c: ['#ebe9e3', '#fbfaf6', '#3a3836'], m: {belly: 1}, le: '#2a2624'},
   zorro_pl:  {label: 'Zorro plateado', for: ['zorro'], c: ['#3b3836', '#8e8a85', '#1e1c1b'], m: {belly: 2, muzzle: 0, tail: 1}, le: '#1e1a19'},
   hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#c4935c', '#f0e0bf', '#6a4730'], m: {belly: 1, muzzle: 1, spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
-  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#5a3e27'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#8fbf3a'},
+  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#7e4521'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#8fbf3a'},
   gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422', eye: '#d0c040'},
   siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e', eye: '#4a8ee0'},
   esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86', eye: '#8fbf3a'},
@@ -74,8 +74,10 @@ function coatOf(b) {
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
-const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uNoseIn: {value: 0}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
-  uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25}});
+const FACE_STR = 40;  // (the most stripe segments a sculpted face is painted with, per pixel: faceStripe)
+const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uNoseIn: {value: 0}, uNoseTri: {value: 0}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
+  uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25},
+  uStrA: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrB: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrN: {value: 0}, uStrMuz: {value: 0}, uFaceX: {value: 0}, uLidC: {value: new THREE.Vector4()}});
 const FUR_OFF = makeFurU();
 function applyCoat(m) {
   const U = m.lib && m.lib.uFur; if (!U) return;
@@ -85,7 +87,8 @@ function applyCoat(m) {
   if (typeof applyEyeCol === 'function') applyEyeCol(m);  // (a coat may bring its animal's eyes)
 }
 const FUR_GLSL = `
-  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR; uniform float uNoseIn;
+  uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR; uniform float uNoseIn, uNoseTri;
+  uniform vec4 uStrA[${FACE_STR}], uStrB[${FACE_STR}], uLidC; uniform float uStrN, uStrMuz, uFaceX;
   varying vec3 vFurP;
   float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
   float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -103,8 +106,24 @@ const FUR_GLSL = `
   // is at the mouth, a dragon's, had its nose run down onto the jaw) (noseF: the sphere's edge one pixel soft)
   // (an ellipsoid where the sculpted head says how far its nose reaches each way: uNoseR, its radii over the largest)
   float noseF;
-  float noseD() { return length((vFurP - uNose.xyz) / uNoseR); }
+  // (a cat's is an inverted triangle, uNoseTri: wide across the top, narrowing to a point over the philtrum)
+  float noseD() { vec3 q = (vFurP - uNose.xyz) / uNoseR; q.x /= mix(1.0, clamp(.6 + .62 * q.y / max(uNose.w, 1e-6), .22, 1.25), uNoseTri); return length(q); }
   float noseMask(float w) { return uNose.w > 0.0 && w > 2.55 && w < 4.0 && vLip >= 0.0 ? 1.0 - smoothstep(uNose.w - noseF, uNose.w + noseF, noseD()) : 0.0; }
+  // a sculpted face's stripes and the rims of its eyelids, cut per pixel too: on the coarse mesh's vertices a stripe as
+  // narrow as a triangle came out a blot and the rims a ring of teeth. The stripes are faceMarks' strokes (uStrA..B: the
+  // ends of each segment and their radii), the rims the skin within a little of the eyeball (uLidC: its centre and
+  // radius), both in the rest frame, mirrored about the face's middle (uFaceX) (strF: a pixel there)
+  float strF;
+  vec3 faceP() { return vec3(abs(vFurP.x - uFaceX), vFurP.y, vFurP.z); }
+  float faceStripe() { vec3 p = faceP(); float d = 1e3;
+    for (int i = 0; i < ${FACE_STR}; i++) { if (float(i) >= uStrN) break;
+      vec3 a = uStrA[i].xyz, ab = uStrB[i].xyz - a; float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-12), 0.0, 1.0);
+      d = min(d, length(p - a - t * ab) - mix(uStrA[i].w, uStrB[i].w, t)); }
+    return 1.0 - smoothstep(-strF, strF, d); }
+  // (along the top and out to the outer corner, as illustrators ink the upper lid; the lower lid's rim thinner)
+  float lidRim() { float re = uLidC.w; if (re <= 0.0) return 0.0; vec3 q = faceP() - uLidC.xyz;
+    float k = re * mix(1.07, 1.17, max(smoothstep(-.25 * re, -.05 * re, q.y), smoothstep(.35 * re, .55 * re, q.x)));
+    return smoothstep(.15 * re, .25 * re, q.z) * (1.0 - smoothstep(k - strF, k + strF, length(q))); }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
     float kind = floor(w) - 1.0, fr = fract(w) - .5, nose = 0.0;
@@ -120,7 +139,7 @@ const FUR_GLSL = `
     if (uNoseIn > .5 && kind < 1.5 && noseD() < uNose.w * 1.6) fr = -.45;
     #endif
     if (kind > 3.5) return vec3(.86, .81, .7);                  // horn and antler
-    if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves (and a sculpted head's eyelids' rims)
+    if (kind > 2.5) return mix(uFurLe, vec3(.32, .29, .26), .45); // claws and hooves
     if (kind > 1.5) return uFurLe;                               // nose and pads
     vec3 p = vFurP, c = uFurC0; float m, belly = max(vEye.x, 0.0), muz = max(-vEye.x, 0.0), dist = vEye.y, tip = vEye.z, dors = clamp(fr / .45, 0.0, 1.0), mask = clamp(-fr / .45, 0.0, 1.0);
     float onTail = step(1.5, tip), u = tip - 2.0, body = 1.0 - smoothstep(.3, .6, belly);
@@ -130,7 +149,8 @@ const FUR_GLSL = `
     m = uFurM[1]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, muz));
     m = uFurM[6]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .7, dors));
     m = uFurM[7]; if (m > .5) { float s = sin(p.y * 64.0 + fNoise(p * 7.0) * 5.0 + fNoise(p * 2.5) * 6.0); float w = smoothstep(.58, .76, s + (fNoise(p * 16.0) - .5) * .7);
-      if (face > .5) w = smoothstep(.3, .6, (-dist - .05) / .95);
+      // (a cat's stripes stop where its light muzzle and ruff begin, uStrMuz; a tiger's run on over its white cheeks)
+      if (face > .5) w = uStrN > .5 ? faceStripe() * (1.0 - uStrMuz * smoothstep(.35, .65, muz)) : smoothstep(.3, .6, (-dist - .05) / .95);
       c = mix(c, furSlot(m, c), w * body * (1.0 - onTail)); }
     m = uFurM[8]; if (m > .5) { vec2 ce = fCell(p * 15.0 * fs); float r = .2 + .14 * ce.y; c = mix(c, furSlot(m, c), (1.0 - smoothstep(r - .05, r, ce.x)) * body); }
     m = uFurM[9]; if (m > .5) { vec2 ce = fCell(p * 14.0 * fs); float ring = smoothstep(.16, .22, ce.x) * (1.0 - smoothstep(.34, .42, ce.x)) * step(.28, fNoise(p * 46.0 * fs));
@@ -142,6 +162,7 @@ const FUR_GLSL = `
     m = uFurM[4]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.55, .7, tip) * (1.0 - onTail));
     m = uFurM[10]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.12, .2, u) * smoothstep(.42, .5, fract(u * 5.0 + .25)) * (1.0 - smoothstep(.92, .98, fract(u * 5.0 + .25))));
     m = uFurM[5]; if (m > .5) c = mix(c, furSlot(m, c), onTail * smoothstep(.97 - uTailTip, 1.03 - uTailTip, u));
+    c = mix(c, vec3(.035, .028, .025), face * lidRim());  // (dark, whatever the nose leather's colour: a pink-nosed cat's too)
     return mix(c, uFurLe, nose);
   }`;
 
@@ -168,6 +189,7 @@ function furPaintJS(C, E, px, py, pz) {
   const kind = Math.floor(w) - 1, fr = fract(w) - .5, mix = (c, d, t) => c.map((v, i) => v + (d[i] - v) * t), M = C.m, slot = (k, c) => k > 1.5 ? C.c2 : k > .5 ? C.c1 : c;
   if (kind > 4.5) return [[.97, .95, .9], [.74, .37, .41], [.78, .52, .54], [.56, .31, .34], [.24, .11, .13]][Math.min(kind, 9) - 5];  // the mouth
   if (kind > 3.5) return [.86, .81, .7]; if (kind > 2.5) return mix(C.le, [.32, .29, .26], .45); if (kind > 1.5) return C.le;
+  if (E[2] < -.5) return [.035, .028, .025];  // (a sculpted head's eyelids' rims, tip −1: the shader cuts them per pixel, lidRim)
   let c = C.c0, m; const belly = Math.max(E[0], 0), muz = Math.max(-E[0], 0), dist = E[1], tip = E[2], dors = clamp(fr / .45, 0, 1), mask = clamp(-fr / .45, 0, 1);
   const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly), face = dist <= -.02, fs = face ? 2 : 1;
   if ((m = M[0]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, belly));
@@ -247,13 +269,13 @@ function furAttrsBody(m, P) {
 }
 // the nose (see noseMask) and the mouth's level (the closed mouth's line in the flat styles), in the space vFurP is
 // in (position / size); no tip, no nose; masked: the face's mask runs on round it
-function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
+function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0, tri = 0) { const U = m.lib && m.lib.uFur, k = 1 / (m.size || 1); if (!U) return;
   if (tip) U.uNose.value.set(tip[0] * k, tip[1] * k, tip[2] * k, r * k), U.uLipY.value = lipY * k; else U.uNose.value.set(0, 0, 0, 0);
-  U.uNoseR.value.set(...R); U.uNoseIn.value = masked; }
+  U.uNoseR.value.set(...R); U.uNoseIn.value = masked; U.uNoseTri.value = tri; }
 /* The face's markings on a sculpted head, laid on the way a painter marks up a model: strokes along the skin, each a
    run of points with a radius at each, in the sculpt's own units (the eyes' midpoint at the origin, its right side,
    mirrored). A point with one coordinate left null is found on the skin: the outermost skin along that axis, through
-   the other two. What the coat's mask paints, by head:
+   the other two ('-' instead of null: the far side's, the back of the head along z). What the coat's mask paints, by head:
    - bandit (the raccoon, and any head not listed): a band round each eye, swept back and down onto the cheek and joined
      over the bridge, a stripe down the nose and pale brows over it;
    - tears (the red panda): white brows and cheek patches, the muzzle white in front of the tear lines that run from the
@@ -269,15 +291,20 @@ function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib &&
    on the forehead, a stripe up to each ear and four sweeping back over the cheek (any other head: the tiger's).
    mask: what the mask paints; light: more of the muzzle mark (the raccoon's brows, the tiger's white over the eyes);
    muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes; earIn: the inside of
-   the ears, which the belly's colour lights. Worked out once for each sculpt. */
-const MANE_LIGHT = new Set(['hiena']);
+   the ears, which the belly's colour lights. Worked out once for each sculpt.
+   A cat's muzzle mark is its own (MUZ_PADS, muzOwn): the whisker pads and the chin, the edge running round the pads
+   where the snout leaves the face, not a band straight across the cheeks under the eyes. */
+const MANE_LIGHT = new Set(['hiena']), MUZ_PADS = new Set(['gato']);
 const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face', ciervo: 'deer', cabra: 'deer', mofeta: 'blaze'};
 const FACE_STRIPES = {
-  gato: [[[[.03, .13, null], [.04, .21, null], [.05, .3, null], [.06, .38, null]], [.021, .022, .021, .016]],
-    [[[.12, .14, null], [.13, .22, null], [.16, .3, null], [.19, .36, null]], [.02, .022, .021, .016]],
-    [[[null, .02, .0], [null, .03, -.11], [null, .0, -.22]], [.02, .019, .012]],
-    [[[null, -.08, -.03], [null, -.1, -.14], [null, -.07, -.25]], [.022, .022, .014]],
-    [[[null, -.17, -.06], [null, -.19, -.17], [null, -.17, -.27]], [.02, .02, .012]]],
+  // (the tabby's M: thin lines up the forehead, tapering down to the brows, the middle pair close and straight, the
+  // outer pair curving out over the eyes; on over the crown and down the back of the head to the nape; and two thin
+  // lines back across each cheek from the eye's outer corner)
+  gato: [[[[.03, .15, null], [.035, .23, null], [.04, .32, null], [.045, .41, null], [.05, null, .02], [.055, null, -.16], [.06, null, -.34], [.065, .22, '-'], [.07, .08, '-']],
+      [.007, .015, .017, .017, .017, .017, .016, .015, .01]],
+    [[[.09, .12, null], [.13, .17, null], [.165, .24, null], [.18, .32, null], [.185, .4, null], [.19, null, .0], [.19, null, -.16], [.195, null, -.33]], [.006, .012, .015, .016, .016, .016, .014, .009]],
+    [[[null, .02, .06], [null, .03, -.06], [null, .01, -.18]], [.008, .013, .006]],
+    [[[null, -.06, .02], [null, -.08, -.09], [null, -.07, -.2]], [.008, .013, .006]]],
   tiger: [[[[.03, .19, null], [.1, .21, null], [.15, .25, null]], [.028, .028, .018]],
     [[[0, .27, null], [.08, .28, null], [.14, .32, null]], [.028, .028, .018]],
     [[[.02, .35, null], [.09, .37, null]], [.024, .014]],
@@ -294,23 +321,62 @@ function faceMarks(d) {
   const n = d.n, P = d.P, L = d.L, c = L.eyeL, T = L.tip, F = d.mouth, kind = FACE_MASK[d.id] || 'face';
   const skin = new Uint8Array(n); for (let i = 0; i < n; i++) skin[i] = d.K[i] === 0 && d.ear[i] < 128 ? 1 : 0;
   const ax = i => Math.abs(P[i * 3]);
-  const snap = p => { const a = p.indexOf(null); if (a < 0) return p; let best = -Infinity;
-    for (let tol = .012; best === -Infinity && tol < .1; tol *= 2) for (let i = 0; i < n; i++) {
-      if (!skin[i] || P[i * 3] < 0) continue; const q = [ax(i), P[i * 3 + 1], P[i * 3 + 2]];
-      if ((a === 0 || Math.abs(q[0] - p[0]) < tol) && (a === 1 || Math.abs(q[1] - p[1]) < tol) && (a === 2 || Math.abs(q[2] - p[2]) < tol)) best = Math.max(best, q[a]); }
-    const q = p.slice(); q[a] = best === -Infinity ? 0 : best; return q; };
+  // a point found on the skin: a ray along the axis through the head's skin triangles (the point on the left, x ≥ 0; the
+  // neck's stub below the chin left out, whose bottom a ray down through the crown would find): the coarse mesh's
+  // vertices, few on a broad forehead, were no guide (the nearest one could be at the back of the head)
+  const hd = skin.map((v, i) => v && P[i * 3 + 1] > L.chin - .1 ? 1 : 0);
+  const I = d.idx, snap = p => { let a = p.indexOf(null); const sg = a < 0 ? -1 : 1; if (a < 0) a = p.indexOf('-'); if (a < 0) return p;
+    const b = (a + 1) % 3, c = (a + 2) % 3, pb = b === 0 ? Math.max(p[0], 1e-3) : p[b], pc = c === 0 ? Math.max(p[c], 1e-3) : p[c]; let best = -Infinity;
+    for (let t = 0; t < I.length; t += 3) { const i0 = I[t], i1 = I[t + 1], i2 = I[t + 2];
+      if (!hd[i0] || !hd[i1] || !hd[i2]) continue;
+      const b0 = P[i0 * 3 + b], c0 = P[i0 * 3 + c], b1 = P[i1 * 3 + b] - b0, c1 = P[i1 * 3 + c] - c0, b2 = P[i2 * 3 + b] - b0, c2 = P[i2 * 3 + c] - c0, det = b1 * c2 - b2 * c1;
+      if (Math.abs(det) < 1e-12) continue; const u = ((pb - b0) * c2 - b2 * (pc - c0)) / det, v = (b1 * (pc - c0) - (pb - b0) * c1) / det;
+      if (u < 0 || v < 0 || u + v > 1) continue; const h = P[i0 * 3 + a] + u * (P[i1 * 3 + a] - P[i0 * 3 + a]) + v * (P[i2 * 3 + a] - P[i0 * 3 + a]);
+      best = Math.max(best, sg * h); }
+    const q = p.slice(); q[a] = best === -Infinity ? 0 : sg * best; return q; };
+  // the skin outward from inside the skull along a ray through p (the outermost hit), to lay the points between a
+  // stroke's own on the skin: a straight line from the brow over the crown and down the back of the head ran under it
+  const C0 = [0, .15, -.2], surf = p => { const D = [p[0] - C0[0], p[1] - C0[1], p[2] - C0[2]]; let best = -1;
+    for (let t = 0; t < I.length; t += 3) { const i0 = I[t], i1 = I[t + 1], i2 = I[t + 2];
+      if (!hd[i0] || !hd[i1] || !hd[i2]) continue;
+      const ax0 = P[i0 * 3], ay0 = P[i0 * 3 + 1], az0 = P[i0 * 3 + 2], e1 = [P[i1 * 3] - ax0, P[i1 * 3 + 1] - ay0, P[i1 * 3 + 2] - az0], e2 = [P[i2 * 3] - ax0, P[i2 * 3 + 1] - ay0, P[i2 * 3 + 2] - az0];
+      const h = [D[1] * e2[2] - D[2] * e2[1], D[2] * e2[0] - D[0] * e2[2], D[0] * e2[1] - D[1] * e2[0]], det = e1[0] * h[0] + e1[1] * h[1] + e1[2] * h[2]; if (Math.abs(det) < 1e-12) continue;
+      const sv = [C0[0] - ax0, C0[1] - ay0, C0[2] - az0], u = (sv[0] * h[0] + sv[1] * h[1] + sv[2] * h[2]) / det; if (u < 0 || u > 1) continue;
+      const qv = [sv[1] * e1[2] - sv[2] * e1[1], sv[2] * e1[0] - sv[0] * e1[2], sv[0] * e1[1] - sv[1] * e1[0]], v = (D[0] * qv[0] + D[1] * qv[1] + D[2] * qv[2]) / det; if (v < 0 || u + v > 1) continue;
+      const tt = (e2[0] * qv[0] + e2[1] * qv[1] + e2[2] * qv[2]) / det; if (tt > best) best = tt; }
+    return best > 0 ? [C0[0] + D[0] * best, C0[1] + D[1] * best, C0[2] + D[2] * best] : p; };
   // a stroke: how much of each skin vertex it covers (1 inside its radius; its edge soft over a triangle or two, which
-  // keeps it a smooth line across the coarse mesh's triangles, not their zigzag)
-  const stroke = (out, pts, rad, soft = .03) => { const S = pts.map(snap); if (S.length === 1) { S.push(S[0]); rad = [rad[0], rad[0]]; }
+  // keeps it a smooth line across the coarse mesh's triangles, not their zigzag); its points snapped, and more laid on the
+  // skin between them every .03 or so
+  const stroke = (out, pts, rad, soft = .03) => { const S0 = pts.map(snap); if (S0.length === 1) { S0.push(S0[0]); rad = [rad[0], rad[0]]; }
+    const S = [S0[0]], R = [rad[0]];
+    for (let k = 0; k + 1 < S0.length; k++) { const a = S0[k], b = S0[k + 1], m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / .03));
+      for (let j = 1; j <= m; j++) { const t = j / m; S.push(j < m ? surf(a.map((v, c) => v + (b[c] - v) * t)) : b); R.push(rad[k] + (rad[k + 1] - rad[k]) * t); } }
+    rad = R;
     for (let i = 0; i < n; i++) { if (!skin[i]) continue; const x = ax(i), y = P[i * 3 + 1], z = P[i * 3 + 2];
       for (let k = 0; k + 1 < S.length; k++) { const a = S[k], b = S[k + 1], ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
         const t = clamp(((x - a[0]) * ux + (y - a[1]) * uy + (z - a[2]) * uz) / (ux * ux + uy * uy + uz * uz || 1), 0, 1), r = rad[k] + (rad[k + 1] - rad[k]) * t;
-        out[i] = Math.max(out[i], 1 - sstep(r - soft, r + soft, Math.hypot(x - a[0] - t * ux, y - a[1] - t * uy, z - a[2] - t * uz))); } } };
+        out[i] = Math.max(out[i], 1 - sstep(r - soft, r + soft, Math.hypot(x - a[0] - t * ux, y - a[1] - t * uy, z - a[2] - t * uz))); } }
+    // (for the shader, as few of the points as keep the line within a fraction of its width of the skin: Douglas-Peucker)
+    const keep = new Uint8Array(S.length); keep[0] = keep[S.length - 1] = 1;
+    const dp = (i, j) => { const a = S[i], b = S[j], u = b.map((v, c) => v - a[c]), L = u[0] * u[0] + u[1] * u[1] + u[2] * u[2] || 1; let w = -1, e = 0;
+      for (let k = i + 1; k < j; k++) { const q = S[k], t = clamp(((q[0] - a[0]) * u[0] + (q[1] - a[1]) * u[1] + (q[2] - a[2]) * u[2]) / L, 0, 1), f = Math.hypot(q[0] - a[0] - t * u[0], q[1] - a[1] - t * u[1], q[2] - a[2] - t * u[2]);
+        if (f > e) { e = f; w = k; } }
+      if (w > 0 && e > .45 * Math.min(rad[i], rad[j]) + .004) { keep[w] = 1; dp(i, w); dp(w, j); } };
+    dp(0, S.length - 1);
+    return S.map((q, k) => [...q, rad[k]]).filter((_, k) => keep[k]); };
   const mask = new Float32Array(n), light = new Float32Array(n), muz = new Float32Array(n).fill(1), stripes = new Float32Array(n);
   // (the mane on top of the head: the belly's colour, plain, where the animal's crest is light, as the hyena's is; a
   // canid's forelock keeps its coat, a white one read as a wig)
   const hair = new Float32Array(n); if (d.hair && MANE_LIGHT.has(d.id)) for (let i = 0; i < Math.min(n, d.hair.length); i++) if (skin[i]) hair[i] = d.hair[i] / 255;
-  for (const [pts, rad] of FACE_STRIPES[d.id] || FACE_STRIPES.tiger) stroke(stripes, pts, rad, .015);
+  // (the stripes' segments too, which the shader cuts per pixel: faceStripe)
+  const segs = []; for (const [pts, rad] of FACE_STRIPES[d.id] || FACE_STRIPES.tiger) { const S = stroke(stripes, pts, rad, .015); for (let k = 0; k + 1 < S.length; k++) segs.push([S[k], S[k + 1]]); }
+  // (a cat's light muzzle: in front of where the snout leaves the face and under the nose, and the chin and the jaw's
+  // underside under the mouth)
+  const muzOwn = MUZ_PADS.has(d.id);
+  if (muzOwn) { const zA = T[2] - .17, yN = L.nose ? L.nose[1] : T[1];
+    for (let i = 0; i < n; i++) if (skin[i]) { const x = ax(i), y = P[i * 3 + 1], z = P[i * 3 + 2];
+      muz[i] = Math.max(sstep(zA, zA + .05, z) * sstep(yN + .01, yN - .03, y), sstep(F.y - .005, F.y - .03, y) * (1 - sstep(.15, .21, x)) * sstep(-.08, .02, z)); } }
   const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
   if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);
   if (kind === 'bandit') {
@@ -370,7 +436,7 @@ function faceMarks(d) {
   // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
   let nIn = 0, nN = 0; const N = L.nose;
   if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
-  return d.marks = {mask, light, muz, stripes, earIn, lid, hair, noseIn: nN && nIn / nN > .5 ? 1 : 0};
+  return d.marks = {mask, light, muz, muzOwn, stripes, earIn, lid, hair, segs, lidC: [Math.abs(c[0]), c[1], c[2], re], noseIn: nN && nIn / nN > .5 ? 1 : 0};
 }
 // the sculpted head: muzzle, cheeks and throat; the face's markings (faceMarks); the ears from base to tip; the nose leather
 function furAttrsHead(m, geo, hs) {
@@ -390,20 +456,29 @@ function furAttrsHead(m, geo, hs) {
     const mouthY = E.y + s * L.mouthY, bridge = (1 - sstep(.07 * s, .14 * s, Math.abs(x - E.x))) * sstep(mouthY - .01 * s, mouthY + .05 * s, y);
     // (and the cheek ruff: the tufts standing off the skull below the eyes go with the muzzle and cheeks, as illustrators
     // colour cheek fluff in the light: a fox's white, a hyena's cream; the fur's depth, d.fur, says which those are)
-    const ruff = i < d.fur.length && !(d.hair[i] > 128) ? sstep(.006, .02, d.fur[i] / 510) * sstep(E.y + .02 * s, E.y - .08 * s, y) : 0;
-    const muz = Math.max(low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i], ruff), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
+    // (a cat's ruff keeps its coat down to the root, only its tips light, as a tabby's cheeks are striped up to the white)
+    const ruff = i < d.fur.length && !(d.hair[i] > 128) ? (FM.muzOwn ? sstep(.11, .16, d.fur[i] / 510) : sstep(.006, .02, d.fur[i] / 510)) * sstep(E.y + .02 * s, E.y - .08 * s, y) : 0;
+    const muz = Math.max(FM.muzOwn ? FM.muz[i] : low * front * (1 - sstep(.3 * s, .42 * s, Math.abs(x - E.x))) * (1 - bridge) * FM.muz[i], FM.light[i], ruff), thr = sstep(chinY + .05 * s, chinY - .06 * s, y) * sstep(E.z - .45 * s, E.z - .25 * s, z);
     let belly = thr >= muz ? thr : -muz;  // the throat goes with the belly, muzzle and cheeks are their own mark (negative)
     if (FM.hair[i] > Math.max(thr, muz)) belly = FM.hair[i];  // (the mane with the belly)
     let dm = -FM.mask[i], tp = 0, kind = 1;
     const e = d.ear[i] / 255;
     if (e > .3) { const k = x > 0 ? 'L' : 'R', b = eb[k]; if (b && isFinite(earTop[k])) tp = clamp((y - b.y) / (earTop[k] - b.y), 0, 1) * sstep(.3, .6, e); belly = Math.max(belly * (1 - e), FM.earIn[i] * e); dm *= 1 - e; }
     if (N && leather(x, y, z)) kind = 2;
-    // (the eyelids' rims: dark, a hard part's kind, next to the fur's, so no other kind's colour shows between them where
-    // the triangles blend the two, and inked as the hard parts are: bold, as illustrators ink the upper lid)
-    if (FM.lid[i]) kind = 3;
-    furPack(A, o, belly, -.05 - .95 * FM.stripes[i] * (1 - e), tp, kind, dm);
+    // (the eyelids' rims: fur the shader paints dark per pixel, lidRim; tip −1 marks them for the model's vertex colours)
+    if (FM.lid[i]) tp = -1;
+    furPack(A, o, belly, -.05 - .95 * FM.stripes[i] * (1 - e) * (FM.muzOwn ? 1 - sstep(.35, .65, muz) : 1), tp, kind, dm);
   }
-  const nr = N ? Math.max(...nR) : 0; noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined, FM.noseIn);
+  const nr = N ? Math.max(...nR) : 0, fel = (SPECIES[(HEAD_CATALOG[d.id] || {species: []}).species[0]] || {}).fam === 'fel';  // (a cat's nose a triangle)
+  noseAt(m, N ? nc : null, nr, E.y + s * L.mouthY, N ? nR.map(v => v / nr) : undefined, FM.noseIn, fel ? 1 : 0);
+  // the stripes and the eyelids' rims the shader cuts per pixel, from the sculpt's frame (x from its middle) to the rest
+  // frame (as computeHeadSwap places the head: the snout's z shortened with the kemonomimi level)
+  const U = m.lib && m.lib.uFur; if (U) {
+    const k = 1 / (m.size || 1), kSn = hs.kSn || 1, at = (q, v) => { let z = q[2]; if (z > 0) z *= kSn + (1 - kSn) * clamp((q[1] - L.crown * .5) * 4, 0, 1);
+      return v.set(s * q[0] * k, (E.y + s * q[1]) * k, (E.z + s * z) * k, s * q[3] * k); };
+    const S = FM.segs.slice(0, FACE_STR); S.forEach(([a, b], i) => { at(a, U.uStrA.value[i]); at(b, U.uStrB.value[i]); });
+    U.uStrN.value = S.length; U.uStrMuz.value = FM.muzOwn ? 1 : 0; U.uFaceX.value = E.x * k; at(FM.lidC, U.uLidC.value);
+  }
   geo.attributes.aEye.needsUpdate = true;
 }
 // lofted parts: the tail (2..3 along it, the top side is the back line), claws, hooves, pads and horns by kind
