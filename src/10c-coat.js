@@ -270,6 +270,7 @@ function noseAt(m, tip, r, lipY, R = [1, 1, 1], masked = 0) { const U = m.lib &&
    mask: what the mask paints; light: more of the muzzle mark (the raccoon's brows, the tiger's white over the eyes);
    muz: how much of the muzzle mark is kept (the red panda's, in front of its tear lines); stripes; earIn: the inside of
    the ears, which the belly's colour lights. Worked out once for each sculpt. */
+const MANE_LIGHT = new Set(['hiena']);
 const FACE_MASK = {mapache: 'bandit', panda: 'tears', oso: 'patches', hiena: 'snout', perro: 'face', gato: 'face', ciervo: 'deer', cabra: 'deer', mofeta: 'blaze'};
 const FACE_STRIPES = {
   gato: [[[[.03, .13, null], [.04, .21, null], [.05, .3, null], [.06, .38, null]], [.021, .022, .021, .016]],
@@ -288,7 +289,9 @@ const FACE_STRIPES = {
     [[[null, -.29, -.1], [null, -.31, -.22]], [.024, .012]]]};
 function faceMarks(d) {
   if (d.marks) return d.marks;
-  const n = d.n, P = d.P, L = d.L, c = L.eyeL, T = L.tip, F = d.mouth, kind = FACE_MASK[d.id] || 'bandit';
+  // (a head with no pattern of its own takes the plain mask round the face, which only a coat with a mask paints; not the
+  // raccoon's bandit, whose light brows would give a wolf or a fox white bars over its eyes)
+  const n = d.n, P = d.P, L = d.L, c = L.eyeL, T = L.tip, F = d.mouth, kind = FACE_MASK[d.id] || 'face';
   const skin = new Uint8Array(n); for (let i = 0; i < n; i++) skin[i] = d.K[i] === 0 && d.ear[i] < 128 ? 1 : 0;
   const ax = i => Math.abs(P[i * 3]);
   const snap = p => { const a = p.indexOf(null); if (a < 0) return p; let best = -Infinity;
@@ -304,8 +307,9 @@ function faceMarks(d) {
         const t = clamp(((x - a[0]) * ux + (y - a[1]) * uy + (z - a[2]) * uz) / (ux * ux + uy * uy + uz * uz || 1), 0, 1), r = rad[k] + (rad[k + 1] - rad[k]) * t;
         out[i] = Math.max(out[i], 1 - sstep(r - soft, r + soft, Math.hypot(x - a[0] - t * ux, y - a[1] - t * uy, z - a[2] - t * uz))); } } };
   const mask = new Float32Array(n), light = new Float32Array(n), muz = new Float32Array(n).fill(1), stripes = new Float32Array(n);
-  // (the mane on top of the head: the belly's colour, plain, as illustrators colour a crest or a forelock apart)
-  const hair = new Float32Array(n); if (d.hair) for (let i = 0; i < Math.min(n, d.hair.length); i++) if (skin[i]) hair[i] = d.hair[i] / 255;
+  // (the mane on top of the head: the belly's colour, plain, where the animal's crest is light, as the hyena's is; a
+  // canid's forelock keeps its coat, a white one read as a wig)
+  const hair = new Float32Array(n); if (d.hair && MANE_LIGHT.has(d.id)) for (let i = 0; i < Math.min(n, d.hair.length); i++) if (skin[i]) hair[i] = d.hair[i] / 255;
   for (const [pts, rad] of FACE_STRIPES[d.id] || FACE_STRIPES.tiger) stroke(stripes, pts, rad, .015);
   const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
   if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);

@@ -528,13 +528,13 @@ KEMONO = dict(
            ((.33, -.22, -.1), (.41, -.29, -.19), (.49, -.36, -.25), .09, .028)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 # each family's stylised proportions (stylise), and a species' own on top (its 'sty')
-FAM_STYLE = dict(lobo=dict(mw=1.15, cheek=.44, ear=1.5, eye=dict(hu=.078, hl=.058)), gato=dict(tip=.35, drop=.09, lip=.07, mw=1.4, cheek=.48, skull=.5, face=.35),
-                 felino=dict(tip=.43, drop=.11, lip=.08, mw=1.45, cheek=.54, skull=.52, face=.36, crown=.56, ear=1.4),
-                 oso=dict(tip=.46, drop=.13, lip=.1, mw=1.5, cheek=.54, skull=.52, face=.36, crown=.56, ear=1.5),
-                 mapache=dict(tip=.46, drop=.12, lip=.09, mw=1.35, cheek=.54, ear=1.3), conejo=dict(tip=.34, drop=.09, lip=.07, mw=1.35, cheek=.46, yaw=12, crown=.56, skull=.45),
-                 cabra=dict(tip=.52, drop=.16, lip=.12, mw=1.45, cheek=.44, yaw=14, crown=.54, skull=.44, face=.32),
-                 caballo=dict(tip=.62, drop=.2, lip=.14, mw=1.25, cheek=.42, yaw=16, crown=.5, skull=.42, face=.3),
-                 dragon=dict(tip=.55, drop=.12, lip=.1, mw=1.3, cheek=.48, crown=.55, face=.34))
+FAM_STYLE = dict(lobo=dict(mw=1.12, cheek=.38, ear=1.5, eye=dict(hu=.06, hl=.046)), gato=dict(tip=.38, drop=.08, lip=.04, mw=1.25, cheek=.42, skull=.48, face=.33),
+                 felino=dict(tip=.66, drop=.12, lip=.05, mw=1.3, cheek=.42, skull=.48, face=.33, crown=.52, ear=1.4),
+                 oso=dict(tip=.5, drop=.1, lip=.05, mw=1.35, cheek=.46, skull=.48, face=.34, crown=.52, ear=1.5),
+                 mapache=dict(tip=.52, drop=.1, lip=.05, mw=1.2, cheek=.46, ear=1.3), conejo=dict(tip=.36, drop=.07, lip=.04, mw=1.2, cheek=.44, yaw=8, crown=.52, skull=.46, eye=dict(re=.14, w=.135, hu=.078, hl=.058)),
+                 cabra=dict(tip=.56, drop=.14, lip=.06, mw=1.25, cheek=.38, yaw=14, crown=.5, skull=.43, face=.31),
+                 caballo=dict(tip=.66, drop=.18, lip=.07, mw=1.15, cheek=.38, yaw=16, crown=.48, skull=.42, face=.3),
+                 dragon=dict(tip=.6, drop=.1, lip=.05, mw=1.2, cheek=.4, crown=.5, face=.32))
 FAMS = dict(lobo=WOLF, gato=CAT, felino=BIGCAT, oso=BEAR, mapache=COON, conejo=RABBIT, cabra=GOAT, caballo=HORSE, dragon=DRAGON, kemono=KEMONO)
 # each species: its family's head, its own changes, xf: the muzzle mz times as long, mw times as wide, the skull sk wide
 SPECIES = {
@@ -543,7 +543,7 @@ SPECIES = {
                 tufts=[((.34, .0, -.21), (.41, -.04, -.31), (.49, -.07, -.42), .1, .03), ((.35, -.14, -.19), (.43, -.19, -.29), (.51, -.24, -.38), .1, .03)],
                 sty=dict(mw=1.3)),   # (a dog's muzzle broader and blunter than a wolf's)
   'zorro': dict(xf=dict(mw=.82, sk=.96, mz=1.04), eye=dict(tilt=18, hu=.044), ears=dict(base=(.24, .35, -.3), H=.62, W=.5, D=.27), mane=None,
-                sty=dict(ear=1.6, tilt=16, eye=dict(hu=.064, hl=.05, lu=.026)),   # (huge ears; narrow eyes under a heavy lid, slanting up at their outer corners)
+                sty=dict(ear=1.6, tilt=16, eye=dict(hu=.05, hl=.04, lu=.026)),   # (huge ears; narrow eyes under a heavy lid, slanting up at their outer corners)
                 tufts=[((.33, .03, -.21), (.43, -.02, -.33), (.56, -.05, -.47), .12, .03), ((.35, -.11, -.19), (.46, -.17, -.31), (.6, -.22, -.43), .13, .032),
                        ((.33, -.25, -.17), (.43, -.32, -.28), (.54, -.4, -.38), .12, .03), ((.28, -.37, -.15), (.35, -.46, -.24), (.42, -.56, -.32), .1, .026)]),
   'coyote': dict(xf=dict(mw=.9, mz=1.03), ears=dict(H=.56, W=.44)),
@@ -551,7 +551,7 @@ SPECIES = {
                 tufts=[((.35, -.06, -.2), (.42, -.11, -.3), (.49, -.15, -.39), .09, .03)],
                 # (stylised, after the illustrations: big round ears out at the top corners, heavy half-closed lids under strong
                 # brows, a big nose, full cheeks)
-                sty=dict(ear=2.1, mw=1.5, nose=1.3, cheek=.56, eye=dict(w=.14, hu=.058, hl=.05, lu=.03, tilt=10)),
+                sty=dict(ear=2.1, mw=1.4, nose=1.3, cheek=.44, eye=dict(w=.11, hu=.048, hl=.04, lu=.03, tilt=10)),
                 # its mane: a shock of stiff spikes bursting from the crown, the front ones falling over the brow, the others
                 # standing up and out, a crest behind them
                 mane=[((0, .57, -.18), (0, .63, .0), (.02, .41, .23), .14, .075), ((.08, .57, -.16), (.13, .61, .02), (.21, .43, .2), .13, .07),
@@ -572,7 +572,7 @@ SPECIES = {
                  tufts=[((.37, -.1, -.17), (.44, -.15, -.26), (.52, -.19, -.33), .09, .028)]),
   'conejo': dict(fam='conejo'),
   # (as the goat in the illustrations: a kid's short round muzzle, and big broad ears hanging out to the sides)
-  'cabra': dict(fam='cabra', ears=dict(W=.27, round_=.7, out=90), sty=dict(tip=.42, drop=.12, lip=.09, ear=1.5, cheek=.48)),
+  'cabra': dict(fam='cabra', ears=dict(W=.27, round_=.7, out=90), sty=dict(tip=.44, drop=.12, lip=.05, ear=1.5, cheek=.4)),
   'ciervo': dict(fam='cabra', xf=dict(mw=.86, mz=.96), eye=dict(re=.112, w=.108, hu=.064, hl=.054, yaw=27),
                  pits=[dict(pts=[(.165, -.035, .12), (.14, -.065, .18), (.122, -.09, .23)], r=[.013, .012, .007])],
                  nose=dict(kind='can', ells=[((0, -.15, .66), (.07, .05, .05))], k=.03, comma=[(.02, -.16, .705), (.045, -.155, .7), (.062, -.165, .688)], nr=.013, philtrum=(-.2, .69)),
@@ -620,9 +620,9 @@ def sty_skull(crown, skull, face, bot):
     return [cran(.15, .2, face, -.07, bot), cran(.08, .36 * c / .58, w * .85, -.04, bot - .06), cran(-.04, .5 * c / .58, w * .96, -.01, bot - .12),
             cran(-.2, c, w, .03, bot - .16), cran(-.36, c, w * .96, .06, bot - .15), cran(-.5, c * .86, w * .85, .07, bot - .08),
             cran(-.61, c * .62, w * .66, .07, bot + .04), cran(-.68, c * .3, w * .36, .06, bot + .17)]
-STY_EYE = dict(x=.21, re=.165, yaw=6, pitch=-2, w=.158, hu=.092, hl=.064, tilt=8, shift=.06, sink=.004, lu=.018, ll=.008, lo=.9, crease=(.005, .007))
-STY_BROW = dict(pts=[(.1, .14, .17), (.19, .175, .16), (.28, .165, .12), (.34, .13, .05)], r=[.022, .03, .028, .018], sq=.7, k=.03)
-def stylise(P, tip=.52, drop=.14, lip=.1, mw=1.4, crown=.58, skull=.5, face=.36, cheek=.5, ex=.25, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None):
+STY_EYE = dict(x=.21, re=.125, yaw=6, pitch=-2, w=.12, hu=.066, hl=.05, tilt=8, shift=.05, sink=.004, lu=.013, ll=.006, lo=.9, crease=None)
+STY_BROW = dict(pts=[(.1, .14, .17), (.19, .175, .16), (.28, .165, .12), (.34, .13, .05)], r=[.015, .021, .019, .012], sq=.7, k=.03)
+def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32, cheek=.4, ex=.22, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None):
     st = sorted(P['head']['st'], key=lambda q: q[0]); snout = [q for q in st if q[0] > .16]
     zb, z0 = snout[0][0], snout[-1][0]; mz = (tip - .22) / max(z0 - zb, .02)
     def f(z):   # the snout moved up to the face plane and shortened to its tip
@@ -645,7 +645,7 @@ def stylise(P, tip=.52, drop=.14, lip=.1, mw=1.4, crown=.58, skull=.5, face=.36,
     P['head']['st'] = [(f(z), [(x * mw, g(y, f(z))) for x, y in sec]) for z, sec in snout] + sty_skull(crown, skull, face, L2 - .03)
     jw = lambda z: wx(z) * (1 + (cheek / .5 - .55) * float(sstep(.2, -.15, f(z))))   # (the jaw wider back towards the cheeks)
     P['jaw']['st'] = [(f(z), [(x * jw(z), y - lip) for x, y in sec]) for z, sec in P['jaw']['st']]
-    P['masses'] = (P.get('masses') or []) + [dict(c=(cheek * .62, -.2, -.04), r=(cheek * .42, .18, .22), k=.08)]
+    P['masses'] = (P.get('masses') or []) + [dict(c=(cheek * .62, -.2, -.06), r=(cheek * .34, .14, .17), k=.08)]
     N = P['nose']
     if N.get('ells'): N['ells'] = [(w3(c), (r[0] * mw ** .5 * nose, r[1] * nose, r[2] * nose)) for c, r in N['ells']]
     for k in ('pts', 'comma'):

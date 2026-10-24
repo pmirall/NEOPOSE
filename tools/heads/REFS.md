@@ -85,14 +85,24 @@ illustrations was measured in front, three-quarter and profile views (canids, a 
 The figures carrying these heads are 6.8–7.4 heads tall, like ours.
 
 So every head but the kemono fox is turned into a character's head (`stylise` in `head.py`):
-- the braincase is a big ball, its front a broad face plane;
-- the eyes are set flush in that plane, big and wide apart, under a heavy lid and a soft brow;
-- the snout springs from the plane's lower middle, short and broad;
-- the snout hangs low: its bridge slopes down from between the eyes to a nose under them, and the mouth and the jaw come
-  down with it;
-- full cheeks are laid either side of the face, and the jaw widens back towards them;
-- the ears, the cheek fur and the horns move onto the bigger ball;
+- the braincase is a ball, its front a face plane;
+- the eyes are set in that plane, wide apart, under a lid and a soft brow;
+- the snout springs from the plane's middle;
+- its bridge slopes down from between the eyes to a nose under them, and the mouth and the jaw come down with it;
+- small cheeks are laid either side of the face;
+- the ears, the cheek fur and the horns move onto the ball;
 - a species may grow a mane on top (the hyena's crest).
+
+Taken too far, this made every head an alien squirrel (the user's words): huge eyes with a human lid's fold on a flat face
+under a big dome, and a short snout hanging under chubby cheeks. The illustrations' muzzles come forward from the brow,
+their eyes are middling and sit either side of the muzzle's root, and their cheeks are fur, not fat. So the stylisation
+was taken back:
+- the snout is longer and comes forward;
+- the eyes are a quarter smaller, with no fold over the lid and a lighter brow;
+- the braincase is smaller;
+- the cheeks are small, and the mouth hangs less far under the nose.
+A head with no face pattern of its own no longer takes the raccoon's, whose light brows read as white bars over a wolf's
+or a fox's eyes, and only the hyena's mane takes the light colour (a canid's forelock in white read as a wig).
 
 A closer look at the canids (the fox measured in its three-quarter view) narrowed theirs again: its muzzle is 0.23 head
 heights wide at the nose (ours was 0.32), its ears 0.62 tall (ours 0.5), its eyes narrow under a heavy lid and slanting
@@ -102,17 +112,18 @@ drawn as a kid: a short round muzzle and big broad ears hanging out to the sides
 the family's longer face).
 
 Each family keeps its own muzzle sections, nose, pads, fur and ears; `FAM_STYLE` holds its amounts. Measured on the
-baked heads (the animal's head → the character's):
+baked heads:
 
-| Family | Nose ahead of the eye | Nose under the eye | Mouth under the eye | Eye half spacing |
-|---|---|---|---|---|
-| Canids | 0.58 → 0.45 | 0.04 → 0.16 | 0.23 → 0.29 | 0.20 |
-| Hyena | 0.5 → 0.41 | 0.04 → 0.15 | 0.23 → 0.27 | 0.18 |
-| Cat | 0.29 → 0.31 | 0.08 → 0.15 | 0.17 → 0.22 | 0.21 |
-| Big cats | 0.41 → 0.31 | 0.17 → 0.22 | 0.24 → 0.29 | 0.21 |
-| Bear | 0.49 → 0.41 | 0.06 → 0.17 | 0.24 → 0.3 | 0.2 |
-| Raccoon | 0.51 → 0.4 | 0.06 → 0.15 | 0.22 → 0.28 | 0.2 |
-| Rabbit | 0.38 → 0.28 | 0.12 → 0.14 | 0.18 → 0.23 | 0.21 |
-| Goat, deer | 0.66–0.7 → 0.42–0.46 | 0.14–0.24 → 0.26–0.31 | 0.3 → 0.36 | 0.2 |
-| Horse | 0.83 → 0.46 | 0.28 → 0.37 | 0.36 → 0.41 | 0.18 |
-| Dragon | 0.75 → 0.44 | 0.19 → 0.24 | 0.25 → 0.31 | 0.21 |
+| Family | Nose ahead of the eye | Nose under the eye | Mouth under the eye | Eye half spacing | Eye radius |
+|---|---|---|---|---|---|
+| Canids | 0.56 | 0.18 | 0.29 | 0.20 | 0.12 |
+| Hyena | 0.56 | 0.17 | 0.29 | 0.21 | 0.12 |
+| Cat | 0.33 | 0.15 | 0.21 | 0.20 | 0.11 |
+| Big cats | 0.47 | 0.22 | 0.28 | 0.19 | 0.11 |
+| Bear | 0.44 | 0.16 | 0.28 | 0.19 | 0.11 |
+| Raccoon | 0.45 | 0.15 | 0.27 | 0.20 | 0.11 |
+| Rabbit | 0.30 | 0.15 | 0.21 | 0.20 | 0.12 |
+| Goat | 0.34 | 0.29 | 0.33 | 0.20 | 0.11 |
+| Deer | 0.50 | 0.27 | 0.34 | 0.20 | 0.11 |
+| Horse | 0.47 | 0.35 | 0.39 | 0.17 | 0.10 |
+| Dragon | 0.49 | 0.24 | 0.30 | 0.20 | 0.11 |
