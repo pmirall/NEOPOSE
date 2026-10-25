@@ -18,7 +18,8 @@ const COAT_MARKS = [
 ];
 const COAT_ORDER = COAT_MARKS.map(m => m[0]);
 // c: base, light, dark; m: mark → 1 light, 2 dark (absent: off); sock: how far up the socks go (0 hip … 1 toes); tip: how much of the tail is its tip;
-// eye: the animal's eyes when they are not amber (a husky's blue, a cat's green, a deer's dark brown)
+// eye: the animal's eyes when they are not amber (a husky's blue, a cat's green, a deer's dark brown); earIn: the
+// skin inside the ears where it shows through the fur (a cat's pink), else the light colour
 const COATS = {
   lobo:      {label: 'Lobo gris', for: ['lobo', 'coyote', 'perro'], c: ['#8b8680', '#ebe6dc', '#3a3632'], m: {belly: 1, dorsal: 2, ears: 2, tail: 2}, le: '#2a2422'},
   lobo_bl:   {label: 'Lobo ártico', for: ['lobo', 'perro'], c: ['#e6e3dc', '#f8f6f1', '#b4ada2'], m: {belly: 1}, le: '#2a2422'},
@@ -32,10 +33,10 @@ const COATS = {
   zorro_ar:  {label: 'Zorro ártico', for: ['zorro'], c: ['#ebe9e3', '#fbfaf6', '#3a3836'], m: {belly: 1}, le: '#2a2624'},
   zorro_pl:  {label: 'Zorro plateado', for: ['zorro'], c: ['#3b3836', '#8e8a85', '#1e1c1b'], m: {belly: 2, muzzle: 0, tail: 1}, le: '#1e1a19'},
   hiena:     {label: 'Hiena manchada', for: ['hiena'], c: ['#c4935c', '#f0e0bf', '#6a4730'], m: {belly: 1, muzzle: 1, spots: 2, tail: 2, mask: 2}, le: '#2a221d'},
-  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#7e4521'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#8fbf3a'},
+  gato:      {label: 'Atigrado', for: ['gato'], c: ['#b98b5b', '#efe2cc', '#7e4521'], m: {belly: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#8fbf3a', earIn: '#e3a99e'},
   gato_ng:   {label: 'Negro', for: ['gato'], c: ['#2a2725', '#3e3a37', '#151413'], m: {}, le: '#2a2422', eye: '#d0c040'},
   siames:    {label: 'Siamés', for: ['gato'], c: ['#ece0cc', '#f7f0e4', '#4b3a2e'], m: {socks: 2, ears: 2, mask: 2, tail: 2}, sock: .8, tip: .7, le: '#4b3a2e', eye: '#4a8ee0'},
-  esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86', eye: '#8fbf3a'},
+  esmoquin:  {label: 'Blanco y negro', for: ['gato'], c: ['#262321', '#f2efe9', '#151413'], m: {belly: 1, socks: 1}, sock: .82, le: '#c98b86', eye: '#8fbf3a', earIn: '#e3a99e'},
   tigre:     {label: 'Tigre de Bengala', for: ['tigre'], c: ['#d8822c', '#f6f0e5', '#1f1a17'], m: {belly: 1, muzzle: 1, stripes: 2, ears: 2, rings: 2}, le: '#c07a72'},
   tigre_bl:  {label: 'Tigre blanco', for: ['tigre'], c: ['#efe9df', '#fbf8f2', '#2b2724'], m: {belly: 1, muzzle: 1, stripes: 2, rings: 2}, le: '#c98b86', eye: '#4a8ee0'},
   leon:      {label: 'León', for: ['leon'], c: ['#c99b5f', '#ebd8b6', '#4a3524'], m: {belly: 1, ears: 2, tail: 2}, tip: .14, le: '#5a3a30'},
@@ -70,25 +71,26 @@ function coatOf(b) {
   if (b.coat && b.coat.c) return b.coat;
   const id = (b.coat && b.coat.preset) || (SPECIES[b.species] || {}).coat, p = COATS[id]; if (!p) return null;
   const m = {...p.m}; if (m.belly && m.muzzle === undefined) m.muzzle = m.belly;  // the muzzle is as light as the belly unless the animal says otherwise
-  return {preset: id, c: p.c.slice(), m, sock: p.sock ?? .72, tip: p.tip ?? .25, le: p.le || '#2a2422', ...(p.eye ? {eye: p.eye} : {})};
+  return {preset: id, c: p.c.slice(), m, sock: p.sock ?? .72, tip: p.tip ?? .25, le: p.le || '#2a2422', ...(p.eye ? {eye: p.eye} : {}), ...(p.earIn ? {earIn: p.earIn} : {})};
 }
 const coatPresetsFor = sp => Object.entries(COATS).filter(([, c]) => c.for.includes(sp));
 // the shader's uniforms (one set per character, shared by all of its materials)
 const FACE_STR = 40;  // (the most stripe segments a sculpted face is painted with, per pixel: faceStripe)
 const makeFurU = () => ({uFurOn: {value: 0}, uFurK: {value: 1}, uNose: {value: new THREE.Vector4()}, uNoseR: {value: new THREE.Vector3(1, 1, 1)}, uNoseIn: {value: 0}, uNoseTri: {value: 0}, uLipY: {value: 0}, uFurC0: {value: new THREE.Color()}, uFurC1: {value: new THREE.Color()}, uFurC2: {value: new THREE.Color()},
   uFurLe: {value: new THREE.Color()}, uFurM: {value: new Array(COAT_ORDER.length).fill(0)}, uSock: {value: .72}, uTailTip: {value: .25},
-  uStrA: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrB: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrN: {value: 0}, uStrMuz: {value: 0}, uFaceX: {value: 0}, uLidC: {value: new THREE.Vector4()}});
+  uStrA: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrB: {value: Array.from({length: FACE_STR}, () => new THREE.Vector4())}, uStrN: {value: 0}, uStrMuz: {value: 0}, uFaceX: {value: 0}, uLidC: {value: new THREE.Vector4()}, uFurEar: {value: new THREE.Color()}, uFurEarOn: {value: 0}});
 const FUR_OFF = makeFurU();
 function applyCoat(m) {
   const U = m.lib && m.lib.uFur; if (!U) return;
   const c = coatOf(m.body); U.uFurOn.value = c ? 1 : 0; U.uFurK.value = 1 / (m.size || 1); if (!c) return;
   U.uFurC0.value.set(c.c[0]); U.uFurC1.value.set(c.c[1]); U.uFurC2.value.set(c.c[2]); U.uFurLe.value.set(c.le || '#2a2422');
   U.uFurM.value = COAT_ORDER.map(k => c.m[k] || 0); U.uSock.value = c.sock ?? .72; U.uTailTip.value = c.tip ?? .25;
+  U.uFurEar.value.set(c.earIn || '#000000'); U.uFurEarOn.value = c.earIn ? 1 : 0;
   if (typeof applyEyeCol === 'function') applyEyeCol(m);  // (a coat may bring its animal's eyes)
 }
 const FUR_GLSL = `
   uniform float uFurOn, uSock, uTailTip, uLipY; uniform vec3 uFurC0, uFurC1, uFurC2, uFurLe; uniform float uFurM[${COAT_ORDER.length}]; uniform vec4 uNose; uniform vec3 uNoseR; uniform float uNoseIn, uNoseTri;
-  uniform vec4 uStrA[${FACE_STR}], uStrB[${FACE_STR}], uLidC; uniform float uStrN, uStrMuz, uFaceX;
+  uniform vec4 uStrA[${FACE_STR}], uStrB[${FACE_STR}], uLidC; uniform float uStrN, uStrMuz, uFaceX; uniform vec3 uFurEar; uniform float uFurEarOn;
   varying vec3 vFurP;
   float fHash(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
   float fNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -146,6 +148,8 @@ const FUR_GLSL = `
     // (a sculpted head brings its own stripes, below 0 where the socks are measured; its spots come smaller)
     float face = step(dist, -.02), fs = 1.0 + face;
     m = uFurM[0]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, belly));
+    // (the inside of the ears, the belly's mark up an ear: its skin's colour where the coat has one, a cat's pink)
+    if (uFurEarOn > .5) c = mix(c, uFurEar, smoothstep(.35, .65, belly) * smoothstep(.02, .12, tip) * (1.0 - onTail));
     m = uFurM[1]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .65, muz));
     m = uFurM[6]; if (m > .5) c = mix(c, furSlot(m, c), smoothstep(.35, .7, dors));
     m = uFurM[7]; if (m > .5) { float s = sin(p.y * 64.0 + fNoise(p * 7.0) * 5.0 + fNoise(p * 2.5) * 6.0); float w = smoothstep(.58, .76, s + (fNoise(p * 16.0) - .5) * .7);
@@ -193,6 +197,7 @@ function furPaintJS(C, E, px, py, pz) {
   let c = C.c0, m; const belly = Math.max(E[0], 0), muz = Math.max(-E[0], 0), dist = E[1], tip = E[2], dors = clamp(fr / .45, 0, 1), mask = clamp(-fr / .45, 0, 1);
   const onTail = tip >= 1.5 ? 1 : 0, u = tip - 2, body = 1 - smooth(.3, .6, belly), face = dist <= -.02, fs = face ? 2 : 1;
   if ((m = M[0]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, belly));
+  if (C.ear) c = mix(c, C.ear, smooth(.35, .65, belly) * smooth(.02, .12, tip) * (1 - onTail));
   if ((m = M[1]) > .5) c = mix(c, slot(m, c), smooth(.35, .65, muz));
   if ((m = M[6]) > .5) c = mix(c, slot(m, c), smooth(.35, .7, dors));
   if ((m = M[7]) > .5) { const s = Math.sin(py * 64 + fNoiseJS(px * 7, py * 7, pz * 7) * 5 + fNoiseJS(px * 2.5, py * 2.5, pz * 2.5) * 6), ww = face ? smooth(.3, .6, (-dist - .05) / .95) : smooth(.58, .76, s + (fNoiseJS(px * 16, py * 16, pz * 16) - .5) * .7); c = mix(c, slot(m, c), ww * body * (1 - onTail)); }
@@ -211,7 +216,7 @@ function furPaintJS(C, E, px, py, pz) {
 function coatColors(m, mesh) {
   const coat = coatOf(m.body), g = mesh.geometry, E = g.attributes.aEye; if (!coat || !E) return null;
   const lin = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b].map(v => v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); };
-  const C = {c0: lin(coat.c[0]), c1: lin(coat.c[1]), c2: lin(coat.c[2]), le: lin(coat.le || '#2a2422'), m: COAT_ORDER.map(k => coat.m[k] || 0), sock: coat.sock ?? .72, tip: coat.tip ?? .25};
+  const C = {c0: lin(coat.c[0]), c1: lin(coat.c[1]), c2: lin(coat.c[2]), le: lin(coat.le || '#2a2422'), ear: coat.earIn ? lin(coat.earIn) : null, m: COAT_ORDER.map(k => coat.m[k] || 0), sock: coat.sock ?? .72, tip: coat.tip ?? .25};
   const P = g.attributes.position.array, n = P.length / 3, k = 1 / (m.size || 1), out = new Float32Array(n * 3), e = [0, 0, 0, 0], eyeW = lin('#f2efe9'), base = C.c0;
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < 4; j++) e[j] = E.array[i * 4 + j];

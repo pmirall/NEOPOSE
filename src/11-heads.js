@@ -249,7 +249,7 @@ function attachHeadSwap(m) {
   geo.setAttribute('aLine', new THREE.BufferAttribute(Ln, 4)); geo.setAttribute('aEye', new THREE.BufferAttribute(Ey, 4));
   geo.setAttribute('aLip', new THREE.BufferAttribute(Lp, 1)); geo.setAttribute('aHide', new THREE.BufferAttribute(Hd, 1));
   furAttrsHead(m, geo, hs);
-  geo.computeVertexNormals(); geo.boundingSphere = new THREE.Sphere(new V3(), 20);
+  geo.computeVertexNormals(); smoothNormals(geo); geo.boundingSphere = new THREE.Sphere(new V3(), 20);
   const I = new THREE.Matrix4(), mesh = new THREE.SkinnedMesh(geo, twoSided(m.lib[m.style], TWIN_SKIN));
   mesh.castShadow = mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.userData.acc = true; mesh.userData.headSwap = true;
   m.group.add(mesh); mesh.bind(m.skeleton, I); m.acc.push(mesh); m.meshes.push(mesh);
@@ -279,7 +279,21 @@ function headSwapFur(m) {
     if (k === K[v]) continue;
     K[v] = k; Q[i] = x + k * F[j + 1]; Q[i + 1] = y + k * F[j + 2]; Q[i + 2] = z + k * F[j + 3]; moved = true;
   }
-  if (moved) { const geo = m.headMesh.geometry; geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); }
+  if (moved) { const geo = m.headMesh.geometry; geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); smoothNormals(geo); }
+}
+// the sculpt's normals eased towards their neighbours': each of the coarse mesh's own comes from the few broad triangles
+// round its vertex, and the toon's hard steps broke into blotches along them (the lips' two edges and the eyeballs share
+// no triangle with the skin, so their creases stay)
+function smoothNormals(geo, iters = 6) {
+  const N = geo.attributes.normal.array, I = geo.index.array, n = N.length / 3, acc = new Float32Array(N.length);
+  for (let it = 0; it < iters; it++) {
+    acc.fill(0);
+    for (let t = 0; t < I.length; t += 3) for (let e = 0; e < 3; e++) { const a = I[t + e] * 3, b = I[t + (e + 1) % 3] * 3;
+      acc[a] += N[b]; acc[a + 1] += N[b + 1]; acc[a + 2] += N[b + 2]; acc[b] += N[a]; acc[b + 1] += N[a + 1]; acc[b + 2] += N[a + 2]; }
+    for (let i = 0; i < n * 3; i += 3) { const l0 = Math.hypot(acc[i], acc[i + 1], acc[i + 2]); if (!l0) continue;
+      const x = N[i] + acc[i] / l0, y = N[i + 1] + acc[i + 1] / l0, z = N[i + 2] + acc[i + 2] / l0, l = Math.hypot(x, y, z) || 1; N[i] = x / l; N[i + 1] = y / l; N[i + 2] = z / l; }
+  }
+  geo.attributes.normal.needsUpdate = true;
 }
 // what lies over the head's fur: the hair and the hats, as surface grids (coveredBy)
 const headCovers = m => (m.garments || []).filter(g => g.geo && g.d && (g.d.hair || g.d.head)).map(g => surfaceGrid(g.geo));

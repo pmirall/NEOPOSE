@@ -207,12 +207,13 @@ class Ear(Form):
         pa = np.array([1, .97, .86, .68, .45, .22, .02]) * (1 - rd) + np.array([1, 1, .98, .92, .78, .52, .05]) * rd
         pb = np.array([1, .85, .64, .46, .32, .2, .12])
         self.a, self.b, self.H, self.lean, self.rim = (pa * W / 2).astype(np.float32), (pb * D / 2).astype(np.float32), H, E.get('lean', .12), E.get('rim', .035)
+        self.cup = E.get('cup', .62)   # (how far forward the cup's hollow sits in the shell: less, a deeper cup)
         C = [self.B + self.R @ A(sx * W / 2, sy * H * 1.05, sz * D) for sx in (-1, 1) for sy in (0, 1) for sz in (-1, 1)]
         Form.__init__(self, self.dist, np.minimum.reduce(C) - .05, np.maximum.reduce(C) + .05); self.fluff = []
     def local(self, q): return (q - self.B) @ self.R          # (x across, y up, z out of the cup)
     def sec(self, y, inner=False):
         t = np.clip(y / self.H, 0, 1); a = np.interp(t, self.TA, self.a); b = np.interp(t, self.TA, self.b); c = -self.lean * self.H * t * t
-        if inner: a, b, c = np.maximum(a - self.rim, .004), b * .72, c + b * .62
+        if inner: a, b, c = np.maximum(a - self.rim, .004), b * .72, c + b * self.cup
         return a, b, c
     def d(self, p, inner=False):
         def e2(y):
@@ -395,7 +396,7 @@ CAT = dict(
     mouth=dict(y=-.2, corner=.03, smile=(.03, .01)),
     jawh=dict(hinge=-.28),
     eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.12, hu=.054, hl=.054, tilt=12, shift=.1, sink=.004, lu=.016, ll=.007, lo=.86, mound=(1.45, 1.3, .96, .06)),
-    ears=dict(base=(.3, .33, -.23), out=26, back=4, turn=-18, H=.42, W=.46, D=.22, lean=.1, rim=.035, round_=.25),
+    ears=dict(base=(.3, .33, -.23), out=26, back=4, turn=-18, H=.42, W=.46, D=.22, lean=.1, rim=.035, round_=.25, cup=.45, blend=.05),
     # (the cheek ruff: three clumps of mixed sizes swept back and down along the jaw, thick at the root; none hanging
     # under it)
     tufts=[((.33, -.06, -.16), (.43, -.08, -.24), (.49, -.09, -.39), .11, .05),
@@ -813,7 +814,7 @@ def build_sdf(S):
             t = (tufts + mane)[0](q, .04)
             for T in (tufts + mane)[1:]: t = np.minimum(t, T(q, .04))
             d = smin(d, t, .02)
-        return smin(d, ear_f(q), .035) if ER else d
+        return smin(d, ear_f(q), ER.get('blend', .035)) if ER else d   # (blend: how softly the ear grows out of the skull)
     def ear_w(p):
         if not ER: return np.zeros(len(p), np.float32)
         q = mir(p) + off; d = core(q); e = ear_f(q)
