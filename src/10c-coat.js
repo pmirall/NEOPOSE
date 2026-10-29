@@ -381,7 +381,7 @@ function faceMarks(d) {
   const muzOwn = MUZ_PADS.has(d.id);
   if (muzOwn) { const zA = T[2] - .17, yN = L.nose ? L.nose[1] : T[1];
     for (let i = 0; i < n; i++) if (skin[i]) { const x = ax(i), y = P[i * 3 + 1], z = P[i * 3 + 2];
-      muz[i] = Math.max(sstep(zA, zA + .05, z) * sstep(yN + .01, yN - .03, y), sstep(F.y - .005, F.y - .03, y) * (1 - sstep(.15, .21, x)) * sstep(-.08, .02, z)); } }
+      muz[i] = Math.max(sstep(zA, zA + .05, z) * sstep(yN + .01, yN - .03, y), sstep(F.y - .005, F.y - .03, y) * (1 - sstep(.09, .14, x)) * sstep(-.08, .02, z)); } }
   const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
   if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);
   if (kind === 'bandit') {

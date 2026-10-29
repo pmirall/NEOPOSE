@@ -73,7 +73,7 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec4 vLine; varying float vHi; varying float vHide; varying float vLip; uniform float uMouth; uniform float uInk, uInkId; varying vec3 vInkN;
-        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil, uEyeC; uniform vec4 uLip; uniform float uFurK;
+        varying vec4 vEye; uniform float uIris, uShine; uniform vec3 uPupil, uEyeC; uniform vec4 uLip; uniform float uLipM, uFurK;
         ${FUR_GLSL}
         // the lip line (10-anthro.js): its height, the corners' z, the head height in the rest pose and the corners' half
         // width (negative on a cut sculpt); aLip ±1 marks the skin round it in front of the corners (the sign its side of the
@@ -85,9 +85,11 @@ function patchLines(mat, uHi, uMouth = {value: 0}, uEye = EYE_DEFAULT, uFur = nu
           // a small mouth as on a big one; closed, a thin seam on the line itself that thins out to nothing at the corners,
           // unbroken however the sculpt's vertices fall
           if (uLip.w < 0.0) { if (uMouth > .5) return a > 1.5 ? 0.0 : 1.0 - smoothstep(.016 * uLip.z, .022 * uLip.z, abs(r.y - uLip.x));
-            // (and no further out than the corners: a cat's sit forward, and the seam ran on across its cheeks)
+            // (and no further out than the corners: a cat's sit forward, and the seam ran on across its cheeks; on a cat it
+            // draws a ω, dipping uLipM under each whisker pad from the foot of the philtrum and rising to the corner)
             float t = smoothstep(uLip.y - .01 * uLip.z, uLip.y + .12 * uLip.z, r.z) * (1.0 - smoothstep(.75 * abs(uLip.w), abs(uLip.w), abs(r.x))) * .007 * uLip.z;
-            return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - uLip.x)); }
+            float yl = uLip.x - uLipM * uLip.z * sin(3.1416 * pow(clamp(abs(r.x) / abs(uLip.w), 0.0, 1.0), .75));
+            return 1.0 - smoothstep(t * .45, t + 1e-6, abs(r.y - yl)); }
           if (a > 1.5) return 0.0;
           return (1.0 - smoothstep(.012 * uLip.z, .02 * uLip.z, abs(r.y - uLip.x))) * smoothstep(uLip.y - .035 * uLip.z, uLip.y, r.z); }
         // eyes: iris, pupil (round, slit or horizontal) and a highlight, in the eye's own frame (+z looks forward)
@@ -259,9 +261,9 @@ function twoSided(mat, kind = 0) {
   return c;
 }
 // one material set per character, so each can highlight its own selected joint and fade on its own
-const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}};
+const EYE_DEFAULT = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}, uLipM: {value: 0}};
 function makeCharMats() {
-  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}}, uFur = makeFurU();
+  const uHi = {value: -1}, uMouth = {value: 0}, uEye = {uIris: {value: .5}, uShine: {value: 0}, uPupil: {value: new THREE.Vector3(0, .42, .42)}, uEyeC: {value: new THREE.Vector3(1, 1, 1)}, uLip: {value: new THREE.Vector4()}, uLipM: {value: 0}}, uFur = makeFurU();
   const vol = patchLines(new THREE.MeshStandardMaterial({color: 0xcfc5b3, roughness: .8}), uHi, uMouth, uEye, uFur);
   return {uHi, uMouth, uEye, uFur,
     construccion: patchLines(new THREE.MeshToonMaterial({color: 0xcdc1ab, gradientMap: TOON_GRAD}), uHi, uMouth, uEye, uFur),
@@ -771,7 +773,7 @@ class Mannequin {
     for (const g of bodyPart || [...handParts || [], ...footParts || [], ...legParts || []]) geos.push(g);
     const I = new THREE.Matrix4();
     // inside of the mouth, in the drawing style (hidden until the jaw opens), and the lip line the shader darkens
-    this.mouthMeshes = []; if (this.lib.uEye) this.lib.uEye.uLip.value.fromArray(lipLine(this));
+    this.mouthMeshes = []; if (this.lib.uEye) { this.lib.uEye.uLip.value.fromArray(lipLine(this)); this.lib.uEye.uLipM.value = this.anthro && this.anthro.mouth && this.anthro.mouth.M.om || 0; }
     for (const p of mouthParts(this)) {
       const mm = new THREE.SkinnedMesh(p.geo, this.lib[this.style]); mm.frustumCulled = false; mm.userData.acc = mm.userData.mouth = true;
       this.group.add(mm); mm.bind(this.accSkeleton, I); this.acc.push(mm); this.meshes.push(mm); this.mouthMeshes.push(mm);
