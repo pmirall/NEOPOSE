@@ -396,7 +396,7 @@ CAT = dict(
     mouth=dict(y=-.2, corner=.03, smile=(.03, .01)),
     jawh=dict(hinge=-.28),
     eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.12, hu=.054, hl=.054, tilt=12, shift=.1, sink=.004, lu=.016, ll=.007, lo=.86, mound=(1.45, 1.3, .96, .06)),
-    ears=dict(base=(.27, .34, -.19), out=27, back=4, turn=-18, H=.37, W=.48, D=.22, lean=.1, rim=.035, round_=.25, cup=.45, blend=.05),
+    ears=dict(base=(.28, .34, -.22), out=24, back=4, turn=-18, H=.42, W=.46, D=.22, lean=.1, rim=.035, round_=.25, cup=.45, blend=.05),
     # (the cheek ruff: four tufts of mixed sizes from eye level down to just under the mouth's corner, the longest there,
     # swept back and down along the jaw, apart from one another, thick at the root; none hanging under it)
     tufts=[((.34, .01, -.16), (.42, -.01, -.25), (.46, -.04, -.38), .07, .04),
@@ -547,8 +547,8 @@ KEMONO = dict(
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 # each family's stylised proportions (stylise), and a species' own on top (its 'sty')
 FAM_STYLE = dict(lobo=dict(mw=1.12, cheek=.38, ear=1.5, eye=dict(hu=.06, hl=.046)), gato=dict(tip=.41, drop=0, lip=.05, mw=1.25, cheek=.38, skull=.43, face=.33,
-                                                                                                     ear=1.25, eye=dict(re=.14, w=.135, hu=.066, hl=.054, lu=.007), chy=-.13, chk=.15, chz=-.12, low=.66, under=.6, back=.72,
-                                                                                                     yaw=25, brow=dict(r=[.016, .022, .02, .011], sq=.5, k=.05), dome=.05, mxc=.2),
+                                                                                                     ear=1.25, eye=dict(re=.14, w=.135, hu=.066, hl=.054, lu=.007), chy=-.13, chk=.15, chz=-.12, low=.66, under=.6, back=.85,
+                                                                                                     yaw=20, brow=dict(r=[.016, .022, .02, .011], sq=.5, k=.05), dome=.05, mxc=.2),
                  felino=dict(tip=.66, drop=.12, lip=.05, mw=1.3, cheek=.42, skull=.48, face=.33, crown=.52, ear=1.4),
                  oso=dict(tip=.5, drop=.1, lip=.05, mw=1.35, cheek=.46, skull=.48, face=.34, crown=.52, ear=1.5),
                  mapache=dict(tip=.52, drop=.1, lip=.05, mw=1.2, cheek=.46, ear=1.3), conejo=dict(tip=.36, drop=.07, lip=.04, mw=1.2, cheek=.44, yaw=8, crown=.52, skull=.46, eye=dict(re=.14, w=.135, hu=.078, hl=.058)),
