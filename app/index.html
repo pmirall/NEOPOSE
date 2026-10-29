@@ -7944,9 +7944,7 @@ function mouthParts(m) {
         // are, the lower back of the bag outran the cheek and stood out under the jaw's angle, a dark lump
         const w = o.open ? (j ? (sd > 0 ? 0 : 1) : jawWeight(F, x, F.y, z, sd < 0)) : jawWeight(F, F.xc + Math.max(F.zc - z, 0), y, z);
         si.push(JAW, HEAD, 0, 0); sw.push(w, 1 - w, 0, 0);
-        // dark inner lip, gums, palate; the cheek pouch behind the corners a gum's pink (the throat's dark there, seen from
-        // the front, stood beside the teeth as two black slabs)
-        furPack(A, A.length, 0, 0, 0, o.open ? (j < 2 ? 9 : j < D.length ? 7 : 8) : 7, sd > 0 ? 1 : 0);
+        furPack(A, A.length, 0, 0, 0, o.open ? (j < 2 ? 9 : j < D.length ? 7 : 8) : 9, sd > 0 ? 1 : 0);  // dark inner lip, gums, palate
       }
     }
     for (let k = 0; k < NK; k++) for (let j = 0; j < NJ - 1; j++) { const a = k * NJ + j, b = ((k + 1) % NK) * NJ + j; idx.push(a, b, a + 1, b, b + 1, a + 1); }

@@ -382,13 +382,13 @@ CAT = dict(
         cran(-.46, .42, .37, .06, -.32), cran(-.57, .32, .28, .05, -.21), cran(-.64, .17, .15, .04, -.09)]),
     # (a small round chin just behind the whisker pads, its underside a broad U spreading back to the jaw's corners and
     # running back level to the throat, melted into the cheeks behind the mouth's corners: not the long jaw of a dog)
-    jaw=dict(k=.008, kb=.06, kz=(.1, .2), rf=.035, rb=.06, st=[jaw(.27, .035, -.3, -.195), jaw(.21, .07, -.31, -.195), jaw(.1, .115, -.31, -.195),
+    jaw=dict(k=.008, kb=.06, kz=(.1, .2), rf=.035, rb=.06, st=[jaw(.27, .05, -.3, -.195), jaw(.21, .09, -.31, -.195), jaw(.1, .115, -.31, -.195),
         jaw(-.05, .15, -.305, -.2), jaw(-.2, .19, -.285, -.21)]),
     # (the nose and the whisker pads in the stylised frame, z from the snout's tip: the nose a wedge on the end of the
     # bridge, its front a triangle; the pads two puffs either side of the philtrum, under the nose and flanking it: the W)
     muzzle=dict(nose=[(.06, -.02, -.07), (.065, -.05, -.01), (.033, -.1, .004), (0, -.125, .008), (0, -.018, -.075), (0, -.105, -.06)],
                 comma=[(.022, -.098, .006), (.038, -.09, 0), (.048, -.097, -.012)], philtrum=(-.125, -.004),
-                pads=[dict(c=(.095, -.165, -.045), r=(.095, .068, .09))]),
+                pads=[dict(c=(.095, -.165, -.05), r=(.095, .066, .08))]),
     masses=[],   # (no jowls: the stylised cheeks sit high, on the cheekbones)
     brow=dict(pts=[(.1, .115, .115), (.18, .145, .095), (.26, .13, .05), (.31, .08, -.02)], r=[.016, .022, .019, .012], sq=.7, k=.03),
     nose=dict(kind='fel', pts=[(.052, -.045, .24), (.056, -.053, .305), (.03, -.09, .322), (0, -.108, .32), (0, -.055, .245)], r=.016, k=.012,
@@ -396,13 +396,13 @@ CAT = dict(
     mouth=dict(y=-.2, corner=.03, smile=(.03, .01)),
     jawh=dict(hinge=-.28),
     eye=dict(x=.2, re=.12, yaw=10, pitch=-2, w=.12, hu=.054, hl=.054, tilt=12, shift=.1, sink=.004, lu=.016, ll=.007, lo=.86, mound=(1.45, 1.3, .96, .06)),
-    ears=dict(base=(.27, .34, -.17), out=27, back=4, turn=-18, H=.42, W=.46, D=.22, lean=.1, rim=.035, round_=.25, cup=.45, blend=.05),
+    ears=dict(base=(.27, .34, -.19), out=27, back=4, turn=-18, H=.37, W=.48, D=.22, lean=.1, rim=.035, round_=.25, cup=.45, blend=.05),
     # (the cheek ruff: four tufts of mixed sizes from eye level down to just under the mouth's corner, the longest there,
     # swept back and down along the jaw, apart from one another, thick at the root; none hanging under it)
-    tufts=[((.34, -.02, -.16), (.41, -.03, -.23), (.44, -.05, -.32), .06, .036),
-           ((.34, -.1, -.16), (.44, -.13, -.25), (.5, -.17, -.41), .09, .046),
-           ((.31, -.18, -.16), (.44, -.23, -.25), (.55, -.31, -.47), .11, .052),
-           ((.27, -.26, -.17), (.34, -.29, -.23), (.38, -.32, -.3), .06, .036)],
+    tufts=[((.34, .01, -.16), (.42, -.01, -.25), (.46, -.04, -.38), .07, .04),
+           ((.34, -.08, -.16), (.44, -.11, -.25), (.5, -.16, -.42), .09, .048),
+           ((.31, -.17, -.16), (.43, -.22, -.24), (.52, -.29, -.42), .1, .05),
+           ((.27, -.25, -.17), (.35, -.29, -.24), (.4, -.33, -.34), .07, .04)],
     neck=((0, -.32, -.24), (0, -1.05, -.22), .2, .19))
 BIGCAT = dict(
     head=dict(rf=.06, rb=.04, st=[muz(.46, -.065, .1, -.27), muz(.38, -.022, .165, -.27), muz(.28, .018, .205, -.27), muz(.17, .055, .235, -.27),
@@ -547,8 +547,8 @@ KEMONO = dict(
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 # each family's stylised proportions (stylise), and a species' own on top (its 'sty')
 FAM_STYLE = dict(lobo=dict(mw=1.12, cheek=.38, ear=1.5, eye=dict(hu=.06, hl=.046)), gato=dict(tip=.41, drop=0, lip=.05, mw=1.25, cheek=.38, skull=.43, face=.33,
-                                                                                                     ear=1.25, eye=dict(re=.14, w=.135, hu=.066, hl=.054, lu=.007), chy=-.13, chk=.15, chz=-.12, low=.66, under=.6, back=.78,
-                                                                                                     yaw=20, brow=dict(r=[.016, .022, .02, .011], sq=.5, k=.05), dome=.05, mxc=.2),
+                                                                                                     ear=1.25, eye=dict(re=.14, w=.135, hu=.066, hl=.054, lu=.007), chy=-.13, chk=.15, chz=-.12, low=.66, under=.6, back=.72,
+                                                                                                     yaw=25, brow=dict(r=[.016, .022, .02, .011], sq=.5, k=.05), dome=.05, mxc=.2),
                  felino=dict(tip=.66, drop=.12, lip=.05, mw=1.3, cheek=.42, skull=.48, face=.33, crown=.52, ear=1.4),
                  oso=dict(tip=.5, drop=.1, lip=.05, mw=1.35, cheek=.46, skull=.48, face=.34, crown=.52, ear=1.5),
                  mapache=dict(tip=.52, drop=.1, lip=.05, mw=1.2, cheek=.46, ear=1.3), conejo=dict(tip=.36, drop=.07, lip=.04, mw=1.2, cheek=.44, yaw=8, crown=.52, skull=.46, eye=dict(re=.14, w=.135, hu=.078, hl=.058)),
