@@ -101,7 +101,7 @@ def bake(hid, step=.006, budget=24000):
     out = {'label': cfg['label'], 'author': 'NEOPOSE', 'species': cfg['species'], 'style': cfg['style'], 'scale': cfg['scale'], 'eyes': True}
     S = HD.params(cfg.get('head', hid))
     if S.get('tufts'): out['ruff'] = True   # its cheeks carry their own tufts (the app adds none)
-    if HD.SPECIES[cfg.get('head', hid)].get('fam') != 'kemono': out['eyeStyle'] = 'toon'   # stylised (head.py): its big eyes drawn as a toon's
+    if HD.SPECIES[cfg.get('head', hid)].get('fam') != 'kemono': out['eyeStyle'] = 'furry'   # stylised (head.py): its eyes drawn as a furry's
     return out
 
 if __name__ == '__main__':

@@ -187,9 +187,10 @@ def eye_ops(d, q, E):
 # ---------- fur, ears, horns ----------
 def Tuft(root, mid, tip, w, t, normal):
     """A tuft of fur as a sculptor makes one: a flame lying on the skin, from its root through mid (the curve's bend) to
-    a point that flares off, full most of its length and then tapering; flat across the skin's normal (w wide, t thick)."""
+    a soft tip that flares off (a furry's fluff, not a saw's tooth), full most of its length and then tapering; flat across
+    the skin's normal (w wide, t thick)."""
     root, mid, tip = A(*root), A(*mid), A(*tip); q1 = mid + (tip - mid) * .45
-    return Tube([root, mid, q1, tip], [w, w * .9, w * .55, .004], squash=(normal, t / w), n=6)
+    return Tube([root, mid, q1, tip], [w, w * .9, w * .6, w * .2], squash=(normal, t / w), n=6)
 
 def ear_frame(E):
     Re = rot((0, 0, 1), -E['out']) @ rot((1, 0, 0), -E['back']) @ rot((0, 1, 0), E.get('turn', 0))
@@ -651,6 +652,7 @@ def sty_skull(crown, skull, face, bot, low=1., under=1., back=1., dome=0.):
         wy = max(sec, key=lambda p: p[0])[1]; b = min(y for _, y in sec)
         return [(x * (1 - (1 - low) * float(np.clip((wy - y) / max(wy - b, 1e-3), 0, 1))), y) for x, y in sec]
     return [(z, taper(sec)) for z, sec in st]
+FURRY_EYE = dict(re=1.3, w=1.3, hu=1.45, hl=1.2)
 STY_EYE = dict(x=.21, re=.125, yaw=6, pitch=-2, w=.12, hu=.066, hl=.05, tilt=8, shift=.05, sink=.004, lu=.013, ll=.006, lo=.9, crease=None)
 STY_BROW = dict(pts=[(.1, .14, .17), (.19, .175, .16), (.28, .165, .12), (.34, .13, .05)], r=[.015, .021, .019, .012], sq=.7, k=.03)
 def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32, cheek=.4, ex=.22, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None,
@@ -693,6 +695,8 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     if P.get('horns'): P['horns']['base'] = up(P['horns']['base'])
     if P.get('ears'): Er = P['ears']; Er['base'] = up(Er['base']); Er['H'] *= ear; Er['W'] *= ear; Er['D'] = Er.get('D', Er.get('T', .1) * 1.8) * ear
     E = P['eye']; P['eye'] = {**STY_EYE, 'x': ex, 'yaw': yaw, 'tilt': E.get('tilt', 8) * .7 if tilt is None else tilt, **(eye or {})}
+    # (and drawn as a furry's: bigger and more open than any animal's, the white showing round the iris)
+    for k, v in FURRY_EYE.items(): P['eye'][k] *= v
     B = {**copy.deepcopy(STY_BROW), **(brow or {})}; B['pts'] = [(x * ex / STY_EYE['x'], y, z) for x, y, z in B['pts']]; P['brow'] = B; P.pop('furrow', None)
     # a muzzle laid out in the stylised frame itself, z from the snout's tip (a cat's: its nose a wedge of leather on the
     # end of the bridge, the pads flanking it below), where the animal's, squashed with the snout, would be a sliver

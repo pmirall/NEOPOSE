@@ -576,7 +576,7 @@ function syncHeadUI() {
    eyes keep the white around a smaller iris; pupils follow the animal: round (canids, bears, big cats), vertical slit
    (house cats, foxes, reptiles), horizontal bar (horses, deer, goats). Prey animals' eyes sit more to the side. */
 const PUPILS = {redonda: [0, .42, .42], rendija: [1, .12, .85], horizontal: [2, .6, .2]};
-const IRIS = {humano: .5, real: .62, toon: .78, kemono: 1.0};
+const IRIS = {humano: .5, real: .62, toon: .78, kemono: 1.0, furry: .46};
 function eyeSetup(m, P) {
   const nV = FIG.meta.nV;
   if (!m.geo.attributes.aEye) m.geo.setAttribute('aEye', new THREE.BufferAttribute(new Float32Array(nV * 4), 4));
@@ -597,8 +597,11 @@ function eyeSetup(m, P) {
   }
   m.geo.attributes.aEye.needsUpdate = true;
   const U = m.lib.uEye; if (!U) return;
-  const lvl = m.body.kemo ?? 5, pup = r ? PUPILS[style === 'kemono' && r.pupil === 'rendija' ? 'redonda' : r.pupil] : PUPILS.redonda;
-  U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' ? 1 : style === 'humano' ? 0 : .5;
+  // (a sculpted head's eyes are a furry's: the white showing round an iris that meets the lids, a round pupil (but a
+  // reptile's slit) and two catchlights; an animal's own slit or bar read as feral)
+  const round = style === 'kemono' && r && r.pupil === 'rendija' || style === 'furry' && r && r.mouth !== 'reptil';
+  const lvl = m.body.kemo ?? 5, pup = r ? PUPILS[round ? 'redonda' : r.pupil] : PUPILS.redonda;
+  U.uIris.value = IRIS[style]; U.uShine.value = style === 'kemono' || style === 'toon' || style === 'furry' ? 1 : style === 'humano' ? 0 : .5;
   // (a toon's iris is drawn bigger, its round pupil not with it: the iris's colour shows round it)
   const pk = style === 'kemono' ? 1.15 : style === 'toon' && !pup[0] ? .72 : 1;
   U.uPupil.value.set(pup[0], pup[1] * pk, pup[2] * (pup[0] === 1 ? 1 : pk));

@@ -122,9 +122,10 @@ const FUR_GLSL = `
       vec3 a = uStrA[i].xyz, ab = uStrB[i].xyz - a; float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-12), 0.0, 1.0);
       d = min(d, length(p - a - t * ab) - mix(uStrA[i].w, uStrB[i].w, t)); }
     return 1.0 - smoothstep(-strF, strF, d); }
-  // (along the top and out to the outer corner, as illustrators ink the upper lid; the lower lid's rim thinner)
+  // (along the top and out to the outer corner, as illustrators ink the upper lid; the lower lid's rim thinner, and no
+  // flick under the outer corner, where on a big eye the socket's skin lies within reach and went black)
   float lidRim() { float re = uLidC.w; if (re <= 0.0) return 0.0; vec3 q = faceP() - uLidC.xyz;
-    float k = re * mix(1.04, 1.17, max(smoothstep(-.25 * re, -.05 * re, q.y), smoothstep(.35 * re, .55 * re, q.x)));
+    float k = re * mix(1.03, 1.12, max(smoothstep(-.25 * re, -.05 * re, q.y), smoothstep(.35 * re, .55 * re, q.x) * smoothstep(-.1 * re, .1 * re, q.y)));
     return smoothstep(.15 * re, .25 * re, q.z) * (1.0 - smoothstep(k - strF, k + strF, length(q))); }
   vec3 furPaint(vec3 c0) {
     float w = -vEye.w; if (w < 1.5) return c0;
@@ -434,10 +435,10 @@ function faceMarks(d) {
       earIn[i] = sstep(.1, .45, f) * sstep(.12, .3, (along(i) - t0) / (t1 - t0 || 1)); }
   }
   // the rims of the eyelids: dark skin round the opening, as round a dog's, a cat's or a hyena's eye (and as illustrators
-  // ink the upper lid), along the top and out to the outer corner, the lower lid's rim thinner
+  // ink the upper lid), along the top and out to the outer corner (not under it), the lower lid's rim thinner
   const lid = new Uint8Array(n), re = L.eyeR_ || .12;
   for (let i = 0; i < n; i++) { if (!skin[i]) continue; const dx = ax(i) - c[0], dy = P[i * 3 + 1] - c[1], dz = P[i * 3 + 2] - c[2], r = Math.hypot(dx, dy, dz);
-    if (dz > .2 * re && r < re * (dy > -.15 * re || dx > .45 * re ? 1.17 : 1.07)) lid[i] = 1; }
+    if (dz > .2 * re && r < re * (dy > -.15 * re || dx > .45 * re && dy > 0 ? 1.12 : 1.03)) lid[i] = 1; }
   // does the mask run on round the nose (then the skin where it meets the leather is masked too, see furPaint)
   let nIn = 0, nN = 0; const N = L.nose;
   if (N) for (let i = 0; i < n; i++) { if (!skin[i]) continue; const e = Math.hypot(P[i * 3] / N[3], (P[i * 3 + 1] - N[1]) / N[4], (P[i * 3 + 2] - N[2]) / N[5]); if (e > 1.2 && e < 2) { nIn += mask[i]; nN++; } }
