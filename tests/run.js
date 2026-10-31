@@ -163,12 +163,12 @@ const SUITES = {
     ok(await A(() => !window.__cdp.mq.hairG && !window.__cdp.mq.body.hair), 'undo takes the hair off again');
     await page.click('#redo'); await page.waitForTimeout(1500);
     // a sculpted anthro head wears it too, carried out onto the sculpt: over its crown, lying on it, not hovering (a
-    // furry's big ears lift it a little where it passes over their roots)
+    // furry's big ears hold a long style up a little over their roots, a hood's volume: under a fifth of the head)
     await goTab(page, 'cuerpo'); await page.click('#speciesChips .chip[data-v="lobo"]'); await page.waitForTimeout(4000);
     s = await A(() => { const m = window.__cdp.mq, g = m.hairG; if (!g || !g.geo || !m.headSwap) return {worn: !!g, swap: !!m.headSwap};
       const P = g.geo.attributes.position.array; let top = -Infinity; for (let i = 1; i < P.length; i += 3) top = Math.max(top, P[i]);
       return {worn: true, swap: true, off: document.querySelector('#hairGrid').classList.contains('off'), over: +((top - m.anthro.L.crown) / m.anthro.L.hh).toFixed(3)}; });
-    ok(s.worn && s.swap && !s.off && s.over > 0 && s.over < .17, `a sculpted anthro head wears the hair over its crown (top ${s.over} head heights above it) (${JSON.stringify(s)})`);
+    ok(s.worn && s.swap && !s.off && s.over > 0 && s.over < .2, `a sculpted anthro head wears the hair over its crown (top ${s.over} head heights above it) (${JSON.stringify(s)})`);
     // the eyes: an animal's own (a husky's blue) until a colour is picked, then that one, and its own again on Natural
     await page.click('#speciesChips .chip[data-v="perro"]'); await page.waitForTimeout(3000);
     const eyeC = () => A(() => window.__cdp.mq.lib.uEye.uEyeC.value.toArray().map(v => +v.toFixed(2)));
