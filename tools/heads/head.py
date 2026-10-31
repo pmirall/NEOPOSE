@@ -493,7 +493,7 @@ GOAT = dict(
              crease=(.005, .007)),
     ears=dict(base=(.24, .2, -.2), out=72, back=10, turn=-40, H=.34, W=.18, D=.12, lean=.04, rim=.03, fluff=2, fl=.7),
     horns=dict(base=(.11, .36, -.08), d0=(.15, 1, -.3), d1=(.1, -.15, -1), R=.32, sweep=125, r0=.075, r1=.02),
-    goatee=((0, -.36, .55), (0, -.41, .56), (0, -.46, .57), .04, .035),
+    goatee=((0, -.36, .55), (0, -.44, .57), (0, -.53, .6), .045, .035),
     neck=((0, -.32, -.24), (0, -1.05, -.21), .19, .18))
 HORSE = dict(
     head=dict(rf=.1, rb=.04, st=[smuz(1.0, -.25, .11, -.41), smuz(.95, -.17, .15, -.42), smuz(.88, -.13, .16, -.42), smuz(.76, -.095, .146, -.42),
@@ -711,8 +711,8 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     M['xc'] = mxc or max(x for x, _ in snout[0][1]) * mw   # (mxc: a cat's, just outside its whisker pads)
 
 # a traditional furry's head on top of each family's stylised one: a shorter muzzle and a smaller nose, a rounder
-# crown, bigger ears, and cheek tufts that stand out less (the many long spikes of a ruff read as feral)
-FURRY = dict(tip=.8, nose=.8, mw=.94, crown=1.07, ear=1.15, reach=.7)
+# crown, bigger ears (a quarter), and cheek tufts that stand out less (the many long spikes of a ruff read as feral)
+FURRY = dict(tip=.8, nose=.8, mw=.94, crown=1.07, ear=1.25, reach=.7)
 FURRY_SMILE = .035
 def furry(kw):
     d = dict(tip=.6, nose=1., mw=1.2, crown=.52, ear=1.12, reach=1.); o = dict(kw)
