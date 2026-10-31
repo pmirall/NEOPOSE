@@ -656,7 +656,7 @@ FURRY_EYE = dict(re=1.3, w=1.3, hu=1.45, hl=1.2)
 STY_EYE = dict(x=.21, re=.125, yaw=6, pitch=-2, w=.12, hu=.066, hl=.05, tilt=8, shift=.05, sink=.004, lu=.013, ll=.006, lo=.9, crease=None)
 STY_BROW = dict(pts=[(.1, .14, .17), (.19, .175, .16), (.28, .165, .12), (.34, .13, .05)], r=[.015, .021, .019, .012], sq=.7, k=.03)
 def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32, cheek=.4, ex=.22, yaw=6, ear=1.12, tw=1.3, tilt=None, nose=1., eye=None,
-            chy=-.2, chk=.08, chz=-.06, low=1., under=1., back=1., brow=None, dome=0., mxc=None):
+            chy=-.2, chk=.08, chz=-.06, low=1., under=1., back=1., brow=None, dome=0., mxc=None, reach=1.):
     st = sorted(P['head']['st'], key=lambda q: q[0]); snout = [q for q in st if q[0] > .16]
     zb, z0 = snout[0][0], snout[-1][0]; mz = (tip - .22) / max(z0 - zb, .02)
     def f(z):   # the snout moved up to the face plane and shortened to its tip
@@ -690,7 +690,8 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     for R_ in (P.get('ridges') or []) + (P.get('pits') or []): R_['pts'] = [w3(q) for q in R_['pts']]
     for q in P.get('pads') or []: q['c'] = w3(q['c']); q['r'] = (q['r'][0] * mw ** .5, q['r'][1], q['r'][2] * min(1, mz))
     for m in P.get('masses') or []: m['c'] = up(m['c']) if m['c'][0] < cheek * .6 else m['c']
-    if P.get('tufts'): P['tufts'] = [tuple(up(q) for q in t[:2]) + ((lambda q: (q[0] * 1.2, q[1], q[2] * .85))(up(t[2])), t[3] * tw, t[4] * tw ** .5) for t in P['tufts']]
+    tip3 = lambda r, t: tuple(a + (b - a) * reach for a, b in zip(r, t))   # (reach: how far the tufts stand out from their roots)
+    if P.get('tufts'): P['tufts'] = [tuple(up(q) for q in t[:2]) + (tip3(up(t[0]), (lambda q: (q[0] * 1.2, q[1], q[2] * .85))(up(t[2]))), t[3] * tw, t[4] * tw ** .5) for t in P['tufts']]
     if P.get('goatee'): r, m, t, w, th = P['goatee']; P['goatee'] = (w3(r), w3(m), w3(t), w, th)
     if P.get('horns'): P['horns']['base'] = up(P['horns']['base'])
     if P.get('ears'): Er = P['ears']; Er['base'] = up(Er['base']); Er['H'] *= ear; Er['W'] *= ear; Er['D'] = Er.get('D', Er.get('T', .1) * 1.8) * ear
@@ -709,6 +710,14 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
     # (its corners just outside the snout's root, as illustrators draw the mouth: not out across the cheeks)
     M['xc'] = mxc or max(x for x, _ in snout[0][1]) * mw   # (mxc: a cat's, just outside its whisker pads)
 
+# a traditional furry's head on top of each family's stylised one: a shorter muzzle and a smaller nose, a rounder
+# crown, bigger ears, and cheek tufts that stand out less (the many long spikes of a ruff read as feral)
+FURRY = dict(tip=.8, nose=.8, mw=.94, crown=1.07, ear=1.15, reach=.7)
+def furry(kw):
+    d = dict(tip=.6, nose=1., mw=1.2, crown=.52, ear=1.12, reach=1.); o = dict(kw)
+    for k, f in FURRY.items(): o[k] = .22 + (o.get(k, d[k]) - .22) * f if k == 'tip' else o.get(k, d[k]) * f   # (the tip: its reach ahead of the face plane)
+    return o
+
 def params(sp):
     S = SPECIES[sp]; P = copy.deepcopy(FAMS[S.get('fam', 'lobo')])
     for k, v in S.items():
@@ -716,7 +725,7 @@ def params(sp):
         if isinstance(v, dict) and isinstance(P.get(k), dict): P[k] = {**P[k], **v}
         else: P[k] = copy.deepcopy(v)
     if S.get('xf'): xform(P, **S['xf'])
-    if S.get('fam') != 'kemono': stylise(P, **{**FAM_STYLE.get(S.get('fam', 'lobo'), {}), **S.get('sty', {})})
+    if S.get('fam') != 'kemono': stylise(P, **furry({**FAM_STYLE.get(S.get('fam', 'lobo'), {}), **S.get('sty', {})}))
     seat(P)
     return P
 

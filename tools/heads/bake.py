@@ -4,7 +4,7 @@
 import os, sys, json, gzip, base64, struct, numpy as np, bpy
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import head as HD
-OUT = os.path.join(HERE, '..', '..', 'app', 'heads')
+OUT = os.environ.get('HEADS_OUT') or os.path.join(HERE, '..', '..', 'app', 'heads')   # (HEADS_OUT: elsewhere, to try a change out)
 
 # id: species it is the head of (the first names its mouth and eyes), label, style (the body's proportions round it:
 # a kemono head's are rounder, see effBody), size against the body's head
