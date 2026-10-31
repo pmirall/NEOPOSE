@@ -9600,9 +9600,9 @@ function faceMarks(d) {
       muz[i] = Math.max(sstep(zA, zA + .05, z) * sstep(yN + .01, yN - .03, y), sstep(F.y - .005, F.y - .03, y) * (1 - sstep(.09, .14, x)) * sstep(-.08, .02, z)); } }
   const [cx, cy, cz] = c, eye = [cx + .025, cy - .03, cz + .1];  // the front of the eye, a little low
   if (d.id === 'tigre') stroke(light, [[cx - .06, cy + .13, null], [cx + .03, cy + .135, null]], [.032, .03]);
-  if (kind === 'bandit') {
-    stroke(mask, [[0, null, cz + .2], [cx - .07, cy - .03, null], eye, [null, cy - .08, cz - .05], [null, cy - .15, cz - .2], [null, cy - .2, cz - .32]], [.06, .08, .11, .1, .07, .03]);
-    stroke(mask, [[0, null, cz + .2], [0, null, (cz + .2 + T[2]) / 2], [0, null, T[2] - .06]], [.07, .055, .04]);
+  if (kind === 'bandit') {   // (a furry's mask: a band over the eyes and a thin line down the bridge, the muzzle light)
+    stroke(mask, [[0, null, cz + .2], [cx - .07, cy - .03, null], eye, [null, cy - .08, cz - .05], [null, cy - .15, cz - .2], [null, cy - .2, cz - .32]], [.05, .065, .085, .075, .05, .025]);
+    stroke(mask, [[0, null, cz + .2], [0, null, (cz + .2 + T[2]) / 2], [0, null, T[2] - .06]], [.04, .03, .02]);
     stroke(light, [[cx - .09, cy + .11, null], [cx + .03, cy + .12, null], [cx + .12, cy + .09, null]], [.035, .04, .03]);
   } else if (kind === 'tears') {
     // the tear line in profile: from under the inner corner of the eye to the corner of the mouth

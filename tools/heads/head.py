@@ -464,8 +464,9 @@ RABBIT = dict(
     head=dict(rf=.08, rb=.04, st=[muz(.35, -.075, .09, -.2), muz(.29, -.03, .13, -.2), muz(.21, .02, .165, -.2), cran(.12, .1, .23, -.06, -.21),
         cran(.03, .19, .3, -.05, -.25), cran(-.09, .3, .35, -.05, -.34), cran(-.23, .37, .36, -.03, -.42), cran(-.37, .39, .34, 0, -.42),
         cran(-.5, .34, .29, .03, -.32), cran(-.6, .24, .21, .04, -.2), cran(-.66, .12, .11, .04, -.08)]),
-    jaw=dict(k=.008, rf=.04, rb=.06, st=[jaw(.28, .035, -.245, -.195), jaw(.2, .075, -.3, -.195), jaw(.08, .125, -.39, -.195),
-        jaw(-.06, .17, -.5, -.2), jaw(-.2, .18, -.54, -.22)]),
+    # (a small round chin: a deep one, white, read as a beard)
+    jaw=dict(k=.008, rf=.04, rb=.06, st=[jaw(.28, .035, -.245, -.195), jaw(.2, .075, -.28, -.195), jaw(.08, .125, -.33, -.195),
+        jaw(-.06, .16, -.38, -.2), jaw(-.2, .17, -.42, -.22)]),
     pads=[dict(c=(.062, -.135, .3), r=(.082, .066, .072), k=.025)],
     masses=[dict(c=(.21, -.105, .02), r=(.14, .085, .15), k=.07), dict(c=(-.21, -.105, .02), r=(.14, .085, .15), k=.07)],
     brow=dict(pts=[(.12, .1, .1), (.19, .13, .07), (.26, .12, .02)], r=[.016, .02, .014], sq=.7, k=.03),
@@ -475,9 +476,8 @@ RABBIT = dict(
     jawh=dict(hinge=-.22),
     eye=dict(x=.22, re=.12, yaw=24, pitch=-2, w=.11, hu=.07, hl=.064, tilt=4, shift=0, sink=.004, lu=.014, ll=.007, lo=.86, mound=(1.45, 1.35, 1.0, .07)),
     ears=dict(base=(.13, .36, -.26), out=6, back=14, turn=-22, H=.85, W=.3, D=.14, lean=.08, rim=.04, round_=.6, fluff=2, fl=.5),
-    tufts=[((.31, -.1, -.05), (.41, -.14, -.11), (.5, -.17, -.17), .1, .03),
-           ((.31, -.19, -.06), (.4, -.24, -.11), (.47, -.29, -.16), .095, .028),
-           ((.28, -.27, -.07), (.35, -.32, -.11), (.41, -.37, -.15), .08, .025)],
+    tufts=[((.31, -.08, -.05), (.41, -.11, -.11), (.5, -.13, -.17), .1, .03),
+           ((.31, -.17, -.06), (.4, -.21, -.11), (.47, -.25, -.16), .09, .028)],
     neck=((0, -.32, -.22), (0, -1.05, -.2), .19, .18))
 GOAT = dict(
     head=dict(rf=.08, rb=.04, st=[smuz(.66, -.17, .06, -.32), smuz(.58, -.115, .08, -.32), smuz(.46, -.05, .105, -.32), muz(.32, .015, .14, -.32),
@@ -492,15 +492,15 @@ GOAT = dict(
     eye=dict(x=.24, re=.104, yaw=27, pitch=-2, w=.095, hu=.06, hl=.05, tilt=0, shift=0, sink=.004, lu=.02, ll=.009, lo=.86, mound=(1.5, 1.35, 1.0, .08),
              crease=(.005, .007)),
     ears=dict(base=(.24, .2, -.2), out=72, back=10, turn=-40, H=.34, W=.18, D=.12, lean=.04, rim=.03, fluff=2, fl=.7),
-    horns=dict(base=(.11, .36, -.08), d0=(.15, 1, -.3), d1=(.1, -.15, -1), R=.32, sweep=125, r0=.055, r1=.012),
-    goatee=((0, -.36, .55), (0, -.44, .57), (0, -.53, .6), .045, .035),
+    horns=dict(base=(.11, .36, -.08), d0=(.15, 1, -.3), d1=(.1, -.15, -1), R=.32, sweep=125, r0=.075, r1=.02),
+    goatee=((0, -.36, .55), (0, -.41, .56), (0, -.46, .57), .04, .035),
     neck=((0, -.32, -.24), (0, -1.05, -.21), .19, .18))
 HORSE = dict(
     head=dict(rf=.1, rb=.04, st=[smuz(1.0, -.25, .11, -.41), smuz(.95, -.17, .15, -.42), smuz(.88, -.13, .16, -.42), smuz(.76, -.095, .146, -.42),
         smuz(.6, -.055, .128, -.42), smuz(.44, -.012, .134, -.42), muz(.26, .05, .178, -.42), cran(.08, .14, .26, -.1, -.43), cran(-.05, .27, .31, -.15, -.6),
         cran(-.18, .36, .33, -.18, -.64), cran(-.3, .38, .31, -.12, -.58), cran(-.4, .34, .26, -.05, -.42), cran(-.47, .22, .19, 0, -.25),
         cran(-.51, .1, .1, 0, -.1)]),
-    jaw=dict(k=.008, rf=.08, rb=.06, st=[jaw(.93, .11, -.565, -.415), jaw(.82, .1, -.565, -.415), jaw(.66, .082, -.525, -.415), jaw(.44, .1, -.55, -.415),
+    jaw=dict(k=.008, rf=.08, rb=.06, st=[jaw(.93, .085, -.53, -.415), jaw(.82, .09, -.545, -.415), jaw(.66, .082, -.525, -.415), jaw(.44, .1, -.55, -.415),
         jaw(.2, .15, -.6, -.415), jaw(0, .2, -.64, -.42), jaw(-.15, .22, -.65, -.44), jaw(-.28, .2, -.6, -.46)]),
     masses=[dict(c=(.21, -.36, -.17), r=(.16, .25, .27), k=.07), dict(c=(-.21, -.36, -.17), r=(.16, .25, .27), k=.07)],
     brow=dict(pts=[(.13, .1, .1), (.2, .128, .07), (.28, .115, .005), (.32, .07, -.07)], r=[.026, .037, .035, .02], sq=.7, k=.035),
@@ -593,7 +593,7 @@ SPECIES = {
                  tufts=[((.37, -.1, -.17), (.44, -.15, -.26), (.52, -.19, -.33), .09, .028)]),
   'conejo': dict(fam='conejo'),
   # (as the goat in the illustrations: a kid's short round muzzle, and big broad ears hanging out to the sides)
-  'cabra': dict(fam='cabra', ears=dict(W=.27, round_=.7, out=90), sty=dict(tip=.44, drop=.12, lip=.05, ear=1.5, cheek=.4)),
+  'cabra': dict(fam='cabra', ears=dict(W=.27, round_=.7, out=90), sty=dict(tip=.4, drop=.12, lip=.05, ear=1.5, cheek=.4)),
   'ciervo': dict(fam='cabra', xf=dict(mw=.86, mz=.96), eye=dict(re=.112, w=.108, hu=.064, hl=.054, yaw=27),
                  pits=[dict(pts=[(.165, -.035, .12), (.14, -.065, .18), (.122, -.09, .23)], r=[.013, .012, .007])],
                  nose=dict(kind='can', ells=[((0, -.15, .66), (.07, .05, .05))], k=.03, comma=[(.02, -.16, .705), (.045, -.155, .7), (.062, -.165, .688)], nr=.013, philtrum=(-.2, .69)),
@@ -713,6 +713,7 @@ def stylise(P, tip=.6, drop=.12, lip=.05, mw=1.2, crown=.52, skull=.46, face=.32
 # a traditional furry's head on top of each family's stylised one: a shorter muzzle and a smaller nose, a rounder
 # crown, bigger ears, and cheek tufts that stand out less (the many long spikes of a ruff read as feral)
 FURRY = dict(tip=.8, nose=.8, mw=.94, crown=1.07, ear=1.15, reach=.7)
+FURRY_SMILE = .035
 def furry(kw):
     d = dict(tip=.6, nose=1., mw=1.2, crown=.52, ear=1.12, reach=1.); o = dict(kw)
     for k, f in FURRY.items(): o[k] = .22 + (o.get(k, d[k]) - .22) * f if k == 'tip' else o.get(k, d[k]) * f   # (the tip: its reach ahead of the face plane)
@@ -726,6 +727,8 @@ def params(sp):
         else: P[k] = copy.deepcopy(v)
     if S.get('xf'): xform(P, **S['xf'])
     if S.get('fam') != 'kemono': stylise(P, **furry({**FAM_STYLE.get(S.get('fam', 'lobo'), {}), **S.get('sty', {})}))
+    # (and a furry's friendly mouth: its line rising a little behind the corners into a smile, on every head)
+    if S.get('fam') != 'kemono': ls, rise = P['mouth'].get('smile', (.08, .04)); P['mouth']['smile'] = (max(ls, .07), max(rise, FURRY_SMILE))
     seat(P)
     return P
 
